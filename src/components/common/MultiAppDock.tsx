@@ -19,13 +19,13 @@ export const MultiAppDock: React.FC<MultiAppDockProps> = ({ currentApp }) => {
   const apps = [
     {
       id: 'customer',
-      title: '1. Customer Ordering Site',
+      title: '1. FoodHub Customer Ordering',
       desc: 'Browse restaurants, set map pin, Cash On Delivery checkout & tracking',
       url: './index.html',
       hashUrl: './#customer',
-      icon: <ShoppingBag className="w-5 h-5 text-rose-500" />,
+      icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
       badge: 'Public Food Store',
-      theme: 'border-rose-200 hover:border-rose-400 bg-rose-50/50',
+      theme: 'border-orange-200 hover:border-orange-400 bg-orange-50/50',
     },
     {
       id: 'vendor',
@@ -81,7 +81,7 @@ export const MultiAppDock: React.FC<MultiAppDockProps> = ({ currentApp }) => {
                 <Layers className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-extrabold text-gray-900 text-xs">FoodVibe 4-in-1 Platform</h4>
+                <h4 className="font-extrabold text-gray-900 text-xs">FoodHub 4-in-1 Platform</h4>
                 <p className="text-[10px] text-gray-500">Same Repo &bull; 4 Standalone Websites</p>
               </div>
             </div>
