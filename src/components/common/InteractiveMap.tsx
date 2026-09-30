@@ -168,7 +168,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   return (
     <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0`}>
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
+      <div ref={mapContainerRef} className="w-full h-full z-0 clean-foodpanda-map" />
     </div>
   );
 };

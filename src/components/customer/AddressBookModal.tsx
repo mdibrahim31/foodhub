@@ -502,7 +502,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
         {view === 'map' && (
           <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-100">
             {/* Full Screen Map View */}
-            <div ref={mapRef} className="absolute inset-0 z-0" />
+            <div ref={mapRef} className="absolute inset-0 z-0 clean-foodpanda-map" />
 
             {/* Top-Left Floating Close Button */}
             <div className="absolute top-4 left-4 z-20">

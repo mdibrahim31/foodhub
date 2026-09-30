@@ -125,6 +125,27 @@ export const RiderPortal: React.FC = () => {
     return () => clearInterval(interval);
   }, [incomingCandidate?.order.id, currentRider.is_online]);
 
+  // Lock body scroll strictly while in Rider Portal
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, []);
+
   // Online / Offline Switch Toggle handler
   const handleToggleOnlineSwitch = async () => {
     setIsTogglingOnline(true);
@@ -267,24 +288,24 @@ export const RiderPortal: React.FC = () => {
   const isCashRestricted = currentRider.cash_in_hand > 4000;
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-slate-100 font-sans select-none">
+    <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-slate-100 font-sans select-none touch-none overscroll-none">
       
       {/* 
         ========================================================================
         1. FULLSCREEN INTERACTIVE LEAFLET MAP (Chattogram City Background)
         ========================================================================
       */}
-      <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+      <div ref={mapContainerRef} className="fixed inset-0 z-0 clean-foodpanda-map touch-pan-x touch-pan-y" />
 
       {/* 
         ========================================================================
-        2. FLOATING TOP BAR (100% Matching Screenshot_20260930_201012_pandarider.jpg)
+        2. FLOATING TOP BAR (100% Fixed and Anchored to Top - Never Scrolls)
         - Left: Circular Menu Hamburger [ ☰ ]
         - Center: Status Card with "Go Online / Go Offline" Switch
         - Right: Circular Headphone Support [ 🎧 ]
         ========================================================================
       */}
-      <header className="absolute top-4 inset-x-4 z-20 flex items-center justify-between pointer-events-none max-w-md mx-auto">
+      <header className="fixed top-4 inset-x-4 z-30 flex items-center justify-between pointer-events-none max-w-md mx-auto">
         
         {/* Left: Circular Hamburger Button [ ☰ ] */}
         <button
@@ -363,7 +384,7 @@ export const RiderPortal: React.FC = () => {
         FLOATING COMPASS BUTTON (TOP-RIGHT, MATCHING SCREENSHOT)
         ========================================================================
       */}
-      <div className="absolute top-24 right-4 z-20">
+      <div className="fixed top-24 right-4 z-20">
         <button
           onClick={handleRecenter}
           className="w-12 h-12 rounded-full bg-black text-white shadow-2xl flex items-center justify-center hover:bg-slate-900 transition active:scale-95 cursor-pointer border border-slate-700/50"
@@ -385,7 +406,7 @@ export const RiderPortal: React.FC = () => {
         3. BOTTOM-RIGHT GPS RECENTER BUTTON [ ⌖ ] (MATCHING SCREENSHOT)
         ========================================================================
       */}
-      <div className="absolute bottom-72 sm:bottom-64 right-4 z-20">
+      <div className="fixed bottom-72 sm:bottom-64 right-4 z-20">
         <button
           onClick={handleRecenter}
           className="w-12 h-12 rounded-full bg-white text-slate-900 shadow-2xl flex items-center justify-center hover:bg-slate-50 transition active:scale-95 border border-slate-200/80 cursor-pointer"
@@ -411,7 +432,7 @@ export const RiderPortal: React.FC = () => {
         - Case C: Access restricted / Offline / Idle state (Matching Screenshot)
         ========================================================================
       */}
-      <div className="absolute bottom-0 inset-x-0 z-30 p-3 sm:p-4 max-w-md mx-auto pointer-events-none">
+      <div className="fixed bottom-0 inset-x-0 z-30 p-3 sm:p-4 max-w-md mx-auto pointer-events-none">
         <div className="pointer-events-auto bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 space-y-4 max-h-[85vh] overflow-y-auto">
 
           {/* 
