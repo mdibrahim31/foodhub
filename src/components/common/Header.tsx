@@ -57,7 +57,7 @@ export const Header: React.FC = () => {
             Rate: {settings.currency_symbol}{settings.base_delivery_charge} base + {settings.currency_symbol}{settings.per_km_delivery_charge}/km
           </span>
           <span className="bg-black/25 px-2 py-0.5 rounded flex items-center gap-1">
-            <Radio className="w-3 h-3 text-emerald-300 animate-pulse" />
+            <Radio className="w-3 h-3 text-emerald-300" />
             Dispatch Radius: {settings.rider_match_radius_km} km
           </span>
         </div>

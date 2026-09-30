@@ -308,9 +308,9 @@ export const RiderPortal: React.FC = () => {
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
                   isCashRestricted
-                    ? 'bg-rose-500 animate-pulse'
+                    ? 'bg-rose-500'
                     : currentRider.is_online
-                    ? 'bg-emerald-500 animate-ping'
+                    ? 'bg-emerald-500'
                     : 'bg-slate-400'
                 }`}
               />
@@ -388,12 +388,12 @@ export const RiderPortal: React.FC = () => {
             (User explicitly requested: "red mark a order ppup show hobe accept and reject button thakbe")
           */}
           {currentRider.is_online && incomingCandidate && !activeOrder && (
-            <div className="space-y-3.5 animate-in fade-in slide-in-from-bottom duration-300">
+            <div className="space-y-3.5">
               
               {/* Header: Incoming Order Alert + Countdown Timer */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                   <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                     New Delivery Request
                   </span>
@@ -598,7 +598,7 @@ export const RiderPortal: React.FC = () => {
                 /* Searching State */
                 <div className="py-2 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-                    <Radio className="w-5 h-5 animate-pulse" />
+                    <Radio className="w-5 h-5" />
                   </div>
                   <h4 className="font-extrabold text-sm text-slate-900">
                     Searching for orders in Chattogram...

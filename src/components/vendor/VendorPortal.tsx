@@ -807,7 +807,7 @@ export const VendorPortal: React.FC = () => {
                 <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center space-x-2">
                   <span>Live Kitchen Queue</span>
                   {pendingOrders.length > 0 && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                   )}
                 </h3>
                 <span className="text-xs font-bold text-orange-600">
@@ -825,7 +825,7 @@ export const VendorPortal: React.FC = () => {
                   {pendingOrders.map((ord) => (
                     <div
                       key={ord.id}
-                      className="bg-white p-4 rounded-2xl border-2 border-rose-200 shadow-sm space-y-3 animate-pulse"
+                      className="bg-white p-4 rounded-2xl border-2 border-rose-300 shadow-sm space-y-3"
                     >
                       <div className="flex justify-between items-start">
                         <div>

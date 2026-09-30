@@ -401,7 +401,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
                   <div className="flex justify-between items-center">
                     <div>
                       <label className="block text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                        <Radio className="w-4 h-4 text-indigo-600 animate-pulse" />
+                        <Radio className="w-4 h-4 text-indigo-600" />
                         Rider Proximity Dispatch Radius (Current: {riderRadius} km)
                       </label>
                       <p className="text-[11px] text-indigo-800 mt-0.5">

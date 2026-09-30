@@ -151,7 +151,7 @@ export const MultiAppDock: React.FC<MultiAppDockProps> = ({ currentApp }) => {
           onClick={() => setIsOpen(true)}
           className="flex items-center space-x-2 px-3 py-2 bg-gray-900 hover:bg-black text-white rounded-full shadow-xl border border-gray-700 text-xs font-semibold transition-transform hover:scale-105"
         >
-          <Layers className="w-4 h-4 text-amber-400 animate-pulse" />
+          <Layers className="w-4 h-4 text-amber-400" />
           <span>Switch Website (4 Sites)</span>
           <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
         </button>

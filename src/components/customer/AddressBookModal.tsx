@@ -541,7 +541,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
               Center Marker Pin (Fixed to center of viewport, exactly like Uber / Foodpanda / Google Maps)
             */}
             <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center mb-10">
-              <div className="relative flex flex-col items-center animate-bounce duration-300">
+              <div className="relative flex flex-col items-center">
                 {/* Pin Head */}
                 <div className="w-9 h-9 rounded-full bg-orange-600 border-2 border-white shadow-xl flex items-center justify-center">
                   <div className="w-3 h-3 rounded-full bg-white"></div>

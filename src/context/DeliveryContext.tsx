@@ -184,7 +184,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // -------------------------------------------------------------
-  // 5-SECOND RIDER LIVE LOCATION TRACKING
+  // RIDER LOCATION TRACKING (Static & stable, no random auto-drift)
   // -------------------------------------------------------------
   const riderWatchIdRef = useRef<number | null>(null);
 
@@ -197,41 +197,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
-    // 5-second interval location updater
-    const intervalId = setInterval(() => {
-      if (navigator.geolocation) {
+    // Optional single real GPS sync without continuous random artificial drifting
+    if (navigator.geolocation && !riderWatchIdRef.current) {
+      try {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            const { latitude, longitude } = pos.coords;
-            updateRiderLocation(currentRider.id, latitude, longitude);
+            updateRiderLocation(currentRider.id, pos.coords.latitude, pos.coords.longitude);
           },
           () => {
-            // Geolocation permission might be denied or simulated in dev;
-            // subtly drift coordinates for realistic testing if simulated
-            const driftLat = (Math.random() - 0.5) * 0.00015;
-            const driftLng = (Math.random() - 0.5) * 0.00015;
-            updateRiderLocation(
-              currentRider.id,
-              currentRider.current_latitude + driftLat,
-              currentRider.current_longitude + driftLng
-            );
+            // Keep stable default coordinates if permission denied
           },
-          { enableHighAccuracy: true, timeout: 4000 }
+          { enableHighAccuracy: true, timeout: 5000 }
         );
-      } else {
-        // Fallback
-        const driftLat = (Math.random() - 0.5) * 0.00015;
-        const driftLng = (Math.random() - 0.5) * 0.00015;
-        updateRiderLocation(
-          currentRider.id,
-          currentRider.current_latitude + driftLat,
-          currentRider.current_longitude + driftLng
-        );
+      } catch {
+        // ignore
       }
-    }, 5000); // exactly 5 seconds
-
-    return () => clearInterval(intervalId);
-  }, [currentRider?.id, currentRider?.is_online, currentRider?.current_latitude, currentRider?.current_longitude]);
+    }
+  }, [currentRider?.id, currentRider?.is_online]);
 
   const updateRiderLocation = (riderId: string, lat: number, lng: number) => {
     const nowIso = new Date().toISOString();

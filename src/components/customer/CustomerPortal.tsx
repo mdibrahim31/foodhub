@@ -103,13 +103,7 @@ export const CustomerPortal: React.FC = () => {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-  // Auto-play slides every 4.5 seconds
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
+  // Static slide - no auto-play movement (manual swipe or dot click only)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
