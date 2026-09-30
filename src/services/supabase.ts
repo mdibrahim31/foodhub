@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
 export const INITIAL_VENDORS: Vendor[] = [
   {
     id: 'a0000001-0000-0000-0000-000000000001',
-    name: 'Kacchi Bhai - Banani',
+    name: "Sultan's Dine",
     description: 'Authentic traditional Dum Biryani, Borhani, and Mughlai delicacies',
     cuisine: 'Biryani, Bengali, Mughlai',
     phone: '+8801711122233',
@@ -46,51 +46,98 @@ export const INITIAL_VENDORS: Vendor[] = [
     google_maps_link: 'https://maps.google.com/?q=23.7937,90.4049',
     is_active: true,
     rating: 4.8,
-    estimated_prep_time_minutes: 20,
+    estimated_prep_time_minutes: 25,
     cover_image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
     logo_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=150&auto=format&fit=crop&q=80'
   },
   {
     id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Takeout Burger - Gulshan 1',
-    description: 'Juicy artisan beef smash burgers, crisp potato wedges and milkshakes',
-    cuisine: 'Fast Food, Burgers, American',
+    name: 'Snackza',
+    description: 'Loaded chicken shawarma, grilled doner kebabs, crispy rolls and dips',
+    cuisine: 'Snacks, Shawarma, Wraps',
     phone: '+8801811122244',
     address: 'Gulshan South Avenue, Gulshan 1, Dhaka',
     latitude: 23.7788,
     longitude: 90.4182,
     google_maps_link: 'https://maps.google.com/?q=23.7788,90.4182',
     is_active: true,
-    rating: 4.6,
-    estimated_prep_time_minutes: 15,
-    cover_image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150&auto=format&fit=crop&q=80'
+    rating: 4.5,
+    estimated_prep_time_minutes: 30,
+    cover_image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=150&auto=format&fit=crop&q=80'
   },
   {
     id: 'a0000003-0000-0000-0000-000000000003',
-    name: 'Chillox - Mohakhali',
-    description: 'Signature crispy wings, loaded cheese fries, and spicy gourmet burgers',
-    cuisine: 'Burgers, Wings, Fries',
+    name: 'PizzaBurg',
+    description: 'Cheesy artisan pan pizzas, loaded wedges, and barbecue wings',
+    cuisine: 'Pizza, Fast Food, Burgers',
     phone: '+8801911122255',
     address: 'Bir Uttam AK Khandakar Rd, Mohakhali, Dhaka',
     latitude: 23.7776,
     longitude: 90.4024,
-    google_maps_link: 'https://maps.google.com/?q=23.7776,90.4024',
     is_active: true,
     rating: 4.7,
-    estimated_prep_time_minutes: 18,
-    cover_image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=150&auto=format&fit=crop&q=80'
+    estimated_prep_time_minutes: 25,
+    cover_image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'a0000004-0000-0000-0000-000000000004',
+    name: 'Tasty Treat - East Nasirabad',
+    description: 'Fresh bakery items, patties, burger sliders, cakes, and traditional sweets',
+    cuisine: 'Dessert, Bakery, Price Match',
+    phone: '+8801722233344',
+    address: 'East Nasirabad, Chittagong',
+    latitude: 22.3569,
+    longitude: 91.8282,
+    google_maps_link: 'https://maps.google.com/?q=22.3569,91.8282',
+    is_active: true,
+    rating: 4.4,
+    estimated_prep_time_minutes: 20,
+    cover_image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=150&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'a0000005-0000-0000-0000-000000000005',
+    name: "Domino's Pizza",
+    description: 'Famous pepperoni, MeatMaxxx loaded deep-dish crust pizzas and garlic sticks',
+    cuisine: 'Pizza, Italian, Fast Food',
+    phone: '+8801833344455',
+    address: 'Pragati Sarani, Baridhara, Dhaka',
+    latitude: 23.7972,
+    longitude: 90.4230,
+    google_maps_link: 'https://maps.google.com/?q=23.7972,90.4230',
+    is_active: true,
+    rating: 4.6,
+    estimated_prep_time_minutes: 20,
+    cover_image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=150&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'a0000006-0000-0000-0000-000000000006',
+    name: "Sharia's Kitchen",
+    description: 'Desi home-style cooking, spicy khichuri, set meals and fresh bhortas',
+    cuisine: 'Bangladeshi, Khichuri, Set Menu',
+    phone: '+8801944455566',
+    address: 'GEC Circle, Chittagong',
+    latitude: 22.3590,
+    longitude: 91.8215,
+    google_maps_link: 'https://maps.google.com/?q=22.3590,91.8215',
+    is_active: true,
+    rating: 3.9,
+    estimated_prep_time_minutes: 35,
+    cover_image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=150&auto=format&fit=crop&q=80'
   }
 ];
 
 export const INITIAL_MENU_ITEMS: MenuItem[] = [
-  // Kacchi Bhai
+  // Sultan's Dine
   {
     id: 'm-001',
     vendor_id: 'a0000001-0000-0000-0000-000000000001',
-    name: 'Basmati Kacchi Biryani (Full)',
-    description: 'Fragrant basmati rice slow-cooked with tender marinated mutton, aloo, egg, and salad',
+    name: "Sultan's Kacchi Biryani (Full)",
+    description: 'Aromatic basmati rice cooked with succulent mutton pieces, aloo, and traditional spices',
     price: 380,
     category: 'Biryani',
     is_available: true,
@@ -99,76 +146,92 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
   {
     id: 'm-002',
     vendor_id: 'a0000001-0000-0000-0000-000000000001',
-    name: 'Special Traditional Borhani (250ml)',
-    description: 'Tangy and spiced chilled yogurt drink made with secret herbs and mustard',
+    name: 'Special Traditional Borhani',
+    description: 'Refreshing spiced yogurt drink prepared with mint and mustard seeds',
     price: 60,
     category: 'Beverages',
     is_available: true,
     image_url: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=500&auto=format&fit=crop&q=80'
   },
-  {
-    id: 'm-003',
-    vendor_id: 'a0000001-0000-0000-0000-000000000001',
-    name: 'Chicken Roast with Polao Combo',
-    description: 'Golden fried desi chicken cooked in sweet-sour gravy served with chinigura polao',
-    price: 260,
-    category: 'Biryani',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?w=500&auto=format&fit=crop&q=80'
-  },
 
-  // Takeout Burger
+  // Snackza
   {
     id: 'm-004',
     vendor_id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Classic Double Cheeseburger',
-    description: 'Two smashed beef patties, cheddar cheese slice, pickles, caramelized onions, house burger sauce',
-    price: 290,
-    category: 'Burgers',
+    name: 'Loaded Chicken Doner Shawarma',
+    description: 'Warm pita bread filled with flame-grilled chicken, fresh salad and garlic mayonnaise',
+    price: 180,
+    category: 'Snacks',
     is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80'
+    image_url: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500&auto=format&fit=crop&q=80'
   },
   {
     id: 'm-005',
     vendor_id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Loaded Cheesy Beef Bacon Fries',
-    description: 'Crispy skin-on potato fries smothered with melted cheese, beef bacon bits & jalapenos',
-    price: 180,
-    category: 'Sides',
+    name: 'Crispy Chicken Wrap Roll',
+    description: 'Crispy fried chicken tenders wrapped with cheese slice and spicy chili mayo',
+    price: 150,
+    category: 'Snacks',
     is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'm-006',
-    vendor_id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Oreo Thick Milkshake',
-    description: 'Blended whole milk, vanilla ice-cream, crushed oreos topped with whipped cream',
-    price: 160,
-    category: 'Beverages',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=500&auto=format&fit=crop&q=80'
+    image_url: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=500&auto=format&fit=crop&q=80'
   },
 
-  // Chillox
+  // PizzaBurg
+  {
+    id: 'm-006',
+    vendor_id: 'a0000003-0000-0000-0000-000000000003',
+    name: 'Beef Supreme Delight Pizza (9-inch)',
+    description: 'Topped with spiced ground beef, mushrooms, capsicum, olives, and mozzarella cheese',
+    price: 340,
+    category: 'Pizza',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&auto=format&fit=crop&q=80'
+  },
+
+  // Tasty Treat
   {
     id: 'm-007',
-    vendor_id: 'a0000003-0000-0000-0000-000000000003',
-    name: 'Smoky Naga Beef Burger',
-    description: 'Extra fiery beef burger infused with authentic Sylheti Naga pepper and smoky BBQ glaze',
-    price: 280,
-    category: 'Burgers',
+    vendor_id: 'a0000004-0000-0000-0000-000000000004',
+    name: 'Chicken Cheese Puff (2 Pcs)',
+    description: 'Flaky baked golden pastry stuffed with creamy chicken and cheese',
+    price: 90,
+    category: 'Snacks',
     is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80'
+    image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80'
   },
+
+  // Domino's Pizza
   {
     id: 'm-008',
-    vendor_id: 'a0000003-0000-0000-0000-000000000003',
-    name: 'Crispy Fried Wings (6 Pcs)',
-    description: 'Golden crunchy battered wings coated in sweet sweet chili sauce',
-    price: 210,
-    category: 'Sides',
+    vendor_id: 'a0000005-0000-0000-0000-000000000005',
+    name: 'MeatMAXXX Cheesy Stuffed Crust Pizza',
+    description: 'Overloaded with grilled chicken sausage, beef pepperoni, jalapenos and liquid cheese rim',
+    price: 499,
+    category: 'Pizza',
     is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=500&auto=format&fit=crop&q=80'
+    image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop&q=80'
+  },
+
+  // Sharia's Kitchen
+  {
+    id: 'm-009',
+    vendor_id: 'a0000006-0000-0000-0000-000000000006',
+    name: 'Plain Khichuri',
+    description: 'Comforting turmeric moong dal yellow rice khichuri with fried onions and green chili',
+    price: 60,
+    category: 'Bangladeshi',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'm-010',
+    vendor_id: 'a0000006-0000-0000-0000-000000000006',
+    name: 'Set Menu - 3 (Khichuri + Chicken Curry + Salad)',
+    description: 'Hot fragrant bhuna khichuri served with rich chicken curry and mixed vegetable salad',
+    price: 170,
+    category: 'Bangladeshi',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=500&auto=format&fit=crop&q=80'
   }
 ];
 

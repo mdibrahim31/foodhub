@@ -12,13 +12,20 @@ import {
   Star, 
   Plus, 
   Minus, 
-  ArrowRight, 
   ChevronRight, 
-  Banknote, 
-  Truck, 
-  CheckCircle2, 
-  AlertCircle,
-  ExternalLink
+  Heart,
+  Tag,
+  SlidersHorizontal,
+  ChevronDown,
+  Sparkles,
+  UtensilsCrossed,
+  Store,
+  User,
+  CheckCircle2,
+  Ticket,
+  Percent,
+  Banknote,
+  ArrowRight
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -37,30 +44,52 @@ export const CustomerPortal: React.FC = () => {
     riders
   } = useDelivery();
 
+  const [activeBottomNav, setActiveBottomNav] = useState<'food' | 'grocery' | 'search' | 'carts' | 'account'>('food');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [selectedVendorForMenu, setSelectedVendorForMenu] = useState<Vendor | null>(null);
-  const [activeTab, setActiveTab] = useState<'restaurants' | 'orders'>('restaurants');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCuisine, setSelectedCuisine] = useState<string>('All');
+  const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'fastest'>('popular');
+  const [isRating4PlusOnly, setIsRating4PlusOnly] = useState(false);
+  const [hasOfferOnly, setHasOfferOnly] = useState(false);
+  const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
+  
+  // Checkout & Favorites
+  const [favorites, setFavorites] = useState<string[]>(['a0000002-0000-0000-0000-000000000002']);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderInstructions, setOrderInstructions] = useState('');
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [orderSuccessNotice, setOrderSuccessNotice] = useState<Order | null>(null);
 
-  // Customer's current coordinates
+  // Customer Coordinates
   const customerLat = selectedAddress?.latitude || 23.7915;
   const customerLng = selectedAddress?.longitude || 90.4072;
 
-  // Filter vendors
-  const cuisines = ['All', 'Biryani', 'Burgers', 'Fast Food', 'Wings'];
+  const toggleFavorite = (vendorId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavorites(prev => 
+      prev.includes(vendorId) ? prev.filter(id => id !== vendorId) : [...prev, vendorId]
+    );
+  };
+
+  // Filtered and Sorted Vendors
   const filteredVendors = vendors.filter((v) => {
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCuisine = selectedCuisine === 'All' || v.cuisine.toLowerCase().includes(selectedCuisine.toLowerCase());
-    return matchesSearch && matchesCuisine;
+    const matchesRating = !isRating4PlusOnly || v.rating >= 4.0;
+    const matchesCuisine = activeCuisineFilter === 'All' || v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase());
+    return matchesSearch && matchesRating && matchesCuisine;
+  }).sort((a, b) => {
+    if (selectedSort === 'rating') return b.rating - a.rating;
+    if (selectedSort === 'distance') {
+      const distA = calculateDistanceKm(a.latitude, a.longitude, customerLat, customerLng);
+      const distB = calculateDistanceKm(b.latitude, b.longitude, customerLat, customerLng);
+      return distA - distB;
+    }
+    if (selectedSort === 'fastest') return a.estimated_prep_time_minutes - b.estimated_prep_time_minutes;
+    return 0;
   });
 
-  // Calculate cart totals
+  // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0);
   const cartDistanceKm = cartVendor 
     ? calculateDistanceKm(cartVendor.latitude, cartVendor.longitude, customerLat, customerLng)
@@ -69,6 +98,7 @@ export const CustomerPortal: React.FC = () => {
     ? calculateDeliveryFee(cartDistanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge)
     : 0;
   const totalCashPayable = foodTotal + deliveryFee;
+  const totalCartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   const handleCheckout = async () => {
     if (!selectedAddress) {
@@ -81,543 +111,749 @@ export const CustomerPortal: React.FC = () => {
       if (placed) {
         setOrderSuccessNotice(placed);
         setIsCartOpen(false);
-        setActiveTab('orders');
+        setActiveBottomNav('account');
       }
     } finally {
       setIsPlacingOrder(false);
     }
   };
 
+  // Food Categories Bubbles (Matching Image 1)
+  const cuisineBubbles = [
+    { label: 'Pizza', icon: '🍕', filter: 'Pizza' },
+    { label: 'Burgers', icon: '🍔', filter: 'Burgers' },
+    { label: 'Fast Food', icon: '🍗', filter: 'Fast Food' },
+    { label: 'Bangladeshi', icon: '🐟', filter: 'Bangladeshi' },
+    { label: 'Rice & Biryani', icon: '🍚', filter: 'Biryani' },
+    { label: 'Snacks', icon: '🥪', filter: 'Snacks' },
+    { label: 'Desserts', icon: '🍰', filter: 'Dessert' },
+  ];
+
+  // Quick Services Row (Matching Image 1 top chips)
+  const serviceShortcuts = [
+    { label: 'Offers', badge: '%', badgeBg: 'bg-rose-500', icon: '🏷️', color: 'from-emerald-500 to-teal-700' },
+    { label: 'Grocery Mart', icon: '🛒', color: 'from-amber-500 to-orange-600' },
+    { label: 'Pick-up', badge: 'Up to -25%', badgeBg: 'bg-emerald-700', icon: '🛍️', color: 'from-teal-600 to-emerald-800' },
+    { label: 'Health & Beauty', icon: '🧴', color: 'from-cyan-600 to-blue-700' },
+    { label: 'Dine-in Deals', icon: '🍽️', color: 'from-violet-600 to-purple-800' },
+  ];
+
+  // Discounted dishes data (Matching Image 3)
+  const promoDishes = [
+    {
+      id: 'pd-1',
+      name: 'Plain Khichuri',
+      vendor: "Sharia's Kitchen",
+      rating: 3.9,
+      prepTime: '60-85 mins',
+      discountedPrice: 60,
+      originalPrice: 70,
+      discountText: '15% off',
+      image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&auto=format&fit=crop&q=80',
+      vendorId: 'a0000006-0000-0000-0000-000000000006'
+    },
+    {
+      id: 'pd-2',
+      name: 'Set Menu - 3 (Khichuri + Chicken)',
+      vendor: "Sharia's Kitchen",
+      rating: 3.9,
+      prepTime: '60-85 mins',
+      discountedPrice: 170,
+      originalPrice: 200,
+      discountText: '15% off',
+      image: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&auto=format&fit=crop&q=80',
+      vendorId: 'a0000006-0000-0000-0000-000000000006'
+    },
+    {
+      id: 'pd-3',
+      name: 'Loaded Doner Shawarma',
+      vendor: 'Snackza',
+      rating: 4.5,
+      prepTime: '30-40 mins',
+      discountedPrice: 180,
+      originalPrice: 210,
+      discountText: '15% off',
+      image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80',
+      vendorId: 'a0000002-0000-0000-0000-000000000002'
+    },
+    {
+      id: 'pd-4',
+      name: "Sultan's Kacchi Special",
+      vendor: "Sultan's Dine",
+      rating: 4.8,
+      prepTime: '25-35 mins',
+      discountedPrice: 380,
+      originalPrice: 420,
+      discountText: 'Special Deal',
+      image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80',
+      vendorId: 'a0000001-0000-0000-0000-000000000001'
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Top Customer Sub-Header: Delivery Address Picker */}
-      <div className="bg-white border-b border-gray-200 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Delivering to</span>
-                <span className="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md">
-                  {selectedAddress?.label || 'Select Location'}
-                </span>
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-28">
+      {/* 1. TOP APP BAR (Matching Image 1: Location + Heart) */}
+      <header className="sticky top-0 z-40 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white shadow-md">
+        <div className="max-w-4xl mx-auto px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between">
+            {/* Location selector */}
+            <div 
+              onClick={() => setIsAddressModalOpen(true)}
+              className="flex items-center space-x-2 cursor-pointer group"
+            >
+              <div className="p-1.5 bg-emerald-600/60 rounded-full border border-emerald-400/40">
+                <MapPin className="w-5 h-5 text-emerald-200" />
               </div>
-              <p className="text-sm font-semibold text-gray-800 line-clamp-1 max-w-md">
-                {selectedAddress ? selectedAddress.address_line : 'No delivery address selected'}
-              </p>
+              <div>
+                <div className="flex items-center space-x-1">
+                  <span className="text-xs font-bold text-emerald-200 uppercase tracking-wide">Current Location</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-200 group-hover:translate-y-0.5 transition-transform" />
+                </div>
+                <h1 className="text-sm sm:text-base font-black tracking-tight line-clamp-1 text-white">
+                  {selectedAddress ? selectedAddress.address_line : 'Chittagong / Dhaka Hub'}
+                </h1>
+              </div>
+            </div>
+
+            {/* Right action icons */}
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => {
+                  setIsRating4PlusOnly(prev => !prev);
+                }}
+                className={`p-2 rounded-full transition-colors ${
+                  favorites.length > 0 ? 'bg-emerald-600/70 text-rose-300' : 'bg-emerald-800/60 text-white'
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${favorites.length > 0 ? 'fill-rose-400 text-rose-400' : ''}`} />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsAddressModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-rose-300 text-rose-700 hover:bg-rose-50 rounded-xl text-xs font-semibold shadow-xs"
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>Change / Pin Map</span>
-            </button>
-
-            {/* Navigation Tabs */}
-            <div className="flex bg-gray-100 p-1 rounded-xl">
-              <button
-                onClick={() => setActiveTab('restaurants')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  activeTab === 'restaurants' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Restaurants
-              </button>
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
-                  activeTab === 'orders' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <span>Live Orders</span>
-                {orders.length > 0 && (
-                  <span className="bg-rose-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                    {orders.length}
-                  </span>
-                )}
-              </button>
-            </div>
+          {/* 2. SEARCH BAR (Matching Image 1 search bar) */}
+          <div className="mt-3 relative">
+            <Search className="w-5 h-5 text-emerald-800 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              placeholder="Search for restaurants and groceries"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-inner focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+            />
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Body */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'restaurants' ? (
-          <div className="space-y-6">
-            {/* Cash on Delivery Educational Card */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-amber-500 text-white rounded-xl shadow-xs">
-                  <Banknote className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-sm md:text-base">
-                    Pure Cash On Delivery System
-                  </h2>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    Rider purchases food with cash at restaurant and collects <strong className="text-gray-900">Food Bill + Delivery Fee</strong> from you in cash at your doorstep!
-                  </p>
-                </div>
-              </div>
-              <div className="bg-white/80 backdrop-blur-xs px-3 py-2 rounded-xl border border-amber-200 text-xs text-amber-900 font-mono">
-                Formula: {settings.currency_symbol}{settings.base_delivery_charge} base + {settings.currency_symbol}{settings.per_km_delivery_charge} &times; distance (km)
-              </div>
-            </div>
+      {/* MAIN SCROLLABLE CONTENT */}
+      <main className="max-w-4xl mx-auto px-4 py-4 space-y-6">
 
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="relative w-full sm:w-80">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search restaurants or cuisines..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-white text-xs border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 shadow-xs"
-                />
-              </div>
-
-              {/* Cuisine chips */}
-              <div className="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-1">
-                {cuisines.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setSelectedCuisine(c)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                      selectedCuisine === c
-                        ? 'bg-rose-600 text-white shadow-xs'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Restaurant Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredVendors.map((vendor) => {
-                const distanceKm = calculateDistanceKm(
-                  vendor.latitude,
-                  vendor.longitude,
-                  customerLat,
-                  customerLng
-                );
-                const fee = calculateDeliveryFee(
-                  distanceKm,
-                  settings.base_delivery_charge,
-                  settings.per_km_delivery_charge
-                );
-                const vendorMenuItems = menuItems.filter((m) => m.vendor_id === vendor.id);
-
-                return (
-                  <div
-                    key={vendor.id}
-                    className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xs hover:shadow-md transition-all flex flex-col group"
-                  >
-                    {/* Cover image & badges */}
-                    <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
-                      <img
-                        src={vendor.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600'}
-                        alt={vendor.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-lg text-xs font-bold text-gray-900 flex items-center space-x-1 shadow-xs">
-                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                        <span>{vendor.rating}</span>
-                      </div>
-
-                      <div className="absolute top-3 right-3 bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-xs flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{vendor.estimated_prep_time_minutes + Math.ceil(distanceKm * 4)} mins</span>
-                      </div>
-
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
-                        <span className="text-xs font-medium bg-black/40 px-2 py-0.5 rounded backdrop-blur-xs">
-                          {vendor.cuisine}
-                        </span>
-                        <span className="text-xs font-bold bg-amber-500 text-gray-950 px-2 py-0.5 rounded">
-                          Cash on Delivery
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-4 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-base">{vendor.name}</h3>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">{vendor.address}</p>
-
-                        {/* Distance & Delivery Fee Highlight */}
-                        <div className="mt-3 p-2.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-1.5 text-gray-700">
-                            <Truck className="w-4 h-4 text-rose-500" />
-                            <span className="font-semibold">{distanceKm} km away</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-gray-500 text-[10px]">Delivery Fee: </span>
-                            <span className="font-extrabold text-gray-900 text-xs">
-                              {settings.currency_symbol}{fee}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action */}
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-xs text-gray-400 font-medium">
-                          {vendorMenuItems.length} Items Available
-                        </span>
-                        <button
-                          onClick={() => setSelectedVendorForMenu(vendor)}
-                          className="inline-flex items-center space-x-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
-                        >
-                          <span>View Menu</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          /* Live Orders Tab */
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Your Live COD Orders</h2>
-                <p className="text-xs text-gray-500">Track orders from restaurant preparation to rider doorstep handover</p>
-              </div>
-              <button
-                onClick={() => setActiveTab('restaurants')}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-700 underline"
+        {/* 3. HERO CAROUSEL BANNER (Matching Image 1 Banner) */}
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-lg p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-2 z-10 max-w-sm">
+              <span className="inline-block px-2.5 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider">
+                100% Cash On Delivery
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black leading-tight tracking-tight">
+                Welcome back! Enjoy 35% off & dynamic delivery
+              </h2>
+              <button 
+                onClick={() => setActiveCuisineFilter('All')}
+                className="inline-flex items-center space-x-1 text-xs font-bold text-amber-300 hover:text-white transition"
               >
-                Browse More Food
+                <span>Redeem now</span>
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
-            {orderSuccessNotice && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="font-bold">Order #{orderSuccessNotice.order_code} Placed Successfully!</p>
-                    <p className="text-emerald-700">
-                      Total Cash Payable: {settings.currency_symbol}{orderSuccessNotice.total_cash_payable} upon delivery.
-                    </p>
+            {/* Food graphic */}
+            <div className="relative shrink-0 w-36 h-32 sm:w-44 sm:h-36">
+              <img 
+                src="https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80" 
+                alt="Fried Chicken Bucket" 
+                className="w-full h-full object-cover rounded-2xl shadow-md border-2 border-white/30 transform hover:scale-105 transition"
+              />
+              <div className="absolute -bottom-2 -left-2 bg-slate-950/80 backdrop-blur-xs px-2 py-0.5 rounded-md text-[10px] font-mono text-emerald-300">
+                Rate: {settings.currency_symbol}{settings.base_delivery_charge} + {settings.currency_symbol}{settings.per_km_delivery_charge}/km
+              </div>
+            </div>
+          </div>
+
+          {/* Carousel dots indicator */}
+          <div className="flex items-center justify-center space-x-1.5 mt-4 pt-1">
+            <span className="w-6 h-1.5 bg-white rounded-full"></span>
+            <span className="w-1.5 h-1.5 bg-white/40 rounded-full"></span>
+            <span className="w-1.5 h-1.5 bg-white/40 rounded-full"></span>
+            <span className="w-1.5 h-1.5 bg-white/40 rounded-full"></span>
+          </div>
+        </section>
+
+        {/* 4. QUICK SERVICE SHORTCUTS (Matching Image 1: Offers, Mart, Pick-up, Health) */}
+        <section className="grid grid-cols-5 gap-2 sm:gap-3 text-center">
+          {serviceShortcuts.map((svc) => (
+            <div 
+              key={svc.label}
+              onClick={() => {
+                if (svc.label === 'Offers') setHasOfferOnly(prev => !prev);
+              }}
+              className="flex flex-col items-center group cursor-pointer"
+            >
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white shadow-xs border border-slate-200/80 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+                {svc.badge && (
+                  <span className={`absolute -top-1.5 -right-1 px-1.5 py-0.2 ${svc.badgeBg} text-white font-black text-[9px] rounded-full shadow-xs whitespace-nowrap`}>
+                    {svc.badge}
+                  </span>
+                )}
+                <span>{svc.icon}</span>
+              </div>
+              <span className="text-[11px] font-bold text-slate-700 mt-1.5 leading-tight group-hover:text-emerald-700 transition">
+                {svc.label}
+              </span>
+            </div>
+          ))}
+        </section>
+
+        {/* 5. 3D CUISINE FOOD BUBBLES HORIZONTAL SCROLL (Matching Image 1) */}
+        <section className="space-y-2">
+          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none">
+            {cuisineBubbles.map((c) => {
+              const isSelected = activeCuisineFilter === c.filter;
+              return (
+                <button
+                  key={c.label}
+                  onClick={() => setActiveCuisineFilter(isSelected ? 'All' : c.filter)}
+                  className={`flex flex-col items-center shrink-0 p-2 rounded-2xl transition-all ${
+                    isSelected 
+                      ? 'bg-emerald-100/80 ring-2 ring-emerald-600 scale-105' 
+                      : 'bg-white hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-2xl shadow-xs">
+                    {c.icon}
                   </div>
-                </div>
-                <button
-                  onClick={() => setOrderSuccessNotice(null)}
-                  className="text-emerald-800 font-bold hover:underline"
-                >
-                  Dismiss
+                  <span className={`text-[11px] mt-1 font-bold whitespace-nowrap ${
+                    isSelected ? 'text-emerald-900' : 'text-slate-700'
+                  }`}>
+                    {c.label}
+                  </span>
                 </button>
-              </div>
-            )}
+              );
+            })}
+          </div>
+        </section>
 
-            {orders.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
-                <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <h3 className="font-bold text-gray-800 text-base">No active orders right now</h3>
-                <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                  Pick your favorite items from our registered restaurants and enjoy authentic Cash On Delivery!
-                </p>
-                <button
-                  onClick={() => setActiveTab('restaurants')}
-                  className="mt-4 px-5 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-rose-700"
+        {/* 6. VERTICAL PROMOTIONAL DEAL POSTER CARDS (Matching Image 1 bottom cards) */}
+        <section className="space-y-3">
+          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none">
+            {/* Sultan's Dine Card */}
+            <div 
+              onClick={() => {
+                const v = vendors.find(x => x.name.includes("Sultan"));
+                if (v) setSelectedVendorForMenu(v);
+              }}
+              className="shrink-0 w-52 sm:w-56 rounded-3xl bg-gradient-to-b from-indigo-950 to-slate-900 text-white p-4 relative overflow-hidden shadow-md cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-md">
+                  Sultan's Dine
+                </span>
+                <span className="text-[10px] font-mono text-emerald-300">Popular</span>
+              </div>
+              <div className="mt-3">
+                <h3 className="text-lg font-black leading-tight text-white">Up to 40% off</h3>
+                <p className="text-xs font-bold text-emerald-400 mt-0.5">+ free delivery</p>
+              </div>
+              <div className="mt-4 h-28 w-full rounded-2xl overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80" 
+                  alt="Kacchi" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <p className="text-[9px] text-slate-400 mt-2 font-mono">T&Cs apply &bull; Cash On Delivery</p>
+            </div>
+
+            {/* PizzaBurg Card */}
+            <div 
+              onClick={() => {
+                const v = vendors.find(x => x.name.includes("PizzaBurg"));
+                if (v) setSelectedVendorForMenu(v);
+              }}
+              className="shrink-0 w-52 sm:w-56 rounded-3xl bg-gradient-to-b from-teal-950 to-slate-900 text-white p-4 relative overflow-hidden shadow-md cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 bg-rose-500 text-white font-black text-[10px] rounded-md">
+                  PizzaBurg
+                </span>
+                <span className="text-[10px] font-mono text-teal-300">Cheesy</span>
+              </div>
+              <div className="mt-3">
+                <h3 className="text-lg font-black leading-tight text-white">Up to 40% off</h3>
+                <p className="text-xs font-bold text-teal-400 mt-0.5">+ free delivery</p>
+              </div>
+              <div className="mt-4 h-28 w-full rounded-2xl overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&auto=format&fit=crop&q=80" 
+                  alt="Pizza" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <p className="text-[9px] text-slate-400 mt-2 font-mono">T&Cs apply &bull; Cash On Delivery</p>
+            </div>
+
+            {/* Snackza Shawarma Card */}
+            <div 
+              onClick={() => {
+                const v = vendors.find(x => x.name.includes("Snackza"));
+                if (v) setSelectedVendorForMenu(v);
+              }}
+              className="shrink-0 w-52 sm:w-56 rounded-3xl bg-gradient-to-b from-amber-950 to-slate-900 text-white p-4 relative overflow-hidden shadow-md cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-md">
+                  Snackza
+                </span>
+                <span className="text-[10px] font-mono text-amber-300">Doner</span>
+              </div>
+              <div className="mt-3">
+                <h3 className="text-lg font-black leading-tight text-white">Flat 35% off</h3>
+                <p className="text-xs font-bold text-amber-400 mt-0.5">Use: back4more</p>
+              </div>
+              <div className="mt-4 h-28 w-full rounded-2xl overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80" 
+                  alt="Shawarma" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <p className="text-[9px] text-slate-400 mt-2 font-mono">T&Cs apply &bull; Cash On Delivery</p>
+            </div>
+          </div>
+        </section>
+
+        {/* 7. POPULAR RESTAURANTS SECTION (Matching Image 2) */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">Popular Restaurants</h2>
+            <button 
+              onClick={() => setActiveCuisineFilter('All')}
+              className="w-8 h-8 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-700 hover:bg-slate-300 transition"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-4 overflow-x-auto pb-3 scrollbar-none">
+            {vendors.slice(0, 3).map((v) => {
+              const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
+              const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
+              const isFav = favorites.includes(v.id);
+
+              return (
+                <div
+                  key={v.id}
+                  onClick={() => setSelectedVendorForMenu(v)}
+                  className="shrink-0 w-72 sm:w-80 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group"
                 >
-                  Order Food Now
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {orders.map((ord) => {
-                  const assignedRider = riders.find((r) => r.id === ord.rider_id);
-                  const vendor = vendors.find((v) => v.id === ord.vendor_id);
-
-                  // Map markers for live tracking
-                  const markers = [];
-                  if (vendor) {
-                    markers.push({
-                      id: `v-${vendor.id}`,
-                      latitude: vendor.latitude,
-                      longitude: vendor.longitude,
-                      title: `Restaurant: ${vendor.name}`,
-                      subtitle: vendor.address,
-                      type: 'vendor' as const,
-                    });
-                  }
-                  markers.push({
-                    id: `c-${ord.id}`,
-                    latitude: ord.delivery_latitude,
-                    longitude: ord.delivery_longitude,
-                    title: `Delivery Destination: ${ord.customer_name}`,
-                    subtitle: ord.delivery_address,
-                    type: 'customer' as const,
-                  });
-                  if (assignedRider && assignedRider.is_online) {
-                    markers.push({
-                      id: `r-${assignedRider.id}`,
-                      latitude: assignedRider.current_latitude,
-                      longitude: assignedRider.current_longitude,
-                      title: `Rider: ${assignedRider.name} (Live 5s GPS)`,
-                      subtitle: `Phone: ${assignedRider.phone}`,
-                      type: 'rider' as const,
-                    });
-                  }
-
-                  return (
-                    <div
-                      key={ord.id}
-                      className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs"
+                  {/* Image with PRO badge and Heart */}
+                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                    <img 
+                      src={v.cover_image} 
+                      alt={v.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <button 
+                      onClick={(e) => toggleFavorite(v.id, e)}
+                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-600 hover:text-rose-500 transition"
                     >
-                      {/* Order Header */}
-                      <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-rose-100 text-rose-600 rounded-lg">
-                            <ShoppingBag className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-extrabold text-gray-900 text-base">#{ord.order_code}</span>
-                              <span className="text-xs font-bold text-gray-500">&bull; {vendor?.name}</span>
-                            </div>
-                            <p className="text-xs text-gray-500 font-mono">
-                              Ordered on {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
-                        </div>
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    </button>
 
-                        {/* Status Badge */}
-                        <div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                            ord.status === 'delivered'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : ord.status === 'rider_on_way_to_customer'
-                              ? 'bg-indigo-100 text-indigo-800 animate-pulse'
-                              : ord.status === 'food_picked_up'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {ord.status.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                      </div>
+                    {/* Pro tag banner */}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent p-2.5 flex items-center justify-between text-white">
+                      <span className="text-[11px] font-bold bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> PRO 40% off selected
+                      </span>
+                      <span className="text-[11px] font-mono text-emerald-300 font-bold">
+                        {distanceKm} km
+                      </span>
+                    </div>
+                  </div>
 
-                      {/* Stepper Progress */}
-                      <div className="px-6 py-4 border-b border-gray-100 bg-white">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
-                          <div className={`p-2 rounded-xl border ${
-                            ['pending', 'vendor_accepted', 'food_preparing', 'ready_for_pickup', 'rider_assigned', 'rider_on_way_to_customer', 'delivered'].includes(ord.status)
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-900 font-bold'
-                              : 'border-gray-200 text-gray-400'
-                          }`}>
-                            1. Order Placed
-                          </div>
-                          <div className={`p-2 rounded-xl border ${
-                            ['food_preparing', 'ready_for_pickup', 'rider_assigned', 'rider_on_way_to_customer', 'delivered'].includes(ord.status)
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-900 font-bold'
-                              : 'border-gray-200 text-gray-400'
-                          }`}>
-                            2. Preparing in Kitchen
-                          </div>
-                          <div className={`p-2 rounded-xl border ${
-                            ['rider_on_way_to_customer', 'delivered'].includes(ord.status)
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-900 font-bold'
-                              : 'border-gray-200 text-gray-400'
-                          }`}>
-                            3. Food Picked Up (Cash Paid to Vendor)
-                          </div>
-                          <div className={`p-2 rounded-xl border ${
-                            ord.status === 'delivered'
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-900 font-bold'
-                              : 'border-gray-200 text-gray-400'
-                          }`}>
-                            4. Handed Over (Cash Collected)
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Map + Details */}
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
-                        {/* Map View */}
-                        <div className="lg:col-span-7 space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-gray-800 flex items-center gap-1.5">
-                              <MapPin className="w-3.5 h-3.5 text-rose-500" /> Live Tracking Route
-                            </span>
-                            {assignedRider && assignedRider.is_online && (
-                              <span className="text-[11px] font-mono text-emerald-600 font-bold flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                Rider Live GPS Updating Every 5s
-                              </span>
-                            )}
-                          </div>
-                          <InteractiveMap
-                            center={[ord.delivery_latitude, ord.delivery_longitude]}
-                            zoom={13}
-                            markers={markers}
-                            heightClass="h-64"
-                          />
-                        </div>
-
-                        {/* Invoice & Rider Details */}
-                        <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
-                          {/* Items List */}
-                          <div className="space-y-2">
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ordered Items</span>
-                            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                              {ord.items?.map((item) => (
-                                <div key={item.id} className="flex justify-between text-xs py-1 border-b border-gray-50">
-                                  <span className="text-gray-700 font-medium">
-                                    {item.quantity}x {item.item_name}
-                                  </span>
-                                  <span className="text-gray-900 font-bold font-mono">
-                                    {settings.currency_symbol}{item.subtotal}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Rider Info Card */}
-                          {assignedRider ? (
-                            <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
-                                  {assignedRider.name[0]}
-                                </div>
-                                <div>
-                                  <p className="text-xs font-bold text-gray-900">{assignedRider.name}</p>
-                                  <p className="text-[11px] text-gray-600">{assignedRider.vehicle_type} &bull; {assignedRider.phone}</p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] font-bold bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded">
-                                Assigned Rider
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center space-x-2">
-                              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                              <span>Searching for rider within {settings.rider_match_radius_km} km of restaurant...</span>
-                            </div>
-                          )}
-
-                          {/* Cash On Delivery Breakdown */}
-                          <div className="p-4 bg-amber-50/80 rounded-xl border border-amber-200 space-y-1.5 text-xs">
-                            <div className="flex justify-between text-gray-700">
-                              <span>Food Items Total:</span>
-                              <span className="font-mono font-medium">{settings.currency_symbol}{ord.food_total}</span>
-                            </div>
-                            <div className="flex justify-between text-gray-700">
-                              <span>Delivery Fee ({ord.delivery_distance_km} km):</span>
-                              <span className="font-mono font-medium">{settings.currency_symbol}{ord.delivery_fee}</span>
-                            </div>
-                            <div className="pt-2 border-t border-amber-300 flex justify-between font-extrabold text-sm text-gray-900">
-                              <span>Cash Payable to Rider:</span>
-                              <span className="text-rose-600 font-mono">{settings.currency_symbol}{ord.total_cash_payable}</span>
-                            </div>
-                            <p className="text-[10px] text-gray-500 pt-1">
-                              * Keep exact change ready for rider upon delivery.
-                            </p>
-                          </div>
-                        </div>
+                  {/* Info details */}
+                  <div className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-extrabold text-slate-900 text-base">{v.name}</h3>
+                      <div className="flex items-center space-x-1 text-xs font-black text-slate-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>{v.rating} (1k+)</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+
+                    <p className="text-xs text-slate-500 font-medium">
+                      From {v.estimated_prep_time_minutes} min &bull; ৳৳ &bull; {v.cuisine}
+                    </p>
+
+                    {/* Delivery Charge Line */}
+                    <div className="flex items-center space-x-2 text-xs text-slate-700">
+                      <span className="text-slate-400 line-through">Tk{fee + 15}</span>
+                      <span className="font-black text-emerald-700">Tk{fee} COD Fee</span>
+                      <span className="text-slate-300">&bull;</span>
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">Fast Cash</span>
+                    </div>
+
+                    {/* Voucher pill */}
+                    <div className="pt-1">
+                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-md text-[11px] font-bold">
+                        <Ticket className="w-3 h-3 text-rose-500" />
+                        <span>35% off Tk. 299: back4more</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </section>
+
+        {/* 8. DISHES UP TO 15% OFF SECTION (Matching Image 3) */}
+        <section className="space-y-3 bg-gradient-to-r from-emerald-50/70 to-teal-50/70 p-4 sm:p-5 rounded-3xl border border-emerald-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center space-x-1.5">
+                <span className="p-1 bg-rose-500 text-white rounded-md text-xs font-black">%</span>
+                <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Dishes up to 15% off</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Minimum spend applies &bull; Direct COD</p>
+            </div>
+            <button 
+              onClick={() => setActiveCuisineFilter('All')}
+              className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-700 shadow-xs hover:bg-slate-100 transition"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none">
+            {promoDishes.map((dish) => (
+              <div 
+                key={dish.id}
+                onClick={() => {
+                  const v = vendors.find(x => x.id === dish.vendorId);
+                  if (v) setSelectedVendorForMenu(v);
+                }}
+                className="shrink-0 w-44 sm:w-48 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition cursor-pointer group"
+              >
+                {/* Image + time */}
+                <div className="relative h-32 w-full bg-slate-100">
+                  <img src={dish.image} alt={dish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-950/80 backdrop-blur-xs text-white text-[10px] font-bold rounded-md">
+                    {dish.prepTime}
+                  </span>
+                </div>
+
+                <div className="p-3 space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span className="truncate max-w-[100px] font-medium">{dish.vendor}</span>
+                    <span className="flex items-center gap-0.5 font-bold text-slate-800">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {dish.rating}
+                    </span>
+                  </div>
+
+                  <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">{dish.name}</h4>
+
+                  <div className="flex items-center space-x-1.5 text-xs font-black">
+                    <span className="text-rose-600 font-mono">Tk{dish.discountedPrice}</span>
+                    <span className="text-slate-400 line-through font-mono text-[11px]">Tk{dish.originalPrice}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] pt-1">
+                    <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 font-bold rounded">
+                      {dish.discountText}
+                    </span>
+                    <span className="text-emerald-700 font-bold">🛵 COD</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 9. PROMOTIONAL MEATMAXXX BANNER (Matching Image 3 bottom) */}
+        <section 
+          onClick={() => {
+            const v = vendors.find(x => x.name.includes("Domino"));
+            if (v) setSelectedVendorForMenu(v);
+          }}
+          className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 shadow-lg border border-slate-800 cursor-pointer group"
+        >
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 z-10">
+              <span className="text-xs font-black text-rose-400 tracking-wider uppercase">Domino's Pizza</span>
+              <h3 className="text-2xl font-black tracking-tight text-white">GET 40% OFF*</h3>
+              <p className="text-xs text-slate-300">Exclusively for FoodVibe Pro & COD Deliveries</p>
+              <button className="mt-2 px-4 py-1.5 bg-amber-400 text-slate-950 rounded-xl text-xs font-black shadow-md hover:bg-amber-300 transition">
+                ORDER NOW &rarr;
+              </button>
+            </div>
+            <div className="w-36 h-28 sm:w-48 sm:h-32 rounded-2xl overflow-hidden border border-white/20">
+              <img 
+                src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop&q=80" 
+                alt="Domino's MeatMaxxx" 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+              />
+            </div>
+          </div>
+          <span className="absolute bottom-2 right-3 text-[9px] bg-slate-800/80 px-1.5 py-0.2 rounded text-slate-400 font-mono">Ad</span>
+        </section>
+
+        {/* 10. SHOP BY CATEGORY SECTION (Matching Image 4) */}
+        <section className="space-y-3">
+          <h2 className="text-lg font-black text-slate-900 tracking-tight">Shop by category</h2>
+          <div className="grid grid-cols-4 sm:grid-cols-4 gap-3 text-center">
+            {[
+              { name: 'Grocery', icon: '🛍️' },
+              { name: 'Convenience', icon: '🏪' },
+              { name: 'Health & Beauty', icon: '🧴' },
+              { name: 'Pet Shop', icon: '🥣' },
+            ].map((cat) => (
+              <div 
+                key={cat.name}
+                onClick={() => setSearchQuery(cat.name)}
+                className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-emerald-400 transition cursor-pointer flex flex-col items-center group"
+              >
+                <div className="w-14 h-14 rounded-xl bg-slate-50 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                  {cat.icon}
+                </div>
+                <span className="text-xs font-bold text-slate-700 mt-2 line-clamp-1">{cat.name}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 11. FILTER & SORT CHIPS BAR (Matching Image 4 & 5) */}
+        <section className="sticky top-28 z-30 bg-slate-50/95 backdrop-blur-md py-2 flex items-center space-x-2 overflow-x-auto scrollbar-none">
+          <button 
+            onClick={() => {
+              setSelectedSort(prev => prev === 'popular' ? 'rating' : prev === 'rating' ? 'distance' : 'popular');
+            }}
+            className="p-2 bg-white rounded-full border border-slate-200 text-slate-700 shadow-xs hover:bg-slate-100 shrink-0"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setSelectedSort(prev => prev === 'popular' ? 'distance' : 'popular')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
+              selectedSort !== 'popular' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            <span>Sort: {selectedSort}</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => setHasOfferOnly(prev => !prev)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
+              hasOfferOnly ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            <span>Offers</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => setIsRating4PlusOnly(prev => !prev)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
+              isRating4PlusOnly ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+            <span>Ratings 4.0+</span>
+          </button>
+        </section>
+
+        {/* 12. EXPLORE RESTAURANTS NEARBY (Matching Image 4 & 5) */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-black text-slate-900 tracking-tight">Explore restaurants nearby</h2>
+
+          <div className="space-y-5">
+            {filteredVendors.map((vendor) => {
+              const distanceKm = calculateDistanceKm(vendor.latitude, vendor.longitude, customerLat, customerLng);
+              const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
+              const isFav = favorites.includes(vendor.id);
+
+              return (
+                <div
+                  key={vendor.id}
+                  onClick={() => setSelectedVendorForMenu(vendor)}
+                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group"
+                >
+                  {/* Big Cover Image */}
+                  <div className="relative h-48 sm:h-52 w-full bg-slate-100 overflow-hidden">
+                    <img 
+                      src={vendor.cover_image} 
+                      alt={vendor.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <button 
+                      onClick={(e) => toggleFavorite(vendor.id, e)}
+                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-700 hover:text-rose-500 transition"
+                    >
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    </button>
+
+                    {/* Pro Banner */}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent p-3 flex items-center justify-between text-white">
+                      <span className="text-xs font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5" /> PRO 40% off selected items
+                      </span>
+                      <span className="text-xs font-mono font-bold text-emerald-300">
+                        {distanceKm} km away
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900">{vendor.name}</h3>
+                      <div className="flex items-center space-x-1 text-xs font-black text-slate-900 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>{vendor.rating} (500+)</span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-500 font-medium">
+                      From {vendor.estimated_prep_time_minutes} min &bull; ৳ &bull; {vendor.cuisine} &bull; Price Match
+                    </p>
+
+                    <div className="flex items-center space-x-2 text-xs">
+                      <span className="text-slate-400 line-through">Tk{fee + 15}</span>
+                      <span className="font-extrabold text-emerald-700">Tk{fee} COD Fee</span>
+                      <span className="text-slate-300">&bull;</span>
+                      <span className="text-slate-600 font-mono">{distanceKm} km direct</span>
+                    </div>
+
+                    <div className="pt-1 flex items-center justify-between">
+                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-md text-[11px] font-bold">
+                        <Ticket className="w-3 h-3 text-rose-500" />
+                        <span>35% off Tk. 299: back4more</span>
+                      </span>
+
+                      <button 
+                        onClick={() => setSelectedVendorForMenu(vendor)}
+                        className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition"
+                      >
+                        View Menu &rarr;
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ACTIVE LIVE ORDERS (If any) */}
+        {orders.length > 0 && (
+          <section className="bg-white rounded-3xl p-5 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-slate-900">Your Active COD Orders ({orders.length})</h2>
+              <span className="text-xs font-mono text-emerald-600 font-bold animate-pulse">● Live 5s Tracking</span>
+            </div>
+
+            <div className="space-y-3">
+              {orders.slice(0, 2).map((ord) => (
+                <div key={ord.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="font-black text-slate-900">Order #{ord.order_code}</span>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-bold text-[10px] uppercase">
+                      {ord.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Cash Payable to Rider:</span>
+                    <span className="font-mono font-black text-slate-900">{settings.currency_symbol}{ord.total_cash_payable}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 truncate">
+                    Delivery to: {ord.delivery_address}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
       </main>
 
-      {/* Restaurant Menu Modal */}
+      {/* 13. RESTAURANT MENU MODAL */}
       {selectedVendorForMenu && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="relative h-44 bg-gray-900">
-              <img
-                src={selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="relative h-40 bg-slate-900">
+              <img 
+                src={selectedVendorForMenu.cover_image} 
                 alt={selectedVendorForMenu.name}
-                className="w-full h-full object-cover opacity-70"
+                className="w-full h-full object-cover opacity-80"
               />
-              <button
+              <button 
                 onClick={() => setSelectedVendorForMenu(null)}
-                className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/80"
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 text-white flex items-center justify-center text-lg font-bold hover:bg-slate-950"
               >
                 &times;
               </button>
-              <div className="absolute bottom-4 left-6 right-6 text-white">
-                <h3 className="text-xl font-black">{selectedVendorForMenu.name}</h3>
-                <p className="text-xs text-gray-200 mt-0.5">{selectedVendorForMenu.cuisine} &bull; {selectedVendorForMenu.address}</p>
+              <div className="absolute bottom-3 left-4 right-4 text-white">
+                <h3 className="text-lg sm:text-xl font-black">{selectedVendorForMenu.name}</h3>
+                <p className="text-xs text-slate-200 mt-0.5">{selectedVendorForMenu.cuisine} &bull; {selectedVendorForMenu.address}</p>
               </div>
             </div>
 
-            {/* Menu List */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <h4 className="font-bold text-gray-900 text-sm">Available Dishes & Specialties</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Menu items */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Specialties</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {menuItems
                   .filter((m) => m.vendor_id === selectedVendorForMenu.id)
-                  .map((item) => {
-                    const cartItem = cart.find((ci) => ci.menuItem.id === item.id);
+                  .map((dish) => {
+                    const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                     return (
-                      <div
-                        key={item.id}
-                        className="p-3 border border-gray-200 rounded-xl hover:border-gray-300 transition flex items-center justify-between gap-3 bg-white"
+                      <div 
+                        key={dish.id}
+                        className="p-3 border border-slate-200 rounded-2xl flex items-center justify-between gap-3 bg-white hover:border-emerald-300 transition"
                       >
                         <div className="flex-1">
-                          <h5 className="font-bold text-gray-900 text-xs">{item.name}</h5>
-                          <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">{item.description}</p>
-                          <span className="font-extrabold text-sm text-gray-900 font-mono mt-1 block">
-                            {settings.currency_symbol}{item.price}
+                          <h5 className="font-extrabold text-slate-900 text-xs">{dish.name}</h5>
+                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{dish.description}</p>
+                          <span className="font-mono font-black text-sm text-slate-900 mt-1 block">
+                            {settings.currency_symbol}{dish.price}
                           </span>
                         </div>
 
-                        {item.image_url && (
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="w-16 h-16 rounded-lg object-cover shrink-0"
-                          />
+                        {dish.image_url && (
+                          <img src={dish.image_url} alt={dish.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
                         )}
 
                         <div>
                           {cartItem ? (
-                            <div className="flex items-center space-x-1.5 bg-rose-50 border border-rose-200 rounded-lg p-1">
-                              <button
-                                onClick={() => updateCartQuantity(item.id, cartItem.quantity - 1)}
-                                className="p-1 text-rose-700 hover:bg-rose-100 rounded"
+                            <div className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-300 rounded-lg p-1">
+                              <button 
+                                onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)}
+                                className="p-1 text-emerald-800 hover:bg-emerald-100 rounded"
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="text-xs font-bold text-rose-800 px-1">{cartItem.quantity}</span>
-                              <button
-                                onClick={() => addToCart(item, selectedVendorForMenu)}
-                                className="p-1 text-rose-700 hover:bg-rose-100 rounded"
+                              <span className="text-xs font-bold text-emerald-950 px-1">{cartItem.quantity}</span>
+                              <button 
+                                onClick={() => addToCart(dish, selectedVendorForMenu)}
+                                className="p-1 text-emerald-800 hover:bg-emerald-100 rounded"
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
                             </div>
                           ) : (
                             <button
-                              onClick={() => addToCart(item, selectedVendorForMenu)}
-                              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-xs transition"
+                              onClick={() => addToCart(dish, selectedVendorForMenu)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
                             >
                               Add
                             </button>
@@ -629,18 +865,19 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* Footer with Cart summary */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+            {/* Modal footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500">Cart Total: <strong className="text-gray-900">{cart.length} items</strong></p>
-                <p className="text-sm font-extrabold text-gray-900 font-mono">
+                <p className="text-xs text-slate-500">{totalCartCount} items in cart</p>
+                <p className="text-base font-black text-slate-900 font-mono">
                   {settings.currency_symbol}{foodTotal}
                 </p>
               </div>
+
               <div className="flex space-x-2">
                 <button
                   onClick={() => setSelectedVendorForMenu(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700"
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700"
                 >
                   Close
                 </button>
@@ -650,7 +887,7 @@ export const CustomerPortal: React.FC = () => {
                       setSelectedVendorForMenu(null);
                       setIsCartOpen(true);
                     }}
-                    className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-1.5"
                   >
                     <span>Proceed to COD Checkout</span>
                     <ArrowRight className="w-4 h-4" />
@@ -662,154 +899,105 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Cart Button (If items in cart) */}
-      {cart.length > 0 && !isCartOpen && (
-        <div className="fixed bottom-6 right-6 z-40">
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="flex items-center space-x-3 px-5 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-xl transition-transform transform hover:scale-105"
-          >
-            <div className="relative">
-              <ShoppingBag className="w-5 h-5" />
-              <span className="absolute -top-2 -right-2 bg-amber-400 text-gray-900 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                {cart.reduce((sum, i) => sum + i.quantity, 0)}
-              </span>
-            </div>
-            <div className="text-left">
-              <p className="text-[11px] font-medium leading-none text-rose-100">Review Cash Order</p>
-              <p className="text-sm font-black font-mono leading-tight">
-                {settings.currency_symbol}{totalCashPayable}
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-rose-200" />
-          </button>
-        </div>
-      )}
-
-      {/* Checkout & COD Modal */}
+      {/* 14. CHECKOUT & CASH ON DELIVERY MODAL */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <ShoppingBag className="w-5 h-5 text-rose-600" />
-                <h3 className="font-bold text-gray-900 text-base">Cash On Delivery Checkout</h3>
+                <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                  <Banknote className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">Cash On Delivery Checkout</h3>
+                  <p className="text-[11px] text-slate-500">Pay cash upon parcel delivery</p>
+                </div>
               </div>
-              <button
-                onClick={() => setIsCartOpen(false)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-lg"
-              >
+              <button onClick={() => setIsCartOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg">
                 &times;
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4">
-              {/* Restaurant info */}
-              <div className="p-3 bg-gray-50 rounded-xl text-xs flex justify-between items-center">
+            <div className="p-5 overflow-y-auto space-y-4">
+              {/* Restaurant source */}
+              <div className="p-3 bg-slate-50 rounded-2xl text-xs flex justify-between items-center border border-slate-200">
                 <div>
-                  <span className="font-bold text-gray-900">{cartVendor?.name}</span>
-                  <p className="text-gray-500">{cartVendor?.address}</p>
+                  <span className="font-extrabold text-slate-900">{cartVendor?.name}</span>
+                  <p className="text-slate-500">{cartVendor?.address}</p>
                 </div>
-                <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                  {cartDistanceKm} km away
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {cartDistanceKm} km
                 </span>
               </div>
 
-              {/* Items List */}
+              {/* Items */}
               <div className="space-y-2">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Your Order Items</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Order Items</span>
                 {cart.map((ci) => (
-                  <div key={ci.menuItem.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 text-xs">
-                    <div>
-                      <p className="font-semibold text-gray-800">{ci.menuItem.name}</p>
-                      <p className="text-[11px] text-gray-400 font-mono">
-                        {settings.currency_symbol}{ci.menuItem.price} &times; {ci.quantity}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold font-mono text-gray-900">
-                        {settings.currency_symbol}{ci.menuItem.price * ci.quantity}
-                      </span>
-                      <button
-                        onClick={() => removeFromCart(ci.menuItem.id)}
-                        className="text-gray-400 hover:text-red-500 text-xs"
-                      >
-                        &times;
-                      </button>
-                    </div>
+                  <div key={ci.menuItem.id} className="flex justify-between items-center py-1 text-xs border-b border-slate-100">
+                    <span className="font-medium text-slate-800">{ci.quantity}x {ci.menuItem.name}</span>
+                    <span className="font-mono font-bold text-slate-900">{settings.currency_symbol}{ci.menuItem.price * ci.quantity}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Delivery Address Target */}
-              <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-1 text-xs">
+              {/* Target Address */}
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-blue-950 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-blue-600" /> Delivery Address
+                  <span className="font-black text-emerald-950 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-700" /> Delivery Address
                   </span>
-                  <button
-                    onClick={() => {
-                      setIsCartOpen(false);
-                      setIsAddressModalOpen(true);
-                    }}
-                    className="text-blue-700 font-bold hover:underline"
-                  >
-                    Change
+                  <button onClick={() => setIsAddressModalOpen(true)} className="text-emerald-700 font-bold hover:underline">
+                    Change Map Pin
                   </button>
                 </div>
-                <p className="text-gray-800 font-medium">{selectedAddress?.address_line}</p>
-                {selectedAddress?.details && <p className="text-gray-500 text-[11px]">{selectedAddress.details}</p>}
+                <p className="text-slate-800 font-medium">{selectedAddress?.address_line}</p>
+                {selectedAddress?.details && <p className="text-slate-500 text-[11px]">{selectedAddress.details}</p>}
               </div>
 
               {/* Instructions */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Delivery Notes / Instructions for Rider & Kitchen
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Delivery Notes / Special Instructions
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Please bring exact change for 1000 Tk note, call upon arrival"
+                  placeholder="e.g. Ring doorbell, keep exact change ready"
                   value={orderInstructions}
                   onChange={(e) => setOrderInstructions(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
-              {/* Bill Breakdown */}
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 text-xs">
-                <div className="flex justify-between text-gray-700">
-                  <span>Food Total:</span>
-                  <span className="font-mono font-medium">{settings.currency_symbol}{foodTotal}</span>
+              {/* COD Breakdown */}
+              <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1.5 text-xs">
+                <div className="flex justify-between text-slate-700">
+                  <span>Food Items Total:</span>
+                  <span className="font-mono font-bold">{settings.currency_symbol}{foodTotal}</span>
                 </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>
-                    Delivery Charge ({cartDistanceKm} km &times; {settings.currency_symbol}{settings.per_km_delivery_charge}/km):
-                  </span>
-                  <span className="font-mono font-medium">{settings.currency_symbol}{deliveryFee}</span>
+                <div className="flex justify-between text-slate-700">
+                  <span>Delivery Charge ({cartDistanceKm} km):</span>
+                  <span className="font-mono font-bold">{settings.currency_symbol}{deliveryFee}</span>
                 </div>
-                <div className="pt-2 border-t border-amber-300 flex justify-between font-black text-sm text-gray-900">
-                  <span>Total Cash on Delivery:</span>
-                  <span className="text-rose-600 font-mono">{settings.currency_symbol}{totalCashPayable}</span>
-                </div>
-                <div className="mt-2 text-[11px] text-amber-900 flex items-center gap-1">
-                  <Banknote className="w-4 h-4 shrink-0 text-amber-600" />
-                  <span>Rider will purchase food from restaurant & collect {settings.currency_symbol}{totalCashPayable} cash from you.</span>
+                <div className="pt-2 border-t border-amber-300 flex justify-between font-black text-sm text-slate-900">
+                  <span>Total Cash to Pay Rider:</span>
+                  <span className="font-mono text-emerald-700 text-base">{settings.currency_symbol}{totalCashPayable}</span>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-              <button
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <button 
                 onClick={() => setIsCartOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700"
+                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700"
               >
-                Back to Menu
+                Back
               </button>
               <button
                 disabled={isPlacingOrder}
                 onClick={handleCheckout}
-                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition disabled:opacity-50"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md transition disabled:opacity-50"
               >
                 {isPlacingOrder ? 'Confirming...' : `Confirm Cash Order (${settings.currency_symbol}${totalCashPayable})`}
               </button>
@@ -818,11 +1006,98 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
-      {/* Address Book Modal */}
+      {/* 15. ADDRESS BOOK MAP PICKER MODAL */}
       <AddressBookModal
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}
       />
+
+      {/* 16. BOTTOM FLOATING NAVIGATION DOCK (Matching All 5 Screenshots!) */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-4 shadow-xl">
+        <div className="max-w-md mx-auto flex items-center justify-around">
+          {/* Food */}
+          <button
+            onClick={() => setActiveBottomNav('food')}
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+              activeBottomNav === 'food' ? 'text-emerald-700 font-black' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'food' ? 'bg-emerald-100 text-emerald-800' : ''}`}>
+              <UtensilsCrossed className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] mt-0.5">Food</span>
+          </button>
+
+          {/* Grocery */}
+          <button
+            onClick={() => {
+              setActiveBottomNav('grocery');
+              setSearchQuery('Grocery');
+            }}
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+              activeBottomNav === 'grocery' ? 'text-emerald-700 font-black' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'grocery' ? 'bg-emerald-100 text-emerald-800' : ''}`}>
+              <Store className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] mt-0.5">Grocery</span>
+          </button>
+
+          {/* Search */}
+          <button
+            onClick={() => {
+              setActiveBottomNav('search');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+              activeBottomNav === 'search' ? 'text-emerald-700 font-black' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'search' ? 'bg-emerald-100 text-emerald-800' : ''}`}>
+              <Search className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] mt-0.5">Search</span>
+          </button>
+
+          {/* Carts */}
+          <button
+            onClick={() => {
+              setActiveBottomNav('carts');
+              setIsCartOpen(true);
+            }}
+            className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+              activeBottomNav === 'carts' ? 'text-emerald-700 font-black' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-emerald-100 text-emerald-800' : ''}`}>
+              <ShoppingBag className="w-5 h-5" />
+              {totalCartCount > 0 && (
+                <span className="absolute top-0 right-2 w-4 h-4 bg-amber-400 text-slate-950 font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                  {totalCartCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5">Carts</span>
+          </button>
+
+          {/* Account */}
+          <button
+            onClick={() => {
+              setActiveBottomNav('account');
+              setIsAddressModalOpen(true);
+            }}
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+              activeBottomNav === 'account' ? 'text-emerald-700 font-black' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'account' ? 'bg-emerald-100 text-emerald-800' : ''}`}>
+              <User className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] mt-0.5">Account</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 };
