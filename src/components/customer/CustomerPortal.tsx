@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { calculateDistanceKm, calculateDeliveryFee } from '../../utils/geo';
@@ -20,7 +20,13 @@ import {
   User,
   Ticket,
   Banknote,
-  ArrowRight
+  ArrowRight,
+  Settings,
+  Receipt,
+  Gift,
+  HelpCircle,
+  FileText,
+  LogOut
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -39,6 +45,14 @@ export const CustomerPortal: React.FC = () => {
 
   const [activeBottomNav, setActiveBottomNav] = useState<'food' | 'grocery' | 'search' | 'carts' | 'account'>('food');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  // Account Page States (Matching Screenshot_20260930_190517.jpg)
+  const [accountSubView, setAccountSubView] = useState<'none' | 'orders' | 'favourites'>('none');
+  const [userName, setUserName] = useState('MD');
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState('+880 1812-345678');
+  const [customerEmail, setCustomerEmail] = useState('md.rahim@example.com');
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [selectedVendorForMenu, setSelectedVendorForMenu] = useState<Vendor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'fastest'>('popular');
@@ -46,6 +60,78 @@ export const CustomerPortal: React.FC = () => {
   const [hasOfferOnly, setHasOfferOnly] = useState(false);
   const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
   
+  // Hero Carousel Slides & Swipe state
+  const heroSlides = [
+    {
+      id: 0,
+      title: 'Welcome back! Enjoy 35% off & free delivery',
+      actionText: 'Redeem now',
+      image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80',
+      filter: 'All'
+    },
+    {
+      id: 1,
+      title: 'Craving Kacchi Biryani? Flat 40% OFF',
+      actionText: 'Order Biryani now',
+      image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80',
+      filter: 'Biryani'
+    },
+    {
+      id: 2,
+      title: 'Cheesy Overloaded Pizza Starting at ৳199',
+      actionText: 'Explore Pizzas',
+      image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&auto=format&fit=crop&q=80',
+      filter: 'Pizza'
+    },
+    {
+      id: 3,
+      title: 'Flame Grilled Shawarma & Doner Rolls',
+      actionText: 'Snackza Specials',
+      image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80',
+      filter: 'Snacks'
+    },
+    {
+      id: 4,
+      title: 'Free Delivery on All Cash Orders Above ৳299',
+      actionText: 'Order Fast Food',
+      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80',
+      filter: 'Fast Food'
+    }
+  ];
+
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Auto-play slides every 4.5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % heroSlides.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 40;
+    const isRightSwipe = distance < -40;
+    if (isLeftSwipe) {
+      setActiveSlide(prev => (prev + 1) % heroSlides.length);
+    } else if (isRightSwipe) {
+      setActiveSlide(prev => (prev - 1 + heroSlides.length) % heroSlides.length);
+    }
+  };
+
   // Checkout & Favorites
   const [favorites, setFavorites] = useState<string[]>(['a0000002-0000-0000-0000-000000000002']);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -169,13 +255,235 @@ export const CustomerPortal: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-24">
-      {/* 
-        ========================================================================
-        1. SOLID BRAND HEADER (100% Matching Screenshot_20260930_184203.jpg)
-        Only difference: FoodHub Vibrant Orange (#EA580C / #F97316) instead of Pink
-        ========================================================================
-      */}
-      <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-5 px-4 rounded-b-[2rem] shadow-sm">
+      {activeBottomNav === 'account' ? (
+        /* 
+          ========================================================================
+          ACCOUNT PAGE (100% Matching Screenshot_20260930_190517.jpg)
+          With pandapro banner and Wallet/Perks sections EXCLUDED as marked with red 'X'
+          ========================================================================
+        */
+        <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28">
+          {/* Top Bar: Account Title on Left + Settings Gear Icon on Right */}
+          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Account</h1>
+            <button 
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="p-1 text-slate-800 hover:text-orange-600 transition"
+              aria-label="Settings"
+            >
+              <Settings className="w-6 h-6 stroke-[2]" />
+            </button>
+          </div>
+
+          <div className="px-5 py-5 space-y-6">
+            {/* User Name & View Profile */}
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">{userName}</h2>
+              <button 
+                onClick={() => setIsEditProfileOpen(true)}
+                className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block"
+              >
+                View profile
+              </button>
+            </div>
+
+            {/* 3 Action Cards (Orders, Favourites, Addresses) */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Orders Card */}
+              <button 
+                onClick={() => setAccountSubView(prev => prev === 'orders' ? 'none' : 'orders')}
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                  accountSubView === 'orders' 
+                    ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
+                    : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
+                }`}
+              >
+                <Receipt className="w-6 h-6 text-slate-800 stroke-[1.8]" />
+                <span className="text-xs font-bold text-slate-800 mt-2">Orders</span>
+              </button>
+
+              {/* Favourites Card */}
+              <button 
+                onClick={() => setAccountSubView(prev => prev === 'favourites' ? 'none' : 'favourites')}
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                  accountSubView === 'favourites' 
+                    ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
+                    : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
+                }`}
+              >
+                <Heart className={`w-6 h-6 stroke-[1.8] ${favorites.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-slate-800'}`} />
+                <span className="text-xs font-bold text-slate-800 mt-2">Favourites</span>
+              </button>
+
+              {/* Addresses Card */}
+              <button 
+                onClick={() => setIsAddressModalOpen(true)}
+                className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-xs transition-all"
+              >
+                <MapPin className="w-6 h-6 text-slate-800 stroke-[1.8]" />
+                <span className="text-xs font-bold text-slate-800 mt-2">Addresses</span>
+              </button>
+            </div>
+
+            {/* If Orders View is opened */}
+            {accountSubView === 'orders' && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900">Your Orders ({orders.length})</h3>
+                  <button 
+                    onClick={() => setAccountSubView('none')}
+                    className="text-xs text-orange-600 font-bold"
+                  >
+                    Hide
+                  </button>
+                </div>
+
+                {orders.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                    No orders placed yet. Choose delicious food and place an order with 100% Cash On Delivery!
+                  </div>
+                ) : (
+                  orders.map((ord) => (
+                    <div key={ord.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="font-extrabold text-sm text-slate-900">
+                            {ord.vendor?.name || vendors.find(v => v.id === ord.vendor_id)?.name || 'Restaurant'}
+                          </span>
+                          <p className="text-[11px] text-slate-500">{new Date(ord.created_at).toLocaleTimeString()}</p>
+                        </div>
+                        <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full font-bold text-[10px] uppercase">
+                          {ord.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-700">
+                        {(ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ')}
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
+                        <span className="text-slate-500">COD Total:</span>
+                        <span className="font-mono font-black text-orange-600">{settings.currency_symbol}{ord.total_cash_payable}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* If Favourites View is opened */}
+            {accountSubView === 'favourites' && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900">Favourites ({favorites.length})</h3>
+                  <button 
+                    onClick={() => setAccountSubView('none')}
+                    className="text-xs text-orange-600 font-bold"
+                  >
+                    Hide
+                  </button>
+                </div>
+
+                {favorites.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                    No favourites saved yet. Tap the heart on any restaurant to add here!
+                  </div>
+                ) : (
+                  vendors.filter(v => favorites.includes(v.id)).map((v) => (
+                    <div 
+                      key={v.id} 
+                      onClick={() => setSelectedVendorForMenu(v)}
+                      className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-2xl shadow-xs cursor-pointer hover:border-orange-300 transition"
+                    >
+                      <img src={v.cover_image} alt={v.name} className="w-14 h-14 rounded-xl object-cover" />
+                      <div className="flex-1">
+                        <h4 className="font-extrabold text-sm text-slate-900">{v.name}</h4>
+                        <p className="text-xs text-slate-500">{v.cuisine} &bull; {v.rating} ⭐</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Bottom Menu List Items (Matching the list at bottom of Screenshot) */}
+            <div className="divide-y divide-slate-100 border-t border-slate-100 pt-1">
+              {/* Invite Friends */}
+              <div 
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: 'FoodHub', url: window.location.href });
+                  } else {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert('FoodHub link copied to clipboard!');
+                  }
+                }}
+                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <Gift className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Invite friends</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+              </div>
+
+              {/* Help Center */}
+              <div 
+                onClick={() => alert('Customer Support: Call 16212 or email support@foodhub.com')}
+                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <HelpCircle className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Help center</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+              </div>
+
+              {/* Settings */}
+              <div 
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <Settings className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Settings</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+              </div>
+
+              {/* Terms & Policies */}
+              <div 
+                onClick={() => alert('Terms & Policies: 100% Cash On Delivery. Base Rate ৳30 + ৳15/km.')}
+                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <FileText className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Terms & policies</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+              </div>
+            </div>
+
+            {/* Log out button in the marked area */}
+            <div className="pt-2 pb-6">
+              <button
+                onClick={() => setIsLogoutConfirmOpen(true)}
+                className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 stroke-[2.5]" />
+                <span>Log out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 
+            ========================================================================
+            1. SOLID BRAND HEADER (100% Matching Screenshot_20260930_184203.jpg)
+            Only difference: FoodHub Vibrant Orange (#EA580C / #F97316) instead of Pink
+            ========================================================================
+          */}
+          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-5 px-4 rounded-b-[2rem] shadow-sm">
         <div className="max-w-md mx-auto space-y-3">
           {/* Top Row: Location Pin + Current Location + Chittagong + Heart */}
           <div className="flex items-center justify-between">
@@ -218,39 +526,63 @@ export const CustomerPortal: React.FC = () => {
             />
           </div>
 
-          {/* Hero Carousel: "Welcome back! Enjoy 35% off & free delivery" + Fried Chicken Bucket */}
-          <div className="pt-2 pb-1 flex items-center justify-between gap-3 relative">
-            <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
-              <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
-                Welcome back! Enjoy 35% off & free delivery
-              </h2>
-              <button 
-                onClick={() => setActiveCuisineFilter('All')}
-                className="inline-flex items-center space-x-1 text-xs font-bold text-white hover:text-orange-100 transition pt-1"
-              >
-                <span>Redeem now</span>
-                <ChevronRight className="w-4 h-4 stroke-[3]" />
-              </button>
-            </div>
+          {/* Interactive Slideable Hero Carousel */}
+          <div 
+            className="relative overflow-hidden pt-2 pb-1 select-none"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div 
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+            >
+              {heroSlides.map((slide) => (
+                <div 
+                  key={slide.id}
+                  className="w-full shrink-0 flex items-center justify-between gap-3 px-0.5 cursor-grab active:cursor-grabbing"
+                >
+                  <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
+                    <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
+                      {slide.title}
+                    </h2>
+                    <button 
+                      onClick={() => setActiveCuisineFilter(slide.filter)}
+                      className="inline-flex items-center space-x-1 text-xs font-bold text-white hover:text-orange-100 transition pt-1 cursor-pointer"
+                    >
+                      <span>{slide.actionText}</span>
+                      <ChevronRight className="w-4 h-4 stroke-[3]" />
+                    </button>
+                  </div>
 
-            {/* Food Graphic: Crispy Fried Chicken Bucket */}
-            <div className="relative shrink-0 w-36 h-28 sm:w-44 sm:h-32">
-              <img 
-                src="https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80" 
-                alt="Fried Chicken Bucket" 
-                className="w-full h-full object-cover rounded-2xl drop-shadow-md"
-              />
+                  {/* Food Graphic */}
+                  <div className="relative shrink-0 w-36 h-28 sm:w-44 sm:h-32">
+                    <img 
+                      src={slide.image} 
+                      alt={slide.title} 
+                      className="w-full h-full object-cover rounded-2xl drop-shadow-md pointer-events-none"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Carousel Dots Pill Indicator [ — • • • • ] */}
+          {/* Interactive Carousel Dots Pill Indicator [ — • • • • ] */}
           <div className="flex justify-center pt-1">
             <div className="inline-flex items-center space-x-1.5 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
-              <span className="w-6 h-1 bg-white rounded-full"></span>
-              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
-              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
-              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
-              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
+              {heroSlides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveSlide(i)}
+                  className={`transition-all duration-300 rounded-full cursor-pointer ${
+                    activeSlide === i 
+                      ? 'w-6 h-1 bg-white' 
+                      : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'
+                  }`}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -707,6 +1039,8 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </section>
       </main>
+        </>
+      )}
 
       {/* 
         ========================================================================
@@ -937,6 +1271,111 @@ export const CustomerPortal: React.FC = () => {
         onClose={() => setIsAddressModalOpen(false)}
       />
 
+      {/* EDIT PROFILE / SETTINGS MODAL */}
+      {(isEditProfileOpen || isSettingsModalOpen) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-900 text-base">
+                {isEditProfileOpen ? 'User Profile' : 'Account Settings'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsEditProfileOpen(false);
+                  setIsSettingsModalOpen(false);
+                }} 
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Display Name</label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
+                <input
+                  type="text"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setIsEditProfileOpen(false);
+                  setIsSettingsModalOpen(false);
+                }}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-xs transition"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      {isLogoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <LogOut className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Log out from FoodHub?</h3>
+                <p className="text-xs text-slate-500">You can log back in at any time</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to log out of your account?
+            </p>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <button
+                onClick={() => setIsLogoutConfirmOpen(false)}
+                className="flex-1 py-2.5 px-4 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsLogoutConfirmOpen(false);
+                  setActiveBottomNav('food');
+                }}
+                className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs shadow-md transition"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 
         ========================================================================
         11. BOTTOM FLOATING NAVIGATION DOCK (100% Matching Screenshot_20260930_184203.jpg)
@@ -1013,10 +1452,7 @@ export const CustomerPortal: React.FC = () => {
 
           {/* Account */}
           <button
-            onClick={() => {
-              setActiveBottomNav('account');
-              setIsAddressModalOpen(true);
-            }}
+            onClick={() => setActiveBottomNav('account')}
             className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
               activeBottomNav === 'account' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
