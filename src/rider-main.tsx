@@ -2,7 +2,6 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { DeliveryProvider } from './context/DeliveryContext';
 import { RiderPortal } from './components/rider/RiderPortal';
-import { MultiAppDock } from './components/common/MultiAppDock';
 import './index.css';
 
 const StandaloneRiderApp: React.FC = () => {
@@ -13,8 +12,6 @@ const StandaloneRiderApp: React.FC = () => {
         <main className="flex-1">
           <RiderPortal />
         </main>
-
-        <MultiAppDock currentApp="rider" />
       </div>
     </DeliveryProvider>
   );

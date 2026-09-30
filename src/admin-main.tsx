@@ -2,7 +2,6 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { DeliveryProvider } from './context/DeliveryContext';
 import { AdminPortal } from './components/admin/AdminPortal';
-import { MultiAppDock } from './components/common/MultiAppDock';
 import './index.css';
 
 const StandaloneAdminApp: React.FC = () => {
@@ -13,8 +12,6 @@ const StandaloneAdminApp: React.FC = () => {
         <main className="flex-1">
           <AdminPortal />
         </main>
-
-        <MultiAppDock currentApp="admin" />
       </div>
     </DeliveryProvider>
   );
