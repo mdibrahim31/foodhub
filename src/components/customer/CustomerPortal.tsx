@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { calculateDistanceKm, calculateDeliveryFee } from '../../utils/geo';
-import { Vendor, MenuItem, Order } from '../../types/database';
+import { Vendor, Order } from '../../types/database';
 import { 
   MapPin, 
   Search, 
   ShoppingBag, 
-  Clock, 
   Star, 
   Plus, 
   Minus, 
@@ -21,9 +20,7 @@ import {
   User,
   Ticket,
   Banknote,
-  ArrowRight,
-  Flame,
-  Check
+  ArrowRight
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -54,7 +51,6 @@ export const CustomerPortal: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderInstructions, setOrderInstructions] = useState('');
-  const [orderSuccessNotice, setOrderSuccessNotice] = useState<Order | null>(null);
 
   // Customer Coordinates
   const customerLat = selectedAddress?.latitude || 23.7915;
@@ -105,7 +101,6 @@ export const CustomerPortal: React.FC = () => {
     try {
       const placed = await placeOrder(orderInstructions);
       if (placed) {
-        setOrderSuccessNotice(placed);
         setIsCartOpen(false);
         setActiveBottomNav('account');
       }
@@ -114,35 +109,32 @@ export const CustomerPortal: React.FC = () => {
     }
   };
 
-  // Food Categories Bubbles (Matching Image 1 with FoodHub color)
+  // Cuisine Bubbles (Matching Image 1)
   const cuisineBubbles = [
-    { label: 'All', icon: '🍽️', filter: 'All' },
-    { label: 'Pizza', icon: '🍕', filter: 'Pizza' },
-    { label: 'Burgers', icon: '🍔', filter: 'Burgers' },
-    { label: 'Fast Food', icon: '🍗', filter: 'Fast Food' },
-    { label: 'Bangladeshi', icon: '🐟', filter: 'Bangladeshi' },
-    { label: 'Rice & Biryani', icon: '🍚', filter: 'Biryani' },
-    { label: 'Snacks', icon: '🥪', filter: 'Snacks' },
-    { label: 'Dessert', icon: '🍰', filter: 'Dessert' },
+    { label: 'Pizza', icon: '🍕', filter: 'Pizza', img: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=120&auto=format&fit=crop&q=80' },
+    { label: 'Burgers', icon: '🍔', filter: 'Burgers', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=120&auto=format&fit=crop&q=80' },
+    { label: 'Fast Food', icon: '🍗', filter: 'Fast Food', img: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=120&auto=format&fit=crop&q=80' },
+    { label: 'Bangladeshi', icon: '🐟', filter: 'Bangladeshi', img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=120&auto=format&fit=crop&q=80' },
+    { label: 'Rice', icon: '🍚', filter: 'Biryani', img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=120&auto=format&fit=crop&q=80' },
   ];
 
-  // Quick Services Row (FoodHub Orange Palette)
+  // Quick Services Row (Matching Image 1 top chips)
   const serviceShortcuts = [
-    { label: 'Offers', badge: '%', badgeBg: 'bg-orange-500', icon: '🏷️' },
-    { label: 'Mart', icon: '🛒' },
-    { label: 'Pick-up', badge: 'Up to -25%', badgeBg: 'bg-amber-600', icon: '🛍️' },
-    { label: 'Health', icon: '🧴' },
-    { label: 'Dine-in', icon: '🍽️' },
+    { label: 'Offers', badge: '%', badgeBg: 'bg-rose-500', icon: '🏷️' },
+    { label: 'foodmart', icon: '🛒' },
+    { label: 'Pick-up', badge: 'Up to -25%', badgeBg: 'bg-orange-600', icon: '🛍️' },
+    { label: 'Health & Beauty', icon: '🧴' },
+    { label: 'Restaurants', icon: '🍽️' },
   ];
 
-  // Discounted dishes data
+  // Promo Dishes (Matching Image 3)
   const promoDishes = [
     {
       id: 'pd-1',
       name: 'Plain Khichuri',
       vendor: "Sharia's Kitchen",
       rating: 3.9,
-      prepTime: '60-85 mins',
+      prepTime: '60–85 mins',
       discountedPrice: 60,
       originalPrice: 70,
       discountText: '15% off',
@@ -151,10 +143,10 @@ export const CustomerPortal: React.FC = () => {
     },
     {
       id: 'pd-2',
-      name: 'Set Menu - 3 (Khichuri + Chicken)',
+      name: 'Set Menu - 3',
       vendor: "Sharia's Kitchen",
       rating: 3.9,
-      prepTime: '60-85 mins',
+      prepTime: '60–85 mins',
       discountedPrice: 170,
       originalPrice: 200,
       discountText: '15% off',
@@ -163,133 +155,116 @@ export const CustomerPortal: React.FC = () => {
     },
     {
       id: 'pd-3',
-      name: 'Loaded Doner Shawarma',
+      name: 'Loaded Shawarma',
       vendor: 'Snackza',
       rating: 4.5,
-      prepTime: '30-40 mins',
+      prepTime: '40 mins',
       discountedPrice: 180,
       originalPrice: 210,
       discountText: '15% off',
       image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80',
       vendorId: 'a0000002-0000-0000-0000-000000000002'
-    },
-    {
-      id: 'pd-4',
-      name: "Sultan's Kacchi Special",
-      vendor: "Sultan's Dine",
-      rating: 4.8,
-      prepTime: '25-35 mins',
-      discountedPrice: 380,
-      originalPrice: 420,
-      discountText: 'Special Deal',
-      image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80',
-      vendorId: 'a0000001-0000-0000-0000-000000000001'
     }
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-28">
-      {/* 1. TOP APP BAR MATCHING SCREENSHOT EXACTLY (White background + Orange FoodHub Logo + Orange Cart Pill) */}
-      <header className="sticky top-0 z-40 bg-white border-b border-orange-100 shadow-xs">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+    <div className="min-h-screen bg-white text-slate-900 pb-24">
+      {/* 
+        ========================================================================
+        1. SOLID BRAND HEADER (100% Matching Screenshot_20260930_184203.jpg)
+        Only difference: FoodHub Vibrant Orange (#EA580C / #F97316) instead of Pink
+        ========================================================================
+      */}
+      <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-5 px-4 rounded-b-[2rem] shadow-sm">
+        <div className="max-w-md mx-auto space-y-3">
+          {/* Top Row: Location Pin + Current Location + Chittagong + Heart */}
           <div className="flex items-center justify-between">
-            {/* Logo from user screenshot: Fork/Knife Icon + FoodHub in bold orange */}
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1.5 cursor-pointer">
-                <UtensilsCrossed className="w-6 h-6 text-orange-500 stroke-[2.5]" />
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-orange-500">
-                  FoodHub
-                </span>
+            <div 
+              onClick={() => setIsAddressModalOpen(true)}
+              className="flex items-start space-x-2.5 cursor-pointer group"
+            >
+              <MapPin className="w-6 h-6 text-white mt-0.5 fill-transparent stroke-[2.2]" />
+              <div>
+                <div className="flex items-center space-x-1">
+                  <h1 className="text-base font-black tracking-tight text-white leading-tight">
+                    Current Location
+                  </h1>
+                </div>
+                <p className="text-xs text-orange-100 font-medium">
+                  {selectedAddress ? selectedAddress.address_line : 'Chittagong'}
+                </p>
               </div>
+            </div>
 
-              {/* Location Badge */}
+            {/* Right: Heart Icon (Favorites) */}
+            <button 
+              onClick={() => setIsRating4PlusOnly(prev => !prev)}
+              className="p-1 text-white hover:text-orange-200 transition"
+              aria-label="Favorites"
+            >
+              <Heart className={`w-6 h-6 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
+            </button>
+          </div>
+
+          {/* Search Bar (Inside the Orange Header directly below Location) */}
+          <div className="relative">
+            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3" />
+            <input
+              type="text"
+              placeholder="Search for restaurants and groceries"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
+            />
+          </div>
+
+          {/* Hero Carousel: "Welcome back! Enjoy 35% off & free delivery" + Fried Chicken Bucket */}
+          <div className="pt-2 pb-1 flex items-center justify-between gap-3 relative">
+            <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
+              <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
+                Welcome back! Enjoy 35% off & free delivery
+              </h2>
               <button 
-                onClick={() => setIsAddressModalOpen(true)}
-                className="hidden sm:flex items-center space-x-1 px-3 py-1 bg-orange-50 border border-orange-200 text-orange-800 rounded-full text-xs font-bold hover:bg-orange-100 transition"
+                onClick={() => setActiveCuisineFilter('All')}
+                className="inline-flex items-center space-x-1 text-xs font-bold text-white hover:text-orange-100 transition pt-1"
               >
-                <MapPin className="w-3.5 h-3.5 text-orange-500" />
-                <span className="max-w-[140px] truncate">{selectedAddress?.address_line || 'Chittagong'}</span>
-                <ChevronDown className="w-3 h-3 text-orange-400" />
+                <span>Redeem now</span>
+                <ChevronRight className="w-4 h-4 stroke-[3]" />
               </button>
             </div>
 
-            {/* Right: Cart Pill Badge from user screenshot [ 🛍️ 0 ] in orange */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition shadow-xs"
-              >
-                <ShoppingBag className="w-4 h-4 text-orange-500 stroke-[2.2]" />
-                <span className="w-5 h-5 rounded-full bg-orange-500 text-white font-black text-xs flex items-center justify-center">
-                  {totalCartCount}
-                </span>
-              </button>
+            {/* Food Graphic: Crispy Fried Chicken Bucket */}
+            <div className="relative shrink-0 w-36 h-28 sm:w-44 sm:h-32">
+              <img 
+                src="https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80" 
+                alt="Fried Chicken Bucket" 
+                className="w-full h-full object-cover rounded-2xl drop-shadow-md"
+              />
             </div>
           </div>
 
-          {/* Mobile Address selector bar */}
-          <div 
-            onClick={() => setIsAddressModalOpen(true)}
-            className="sm:hidden mt-2.5 flex items-center justify-between px-3 py-1.5 bg-orange-50/70 border border-orange-100 rounded-xl cursor-pointer"
-          >
-            <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700">
-              <MapPin className="w-4 h-4 text-orange-500 shrink-0" />
-              <span className="truncate">{selectedAddress?.address_line || 'Tap to select delivery location'}</span>
+          {/* Carousel Dots Pill Indicator [ — • • • • ] */}
+          <div className="flex justify-center pt-1">
+            <div className="inline-flex items-center space-x-1.5 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
+              <span className="w-6 h-1 bg-white rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-white/50 rounded-full"></span>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-orange-400 shrink-0" />
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
-      <main className="max-w-4xl mx-auto px-4 py-4 space-y-6">
+      {/* 
+        ========================================================================
+        MAIN BODY: EXACT FEATURES & OPTIONS WHERE THEY ARE IN THE SCREENSHOTS
+        ========================================================================
+      */}
+      <main className="max-w-md mx-auto px-4 py-4 space-y-6">
 
-        {/* 2. HERO HEADER BANNER (Matching the burger hero with FoodHub warm colors) */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-xl shadow-orange-500/10 p-6 sm:p-7">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-5 relative z-10">
-            <div className="space-y-3 max-w-md">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-extrabold uppercase tracking-wide">
-                <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-200" />
-                <span>Delivered Fast &bull; Cash On Delivery</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black leading-tight tracking-tight drop-shadow-xs">
-                Explore top-rated restaurants & hot deals right at your fingertips
-              </h2>
-              <p className="text-xs sm:text-sm text-orange-50 font-medium">
-                Live distance-based delivery fee: {settings.currency_symbol}{settings.base_delivery_charge} base + {settings.currency_symbol}{settings.per_km_delivery_charge}/km
-              </p>
-            </div>
-
-            {/* Burger Hero Graphic */}
-            <div className="relative shrink-0 w-44 h-36 sm:w-56 sm:h-44">
-              <img 
-                src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80" 
-                alt="Juicy FoodHub Burger" 
-                className="w-full h-full object-cover rounded-2xl shadow-2xl border-2 border-white/40 transform hover:scale-105 transition duration-300"
-              />
-              <span className="absolute -bottom-2 -left-2 bg-slate-900/90 text-amber-300 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-md">
-                ⭐ 4.8 Rating
-              </span>
-            </div>
-          </div>
-
-          {/* Search bar inside banner (Matching screenshot) */}
-          <div className="mt-5 relative z-10">
-            <div className="relative">
-              <Search className="w-5 h-5 text-orange-500 absolute left-4 top-3.5" />
-              <input
-                type="text"
-                placeholder="Search restaurants or food items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 rounded-2xl text-sm font-semibold shadow-lg focus:outline-hidden focus:ring-3 focus:ring-orange-300 transition"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* 3. QUICK SERVICE SHORTCUTS (FoodHub Orange Accent) */}
-        <section className="grid grid-cols-5 gap-2 sm:gap-3 text-center">
+        {/* 2. QUICK SERVICE ICONS ROW (Offers, foodmart, Pick-up, Health & Beauty, Restaurants) */}
+        <section className="grid grid-cols-5 gap-2 text-center pt-1">
           {serviceShortcuts.map((svc) => (
             <div 
               key={svc.label}
@@ -298,7 +273,7 @@ export const CustomerPortal: React.FC = () => {
               }}
               className="flex flex-col items-center group cursor-pointer"
             >
-              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white shadow-xs border border-orange-100 hover:border-orange-300 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+              <div className="relative w-14 h-14 rounded-2xl bg-white shadow-xs border border-slate-100 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
                 {svc.badge && (
                   <span className={`absolute -top-1.5 -right-1 px-1.5 py-0.2 ${svc.badgeBg} text-white font-black text-[9px] rounded-full shadow-xs whitespace-nowrap`}>
                     {svc.badge}
@@ -306,37 +281,41 @@ export const CustomerPortal: React.FC = () => {
                 )}
                 <span>{svc.icon}</span>
               </div>
-              <span className="text-[11px] font-bold text-slate-700 mt-1.5 leading-tight group-hover:text-orange-600 transition">
+              <span className="text-[11px] font-bold text-slate-800 mt-1.5 leading-tight">
                 {svc.label}
               </span>
             </div>
           ))}
         </section>
 
-        {/* 4. CUISINE BUBBLES HORIZONTAL SCROLL (FoodHub Theme) */}
+        {/* 3. 3D CUISINE FOOD BUBBLES HORIZONTAL SCROLL (Pizza, Burgers, Fast Food, Bangladeshi, Rice) */}
         <section className="space-y-2">
-          <div className="flex items-center space-x-2.5 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none">
             {cuisineBubbles.map((c) => {
               const isSelected = activeCuisineFilter === c.filter;
               return (
                 <button
                   key={c.label}
-                  onClick={() => setActiveCuisineFilter(c.filter)}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-2xl shrink-0 transition-all font-bold text-xs ${
-                    isSelected 
-                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20 scale-105' 
-                      : 'bg-white hover:bg-orange-50/50 text-slate-700 border border-orange-100'
-                  }`}
+                  onClick={() => setActiveCuisineFilter(isSelected ? 'All' : c.filter)}
+                  className="flex flex-col items-center shrink-0 group cursor-pointer focus:outline-hidden"
                 >
-                  <span className="text-base">{c.icon}</span>
-                  <span>{c.label}</span>
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xs transition-transform ${
+                    isSelected ? 'ring-2 ring-orange-500 scale-105 bg-orange-50' : 'bg-slate-50 border border-slate-100'
+                  }`}>
+                    <span>{c.icon}</span>
+                  </div>
+                  <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap ${
+                    isSelected ? 'text-orange-600' : 'text-slate-800'
+                  }`}>
+                    {c.label}
+                  </span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* 5. VERTICAL PROMOTIONAL DEAL POSTER CARDS */}
+        {/* 4. VERTICAL PROMOTIONAL DEAL POSTER CARDS (Sultan's Dine, PizzaBurg, etc.) */}
         <section className="space-y-3">
           <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none">
             {/* Sultan's Dine Card */}
@@ -345,26 +324,25 @@ export const CustomerPortal: React.FC = () => {
                 const v = vendors.find(x => x.name.includes("Sultan"));
                 if (v) setSelectedVendorForMenu(v);
               }}
-              className="shrink-0 w-52 sm:w-56 rounded-3xl bg-gradient-to-b from-orange-950 via-slate-900 to-slate-900 text-white p-4 relative overflow-hidden shadow-md cursor-pointer group border border-orange-900/40"
+              className="shrink-0 w-48 sm:w-52 rounded-3xl bg-gradient-to-b from-[#2E1A47] via-[#1E1233] to-[#120B20] text-white p-3.5 relative overflow-hidden shadow-sm cursor-pointer group"
             >
               <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 bg-orange-500 text-white font-black text-[10px] rounded-md">
+                <span className="px-2 py-0.5 bg-white text-slate-900 font-bold text-[9px] rounded-md border border-slate-200">
                   Sultan's Dine
                 </span>
-                <span className="text-[10px] font-mono text-amber-300">Popular</span>
               </div>
               <div className="mt-3">
-                <h3 className="text-lg font-black leading-tight text-white">Up to 40% off</h3>
-                <p className="text-xs font-bold text-orange-400 mt-0.5">+ free delivery</p>
+                <h3 className="text-base font-black leading-tight text-white">Up to 40% off</h3>
+                <p className="text-xs font-bold text-purple-300 mt-0.5">+ free delivery</p>
               </div>
-              <div className="mt-4 h-28 w-full rounded-2xl overflow-hidden">
+              <div className="mt-3 h-24 w-full rounded-2xl overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80" 
-                  alt="Kacchi" 
+                  src="https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=350&auto=format&fit=crop&q=80" 
+                  alt="Biryani" 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
               </div>
-              <p className="text-[9px] text-slate-400 mt-2 font-mono">T&Cs apply &bull; Cash On Delivery</p>
+              <p className="text-[8px] text-slate-400 mt-2">T&Cs apply.</p>
             </div>
 
             {/* PizzaBurg Card */}
@@ -373,71 +351,69 @@ export const CustomerPortal: React.FC = () => {
                 const v = vendors.find(x => x.name.includes("PizzaBurg"));
                 if (v) setSelectedVendorForMenu(v);
               }}
-              className="shrink-0 w-52 sm:w-56 rounded-3xl bg-gradient-to-b from-amber-950 via-slate-900 to-slate-900 text-white p-4 relative overflow-hidden shadow-md cursor-pointer group border border-amber-900/40"
+              className="shrink-0 w-48 sm:w-52 rounded-3xl bg-gradient-to-b from-[#2E1A47] via-[#1E1233] to-[#120B20] text-white p-3.5 relative overflow-hidden shadow-sm cursor-pointer group"
             >
               <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded-md">
+                <span className="px-2 py-0.5 bg-rose-600 text-white font-bold text-[9px] rounded-md">
                   PizzaBurg
                 </span>
-                <span className="text-[10px] font-mono text-orange-300">Cheesy</span>
               </div>
               <div className="mt-3">
-                <h3 className="text-lg font-black leading-tight text-white">Up to 40% off</h3>
-                <p className="text-xs font-bold text-amber-400 mt-0.5">+ free delivery</p>
+                <h3 className="text-base font-black leading-tight text-white">Up to 40% off</h3>
+                <p className="text-xs font-bold text-purple-300 mt-0.5">+ free delivery</p>
               </div>
-              <div className="mt-4 h-28 w-full rounded-2xl overflow-hidden">
+              <div className="mt-3 h-24 w-full rounded-2xl overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&auto=format&fit=crop&q=80" 
+                  src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=350&auto=format&fit=crop&q=80" 
                   alt="Pizza" 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
               </div>
-              <p className="text-[9px] text-slate-400 mt-2 font-mono">T&Cs apply &bull; Cash On Delivery</p>
+              <p className="text-[8px] text-slate-400 mt-2">T&Cs apply.</p>
             </div>
 
-            {/* Snackza Shawarma Card */}
+            {/* FoodHub Pro Card */}
             <div 
               onClick={() => {
-                const v = vendors.find(x => x.name.includes("Snackza"));
+                const v = vendors.find(x => x.name.includes("Domino"));
                 if (v) setSelectedVendorForMenu(v);
               }}
-              className="shrink-0 w-52 sm:w-56 rounded-3xl bg-gradient-to-b from-orange-900 via-slate-900 to-slate-900 text-white p-4 relative overflow-hidden shadow-md cursor-pointer group border border-orange-800/40"
+              className="shrink-0 w-48 sm:w-52 rounded-3xl bg-gradient-to-b from-[#2E1A47] via-[#1E1233] to-[#120B20] text-white p-3.5 relative overflow-hidden shadow-sm cursor-pointer group"
             >
               <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 bg-orange-400 text-slate-950 font-black text-[10px] rounded-md">
-                  Snackza
+                <span className="px-2 py-0.5 bg-orange-600 text-white font-bold text-[9px] rounded-md">
+                  FoodHub Pro
                 </span>
-                <span className="text-[10px] font-mono text-orange-200">Doner</span>
               </div>
               <div className="mt-3">
-                <h3 className="text-lg font-black leading-tight text-white">Flat 35% off</h3>
-                <p className="text-xs font-bold text-orange-300 mt-0.5">Use: back4more</p>
+                <h3 className="text-base font-black leading-tight text-white">Up to 40% off</h3>
+                <p className="text-xs font-bold text-orange-300 mt-0.5">+ free delivery</p>
               </div>
-              <div className="mt-4 h-28 w-full rounded-2xl overflow-hidden">
+              <div className="mt-3 h-24 w-full rounded-2xl overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80" 
-                  alt="Shawarma" 
+                  src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=350&auto=format&fit=crop&q=80" 
+                  alt="Domino" 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
               </div>
-              <p className="text-[9px] text-slate-400 mt-2 font-mono">T&Cs apply &bull; Cash On Delivery</p>
+              <p className="text-[8px] text-slate-400 mt-2">T&Cs apply.</p>
             </div>
           </div>
         </section>
 
-        {/* 6. POPULAR RESTAURANTS SECTION (FoodHub Orange Accents) */}
+        {/* 5. POPULAR RESTAURANTS SECTION (Matching Screenshot 2) */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black text-slate-900 tracking-tight">Popular Restaurants</h2>
             <button 
               onClick={() => setActiveCuisineFilter('All')}
-              className="w-8 h-8 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 hover:bg-orange-100 transition"
+              className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 hover:bg-slate-200 transition"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center space-x-4 overflow-x-auto pb-3 scrollbar-none">
+          <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none">
             {vendors.slice(0, 3).map((v) => {
               const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
               const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
@@ -447,10 +423,9 @@ export const CustomerPortal: React.FC = () => {
                 <div
                   key={v.id}
                   onClick={() => setSelectedVendorForMenu(v)}
-                  className="shrink-0 w-72 sm:w-80 bg-white rounded-3xl border border-orange-100/80 overflow-hidden shadow-xs hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
+                  className="shrink-0 w-72 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group"
                 >
-                  {/* Image with PRO badge and Heart */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                  <div className="relative h-40 w-full overflow-hidden bg-slate-100">
                     <img 
                       src={v.cover_image} 
                       alt={v.name} 
@@ -458,28 +433,25 @@ export const CustomerPortal: React.FC = () => {
                     />
                     <button 
                       onClick={(e) => toggleFavorite(v.id, e)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-600 hover:text-orange-500 transition"
+                      className="absolute top-2.5 right-2.5 p-1.5 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-600 hover:text-rose-500 transition"
                     >
-                      <Heart className={`w-4 h-4 ${isFav ? 'fill-orange-500 text-orange-500' : ''}`} />
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
                     </button>
 
-                    {/* Pro tag banner */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent p-2.5 flex items-center justify-between text-white">
-                      <span className="text-[11px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                        <Sparkles className="w-3 h-3" /> PRO 40% off selected
+                    {/* Pro Banner Ribbon */}
+                    <div className="absolute bottom-0 inset-x-0 bg-white/95 px-3 py-1 flex items-center space-x-1.5 text-slate-800 text-[11px] font-bold border-t border-slate-100">
+                      <span className="text-purple-700 font-extrabold flex items-center gap-0.5">
+                        <Sparkles className="w-3 h-3 text-purple-600" /> PRO
                       </span>
-                      <span className="text-[11px] font-mono text-amber-300 font-bold">
-                        {distanceKm} km
-                      </span>
+                      <span>40% off selected items</span>
                     </div>
                   </div>
 
-                  {/* Info details */}
-                  <div className="p-4 space-y-2">
+                  <div className="p-3.5 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <h3 className="font-extrabold text-slate-900 text-base">{v.name}</h3>
-                      <div className="flex items-center space-x-1 text-xs font-black text-slate-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      <div className="flex items-center space-x-1 text-xs font-bold text-slate-800">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span>{v.rating} (1k+)</span>
                       </div>
                     </div>
@@ -488,18 +460,16 @@ export const CustomerPortal: React.FC = () => {
                       From {v.estimated_prep_time_minutes} min &bull; ৳৳ &bull; {v.cuisine}
                     </p>
 
-                    {/* Delivery Charge Line */}
-                    <div className="flex items-center space-x-2 text-xs text-slate-700">
-                      <span className="text-slate-400 line-through">Tk{fee + 15}</span>
-                      <span className="font-black text-orange-600">Tk{fee} COD Fee</span>
-                      <span className="text-slate-300">&bull;</span>
-                      <span className="text-orange-700 font-bold bg-orange-50 px-1.5 py-0.2 rounded border border-orange-100">Fast Cash</span>
+                    <div className="flex items-center space-x-2 text-xs text-slate-700 font-medium">
+                      <span className="line-through text-slate-400">Tk15</span>
+                      <span className="font-bold text-emerald-600">Free</span>
+                      <span className="text-slate-400">&bull;</span>
+                      <span className="text-slate-500">{distanceKm} km</span>
                     </div>
 
-                    {/* Voucher pill */}
                     <div className="pt-1">
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-md text-[11px] font-bold">
-                        <Ticket className="w-3 h-3 text-orange-500" />
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[11px] font-bold">
+                        <Ticket className="w-3 h-3 text-rose-500" />
                         <span>35% off Tk. 299: back4more</span>
                       </span>
                     </div>
@@ -510,25 +480,25 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </section>
 
-        {/* 7. DISHES UP TO 15% OFF SECTION */}
-        <section className="space-y-3 bg-orange-50/60 p-4 sm:p-5 rounded-3xl border border-orange-100">
+        {/* 6. DISHES UP TO 15% OFF SECTION (Matching Screenshot 3) */}
+        <section className="space-y-3 bg-rose-50/40 p-4 rounded-3xl border border-rose-100/60">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="p-1 bg-orange-500 text-white rounded-md text-xs font-black">%</span>
-                <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Dishes up to 15% off</h2>
+                <span className="p-0.5 bg-rose-500 text-white rounded-md text-xs font-black px-1">%</span>
+                <h2 className="text-base font-black text-slate-900 tracking-tight">Dishes up to 15% off</h2>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Minimum spend applies &bull; Direct COD</p>
+              <p className="text-xs text-slate-500 mt-0.5">Minimum spend applies</p>
             </div>
             <button 
               onClick={() => setActiveCuisineFilter('All')}
-              className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-orange-600 shadow-xs hover:bg-orange-100 transition"
+              className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-slate-700 shadow-xs hover:bg-slate-100 transition"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex items-center space-x-3 overflow-x-auto pb-1 scrollbar-none">
             {promoDishes.map((dish) => (
               <div 
                 key={dish.id}
@@ -536,36 +506,33 @@ export const CustomerPortal: React.FC = () => {
                   const v = vendors.find(x => x.id === dish.vendorId);
                   if (v) setSelectedVendorForMenu(v);
                 }}
-                className="shrink-0 w-44 sm:w-48 bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-xs hover:shadow-md transition cursor-pointer group"
+                className="shrink-0 w-44 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition cursor-pointer group"
               >
-                {/* Image + time */}
-                <div className="relative h-32 w-full bg-slate-100">
+                <div className="relative h-28 w-full bg-slate-100">
                   <img src={dish.image} alt={dish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-950/80 backdrop-blur-xs text-white text-[10px] font-bold rounded-md">
+                  <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-xs text-slate-900 text-[9px] font-bold rounded-md shadow-xs">
                     {dish.prepTime}
                   </span>
                 </div>
 
-                <div className="p-3 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
-                    <span className="truncate max-w-[100px] font-medium">{dish.vendor}</span>
-                    <span className="flex items-center gap-0.5 font-bold text-slate-800">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {dish.rating}
+                <div className="p-2.5 space-y-1">
+                  <div className="flex items-center space-x-1 text-[10px] text-slate-500">
+                    <span className="truncate font-semibold">{dish.vendor}</span>
+                    <span className="flex items-center gap-0.5 font-bold text-slate-800 shrink-0">
+                      <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" /> {dish.rating}
                     </span>
                   </div>
 
-                  <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">{dish.name}</h4>
+                  <h4 className="text-xs font-black text-slate-900 line-clamp-1">{dish.name}</h4>
 
                   <div className="flex items-center space-x-1.5 text-xs font-black">
-                    <span className="text-orange-600 font-mono">Tk{dish.discountedPrice}</span>
-                    <span className="text-slate-400 line-through font-mono text-[11px]">Tk{dish.originalPrice}</span>
+                    <span className="text-rose-600 font-mono">Tk{dish.discountedPrice}</span>
+                    <span className="text-slate-400 line-through font-mono text-[10px]">Tk{dish.originalPrice}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] pt-1">
-                    <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 font-bold rounded">
-                      {dish.discountText}
-                    </span>
-                    <span className="text-orange-700 font-bold">🛵 COD</span>
+                  <div className="flex items-center justify-between text-[10px] pt-0.5">
+                    <span className="text-rose-600 font-bold">{dish.discountText}</span>
+                    <span className="text-slate-500 font-bold">🛵 Free</span>
                   </div>
                 </div>
               </div>
@@ -573,38 +540,38 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </section>
 
-        {/* 8. DOMINO'S PIZZA MEATMAXXX PROMO BANNER */}
+        {/* 7. DOMINO'S MEATMAXXX PROMO BANNER (Matching Screenshot 3 bottom) */}
         <section 
           onClick={() => {
             const v = vendors.find(x => x.name.includes("Domino"));
             if (v) setSelectedVendorForMenu(v);
           }}
-          className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 text-white p-5 shadow-lg border border-orange-400/30 cursor-pointer group"
+          className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#0C1E3C] via-[#102B59] to-[#0C1E3C] text-white p-4 shadow-sm cursor-pointer group"
         >
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="space-y-1 z-10">
-              <span className="text-xs font-black text-amber-200 tracking-wider uppercase">Domino's Pizza</span>
-              <h3 className="text-2xl font-black tracking-tight text-white">GET 40% OFF*</h3>
-              <p className="text-xs text-orange-100">Exclusively for FoodHub Pro & COD Deliveries</p>
-              <button className="mt-2 px-4 py-1.5 bg-white text-orange-600 rounded-xl text-xs font-black shadow-md hover:bg-orange-50 transition">
-                ORDER NOW &rarr;
+              <span className="text-xs font-black text-blue-300">Domino's Pizza</span>
+              <h3 className="text-xl font-black text-white leading-tight">GET 40% OFF*</h3>
+              <p className="text-[10px] text-slate-300">Exclusively for FoodHub Pro</p>
+              <button className="mt-1 px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-black transition">
+                ORDER NOW
               </button>
             </div>
-            <div className="w-36 h-28 sm:w-48 sm:h-32 rounded-2xl overflow-hidden border border-white/30">
+            <div className="w-36 h-24 rounded-2xl overflow-hidden shrink-0">
               <img 
-                src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop&q=80" 
-                alt="Domino's MeatMaxxx" 
+                src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&auto=format&fit=crop&q=80" 
+                alt="MeatMaxxx" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform"
               />
             </div>
           </div>
-          <span className="absolute bottom-2 right-3 text-[9px] bg-slate-900/70 px-1.5 py-0.2 rounded text-slate-300 font-mono">Ad</span>
+          <span className="absolute bottom-2 right-2 text-[9px] bg-slate-900/60 px-1 py-0.2 rounded text-slate-400">Ad</span>
         </section>
 
-        {/* 9. SHOP BY CATEGORY SECTION */}
+        {/* 8. SHOP BY CATEGORY SECTION (Matching Screenshot 4) */}
         <section className="space-y-3">
           <h2 className="text-lg font-black text-slate-900 tracking-tight">Shop by category</h2>
-          <div className="grid grid-cols-4 sm:grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-4 gap-2.5 text-center">
             {[
               { name: 'Grocery', icon: '🛍️' },
               { name: 'Convenience', icon: '🏪' },
@@ -614,9 +581,9 @@ export const CustomerPortal: React.FC = () => {
               <div 
                 key={cat.name}
                 onClick={() => setSearchQuery(cat.name)}
-                className="p-3 bg-white rounded-2xl border border-orange-100 shadow-xs hover:border-orange-400 hover:shadow-xs transition cursor-pointer flex flex-col items-center group"
+                className="p-3 bg-white rounded-2xl border border-slate-100 shadow-xs hover:border-orange-400 transition cursor-pointer flex flex-col items-center group"
               >
-                <div className="w-14 h-14 rounded-xl bg-orange-50/70 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                   {cat.icon}
                 </div>
                 <span className="text-xs font-bold text-slate-700 mt-2 line-clamp-1">{cat.name}</span>
@@ -625,13 +592,13 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </section>
 
-        {/* 10. FILTER & SORT CHIPS BAR */}
-        <section className="sticky top-16 z-30 bg-slate-50/95 backdrop-blur-md py-2 flex items-center space-x-2 overflow-x-auto scrollbar-none">
+        {/* 9. STICKY FILTER CHIPS BAR (Matching Screenshot 4 & 5) */}
+        <section className="sticky top-0 z-30 bg-white/95 backdrop-blur-md py-2 flex items-center space-x-2 overflow-x-auto scrollbar-none border-b border-slate-100">
           <button 
             onClick={() => {
               setSelectedSort(prev => prev === 'popular' ? 'rating' : prev === 'rating' ? 'distance' : 'popular');
             }}
-            className="p-2 bg-white rounded-full border border-orange-200 text-orange-600 shadow-xs hover:bg-orange-50 shrink-0"
+            className="p-2 bg-white rounded-full border border-slate-200 text-slate-700 shadow-xs hover:bg-slate-100 shrink-0"
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
@@ -639,17 +606,17 @@ export const CustomerPortal: React.FC = () => {
           <button
             onClick={() => setSelectedSort(prev => prev === 'popular' ? 'distance' : 'popular')}
             className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
-              selectedSort !== 'popular' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-700 border-orange-200'
+              selectedSort !== 'popular' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200'
             }`}
           >
-            <span>Sort: {selectedSort}</span>
+            <span>Sort</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
 
           <button
             onClick={() => setHasOfferOnly(prev => !prev)}
             className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
-              hasOfferOnly ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-700 border-orange-200'
+              hasOfferOnly ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200'
             }`}
           >
             <span>Offers</span>
@@ -659,7 +626,7 @@ export const CustomerPortal: React.FC = () => {
           <button
             onClick={() => setIsRating4PlusOnly(prev => !prev)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
-              isRating4PlusOnly ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-700 border-orange-200'
+              isRating4PlusOnly ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200'
             }`}
           >
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -667,11 +634,11 @@ export const CustomerPortal: React.FC = () => {
           </button>
         </section>
 
-        {/* 11. FEATURED & EXPLORE RESTAURANTS NEARBY (Matching Screenshot 'Featured Restaurants') */}
+        {/* 10. EXPLORE RESTAURANTS NEARBY (Matching Screenshot 4 & 5) */}
         <section className="space-y-4">
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Featured Restaurants</h2>
+          <h2 className="text-lg font-black text-slate-900 tracking-tight">Explore restaurants nearby</h2>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             {filteredVendors.map((vendor) => {
               const distanceKm = calculateDistanceKm(vendor.latitude, vendor.longitude, customerLat, customerLng);
               const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
@@ -681,10 +648,9 @@ export const CustomerPortal: React.FC = () => {
                 <div
                   key={vendor.id}
                   onClick={() => setSelectedVendorForMenu(vendor)}
-                  className="bg-white rounded-3xl border border-orange-100 overflow-hidden shadow-xs hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
+                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group"
                 >
-                  {/* Big Cover Image */}
-                  <div className="relative h-48 sm:h-56 w-full bg-slate-100 overflow-hidden">
+                  <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
                     <img 
                       src={vendor.cover_image} 
                       alt={vendor.name} 
@@ -692,60 +658,47 @@ export const CustomerPortal: React.FC = () => {
                     />
                     <button 
                       onClick={(e) => toggleFavorite(vendor.id, e)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-700 hover:text-orange-500 transition"
+                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-700 hover:text-rose-500 transition"
                     >
-                      <Heart className={`w-4 h-4 ${isFav ? 'fill-orange-500 text-orange-500' : ''}`} />
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
                     </button>
 
-                    {/* Pro Banner */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent p-3 flex items-center justify-between text-white">
-                      <span className="text-xs font-black bg-orange-500 text-white px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                        <Sparkles className="w-3.5 h-3.5" /> PRO 40% off selected
+                    <div className="absolute bottom-0 inset-x-0 bg-white/95 px-3 py-1 flex items-center space-x-1.5 text-slate-800 text-[11px] font-bold border-t border-slate-100">
+                      <span className="text-purple-700 font-extrabold flex items-center gap-0.5">
+                        <Sparkles className="w-3 h-3 text-purple-600" /> PRO
                       </span>
-                      <span className="text-xs font-mono font-bold text-amber-300">
-                        {distanceKm} km away
-                      </span>
+                      <span>40% off selected items</span>
                     </div>
                   </div>
 
-                  {/* Body Content */}
-                  <div className="p-4 space-y-2">
+                  <div className="p-3.5 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-base sm:text-lg font-black text-slate-900">{vendor.name}</h3>
-                      <div className="flex items-center space-x-1 text-xs font-black text-slate-900 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      <h3 className="text-base font-extrabold text-slate-900">{vendor.name}</h3>
+                      <div className="flex items-center space-x-1 text-xs font-bold text-slate-800">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span>{vendor.rating} (500+)</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <span className="px-2.5 py-0.5 bg-orange-100 text-orange-800 rounded-md text-xs font-extrabold">
-                        {vendor.cuisine.split(',')[0]}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        &bull; {vendor.estimated_prep_time_minutes} min &bull; Price Match
-                      </span>
+                    <p className="text-xs text-slate-500 font-medium">
+                      From {vendor.estimated_prep_time_minutes} min &bull; ৳ &bull; {vendor.cuisine} &bull; Price Match
+                    </p>
+
+                    <div className="flex items-center space-x-2 text-xs">
+                      <span className="line-through text-slate-400">Tk15</span>
+                      <span className="font-bold text-emerald-600">Free</span>
+                      <span className="text-slate-400">&bull;</span>
+                      <span className="text-slate-500 font-medium">COD: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
                     </div>
 
-                    <div className="flex items-center space-x-2 text-xs pt-1">
-                      <span className="text-slate-400 line-through">Tk{fee + 15}</span>
-                      <span className="font-extrabold text-orange-600">Tk{fee} COD Fee</span>
-                      <span className="text-slate-300">&bull;</span>
-                      <span className="text-slate-600 font-mono">{distanceKm} km direct</span>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-between border-t border-slate-100">
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-md text-[11px] font-bold">
-                        <Ticket className="w-3 h-3 text-orange-500" />
+                    <div className="pt-1 flex items-center justify-between">
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[11px] font-bold">
+                        <Ticket className="w-3 h-3 text-rose-500" />
                         <span>35% off Tk. 299: back4more</span>
                       </span>
-
-                      <button 
-                        onClick={() => setSelectedVendorForMenu(vendor)}
-                        className="px-3.5 py-1.5 bg-orange-500 text-white rounded-xl text-xs font-extrabold hover:bg-orange-600 transition shadow-xs"
-                      >
+                      <span className="text-xs font-bold text-orange-600 group-hover:translate-x-1 transition-transform">
                         View Menu &rarr;
-                      </button>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -753,43 +706,17 @@ export const CustomerPortal: React.FC = () => {
             })}
           </div>
         </section>
-
-        {/* ACTIVE LIVE ORDERS */}
-        {orders.length > 0 && (
-          <section className="bg-white rounded-3xl p-5 border border-orange-100 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-900">Your Active COD Orders ({orders.length})</h2>
-              <span className="text-xs font-mono text-orange-600 font-bold animate-pulse">● Live 5s Tracking</span>
-            </div>
-
-            <div className="space-y-3">
-              {orders.slice(0, 2).map((ord) => (
-                <div key={ord.id} className="p-3 bg-orange-50/50 rounded-2xl border border-orange-100 space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="font-black text-slate-900">Order #{ord.order_code}</span>
-                    <span className="px-2 py-0.5 bg-orange-500 text-white rounded-md font-bold text-[10px] uppercase">
-                      {ord.status.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Cash Payable to Rider:</span>
-                    <span className="font-mono font-black text-orange-600">{settings.currency_symbol}{ord.total_cash_payable}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 truncate">
-                    Delivery to: {ord.delivery_address}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
       </main>
 
-      {/* RESTAURANT MENU MODAL */}
+      {/* 
+        ========================================================================
+        RESTAURANT MENU MODAL
+        ========================================================================
+      */}
       {selectedVendorForMenu && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="relative h-40 bg-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
+            <div className="relative h-36 bg-slate-900">
               <img 
                 src={selectedVendorForMenu.cover_image} 
                 alt={selectedVendorForMenu.name}
@@ -802,15 +729,14 @@ export const CustomerPortal: React.FC = () => {
                 &times;
               </button>
               <div className="absolute bottom-3 left-4 right-4 text-white">
-                <h3 className="text-lg sm:text-xl font-black">{selectedVendorForMenu.name}</h3>
-                <p className="text-xs text-orange-200 mt-0.5">{selectedVendorForMenu.cuisine} &bull; {selectedVendorForMenu.address}</p>
+                <h3 className="text-lg font-black">{selectedVendorForMenu.name}</h3>
+                <p className="text-xs text-slate-200">{selectedVendorForMenu.cuisine} &bull; {selectedVendorForMenu.address}</p>
               </div>
             </div>
 
-            {/* Menu items */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Dishes</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-4 overflow-y-auto space-y-3 flex-1">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Items</h4>
+              <div className="space-y-2.5">
                 {menuItems
                   .filter((m) => m.vendor_id === selectedVendorForMenu.id)
                   .map((dish) => {
@@ -818,18 +744,18 @@ export const CustomerPortal: React.FC = () => {
                     return (
                       <div 
                         key={dish.id}
-                        className="p-3 border border-orange-100 rounded-2xl flex items-center justify-between gap-3 bg-white hover:border-orange-300 transition"
+                        className="p-3 border border-slate-200 rounded-2xl flex items-center justify-between gap-3 bg-white hover:border-orange-300 transition"
                       >
                         <div className="flex-1">
                           <h5 className="font-extrabold text-slate-900 text-xs">{dish.name}</h5>
                           <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{dish.description}</p>
-                          <span className="font-mono font-black text-sm text-orange-600 mt-1 block">
+                          <span className="font-mono font-black text-sm text-slate-900 mt-1 block">
                             {settings.currency_symbol}{dish.price}
                           </span>
                         </div>
 
                         {dish.image_url && (
-                          <img src={dish.image_url} alt={dish.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                          <img src={dish.image_url} alt={dish.name} className="w-14 h-14 rounded-xl object-cover shrink-0" />
                         )}
 
                         <div>
@@ -852,7 +778,7 @@ export const CustomerPortal: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => addToCart(dish, selectedVendorForMenu)}
-                              className="px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                              className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-xs transition"
                             >
                               Add
                             </button>
@@ -864,11 +790,10 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* Modal footer */}
-            <div className="p-4 bg-orange-50/50 border-t border-orange-100 flex items-center justify-between">
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-500">{totalCartCount} items in cart</p>
-                <p className="text-base font-black text-orange-600 font-mono">
+                <p className="text-base font-black text-slate-900 font-mono">
                   {settings.currency_symbol}{foodTotal}
                 </p>
               </div>
@@ -886,9 +811,9 @@ export const CustomerPortal: React.FC = () => {
                       setSelectedVendorForMenu(null);
                       setIsCartOpen(true);
                     }}
-                    className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-md shadow-orange-500/20 flex items-center gap-1.5"
+                    className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-1.5"
                   >
-                    <span>Proceed to COD Checkout</span>
+                    <span>Checkout ({settings.currency_symbol}{totalCashPayable})</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 )}
@@ -898,13 +823,17 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
-      {/* CHECKOUT & CASH ON DELIVERY MODAL */}
+      {/* 
+        ========================================================================
+        CHECKOUT & CASH ON DELIVERY MODAL
+        ========================================================================
+      */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-orange-100 bg-orange-50/60 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="p-1.5 bg-orange-500 text-white rounded-lg">
+                <div className="p-1.5 bg-orange-100 text-orange-800 rounded-lg">
                   <Banknote className="w-5 h-5" />
                 </div>
                 <div>
@@ -917,9 +846,8 @@ export const CustomerPortal: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-4">
-              {/* Restaurant source */}
-              <div className="p-3 bg-orange-50/40 rounded-2xl text-xs flex justify-between items-center border border-orange-100">
+            <div className="p-4 overflow-y-auto space-y-3.5">
+              <div className="p-3 bg-slate-50 rounded-2xl text-xs flex justify-between items-center border border-slate-200">
                 <div>
                   <span className="font-extrabold text-slate-900">{cartVendor?.name}</span>
                   <p className="text-slate-500">{cartVendor?.address}</p>
@@ -929,8 +857,7 @@ export const CustomerPortal: React.FC = () => {
                 </span>
               </div>
 
-              {/* Items */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Order Items</span>
                 {cart.map((ci) => (
                   <div key={ci.menuItem.id} className="flex justify-between items-center py-1 text-xs border-b border-slate-100">
@@ -940,52 +867,47 @@ export const CustomerPortal: React.FC = () => {
                 ))}
               </div>
 
-              {/* Target Address */}
               <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-2xl text-xs space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="font-black text-orange-950 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-orange-600" /> Delivery Address
                   </span>
-                  <button onClick={() => setIsAddressModalOpen(true)} className="text-orange-600 font-bold hover:underline">
-                    Change Map Pin
+                  <button onClick={() => setIsAddressModalOpen(true)} className="text-orange-700 font-bold hover:underline">
+                    Change Pin
                   </button>
                 </div>
                 <p className="text-slate-800 font-medium">{selectedAddress?.address_line}</p>
-                {selectedAddress?.details && <p className="text-slate-500 text-[11px]">{selectedAddress.details}</p>}
               </div>
 
-              {/* Instructions */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Delivery Notes / Special Instructions
+                  Delivery Notes
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Ring doorbell, keep exact change ready"
+                  placeholder="e.g. Ring bell, keep exact change ready"
                   value={orderInstructions}
                   onChange={(e) => setOrderInstructions(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500"
                 />
               </div>
 
-              {/* COD Breakdown */}
-              <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-1.5 text-xs">
+              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1 text-xs">
                 <div className="flex justify-between text-slate-700">
-                  <span>Food Items Total:</span>
+                  <span>Food Total:</span>
                   <span className="font-mono font-bold">{settings.currency_symbol}{foodTotal}</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>Delivery Charge ({cartDistanceKm} km):</span>
+                  <span>Delivery Charge:</span>
                   <span className="font-mono font-bold">{settings.currency_symbol}{deliveryFee}</span>
                 </div>
-                <div className="pt-2 border-t border-orange-300 flex justify-between font-black text-sm text-slate-900">
-                  <span>Total Cash to Pay Rider:</span>
-                  <span className="font-mono text-orange-600 text-base font-black">{settings.currency_symbol}{totalCashPayable}</span>
+                <div className="pt-1.5 border-t border-amber-300 flex justify-between font-black text-sm text-slate-900">
+                  <span>Total Cash to Pay:</span>
+                  <span className="font-mono text-orange-600 text-base">{settings.currency_symbol}{totalCashPayable}</span>
                 </div>
               </div>
             </div>
 
-            {/* Footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
               <button 
                 onClick={() => setIsCartOpen(false)}
@@ -996,7 +918,7 @@ export const CustomerPortal: React.FC = () => {
               <button
                 disabled={isPlacingOrder}
                 onClick={handleCheckout}
-                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-md shadow-orange-500/20 transition disabled:opacity-50"
+                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-md transition disabled:opacity-50"
               >
                 {isPlacingOrder ? 'Confirming...' : `Confirm Cash Order (${settings.currency_symbol}${totalCashPayable})`}
               </button>
@@ -1005,23 +927,32 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
-      {/* ADDRESS BOOK MAP PICKER MODAL */}
+      {/* 
+        ========================================================================
+        ADDRESS BOOK MODAL
+        ========================================================================
+      */}
       <AddressBookModal
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}
       />
 
-      {/* BOTTOM FLOATING NAVIGATION DOCK (FoodHub Orange Matching Palette) */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-orange-100 py-1.5 px-4 shadow-xl">
+      {/* 
+        ========================================================================
+        11. BOTTOM FLOATING NAVIGATION DOCK (100% Matching Screenshot_20260930_184203.jpg)
+        Food, Grocery, Search, Carts, Account
+        ========================================================================
+      */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-4 shadow-xl">
         <div className="max-w-md mx-auto flex items-center justify-around">
-          {/* Food */}
+          {/* Food (Active in Orange) */}
           <button
             onClick={() => setActiveBottomNav('food')}
             className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
               activeBottomNav === 'food' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'food' ? 'bg-orange-100 text-orange-600' : ''}`}>
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'food' ? 'bg-orange-50 text-orange-600' : ''}`}>
               <UtensilsCrossed className="w-5 h-5" />
             </div>
             <span className="text-[10px] mt-0.5">Food</span>
@@ -1037,7 +968,7 @@ export const CustomerPortal: React.FC = () => {
               activeBottomNav === 'grocery' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'grocery' ? 'bg-orange-100 text-orange-600' : ''}`}>
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'grocery' ? 'bg-orange-50 text-orange-600' : ''}`}>
               <Store className="w-5 h-5" />
             </div>
             <span className="text-[10px] mt-0.5">Grocery</span>
@@ -1053,7 +984,7 @@ export const CustomerPortal: React.FC = () => {
               activeBottomNav === 'search' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'search' ? 'bg-orange-100 text-orange-600' : ''}`}>
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'search' ? 'bg-orange-50 text-orange-600' : ''}`}>
               <Search className="w-5 h-5" />
             </div>
             <span className="text-[10px] mt-0.5">Search</span>
@@ -1069,10 +1000,10 @@ export const CustomerPortal: React.FC = () => {
               activeBottomNav === 'carts' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-orange-100 text-orange-600' : ''}`}>
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-orange-50 text-orange-600' : ''}`}>
               <ShoppingBag className="w-5 h-5" />
               {totalCartCount > 0 && (
-                <span className="absolute top-0 right-2 w-4 h-4 bg-orange-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute top-0 right-2 w-4 h-4 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
                   {totalCartCount}
                 </span>
               )}
@@ -1090,7 +1021,7 @@ export const CustomerPortal: React.FC = () => {
               activeBottomNav === 'account' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'account' ? 'bg-orange-100 text-orange-600' : ''}`}>
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'account' ? 'bg-orange-50 text-orange-600' : ''}`}>
               <User className="w-5 h-5" />
             </div>
             <span className="text-[10px] mt-0.5">Account</span>
