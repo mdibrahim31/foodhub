@@ -218,7 +218,7 @@ export const RiderPortal: React.FC = () => {
     riderMarkerRef.current.setLatLng([lat, lng]);
   }, [currentRider.current_latitude, currentRider.current_longitude]);
 
-  // Update Route Polyline & Destination Markers on Map
+  // Update Route Polyline & Destination Markers on Map (Exact Foodpanda Style Store & Customer Icons)
   useEffect(() => {
     if (!mapInstanceRef.current || !routeLayerGroupRef.current) return;
     const layer = routeLayerGroupRef.current;
@@ -231,35 +231,96 @@ export const RiderPortal: React.FC = () => {
         [currentRider.current_latitude, currentRider.current_longitude]
       ];
 
-      // Vendor Marker
+      // 1. VENDOR / RESTAURANT LOCATION PIN (Pink Storefront Badge with ground target stem)
       if (vendor) {
-        const vIcon = L.divIcon({
-          className: 'vendor-pin',
-          html: `<div style="background:#ea580c;color:white;padding:4px;border-radius:10px;font-size:10px;font-weight:900;border:2px solid white;box-shadow:0 3px 6px rgba(0,0,0,0.3);text-align:center;">🏪 ${vendor.name.split(' ')[0]}</div>`,
-          iconSize: [80, 30],
-          iconAnchor: [40, 15],
+        const vendorIcon = L.divIcon({
+          className: 'custom-foodpanda-vendor-pin',
+          html: `
+            <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
+              <!-- Pink Circle Store Badge -->
+              <div style="width: 38px; height: 38px; border-radius: 9999px; background: #e21b70; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(226, 27, 112, 0.45);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+                  <path d="M2 7h20"/>
+                </svg>
+              </div>
+              <!-- Black Connector Stem -->
+              <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
+              <!-- Pink Target Base Ring -->
+              <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #e21b70; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
+            </div>
+          `,
+          iconSize: [42, 60],
+          iconAnchor: [21, 58],
+          popupAnchor: [0, -56],
         });
-        L.marker([vendor.latitude, vendor.longitude], { icon: vIcon }).addTo(layer);
+
+        const vMarker = L.marker([vendor.latitude, vendor.longitude], { icon: vendorIcon }).addTo(layer);
+        vMarker.bindPopup(`
+          <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
+            <span style="color: #e21b70; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Pickup Store</span>
+            ${vendor.name}
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${vendor.address}</span>
+          </div>
+        `);
         points.push([vendor.latitude, vendor.longitude]);
       }
 
-      // Customer Marker
-      const cIcon = L.divIcon({
-        className: 'customer-pin',
-        html: `<div style="background:#0f172a;color:white;padding:4px;border-radius:10px;font-size:10px;font-weight:900;border:2px solid white;box-shadow:0 3px 6px rgba(0,0,0,0.3);text-align:center;">📍 ${targetOrder.customer_name.split(' ')[0]}</div>`,
-        iconSize: [80, 30],
-        iconAnchor: [40, 15],
+      // 2. CUSTOMER DROPOFF LOCATION PIN (Black User Badge with ground target stem)
+      const customerIcon = L.divIcon({
+        className: 'custom-foodpanda-customer-pin',
+        html: `
+          <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
+            <!-- Black Circle User Badge -->
+            <div style="width: 38px; height: 38px; border-radius: 9999px; background: #0f172a; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.45);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <!-- Black Connector Stem -->
+            <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
+            <!-- Black Target Base Ring -->
+            <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #0f172a; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
+          </div>
+        `,
+        iconSize: [42, 60],
+        iconAnchor: [21, 58],
+        popupAnchor: [0, -56],
       });
-      L.marker([targetOrder.delivery_latitude, targetOrder.delivery_longitude], { icon: cIcon }).addTo(layer);
+
+      const cMarker = L.marker([targetOrder.delivery_latitude, targetOrder.delivery_longitude], { icon: customerIcon }).addTo(layer);
+      cMarker.bindPopup(`
+        <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
+          <span style="color: #0f172a; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Customer Dropoff</span>
+          ${targetOrder.customer_name}
+          <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${targetOrder.delivery_address}</span>
+        </div>
+      `);
       points.push([targetOrder.delivery_latitude, targetOrder.delivery_longitude]);
 
-      // Connect with dotted route polyline
+      // 3. Connect route with dashed line
       L.polyline(points, {
-        color: '#ea580c',
-        weight: 4,
-        dashArray: '8, 8',
-        opacity: 0.8,
+        color: '#e21b70',
+        weight: 3.5,
+        dashArray: '6, 8',
+        opacity: 0.85,
       }).addTo(layer);
+
+      // Fit map viewport smoothly to show all points
+      try {
+        const bounds = L.latLngBounds(points);
+        mapInstanceRef.current.fitBounds(bounds, {
+          paddingTopLeft: [40, 90],
+          paddingBottomRight: [40, 240],
+          maxZoom: 16,
+          animate: true,
+        });
+      } catch (e) {
+        console.error('Fitbounds error:', e);
+      }
     }
   }, [activeOrder?.id, incomingCandidate?.order.id, currentRider.current_latitude, currentRider.current_longitude]);
 
@@ -403,10 +464,13 @@ export const RiderPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        3. BOTTOM-RIGHT GPS RECENTER BUTTON [ ⌖ ] (MATCHING SCREENSHOT)
+        3. BOTTOM-RIGHT FLOATING ACTION BUTTONS (MATCHING SCREENSHOT)
+        - GPS Recenter Button [ ⌖ ]
+        - Pink Turn-by-Turn Navigation Button [ ↗ ]
         ========================================================================
       */}
-      <div className="fixed bottom-72 sm:bottom-64 right-4 z-20">
+      <div className="fixed bottom-72 sm:bottom-64 right-4 z-20 flex flex-col space-y-3 items-center">
+        {/* Recenter GPS */}
         <button
           onClick={handleRecenter}
           className="w-12 h-12 rounded-full bg-white text-slate-900 shadow-2xl flex items-center justify-center hover:bg-slate-50 transition active:scale-95 border border-slate-200/80 cursor-pointer"
@@ -422,6 +486,25 @@ export const RiderPortal: React.FC = () => {
             <div className="absolute -right-0.5 h-[2px] w-1.5 bg-slate-900"></div>
           </div>
         </button>
+
+        {/* Pink Turn-by-Turn Navigation Button [ ↗ ] (100% Matching Screenshot) */}
+        {(activeOrder || incomingCandidate) && (
+          <button
+            onClick={() => {
+              const target = activeOrder || incomingCandidate?.order;
+              if (target) {
+                const vendor = vendors.find(v => v.id === target.vendor_id);
+                const destLat = target.status === 'out_for_delivery' ? target.delivery_latitude : (vendor?.latitude || target.delivery_latitude);
+                const destLng = target.status === 'out_for_delivery' ? target.delivery_longitude : (vendor?.longitude || target.delivery_longitude);
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
+              }
+            }}
+            className="w-12 h-12 rounded-full bg-[#e21b70] text-white shadow-2xl flex items-center justify-center hover:bg-[#c2145e] transition active:scale-95 cursor-pointer border border-pink-400/40"
+            title="Open Turn-by-Turn GPS Navigation"
+          >
+            <Navigation className="w-6 h-6 stroke-[2.2] transform rotate-45" />
+          </button>
+        )}
       </div>
 
       {/* 
