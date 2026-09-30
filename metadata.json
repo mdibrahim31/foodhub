@@ -1,0 +1,10 @@
+{
+  "name": "FoodVibe - Multi-Portal Food Delivery System",
+  "description": "All-in-one Cash-on-Delivery Food Delivery System featuring 4 dedicated portals: Customer, Vendor Dashboard, Live Rider App, and Admin Control with Supabase integration and dynamic distance-based delivery fees.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
