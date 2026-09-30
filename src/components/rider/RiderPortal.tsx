@@ -146,11 +146,10 @@ export const RiderPortal: React.FC = () => {
         zoomControl: false, // Clean custom mobile view
       });
 
-      // Foodpanda / Google Maps vector look (Free CARTO Voyager Tiles)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20,
+      // 100% Free OpenStreetMap Tiles (No API key, No watermarks)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
       }).addTo(map);
 
       const routeGroup = L.layerGroup().addTo(map);

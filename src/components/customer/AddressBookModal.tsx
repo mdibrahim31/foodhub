@@ -177,13 +177,12 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
           zoomControl: false, // Clean custom mobile view
         });
 
-        const streetUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        const streetUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         const satelliteUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
         const tile = L.tileLayer(tileMode === 'satellite' ? satelliteUrl : streetUrl, {
-          maxZoom: 20,
-          subdomains: 'abcd',
-          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         }).addTo(map);
 
         tileLayerRef.current = tile;
