@@ -801,6 +801,35 @@ export const VendorPortal: React.FC = () => {
               </button>
             </div>
 
+            {/* Direct Link to Dedicated orders.html */}
+            <a
+              href="./orders.html"
+              className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 text-white rounded-2xl border border-slate-700 shadow-lg hover:from-black hover:to-slate-900 transition group"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-lg">
+                  <ChefHat className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">orders.html</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-bold text-white leading-tight">
+                    Dedicated Live Order Receiving Hub
+                  </h4>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {pendingOrders.length > 0 && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-black bg-rose-500 text-white animate-bounce">
+                    {pendingOrders.length} New
+                  </span>
+                )}
+                <span className="text-xs font-bold text-slate-400 group-hover:text-white">Open Terminal ↗</span>
+              </div>
+            </a>
+
             {/* Live Kitchen Queue */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">

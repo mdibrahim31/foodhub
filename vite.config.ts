@@ -17,6 +17,7 @@ export default defineConfig(() => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           vendor: path.resolve(__dirname, 'vendor.html'),
+          orders: path.resolve(__dirname, 'orders.html'),
           rider: path.resolve(__dirname, 'rider.html'),
           admin: path.resolve(__dirname, 'admin.html'),
         },
