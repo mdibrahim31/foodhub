@@ -91,10 +91,10 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   const pendingOrders = vendorOrders.filter((o) => o.status === 'pending');
   const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
-  const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'picked_up');
+  const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
   const completedOrders = vendorOrders.filter((o) => o.status === 'delivered');
 
-  // Sound Synthesizer via Web Audio API (Zero external assets, guaranteed to work)
+  // Sound Synthesizer via Web Audio API
   const playNewOrderSound = () => {
     if (!soundEnabled) return;
     try {
@@ -102,22 +102,21 @@ export const VendorOrdersTerminal: React.FC = () => {
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
 
-      // Dual-tone restaurant chime (880Hz -> 1320Hz)
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
 
       osc1.frequency.setValueAtTime(880, ctx.currentTime);
-      osc1.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+      osc1.frequency.setValueAtTime(1320, ctx.currentTime + 0.15);
 
       osc2.frequency.setValueAtTime(440, ctx.currentTime);
-      osc2.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
 
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
 
       osc1.connect(gain);
       osc2.connect(gain);
@@ -125,14 +124,14 @@ export const VendorOrdersTerminal: React.FC = () => {
 
       osc1.start();
       osc2.start();
-      osc1.stop(ctx.currentTime + 0.8);
-      osc2.stop(ctx.currentTime + 0.8);
+      osc1.stop(ctx.currentTime + 0.65);
+      osc2.stop(ctx.currentTime + 0.65);
     } catch {
-      // Audio context might be restricted before user gesture
+      // Audio context restricted
     }
   };
 
-  // Play chime on incoming orders
+  // Sound trigger on new pending order
   useEffect(() => {
     if (pendingOrders.length > prevPendingCountRef.current) {
       playNewOrderSound();
@@ -144,27 +143,18 @@ export const VendorOrdersTerminal: React.FC = () => {
   useEffect(() => {
     if (autoAccept && pendingOrders.length > 0) {
       pendingOrders.forEach((o) => {
-        updateOrderStatus(o.id, 'food_preparing');
+        vendorAcceptOrderWithPrepTime(o.id, 15);
       });
     }
   }, [autoAccept, pendingOrders]);
 
-  // Order Acceptance Handlers
-  const handleAcceptOrder = (orderId: string) => {
-    updateOrderStatus(orderId, 'food_preparing');
-  };
-
-  const handleMarkFoodReady = (orderId: string) => {
-    updateOrderStatus(orderId, 'ready_for_pickup');
-  };
-
   const handleConfirmHandover = (orderId: string) => {
-    updateOrderStatus(orderId, 'picked_up');
+    updateOrderStatus(orderId, 'food_picked_up');
   };
 
   const handleConfirmReject = () => {
     if (!rejectModalOrder) return;
-    updateOrderStatus(rejectModalOrder.id, 'cancelled');
+    updateOrderStatus(rejectModalOrder.id, 'cancelled', { cancellation_reason: rejectReason });
     setRejectModalOrder(null);
   };
 
@@ -191,47 +181,48 @@ export const VendorOrdersTerminal: React.FC = () => {
     const q = searchQuery.toLowerCase();
     return list.filter((o) =>
       o.id.toLowerCase().includes(q) ||
+      o.order_code.toLowerCase().includes(q) ||
       o.customer_name.toLowerCase().includes(q) ||
       o.customer_phone.includes(q) ||
-      o.items.some((it) => it.menu_item.name.toLowerCase().includes(q))
+      o.items?.some((it) => it.item_name.toLowerCase().includes(q))
     );
   };
 
   const displayedOrders = getFilteredOrders();
 
   // Total earnings today for this restaurant
-  const todayEarnings = completedOrders.reduce((sum, o) => sum + o.food_subtotal, 0);
+  const todayEarnings = completedOrders.reduce((sum, o) => sum + o.food_total, 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans select-none antialiased">
       {/* 
         ========================================================================
-        1. RESTAURANT ORDERS HEADER BAR
+        1. RESTAURANT ORDERS HEADER BAR (Customer-Site Clean White Theme)
         ========================================================================
       */}
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6 shadow-xl">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3 sm:px-6 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           
           {/* Left: Brand + Store Selector */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-900/30">
+            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30">
               <ChefHat className="w-6 h-6" />
             </div>
 
             <div className="relative">
               <button
                 onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
-                className="flex items-center space-x-2 bg-slate-800/90 hover:bg-slate-800 text-left px-3.5 py-1.5 rounded-xl border border-slate-700/80 transition"
+                className="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 text-left px-3.5 py-1.5 rounded-2xl border border-slate-200 transition shadow-xs"
               >
                 <div>
                   <div className="flex items-center space-x-1.5">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Restaurant Terminal</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant Terminal</span>
                     <span className={`w-2 h-2 rounded-full ${
                       storeStatus === 'online' ? 'bg-emerald-500 animate-pulse' :
                       storeStatus === 'busy' ? 'bg-amber-500' : 'bg-rose-500'
                     }`} />
                   </div>
-                  <h1 className="text-sm sm:text-base font-black text-white truncate max-w-[180px] sm:max-w-xs">
+                  <h1 className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[180px] sm:max-w-xs">
                     {activeVendor?.name || 'Select Restaurant'}
                   </h1>
                 </div>
@@ -240,9 +231,9 @@ export const VendorOrdersTerminal: React.FC = () => {
 
               {/* Store Switcher Dropdown */}
               {isStoreDropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50">
+                <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in">
                   <div className="text-[11px] font-bold text-slate-400 px-3 py-1.5 uppercase">
-                    Select Your Restaurant Branch
+                    Select Restaurant Branch
                   </div>
                   <div className="max-h-60 overflow-y-auto space-y-1">
                     {vendors.map((v) => {
@@ -253,16 +244,16 @@ export const VendorOrdersTerminal: React.FC = () => {
                           onClick={() => handleSelectVendor(v)}
                           className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition ${
                             v.id === activeVendor?.id
-                              ? 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
-                              : 'text-slate-300 hover:bg-slate-700/50'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
                           <div className="truncate pr-2">
-                            <p className="text-xs font-bold text-white truncate">{v.name}</p>
-                            <p className="text-[10px] text-slate-400">{v.cuisine} • {v.phone}</p>
+                            <p className="text-xs font-bold text-slate-900 truncate">{v.name}</p>
+                            <p className="text-[10px] text-slate-500">{v.cuisine} • {v.phone}</p>
                           </div>
                           {vPending > 0 && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shrink-0 animate-bounce">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shrink-0 animate-bounce">
                               {vPending} new
                             </span>
                           )}
@@ -276,19 +267,19 @@ export const VendorOrdersTerminal: React.FC = () => {
           </div>
 
           {/* Center: Live Order Counter Pills */}
-          <div className="hidden lg:flex items-center space-x-2 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800">
+          <div className="hidden lg:flex items-center space-x-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
             <button
               onClick={() => setActiveTab('pending')}
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'pending'
-                  ? 'bg-rose-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Bell className="w-3.5 h-3.5 text-rose-300" />
+              <Bell className="w-3.5 h-3.5 text-rose-200" />
               <span>New Requests</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                pendingOrders.length > 0 ? 'bg-white text-rose-600' : 'bg-slate-800 text-slate-300'
+                pendingOrders.length > 0 ? 'bg-white text-rose-600' : 'bg-slate-200 text-slate-700'
               }`}>
                 {pendingOrders.length}
               </span>
@@ -298,11 +289,11 @@ export const VendorOrdersTerminal: React.FC = () => {
               onClick={() => setActiveTab('preparing')}
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'preparing'
-                  ? 'bg-amber-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Flame className="w-3.5 h-3.5 text-amber-300" />
+              <Flame className="w-3.5 h-3.5 text-amber-200" />
               <span>Cooking ({preparingOrders.length})</span>
             </button>
 
@@ -310,11 +301,11 @@ export const VendorOrdersTerminal: React.FC = () => {
               onClick={() => setActiveTab('ready')}
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'ready'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Bike className="w-3.5 h-3.5 text-blue-300" />
+              <Bike className="w-3.5 h-3.5 text-blue-200" />
               <span>Rider Pickup ({readyOrders.length})</span>
             </button>
 
@@ -322,11 +313,11 @@ export const VendorOrdersTerminal: React.FC = () => {
               onClick={() => setActiveTab('completed')}
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'completed'
-                  ? 'bg-emerald-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
               <span>Done ({completedOrders.length})</span>
             </button>
           </div>
@@ -341,8 +332,8 @@ export const VendorOrdersTerminal: React.FC = () => {
               }}
               className={`p-2.5 rounded-xl border transition ${
                 soundEnabled
-                  ? 'bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-700'
-                  : 'bg-slate-800/50 text-slate-500 border-slate-800'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-slate-100 text-slate-400 border-slate-200'
               }`}
               title={soundEnabled ? 'Order Audio Chime Enabled' : 'Audio Muted'}
             >
@@ -354,21 +345,21 @@ export const VendorOrdersTerminal: React.FC = () => {
               onClick={() => setAutoAccept(!autoAccept)}
               className={`hidden sm:flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition ${
                 autoAccept
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/50'
-                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
               }`}
               title="Automatically accept all incoming orders immediately"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span>Auto-Accept {autoAccept ? 'ON' : 'OFF'}</span>
             </button>
 
             {/* Store Status Toggle */}
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
+            <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-0.5">
               <button
                 onClick={() => setStoreStatus('online')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  storeStatus === 'online' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  storeStatus === 'online' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Open
@@ -376,7 +367,7 @@ export const VendorOrdersTerminal: React.FC = () => {
               <button
                 onClick={() => setStoreStatus('busy')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  storeStatus === 'busy' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  storeStatus === 'busy' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Busy
@@ -384,7 +375,7 @@ export const VendorOrdersTerminal: React.FC = () => {
               <button
                 onClick={() => setStoreStatus('offline')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  storeStatus === 'offline' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  storeStatus === 'offline' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Pause
@@ -400,7 +391,7 @@ export const VendorOrdersTerminal: React.FC = () => {
         2. SECONDARY CONTROLS & METRICS STRIP
         ========================================================================
       */}
-      <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 py-3 sm:px-6">
+      <div className="bg-white border-b border-slate-200/90 px-4 py-3 sm:px-6 shadow-2xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           
           {/* Mobile Tab Pills */}
@@ -408,7 +399,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <button
               onClick={() => setActiveTab('pending')}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'pending' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-300'
+                activeTab === 'pending' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'
               }`}
             >
               New ({pendingOrders.length})
@@ -416,7 +407,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <button
               onClick={() => setActiveTab('preparing')}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'preparing' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-300'
+                activeTab === 'preparing' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700'
               }`}
             >
               Cooking ({preparingOrders.length})
@@ -424,7 +415,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <button
               onClick={() => setActiveTab('ready')}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'ready' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'
+                activeTab === 'ready' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
               }`}
             >
               Pickup ({readyOrders.length})
@@ -432,7 +423,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <button
               onClick={() => setActiveTab('completed')}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'completed' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
+                activeTab === 'completed' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
               }`}
             >
               Delivered ({completedOrders.length})
@@ -440,7 +431,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <button
               onClick={() => setActiveTab('all')}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'all' ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400'
+                activeTab === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'
               }`}
             >
               All ({vendorOrders.length})
@@ -449,24 +440,24 @@ export const VendorOrdersTerminal: React.FC = () => {
 
           {/* Search Box */}
           <div className="w-full sm:w-80 relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search Order #, Customer, or Food Item..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-rose-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-rose-500"
             />
           </div>
 
           {/* Today's Restaurant Sales Badge */}
           <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-4 text-xs font-medium">
-            <div className="text-slate-400">
-              Completed Today: <span className="text-white font-bold">{completedOrders.length} orders</span>
+            <div className="text-slate-500">
+              Completed Today: <span className="text-slate-900 font-bold">{completedOrders.length} orders</span>
             </div>
-            <div className="bg-emerald-950/60 border border-emerald-800/60 px-3 py-1.5 rounded-xl text-emerald-300 font-bold flex items-center space-x-1.5">
+            <div className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-emerald-800 font-bold flex items-center space-x-1.5 shadow-2xs">
               <span>Today's Food Sales:</span>
-              <span className="font-mono text-white text-sm">৳{todayEarnings}</span>
+              <span className="font-mono text-emerald-700 text-sm font-black">৳{todayEarnings}</span>
             </div>
           </div>
 
@@ -482,17 +473,17 @@ export const VendorOrdersTerminal: React.FC = () => {
         
         {/* High Priority Banner for Incoming Orders */}
         {pendingOrders.length > 0 && (
-          <div className="bg-rose-950/70 border-2 border-rose-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+          <div className="bg-rose-50 border-2 border-rose-500 rounded-3xl p-4 sm:p-5 shadow-md flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
             <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg">
+              <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
                 <Bell className="w-6 h-6 animate-bounce" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-black text-white">
+                <h2 className="text-base sm:text-lg font-black text-rose-950">
                   🔔 {pendingOrders.length} New Order{pendingOrders.length > 1 ? 's' : ''} Requiring Instant Acceptance!
                 </h2>
-                <p className="text-xs text-rose-300">
-                  Accept now to assign nearest delivery rider and start kitchen preparation.
+                <p className="text-xs text-rose-700">
+                  Accept with cooking time to send confirmation to customer screen.
                 </p>
               </div>
             </div>
@@ -500,7 +491,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div className="flex items-center space-x-3 w-full md:w-auto">
               <button
                 onClick={() => setActiveTab('pending')}
-                className="w-full md:w-auto px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="w-full md:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 <span>View & Accept Now</span>
                 <ArrowRight className="w-4 h-4" />
@@ -511,12 +502,12 @@ export const VendorOrdersTerminal: React.FC = () => {
 
         {/* Empty State */}
         {displayedOrders.length === 0 && (
-          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-12 text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto text-slate-500">
+          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3 shadow-xs">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
               <ShoppingBag className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-white">No Orders in this Section</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h3 className="text-lg font-bold text-slate-900">No Orders in this Section</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {activeTab === 'pending'
                 ? 'All incoming orders have been accepted! Keep this tab open; new customer orders will ring here in real time.'
                 : 'There are no active orders matching this filter right now.'}
@@ -530,24 +521,24 @@ export const VendorOrdersTerminal: React.FC = () => {
             const isPending = order.status === 'pending';
             const isPreparing = order.status === 'vendor_accepted' || order.status === 'food_preparing';
             const isReady = order.status === 'ready_for_pickup';
-            const isPickedUp = order.status === 'picked_up';
+            const isPickedUp = order.status === 'food_picked_up' || order.status === 'rider_on_way_to_customer';
             const isDelivered = order.status === 'delivered';
             const isCancelled = order.status === 'cancelled';
 
             const assignedRider = riders.find((r) => r.id === order.rider_id);
-            const selectedPrepMinutes = prepTimeSelection[order.id] || 15;
+            const selectedPrepMinutes = prepTimeSelection[order.id] || order.vendor_prep_minutes || 15;
 
             return (
               <div
                 key={order.id}
-                className={`flex flex-col justify-between rounded-3xl p-5 border transition-all duration-200 shadow-xl ${
+                className={`flex flex-col justify-between rounded-3xl p-5 border transition-all duration-200 shadow-xs hover:shadow-md bg-white ${
                   isPending
-                    ? 'bg-slate-900 border-rose-500/80 shadow-rose-950/30 ring-2 ring-rose-500/20'
+                    ? 'border-rose-400 ring-2 ring-rose-500/20 shadow-rose-100'
                     : isPreparing
-                    ? 'bg-slate-900 border-amber-500/60 shadow-amber-950/20'
+                    ? 'border-amber-300 shadow-amber-50'
                     : isReady
-                    ? 'bg-slate-900 border-blue-500/60 shadow-blue-950/20'
-                    : 'bg-slate-900/70 border-slate-800'
+                    ? 'border-blue-300 shadow-blue-50'
+                    : 'border-slate-200'
                 }`}
               >
                 {/* Header: Order ID + Status Pill + Print Button */}
@@ -555,14 +546,14 @@ export const VendorOrdersTerminal: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono text-xs font-black text-rose-400 uppercase">
-                          {order.id}
+                        <span className="font-mono text-xs font-black text-rose-600 uppercase">
+                          {order.order_code}
                         </span>
                         <span className="text-[11px] text-slate-400">
                           {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-white mt-0.5 flex items-center space-x-1.5">
+                      <h4 className="text-sm font-bold text-slate-900 mt-0.5 flex items-center space-x-1.5">
                         <User className="w-3.5 h-3.5 text-slate-400" />
                         <span>{order.customer_name}</span>
                       </h4>
@@ -572,7 +563,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                       {/* Print Ticket Button */}
                       <button
                         onClick={() => setPrintModalOrder(order)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
                         title="Print Kitchen Docket / Thermal Receipt"
                       >
                         <Printer className="w-3.5 h-3.5" />
@@ -580,15 +571,16 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                       {/* Status Badge */}
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        isPending ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                        isPreparing ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                        isReady ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                        isPickedUp ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
-                        isDelivered ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                        'bg-slate-800 text-slate-400'
+                        isPending ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                        isPreparing ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                        isReady ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                        isPickedUp ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                        isDelivered ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                        'bg-slate-100 text-slate-500'
                       }`}>
                         {isPending ? 'New Request' :
-                         isPreparing ? 'Cooking' :
+                         order.status === 'vendor_accepted' ? 'Waiting Customer' :
+                         order.status === 'food_preparing' ? 'Cooking' :
                          isReady ? 'Ready for Rider' :
                          isPickedUp ? 'Rider on the way' :
                          isDelivered ? 'Delivered' : 'Cancelled'}
@@ -597,67 +589,62 @@ export const VendorOrdersTerminal: React.FC = () => {
                   </div>
 
                   {/* Customer Phone & Delivery Address */}
-                  <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 space-y-1.5 text-xs text-slate-300">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs text-slate-700">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center space-x-1">
-                        <Phone className="w-3 h-3" />
-                        <span>{order.customer_phone}</span>
+                      <span className="text-slate-600 flex items-center space-x-1">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        <span className="font-mono font-bold">{order.customer_phone}</span>
                       </span>
                       <a
                         href={`tel:${order.customer_phone}`}
-                        className="text-[11px] font-bold text-rose-400 hover:underline"
+                        className="text-[11px] font-bold text-rose-600 hover:underline"
                       >
                         Call
                       </a>
                     </div>
-                    <div className="flex items-start space-x-1.5 text-[11px] text-slate-400 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                    <div className="flex items-start space-x-1.5 text-[11px] text-slate-500 truncate">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                       <span className="truncate">{order.delivery_address}</span>
                     </div>
                   </div>
 
                   {/* Item List (With Kitchen Prep Checklist) */}
                   <div className="space-y-2 pt-1">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                      <span>Kitchen Items ({order.items.reduce((s, i) => s + i.quantity, 0)})</span>
-                      {isPreparing && <span className="text-[10px] text-amber-400">Tap item to check off</span>}
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                      <span>Kitchen Items ({order.items?.reduce((s, i) => s + i.quantity, 0) || 0})</span>
+                      {order.status === 'food_preparing' && <span className="text-[10px] text-amber-700 font-bold">Tap item to check off</span>}
                     </div>
 
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                      {order.items.map((item, idx) => {
+                      {order.items?.map((item, idx) => {
                         const isChecked = checkedItems[order.id]?.[idx] || false;
                         return (
                           <div
                             key={idx}
-                            onClick={() => isPreparing && toggleItemCheck(order.id, idx)}
+                            onClick={() => order.status === 'food_preparing' && toggleItemCheck(order.id, idx)}
                             className={`flex items-start justify-between p-2 rounded-xl text-xs transition ${
-                              isPreparing ? 'cursor-pointer hover:bg-slate-800/80' : ''
-                            } ${isChecked ? 'bg-emerald-950/30 border border-emerald-800/40 text-slate-400' : 'bg-slate-950/50 border border-slate-800/50'}`}
+                              order.status === 'food_preparing' ? 'cursor-pointer hover:bg-slate-100' : ''
+                            } ${isChecked ? 'bg-emerald-50 border border-emerald-200 text-slate-500' : 'bg-slate-50 border border-slate-200'}`}
                           >
                             <div className="flex items-start space-x-2">
-                              {isPreparing && (
+                              {order.status === 'food_preparing' && (
                                 <button className="mt-0.5 text-slate-400">
                                   {isChecked ? (
-                                    <CheckSquare className="w-4 h-4 text-emerald-400" />
+                                    <CheckSquare className="w-4 h-4 text-emerald-600" />
                                   ) : (
-                                    <Square className="w-4 h-4 text-slate-500" />
+                                    <Square className="w-4 h-4 text-slate-400" />
                                   )}
                                 </button>
                               )}
                               <div>
-                                <div className={`font-bold ${isChecked ? 'line-through text-slate-400' : 'text-white'}`}>
-                                  <span className="text-rose-400 font-mono mr-1.5">{item.quantity}x</span>
-                                  {item.menu_item.name}
+                                <div className={`font-bold ${isChecked ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                                  <span className="text-rose-600 font-mono mr-1.5">{item.quantity}x</span>
+                                  {item.item_name}
                                 </div>
-                                {item.selectedAddons && item.selectedAddons.length > 0 && (
-                                  <p className="text-[10px] text-slate-400">
-                                    Add-ons: {item.selectedAddons.map(a => a.name).join(', ')}
-                                  </p>
-                                )}
                               </div>
                             </div>
-                            <span className="font-mono font-bold text-slate-300">
-                              ৳{item.itemTotal}
+                            <span className="font-mono font-bold text-slate-700">
+                              ৳{item.subtotal}
                             </span>
                           </div>
                         );
@@ -666,38 +653,38 @@ export const VendorOrdersTerminal: React.FC = () => {
                   </div>
 
                   {/* Payment & Amount Summary */}
-                  <div className="border-t border-slate-800/80 pt-3 flex items-center justify-between text-xs">
+                  <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs">
                     <div>
                       <span className="text-slate-400 block text-[10px]">Payment Method</span>
-                      <span className="font-bold text-white flex items-center space-x-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span className="font-bold text-slate-800 flex items-center space-x-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         <span>Cash on Delivery (COD)</span>
                       </span>
                     </div>
                     <div className="text-right">
                       <span className="text-slate-400 block text-[10px]">Food Bill</span>
-                      <span className="text-base font-black text-rose-400 font-mono">
-                        ৳{order.food_subtotal}
+                      <span className="text-base font-black text-rose-600 font-mono">
+                        ৳{order.food_total}
                       </span>
                     </div>
                   </div>
 
                   {/* Rider Info if assigned */}
                   {assignedRider && (
-                    <div className="bg-slate-950/90 p-3 rounded-2xl border border-slate-800 space-y-1">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400 font-bold flex items-center space-x-1">
-                          <Bike className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-slate-700 font-bold flex items-center space-x-1">
+                          <Bike className="w-3.5 h-3.5 text-pink-600" />
                           <span>Rider: {assignedRider.name}</span>
                         </span>
                         <a
                           href={`tel:${assignedRider.phone}`}
-                          className="text-[11px] font-bold text-blue-400 hover:underline"
+                          className="text-[11px] font-bold text-pink-600 hover:underline"
                         >
                           📞 {assignedRider.phone}
                         </a>
                       </div>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-slate-500">
                         Status: {order.status === 'ready_for_pickup' ? '🛵 Rider on way to kitchen' : '⚡ En route to customer'}
                       </p>
                     </div>
@@ -709,14 +696,14 @@ export const VendorOrdersTerminal: React.FC = () => {
                   ACTION BUTTONS ACCORDING TO STAGE
                   ==============================================================
                 */}
-                <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+                <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
                   
                   {/* CASE 1: INCOMING ORDER (ACCEPT / REJECT) */}
                   {isPending && (
                     <div className="space-y-2">
                       {/* Prep Time Selector */}
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400 text-[11px]">Prep Time:</span>
+                        <span className="text-slate-500 text-[11px] font-bold">Prep Time:</span>
                         <div className="flex items-center space-x-1">
                           {[10, 15, 20, 30].map((mins) => (
                             <button
@@ -724,8 +711,8 @@ export const VendorOrdersTerminal: React.FC = () => {
                               onClick={() => setPrepTimeSelection(prev => ({ ...prev, [order.id]: mins }))}
                               className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition ${
                                 selectedPrepMinutes === mins
-                                  ? 'bg-rose-500 text-white'
-                                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                                  ? 'bg-rose-600 text-white'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                               }`}
                             >
                               {mins}m
@@ -737,7 +724,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => setRejectModalOrder(order)}
-                          className="py-2.5 px-3 bg-slate-800 hover:bg-rose-950/60 hover:text-rose-400 text-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer border border-slate-700"
+                          className="py-2.5 px-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer border border-slate-200"
                         >
                           <X className="w-4 h-4" />
                           <span>Reject</span>
@@ -745,7 +732,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                         <button
                           onClick={() => vendorAcceptOrderWithPrepTime(order.id, selectedPrepMinutes)}
-                          className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-lg shadow-emerald-950/40 cursor-pointer"
+                          className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-md shadow-emerald-600/30 cursor-pointer"
                         >
                           <Check className="w-4 h-4 stroke-[3]" />
                           <span>Accept ({selectedPrepMinutes}m)</span>
@@ -756,12 +743,12 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                   {/* CASE 1.5: WAITING FOR CUSTOMER CONFIRMATION */}
                   {order.status === 'vendor_accepted' && !order.customer_confirmed_prep && (
-                    <div className="bg-amber-950/40 border border-amber-500/60 p-3 rounded-2xl text-center space-y-1 animate-pulse">
-                      <p className="text-xs font-bold text-amber-300 flex items-center justify-center space-x-1.5">
-                        <Clock className="w-4 h-4" />
+                    <div className="bg-amber-50 border border-amber-300 p-3 rounded-2xl text-center space-y-1 animate-pulse">
+                      <p className="text-xs font-bold text-amber-800 flex items-center justify-center space-x-1.5">
+                        <Clock className="w-4 h-4 text-amber-600" />
                         <span>Waiting for customer confirmation</span>
                       </p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-amber-700">
                         Proposed {order.vendor_prep_minutes || 15} mins cooking time sent to customer's screen.
                       </p>
                     </div>
@@ -770,17 +757,17 @@ export const VendorOrdersTerminal: React.FC = () => {
                   {/* CASE 2: PREPARING IN KITCHEN (MARK READY) */}
                   {order.status === 'food_preparing' && (
                     <div className="space-y-2">
-                      <div className="bg-amber-950/30 border border-amber-800/40 p-2 rounded-xl flex items-center justify-between text-xs text-amber-300 font-bold">
+                      <div className="bg-amber-50 border border-amber-200 p-2 rounded-xl flex items-center justify-between text-xs text-amber-800 font-bold">
                         <span className="flex items-center space-x-1">
-                          <Flame className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Customer Approved! Cooking in Kitchen</span>
+                          <Flame className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Customer Approved! Cooking</span>
                         </span>
                         <span>{order.vendor_prep_minutes || 15}m prep</span>
                       </div>
 
                       <button
                         onClick={() => vendorMarkFoodReady(order.id)}
-                        className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg shadow-amber-950/50 cursor-pointer"
+                        className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-md shadow-rose-600/30 cursor-pointer"
                       >
                         <ChefHat className="w-4 h-4" />
                         <span>Food Ready & Search Zone Rider</span>
@@ -793,7 +780,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                     <div className="space-y-2">
                       <button
                         onClick={() => handleConfirmHandover(order.id)}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-950/50 cursor-pointer"
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-md shadow-blue-600/30 cursor-pointer"
                       >
                         <Bike className="w-4 h-4" />
                         <span>Handover Food to Rider</span>
@@ -803,17 +790,17 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                   {/* CASE 4: PICKED UP (IN TRANSIT) */}
                   {isPickedUp && (
-                    <div className="bg-indigo-950/40 border border-indigo-800/40 rounded-2xl p-2.5 text-center text-xs text-indigo-300 font-bold flex items-center justify-center space-x-1.5">
-                      <Bike className="w-4 h-4 animate-bounce" />
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-2.5 text-center text-xs text-indigo-700 font-bold flex items-center justify-center space-x-1.5">
+                      <Bike className="w-4 h-4 text-indigo-600 animate-bounce" />
                       <span>Rider is delivering to customer</span>
                     </div>
                   )}
 
-                  {/* CASE 5: COMPLETED / DELIVERED */}
+                  {/* CASE 5: DELIVERED */}
                   {isDelivered && (
-                    <div className="bg-emerald-950/40 border border-emerald-800/40 rounded-2xl p-2.5 text-center text-xs text-emerald-300 font-bold flex items-center justify-center space-x-1.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Order Delivered Successfully</span>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-2.5 text-center text-xs text-emerald-800 font-bold flex items-center justify-center space-x-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Order Delivered Successfully (COD Settled)</span>
                     </div>
                   )}
 
@@ -822,70 +809,63 @@ export const VendorOrdersTerminal: React.FC = () => {
             );
           })}
         </div>
+
       </main>
 
       {/* 
         ========================================================================
-        MODAL 1: REJECT ORDER MODAL
+        MODAL: REJECT ORDER WITH REASON
         ========================================================================
       */}
       {rejectModalOrder && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-2 text-rose-400">
-                <AlertTriangle className="w-5 h-5" />
-                <h3 className="font-bold text-white text-sm">Decline Order #{rejectModalOrder.id}</h3>
-              </div>
-              <button
-                onClick={() => setRejectModalOrder(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center space-x-2 text-rose-600">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="font-black text-slate-900 text-base">Decline Order #{rejectModalOrder.order_code}</h3>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <p className="text-slate-300 font-medium">Please specify reason for declining:</p>
-              
-              <div className="space-y-2">
-                {[
-                  'Out of key ingredients',
-                  'Kitchen overloaded / Too many orders',
-                  'Item temporarily sold out',
-                  'Closing store early'
-                ].map((reason) => (
-                  <label
-                    key={reason}
-                    className={`flex items-center space-x-2.5 p-3 rounded-xl border cursor-pointer transition ${
-                      rejectReason === reason
-                        ? 'bg-rose-950/40 border-rose-500 text-rose-200'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="rejectReason"
-                      checked={rejectReason === reason}
-                      onChange={() => setRejectReason(reason)}
-                      className="text-rose-500 focus:ring-rose-500"
-                    />
-                    <span className="font-bold">{reason}</span>
-                  </label>
-                ))}
-              </div>
+            <p className="text-xs text-slate-600">
+              Please select a reason for declining this order. The customer will be informed immediately.
+            </p>
+
+            <div className="space-y-2 text-xs">
+              {[
+                'Out of key ingredients',
+                'Kitchen is at max capacity / Overloaded',
+                'Restaurant is closing soon',
+                'Item unavailable / Power outage'
+              ].map((r) => (
+                <label
+                  key={r}
+                  className={`flex items-center space-x-2 p-2.5 rounded-xl border cursor-pointer transition ${
+                    rejectReason === r
+                      ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="reject_reason"
+                    checked={rejectReason === r}
+                    onChange={() => setRejectReason(r)}
+                    className="text-rose-600 focus:ring-rose-500"
+                  />
+                  <span>{r}</span>
+                </label>
+              ))}
             </div>
 
-            <div className="pt-2 grid grid-cols-2 gap-2">
+            <div className="pt-2 flex space-x-2 text-xs">
               <button
                 onClick={() => setRejectModalOrder(null)}
-                className="py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
               >
-                Cancel
+                Back
               </button>
               <button
                 onClick={handleConfirmReject}
-                className="py-2.5 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-rose-500"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl transition shadow-md shadow-rose-600/30"
               >
                 Confirm Decline
               </button>
@@ -896,64 +876,65 @@ export const VendorOrdersTerminal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL 2: PRINT KITCHEN DOCKET / THERMAL RECEIPT
+        MODAL: PRINT KITCHEN DOCKET / THERMAL RECEIPT
         ========================================================================
       */}
       {printModalOrder && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl font-mono">
-            <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-3">
-              <div>
-                <h2 className="text-base font-black uppercase tracking-widest">{activeVendor?.name}</h2>
-                <p className="text-[10px] text-slate-500">KITCHEN DISPATCH TICKET</p>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white text-slate-950 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl font-mono text-xs border border-slate-200">
+            <div className="text-center border-b border-dashed border-slate-300 pb-3 space-y-1">
+              <h2 className="text-base font-black uppercase tracking-wider">{activeVendor?.name}</h2>
+              <p className="text-[10px] text-slate-500">{activeVendor?.address}</p>
+              <p className="text-[10px] text-slate-500">Tel: {activeVendor?.phone}</p>
+              <div className="font-bold text-sm text-slate-900 pt-1">
+                KITCHEN DOCKET #{printModalOrder.order_code}
               </div>
-              <button
-                onClick={() => setPrintModalOrder(null)}
-                className="text-slate-400 hover:text-slate-800 font-sans"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <p className="text-[10px] text-slate-500">
+                Time: {new Date(printModalOrder.created_at).toLocaleString()}
+              </p>
             </div>
 
-            <div className="text-xs space-y-2 border-b border-dashed border-slate-300 pb-3">
-              <div className="flex justify-between font-bold">
-                <span>ORDER: {printModalOrder.id}</span>
-                <span>{new Date(printModalOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-              <div>Customer: <span className="font-bold">{printModalOrder.customer_name}</span></div>
-              <div>Phone: <span className="font-bold">{printModalOrder.customer_phone}</span></div>
-              <div className="text-[11px] text-slate-600">Address: {printModalOrder.delivery_address}</div>
+            {/* Customer Details */}
+            <div className="border-b border-dashed border-slate-300 pb-2 space-y-0.5 text-[11px]">
+              <p><span className="font-bold">Customer:</span> {printModalOrder.customer_name}</p>
+              <p><span className="font-bold">Phone:</span> {printModalOrder.customer_phone}</p>
+              <p><span className="font-bold">Address:</span> {printModalOrder.delivery_address}</p>
+              {printModalOrder.special_instructions && (
+                <p className="font-bold text-rose-600">Note: {printModalOrder.special_instructions}</p>
+              )}
             </div>
 
             {/* Items */}
-            <div className="space-y-2 border-b border-dashed border-slate-300 pb-3 text-xs">
-              <div className="flex justify-between font-bold text-slate-500 text-[10px]">
-                <span>QTY / ITEM</span>
-                <span>PRICE</span>
-              </div>
-              {printModalOrder.items.map((it, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span>{it.quantity}x {it.menu_item.name}</span>
-                  <span className="font-bold">৳{it.itemTotal}</span>
+            <div className="border-b border-dashed border-slate-300 pb-2 space-y-1.5">
+              {printModalOrder.items?.map((it, i) => (
+                <div key={i} className="flex justify-between items-start font-bold">
+                  <span>{it.quantity}x {it.item_name}</span>
+                  <span>৳{it.subtotal}</span>
                 </div>
               ))}
             </div>
 
-            {/* Total */}
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between font-black text-sm">
-                <span>TOTAL (COD):</span>
-                <span>৳{printModalOrder.total}</span>
+            {/* Financial Summary */}
+            <div className="space-y-1 font-bold pt-1">
+              <div className="flex justify-between">
+                <span>Food Subtotal:</span>
+                <span>৳{printModalOrder.food_total}</span>
               </div>
-              <p className="text-[10px] text-slate-500 text-center pt-2">
-                Thank you for ordering with FoodVibe!
-              </p>
+              <div className="flex justify-between text-slate-500">
+                <span>Delivery Charge:</span>
+                <span>৳{printModalOrder.delivery_fee}</span>
+              </div>
+              <div className="flex justify-between text-sm font-black border-t border-slate-900 pt-1">
+                <span>TOTAL COD TO COLLECT:</span>
+                <span>৳{printModalOrder.total_cash_payable}</span>
+              </div>
             </div>
 
-            <div className="pt-2 flex space-x-2 font-sans">
+            {/* Actions */}
+            <div className="pt-3 flex space-x-2">
               <button
                 onClick={() => setPrintModalOrder(null)}
-                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold rounded-xl transition"
               >
                 Close
               </button>
@@ -961,14 +942,23 @@ export const VendorOrdersTerminal: React.FC = () => {
                 onClick={() => {
                   window.print();
                 }}
-                className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 flex items-center justify-center space-x-1.5"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-sans font-black rounded-xl transition flex items-center justify-center space-x-1.5 shadow-md shadow-rose-600/30"
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Slip</span>
+                <Printer className="w-4 h-4" />
+                <span>Print Ticket</span>
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Auth Modal for Vendor */}
+      {isAuthModalOpen && (
+        <AuthModal
+          targetRole="vendor"
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+        />
       )}
 
     </div>
