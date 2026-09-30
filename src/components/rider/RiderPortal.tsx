@@ -146,25 +146,27 @@ export const RiderPortal: React.FC = () => {
         zoomControl: false, // Clean custom mobile view
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 19,
+      // Foodpanda / Google Maps vector look (Free CARTO Voyager Tiles)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20,
       }).addTo(map);
 
       const routeGroup = L.layerGroup().addTo(map);
       routeLayerGroupRef.current = routeGroup;
 
-      // Rider Marker with custom pulsing navigation icon
+      // Rider Marker with custom navigation icon + heading cone
       const riderIcon = L.divIcon({
         className: 'rider-live-pin',
         html: `
           <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-            <!-- Heading Cone Light -->
-            <div style="position: absolute; top: -14px; width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 32px solid rgba(14, 165, 233, 0.35); filter: blur(2px);"></div>
-            <!-- Pulsing outer ring -->
-            <div style="position: absolute; width: 36px; height: 36px; border-radius: 9999px; background: rgba(14, 165, 233, 0.25); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+            <!-- Heading Field of View Cone -->
+            <div style="position: absolute; top: -14px; width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 36px solid rgba(2, 132, 199, 0.3); filter: blur(1.5px);"></div>
+            <!-- Outer soft ring -->
+            <div style="position: absolute; width: 34px; height: 34px; border-radius: 9999px; background: rgba(2, 132, 199, 0.22);"></div>
             <!-- Inner white border circle -->
-            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #0284c7; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.35); z-index: 2;"></div>
+            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #0284c7; border: 3.5px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 2;"></div>
           </div>
         `,
         iconSize: [44, 44],
@@ -359,16 +361,46 @@ export const RiderPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        3. BOTTOM-RIGHT GPS RECENTER BUTTON [ ⌖ ]
+        FLOATING COMPASS BUTTON (TOP-RIGHT, MATCHING SCREENSHOT)
+        ========================================================================
+      */}
+      <div className="absolute top-24 right-4 z-20">
+        <button
+          onClick={handleRecenter}
+          className="w-12 h-12 rounded-full bg-black text-white shadow-2xl flex items-center justify-center hover:bg-slate-900 transition active:scale-95 cursor-pointer border border-slate-700/50"
+          title="Compass / North"
+        >
+          <div className="relative w-7 h-7 flex items-center justify-center">
+            {/* Red top needle */}
+            <div className="absolute top-0.5 w-0 h-0 border-x-[5px] border-x-transparent border-b-[11px] border-b-rose-500"></div>
+            {/* White bottom needle */}
+            <div className="absolute bottom-0.5 w-0 h-0 border-x-[5px] border-x-transparent border-t-[11px] border-t-white"></div>
+            {/* Center pivot dot */}
+            <div className="w-1.5 h-1.5 rounded-full bg-white z-10 shadow-xs"></div>
+          </div>
+        </button>
+      </div>
+
+      {/* 
+        ========================================================================
+        3. BOTTOM-RIGHT GPS RECENTER BUTTON [ ⌖ ] (MATCHING SCREENSHOT)
         ========================================================================
       */}
       <div className="absolute bottom-72 sm:bottom-64 right-4 z-20">
         <button
           onClick={handleRecenter}
-          className="w-12 h-12 rounded-full bg-white text-slate-800 shadow-xl flex items-center justify-center hover:bg-slate-50 transition active:scale-95 border border-slate-100 cursor-pointer"
+          className="w-12 h-12 rounded-full bg-white text-slate-900 shadow-2xl flex items-center justify-center hover:bg-slate-50 transition active:scale-95 border border-slate-200/80 cursor-pointer"
           title="Recenter Map"
         >
-          <Navigation className="w-5 h-5 stroke-[2.2] text-slate-800" />
+          <div className="relative w-6 h-6 flex items-center justify-center">
+            <div className="w-4 h-4 rounded-full border-2 border-slate-900 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+            </div>
+            <div className="absolute -top-0.5 w-[2px] h-1.5 bg-slate-900"></div>
+            <div className="absolute -bottom-0.5 w-[2px] h-1.5 bg-slate-900"></div>
+            <div className="absolute -left-0.5 h-[2px] w-1.5 bg-slate-900"></div>
+            <div className="absolute -right-0.5 h-[2px] w-1.5 bg-slate-900"></div>
+          </div>
         </button>
       </div>
 

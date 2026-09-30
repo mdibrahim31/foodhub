@@ -177,12 +177,13 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
           zoomControl: false, // Clean custom mobile view
         });
 
-        const streetUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const streetUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
         const satelliteUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
         const tile = L.tileLayer(tileMode === 'satellite' ? satelliteUrl : streetUrl, {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap',
+          maxZoom: 20,
+          subdomains: 'abcd',
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         }).addTo(map);
 
         tileLayerRef.current = tile;
@@ -210,7 +211,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
   // Update tile layer if tileMode changes
   useEffect(() => {
     if (!leafletMapInstanceRef.current || !tileLayerRef.current) return;
-    const streetUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const streetUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
     const satelliteUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
     tileLayerRef.current.setUrl(tileMode === 'satellite' ? satelliteUrl : streetUrl);
