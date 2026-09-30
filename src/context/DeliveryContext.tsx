@@ -48,6 +48,7 @@ interface DeliveryContextType {
   selectedAddress: CustomerAddress | null;
   setSelectedAddress: (addr: CustomerAddress) => void;
   addAddress: (addr: Omit<CustomerAddress, 'id'>) => void;
+  updateAddress: (id: string, updates: Partial<CustomerAddress>) => void;
   deleteAddress: (id: string) => void;
   
   riders: Rider[];
@@ -538,6 +539,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const updateAddress = (id: string, updates: Partial<CustomerAddress>) => {
+    setAddresses(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    if (selectedAddress?.id === id) {
+      setSelectedAddress(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
   const deleteAddress = (id: string) => {
     setAddresses(prev => prev.filter(a => a.id !== id));
     if (selectedAddress?.id === id) {
@@ -565,6 +573,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         selectedAddress,
         setSelectedAddress,
         addAddress,
+        updateAddress,
         deleteAddress,
         riders,
         currentRider,

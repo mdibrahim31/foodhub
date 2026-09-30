@@ -238,24 +238,35 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
 export const INITIAL_ADDRESSES: CustomerAddress[] = [
   {
     id: 'addr-001',
-    customer_phone: '+8801700998877',
-    customer_name: 'Shakib Al Hasan',
+    customer_phone: '01609470766',
+    customer_name: 'MD',
     label: 'Home',
-    address_line: 'House 42, Road 12, Block E, Banani, Dhaka',
-    details: 'Apartment 4B, Lift 4, Bell marked Hasan',
-    latitude: 23.7915,
-    longitude: 90.4072,
+    address_line: 'Sah amanot haowsing M. A.',
+    details: 'Chittagong',
+    latitude: 22.3831,
+    longitude: 91.8480,
     is_default: true
   },
   {
     id: 'addr-002',
-    customer_phone: '+8801700998877',
-    customer_name: 'Shakib Al Hasan',
-    label: 'Office',
-    address_line: 'Crystal Palace, SE(D) 22, Gulshan Avenue, Gulshan 1, Dhaka',
-    details: '7th Floor, Tech Hub Reception',
-    latitude: 23.7794,
-    longitude: 90.4190,
+    customer_phone: '01882208531',
+    customer_name: 'MD',
+    label: 'Home',
+    address_line: 'Jongghishah',
+    details: 'Chittagong',
+    latitude: 22.3569,
+    longitude: 91.8325,
+    is_default: false
+  },
+  {
+    id: 'addr-003',
+    customer_phone: '01882208531',
+    customer_name: 'MD',
+    label: 'Other',
+    address_line: 'Cda Avenue',
+    details: 'asian housing society',
+    latitude: 22.3610,
+    longitude: 91.8220,
     is_default: false
   }
 ];
