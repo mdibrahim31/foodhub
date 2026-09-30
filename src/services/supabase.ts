@@ -278,9 +278,9 @@ export const INITIAL_RIDERS: Rider[] = [
     phone: '+8801755500011',
     vehicle_type: 'Motorcycle',
     is_online: true,
-    // Placed 0.35 km from Kacchi Bhai Banani (23.7937, 90.4049) -> inside the 1.0 km radius!
-    current_latitude: 23.7945,
-    current_longitude: 90.4062,
+    // Centered in Chattogram (Khulshi / Nasirabad / Bayazid)
+    current_latitude: 22.3650,
+    current_longitude: 91.8200,
     last_location_updated_at: new Date().toISOString(),
     cash_in_hand: 2500, // Starts with floating cash to buy food from restaurant
     is_approved: true
@@ -333,6 +333,45 @@ export const INITIAL_ORDERS: Order[] = [
         id: 'oi-2',
         order_id: 'ord-101',
         item_name: 'Special Traditional Borhani (250ml)',
+        item_price: 60,
+        quantity: 1,
+        subtotal: 60
+      }
+    ]
+  },
+  {
+    id: 'ord-102',
+    order_code: 'FV-92144',
+    customer_name: 'MD',
+    customer_phone: '01609470766',
+    vendor_id: 'a0000004-0000-0000-0000-000000000004',
+    rider_id: undefined, // Unassigned: Available for Rider in Chattogram to Accept/Reject!
+    delivery_address: '305 Chasma Hill R/A Rd, Chittagong',
+    delivery_latitude: 22.3705,
+    delivery_longitude: 91.8215,
+    food_total: 280,
+    delivery_distance_km: 1.4,
+    delivery_fee: 45,
+    total_cash_payable: 325,
+    food_cash_paid_to_vendor: false,
+    food_and_delivery_cash_collected_from_customer: false,
+    status: 'ready_for_pickup',
+    special_instructions: 'Asian housing society gate, call before arrival',
+    created_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
+    updated_at: new Date().toISOString(),
+    items: [
+      {
+        id: 'oi-3',
+        order_id: 'ord-102',
+        item_name: 'Chicken Burger & Fries Combo',
+        item_price: 220,
+        quantity: 1,
+        subtotal: 220
+      },
+      {
+        id: 'oi-4',
+        order_id: 'ord-102',
+        item_name: 'Chocolate Pastry Cake',
         item_price: 60,
         quantity: 1,
         subtotal: 60
