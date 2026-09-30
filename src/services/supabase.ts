@@ -5,7 +5,9 @@ import {
   MenuItem, 
   CustomerAddress, 
   Rider, 
-  Order 
+  Order,
+  CustomerUser,
+  UserAccount
 } from '../types/database';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -36,238 +38,184 @@ export const DEFAULT_SETTINGS: SystemSettings = {
 export const INITIAL_VENDORS: Vendor[] = [
   {
     id: 'a0000001-0000-0000-0000-000000000001',
-    name: "Sultan's Dine",
-    description: 'Authentic traditional Dum Biryani, Borhani, and Mughlai delicacies',
-    cuisine: 'Biryani, Bengali, Mughlai',
-    phone: '+8801711122233',
-    address: 'Road 11, Block D, Banani, Dhaka',
-    latitude: 23.7937,
-    longitude: 90.4049,
-    google_maps_link: 'https://maps.google.com/?q=23.7937,90.4049',
+    name: "Khulshi Mart Kitchen",
+    description: 'Fresh grilled steaks, club sandwiches, artisan salads and shakes',
+    cuisine: 'Continental, Fast Food, Bakery',
+    phone: '01711122233',
+    address: '4, Zakir Hossain Road, Khulshi, Chittagong',
+    zone: 'Khulshi Zone',
+    latitude: 22.3620,
+    longitude: 91.8210,
+    google_maps_link: 'https://maps.google.com/?q=22.3620,91.8210',
     is_active: true,
     rating: 4.8,
-    estimated_prep_time_minutes: 25,
-    cover_image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=150&auto=format&fit=crop&q=80'
+    estimated_prep_time_minutes: 20,
+    is_password_set: true,
+    password: '123',
+    cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80'
   },
   {
     id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Snackza',
-    description: 'Loaded chicken shawarma, grilled doner kebabs, crispy rolls and dips',
-    cuisine: 'Snacks, Shawarma, Wraps',
-    phone: '+8801811122244',
-    address: 'Gulshan South Avenue, Gulshan 1, Dhaka',
-    latitude: 23.7788,
-    longitude: 90.4182,
-    google_maps_link: 'https://maps.google.com/?q=23.7788,90.4182',
+    name: 'KRUNCH - Chawkbazar',
+    description: 'Crispy fried chicken, zinger burgers, spicy fries and cheese dips',
+    cuisine: 'Fast Food, Fried Chicken, Burgers',
+    phone: '01811122244',
+    address: 'Chawkbazar Main Road, Chawkbazar, Chittagong',
+    zone: 'Chawkbazar Zone',
+    latitude: 22.3585,
+    longitude: 91.8385,
+    google_maps_link: 'https://maps.google.com/?q=22.3585,91.8385',
     is_active: true,
-    rating: 4.5,
-    estimated_prep_time_minutes: 30,
-    cover_image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=150&auto=format&fit=crop&q=80'
+    rating: 4.6,
+    estimated_prep_time_minutes: 15,
+    is_password_set: true,
+    password: '123',
+    cover_image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150&auto=format&fit=crop&q=80'
   },
   {
     id: 'a0000003-0000-0000-0000-000000000003',
-    name: 'PizzaBurg',
-    description: 'Cheesy artisan pan pizzas, loaded wedges, and barbecue wings',
-    cuisine: 'Pizza, Fast Food, Burgers',
-    phone: '+8801911122255',
-    address: 'Bir Uttam AK Khandakar Rd, Mohakhali, Dhaka',
-    latitude: 23.7776,
-    longitude: 90.4024,
+    name: "Sultan's Dine",
+    description: 'Authentic traditional Dum Biryani, Borhani, and Mughlai delicacies',
+    cuisine: 'Biryani, Bengali, Mughlai',
+    phone: '01911122255',
+    address: 'GEC Circle, CDA Avenue, Chittagong',
+    zone: 'GEC Zone',
+    latitude: 22.3590,
+    longitude: 91.8215,
     is_active: true,
     rating: 4.7,
     estimated_prep_time_minutes: 25,
-    cover_image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&auto=format&fit=crop&q=80'
+    is_password_set: true,
+    password: '123',
+    cover_image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=150&auto=format&fit=crop&q=80'
   },
   {
     id: 'a0000004-0000-0000-0000-000000000004',
     name: 'Tasty Treat - East Nasirabad',
     description: 'Fresh bakery items, patties, burger sliders, cakes, and traditional sweets',
-    cuisine: 'Dessert, Bakery, Price Match',
-    phone: '+8801722233344',
+    cuisine: 'Dessert, Bakery, Fast Food',
+    phone: '01722233344',
     address: 'East Nasirabad, Chittagong',
+    zone: 'Nasirabad Zone',
     latitude: 22.3569,
     longitude: 91.8282,
     google_maps_link: 'https://maps.google.com/?q=22.3569,91.8282',
     is_active: true,
     rating: 4.4,
     estimated_prep_time_minutes: 20,
+    is_password_set: true,
+    password: '123',
     cover_image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&auto=format&fit=crop&q=80',
     logo_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=150&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'a0000005-0000-0000-0000-000000000005',
-    name: "Domino's Pizza",
-    description: 'Famous pepperoni, MeatMaxxx loaded deep-dish crust pizzas and garlic sticks',
-    cuisine: 'Pizza, Italian, Fast Food',
-    phone: '+8801833344455',
-    address: 'Pragati Sarani, Baridhara, Dhaka',
-    latitude: 23.7972,
-    longitude: 90.4230,
-    google_maps_link: 'https://maps.google.com/?q=23.7972,90.4230',
-    is_active: true,
-    rating: 4.6,
-    estimated_prep_time_minutes: 20,
-    cover_image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=150&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'a0000006-0000-0000-0000-000000000006',
-    name: "Sharia's Kitchen",
-    description: 'Desi home-style cooking, spicy khichuri, set meals and fresh bhortas',
-    cuisine: 'Bangladeshi, Khichuri, Set Menu',
-    phone: '+8801944455566',
-    address: 'GEC Circle, Chittagong',
-    latitude: 22.3590,
-    longitude: 91.8215,
-    google_maps_link: 'https://maps.google.com/?q=22.3590,91.8215',
-    is_active: true,
-    rating: 3.9,
-    estimated_prep_time_minutes: 35,
-    cover_image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
-    logo_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=150&auto=format&fit=crop&q=80'
   }
 ];
 
 export const INITIAL_MENU_ITEMS: MenuItem[] = [
-  // Sultan's Dine
+  // Khulshi Mart
   {
     id: 'm-001',
     vendor_id: 'a0000001-0000-0000-0000-000000000001',
-    name: "Sultan's Kacchi Biryani (Full)",
+    name: "Classic Beef Burger with Cheddar",
+    description: 'Grilled premium beef patty, melted cheddar, lettuce and secret sauce',
+    price: 320,
+    category: 'Burgers',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'm-002',
+    vendor_id: 'a0000001-0000-0000-0000-000000000001',
+    name: 'Loaded Nachos & Cheese Dip',
+    description: 'Crispy corn tortilla chips topped with salsa, jalapeños, and warm cheese dip',
+    price: 240,
+    category: 'Snacks',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=500&auto=format&fit=crop&q=80'
+  },
+  // KRUNCH
+  {
+    id: 'm-003',
+    vendor_id: 'a0000002-0000-0000-0000-000000000002',
+    name: 'KRUNCH Crispy Fried Chicken (4 pcs)',
+    description: 'Signature crunchy spicy fried chicken with garlic mayo dip and coleslaw',
+    price: 399,
+    category: 'Fast Food',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'm-004',
+    vendor_id: 'a0000002-0000-0000-0000-000000000002',
+    name: 'Spicy Zinger Tower Burger',
+    description: 'Extra crispy chicken fillet, spicy mayo, cheese slice and toasted sesame bun',
+    price: 280,
+    category: 'Fast Food',
+    is_available: true,
+    image_url: 'https://images.unsplash.com/photo-1521305916504-4a1121188589?w=500&auto=format&fit=crop&q=80'
+  },
+  // Sultan's Dine
+  {
+    id: 'm-005',
+    vendor_id: 'a0000003-0000-0000-0000-000000000003',
+    name: "Sultan's Kacchi Biryani (Half)",
     description: 'Aromatic basmati rice cooked with succulent mutton pieces, aloo, and traditional spices',
-    price: 380,
+    price: 290,
     category: 'Biryani',
     is_available: true,
     image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop&q=80'
   },
   {
-    id: 'm-002',
-    vendor_id: 'a0000001-0000-0000-0000-000000000001',
-    name: 'Special Traditional Borhani',
-    description: 'Refreshing spiced yogurt drink prepared with mint and mustard seeds',
-    price: 60,
-    category: 'Beverages',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=500&auto=format&fit=crop&q=80'
-  },
-
-  // Snackza
-  {
-    id: 'm-004',
-    vendor_id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Loaded Chicken Doner Shawarma',
-    description: 'Warm pita bread filled with flame-grilled chicken, fresh salad and garlic mayonnaise',
-    price: 180,
-    category: 'Snacks',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'm-005',
-    vendor_id: 'a0000002-0000-0000-0000-000000000002',
-    name: 'Crispy Chicken Wrap Roll',
-    description: 'Crispy fried chicken tenders wrapped with cheese slice and spicy chili mayo',
-    price: 150,
-    category: 'Snacks',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=500&auto=format&fit=crop&q=80'
-  },
-
-  // PizzaBurg
-  {
     id: 'm-006',
     vendor_id: 'a0000003-0000-0000-0000-000000000003',
-    name: 'Beef Supreme Delight Pizza (9-inch)',
-    description: 'Topped with spiced ground beef, mushrooms, capsicum, olives, and mozzarella cheese',
-    price: 340,
-    category: 'Pizza',
+    name: 'Special Traditional Borhani',
+    description: 'Refreshing spiced yogurt drink prepared with mint and mustard seeds',
+    price: 80,
+    category: 'Beverage',
     is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&auto=format&fit=crop&q=80'
-  },
-
-  // Tasty Treat
-  {
-    id: 'm-007',
-    vendor_id: 'a0000004-0000-0000-0000-000000000004',
-    name: 'Chicken Cheese Puff (2 Pcs)',
-    description: 'Flaky baked golden pastry stuffed with creamy chicken and cheese',
-    price: 90,
-    category: 'Snacks',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80'
-  },
-
-  // Domino's Pizza
-  {
-    id: 'm-008',
-    vendor_id: 'a0000005-0000-0000-0000-000000000005',
-    name: 'MeatMAXXX Cheesy Stuffed Crust Pizza',
-    description: 'Overloaded with grilled chicken sausage, beef pepperoni, jalapenos and liquid cheese rim',
-    price: 499,
-    category: 'Pizza',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop&q=80'
-  },
-
-  // Sharia's Kitchen
-  {
-    id: 'm-009',
-    vendor_id: 'a0000006-0000-0000-0000-000000000006',
-    name: 'Plain Khichuri',
-    description: 'Comforting turmeric moong dal yellow rice khichuri with fried onions and green chili',
-    price: 60,
-    category: 'Bangladeshi',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'm-010',
-    vendor_id: 'a0000006-0000-0000-0000-000000000006',
-    name: 'Set Menu - 3 (Khichuri + Chicken Curry + Salad)',
-    description: 'Hot fragrant bhuna khichuri served with rich chicken curry and mixed vegetable salad',
-    price: 170,
-    category: 'Bangladeshi',
-    is_available: true,
-    image_url: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=500&auto=format&fit=crop&q=80'
+    image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=80'
   }
 ];
 
 export const INITIAL_ADDRESSES: CustomerAddress[] = [
   {
     id: 'addr-001',
-    customer_phone: '01609470766',
-    customer_name: 'MD',
+    customer_phone: '01882208531',
+    customer_name: 'MD Tanvir',
     label: 'Home',
     address_line: 'Sah amanot haowsing M. A.',
     details: 'Chittagong',
-    latitude: 22.3831,
-    longitude: 91.8480,
+    zone: 'Chawkbazar Zone',
+    latitude: 22.3595,
+    longitude: 91.8360,
     is_default: true
   },
   {
     id: 'addr-002',
     customer_phone: '01882208531',
-    customer_name: 'MD',
-    label: 'Home',
-    address_line: 'Jongghishah',
-    details: 'Chittagong',
-    latitude: 22.3569,
-    longitude: 91.8325,
-    is_default: false
-  },
-  {
-    id: 'addr-003',
-    customer_phone: '01882208531',
-    customer_name: 'MD',
-    label: 'Other',
-    address_line: 'Cda Avenue',
-    details: 'asian housing society',
+    customer_name: 'MD Tanvir',
+    label: 'Office',
+    address_line: 'CDA Avenue, GEC',
+    details: 'Asian Housing Society, Flat 4B',
+    zone: 'GEC Zone',
     latitude: 22.3610,
     longitude: 91.8220,
     is_default: false
+  }
+];
+
+export const INITIAL_CUSTOMERS: CustomerUser[] = [
+  {
+    id: 'c-001',
+    name: 'MD Tanvir',
+    phone: '01882208531',
+    password: '123',
+    email: 'tanvir@gmail.com',
+    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    addresses: INITIAL_ADDRESSES,
+    created_at: new Date().toISOString()
   }
 ];
 
@@ -275,27 +223,56 @@ export const INITIAL_RIDERS: Rider[] = [
   {
     id: 'r0000001-0000-0000-0000-000000000001',
     name: 'Rahim Rider',
-    phone: '+8801755500011',
+    phone: '01755500011',
+    photo_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
+    home_address: 'Chawkbazar, Chittagong',
+    zone: 'Chawkbazar Zone',
     vehicle_type: 'Motorcycle',
     is_online: true,
-    // Centered in Chattogram (Khulshi / Nasirabad / Bayazid)
-    current_latitude: 22.3650,
-    current_longitude: 91.8200,
+    current_latitude: 22.3588,
+    current_longitude: 91.8378,
     last_location_updated_at: new Date().toISOString(),
-    cash_in_hand: 2500, // Starts with floating cash to buy food from restaurant
-    is_approved: true
+    cash_in_hand: 2500,
+    is_approved: true,
+    is_password_set: true,
+    password: '123',
+    created_at: new Date().toISOString()
   },
   {
     id: 'r0000002-0000-0000-0000-000000000002',
     name: 'Karim Express',
-    phone: '+8801855500022',
-    vehicle_type: 'Bicycle',
-    is_online: false,
-    current_latitude: 23.7650,
-    current_longitude: 90.3950,
+    phone: '01855500022',
+    photo_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    home_address: 'Khulshi, Chittagong',
+    zone: 'Khulshi Zone',
+    vehicle_type: 'Motorcycle',
+    is_online: true,
+    current_latitude: 22.3615,
+    current_longitude: 91.8205,
     last_location_updated_at: new Date().toISOString(),
     cash_in_hand: 1200,
-    is_approved: true
+    is_approved: true,
+    is_password_set: true,
+    password: '123',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'r0000003-0000-0000-0000-000000000003',
+    name: 'Shaon Delivery',
+    phone: '01955500033',
+    photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    home_address: 'GEC Circle, Chittagong',
+    zone: 'GEC Zone',
+    vehicle_type: 'Bicycle',
+    is_online: true,
+    current_latitude: 22.3592,
+    current_longitude: 91.8220,
+    last_location_updated_at: new Date().toISOString(),
+    cash_in_hand: 1800,
+    is_approved: true,
+    is_password_set: true,
+    password: '123',
+    created_at: new Date().toISOString()
   }
 ];
 
@@ -303,79 +280,40 @@ export const INITIAL_ORDERS: Order[] = [
   {
     id: 'ord-101',
     order_code: 'FV-84920',
-    customer_name: 'Shakib Al Hasan',
-    customer_phone: '+8801700998877',
-    vendor_id: 'a0000001-0000-0000-0000-000000000001',
+    customer_id: 'c-001',
+    customer_name: 'MD Tanvir',
+    customer_phone: '01882208531',
+    vendor_id: 'a0000002-0000-0000-0000-000000000002',
     rider_id: 'r0000001-0000-0000-0000-000000000001',
-    delivery_address: 'House 42, Road 12, Block E, Banani, Dhaka (Apt 4B)',
-    delivery_latitude: 23.7915,
-    delivery_longitude: 90.4072,
-    food_total: 440,
-    delivery_distance_km: 0.35,
+    zone: 'Chawkbazar Zone',
+    delivery_address: 'Sah amanot haowsing M. A., Chawkbazar, Chittagong',
+    delivery_latitude: 22.3595,
+    delivery_longitude: 91.8360,
+    food_total: 399,
+    delivery_distance_km: 0.45,
     delivery_fee: 35,
-    total_cash_payable: 475,
+    total_cash_payable: 434,
     food_cash_paid_to_vendor: false,
     food_and_delivery_cash_collected_from_customer: false,
-    status: 'ready_for_pickup',
-    special_instructions: 'Please bring extra salad and spoons',
-    created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+    status: 'food_preparing',
+    vendor_prep_minutes: 15,
+    customer_confirmed_prep: true,
+    prep_ends_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    special_instructions: 'Extra hot spicy chicken please',
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
     items: [
       {
-        id: 'oi-1',
+        id: 'oi-101',
         order_id: 'ord-101',
-        item_name: 'Basmati Kacchi Biryani (Full)',
-        item_price: 380,
+        menu_item_id: 'm-003',
+        item_name: 'KRUNCH Crispy Fried Chicken (4 pcs)',
+        item_price: 399,
         quantity: 1,
-        subtotal: 380
-      },
-      {
-        id: 'oi-2',
-        order_id: 'ord-101',
-        item_name: 'Special Traditional Borhani (250ml)',
-        item_price: 60,
-        quantity: 1,
-        subtotal: 60
+        subtotal: 399
       }
-    ]
-  },
-  {
-    id: 'ord-102',
-    order_code: 'FV-92144',
-    customer_name: 'MD',
-    customer_phone: '01609470766',
-    vendor_id: 'a0000004-0000-0000-0000-000000000004',
-    rider_id: undefined, // Unassigned: Available for Rider in Chattogram to Accept/Reject!
-    delivery_address: '305 Chasma Hill R/A Rd, Chittagong',
-    delivery_latitude: 22.3705,
-    delivery_longitude: 91.8215,
-    food_total: 280,
-    delivery_distance_km: 1.4,
-    delivery_fee: 45,
-    total_cash_payable: 325,
-    food_cash_paid_to_vendor: false,
-    food_and_delivery_cash_collected_from_customer: false,
-    status: 'ready_for_pickup',
-    special_instructions: 'Asian housing society gate, call before arrival',
-    created_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
-    updated_at: new Date().toISOString(),
-    items: [
-      {
-        id: 'oi-3',
-        order_id: 'ord-102',
-        item_name: 'Chicken Burger & Fries Combo',
-        item_price: 220,
-        quantity: 1,
-        subtotal: 220
-      },
-      {
-        id: 'oi-4',
-        order_id: 'ord-102',
-        item_name: 'Chocolate Pastry Cake',
-        item_price: 60,
-        quantity: 1,
-        subtotal: 60
-      }
-    ]
+    ],
+    vendor: INITIAL_VENDORS[1],
+    rider: INITIAL_RIDERS[0]
   }
 ];

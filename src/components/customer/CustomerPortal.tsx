@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
+import { AuthModal } from '../common/AuthModal';
 import { calculateDistanceKm, calculateDeliveryFee } from '../../utils/geo';
 import { Vendor, Order } from '../../types/database';
 import { 
@@ -26,7 +27,12 @@ import {
   Gift,
   HelpCircle,
   FileText,
-  LogOut
+  LogOut,
+  Clock,
+  Check,
+  X,
+  Phone,
+  Bike
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -40,8 +46,14 @@ export const CustomerPortal: React.FC = () => {
     addToCart, 
     updateCartQuantity, 
     placeOrder,
-    orders
+    orders,
+    currentUser,
+    currentCustomer,
+    customerRespondToPrepTime,
+    logoutUser
   } = useDelivery();
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [activeBottomNav, setActiveBottomNav] = useState<'food' | 'grocery' | 'search' | 'carts' | 'account'>('food');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -1358,6 +1370,7 @@ export const CustomerPortal: React.FC = () => {
               </button>
               <button
                 onClick={() => {
+                  logoutUser();
                   setIsLogoutConfirmOpen(false);
                   setActiveBottomNav('food');
                 }}
@@ -1368,6 +1381,66 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 
+        ========================================================================
+        CUSTOMER PERMISSION WINDOW (POPUP MODAL)
+        User requirement:
+        "vendor order accept korar shomoy order er upor ekTa time level thakbe sheTa set kore accept korbe.
+        tokon customer er kace ekTa permission window show hobe..jeTate bola hobe vendor er food ready hote eto minit lagbe apni ki order continue korte chan ki na..customer ok ba no select korte pare.ok bolle.order puropuri place hoye jabe.vendor order ready korbe"
+        ========================================================================
+      */}
+      {orders.filter(o => o.status === 'vendor_accepted' && !o.customer_confirmed_prep).map((prepOrder) => (
+        <div key={prepOrder.id} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 text-center shadow-2xl border border-slate-100">
+            <div className="w-14 h-14 rounded-3xl bg-amber-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">
+              <Clock className="w-7 h-7 animate-pulse" />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 inline-block">
+                Order #{prepOrder.order_code}
+              </span>
+              <h3 className="text-lg font-black text-slate-900 pt-1">
+                Estimated Cooking Time
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                <span className="font-bold text-slate-900">{prepOrder.vendor?.name || 'Restaurant'}</span> estimates that preparing your meal will take <span className="font-black text-amber-600 text-sm">{prepOrder.vendor_prep_minutes || 15} minutes</span>.
+              </p>
+              <p className="text-xs font-bold text-slate-800 pt-1">
+                Do you want to continue with this order?
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <button
+                onClick={() => customerRespondToPrepTime(prepOrder.id, false)}
+                className="py-3 px-4 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold rounded-2xl text-xs transition flex items-center justify-center space-x-1 cursor-pointer border border-slate-200"
+              >
+                <X className="w-4 h-4" />
+                <span>No (Cancel)</span>
+              </button>
+
+              <button
+                onClick={() => customerRespondToPrepTime(prepOrder.id, true)}
+                className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-lg shadow-emerald-600/30 cursor-pointer"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>OK (Continue)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* Customer Auth Modal */}
+      {isAuthModalOpen && (
+        <AuthModal
+          targetRole="customer"
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+        />
       )}
 
       {/* 

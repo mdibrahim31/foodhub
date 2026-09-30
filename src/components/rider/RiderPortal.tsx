@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { useDelivery } from '../../context/DeliveryContext';
+import { AuthModal } from '../common/AuthModal';
+import { calculateDistanceKm } from '../../utils/geo';
 import { Order, Rider } from '../../types/database';
 import { 
   Bike, 
@@ -23,7 +25,11 @@ import {
   DollarSign, 
   Layers,
   ArrowRight,
-  Radio
+  Radio,
+  Store,
+  User,
+  LogOut,
+  KeyRound
 } from 'lucide-react';
 
 export const RiderPortal: React.FC = () => {
@@ -35,12 +41,16 @@ export const RiderPortal: React.FC = () => {
     updateRiderLocation,
     settings, 
     orders, 
-    getEligibleOrdersForRider, 
     riderAcceptOrder,
+    riderRejectOrder,
     riderConfirmCashPaidToVendor,
     riderConfirmCashCollectedFromCustomer,
-    vendors
+    vendors,
+    currentUser,
+    logoutUser
   } = useDelivery();
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // State Management
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
@@ -74,11 +84,43 @@ export const RiderPortal: React.FC = () => {
     (o) => o.rider_id === currentRider.id && !['delivered', 'cancelled'].includes(o.status)
   );
 
-  // Eligible orders based on proximity radius
-  const eligibleRequests = getEligibleOrdersForRider(currentRider);
-  const incomingCandidate = eligibleRequests.find(
-    (r) => r.isWithinRadius && !r.order.rider_id && !rejectedOrderIds.includes(r.order.id)
-  );
+  // Incoming Candidate Order based on zone, distance, and dispatched single rider logic
+  const incomingCandidateOrder = currentRider.is_online && !activeOrder
+    ? orders.find((o) => {
+        if (o.rider_id || ['delivered', 'cancelled'].includes(o.status)) return false;
+        if (o.rejected_rider_ids?.includes(currentRider.id)) return false;
+        if (o.dispatched_rider_id === currentRider.id) return true;
+        if (
+          !o.dispatched_rider_id &&
+          (o.status === 'ready_for_pickup' || o.status === 'food_preparing')
+        ) {
+          const v = vendors.find((vend) => vend.id === o.vendor_id);
+          const orderZone = o.zone || v?.zone;
+          if (currentRider.zone && orderZone && currentRider.zone.toLowerCase() !== orderZone.toLowerCase()) {
+            return false;
+          }
+          if (v) {
+            const dist = calculateDistanceKm(v.latitude, v.longitude, currentRider.current_latitude, currentRider.current_longitude);
+            return dist <= (settings.rider_match_radius_km || 1.5);
+          }
+          return true;
+        }
+        return false;
+      })
+    : null;
+
+  const candidateVendor = incomingCandidateOrder
+    ? (vendors.find((v) => v.id === incomingCandidateOrder.vendor_id) || incomingCandidateOrder.vendor)
+    : null;
+
+  const distanceToVendorKm = incomingCandidateOrder && candidateVendor
+    ? calculateDistanceKm(
+        candidateVendor.latitude,
+        candidateVendor.longitude,
+        currentRider.current_latitude,
+        currentRider.current_longitude
+      ).toFixed(2)
+    : '0.4';
 
   // Audio chime for new incoming order
   const playAlertSound = () => {
@@ -90,40 +132,48 @@ export const RiderPortal: React.FC = () => {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
       osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.55);
     } catch {
-      // Audio context restricted before user interaction
+      // Ignore
     }
   };
 
   // Sound chime when a new candidate appears
   useEffect(() => {
-    if (incomingCandidate && currentRider.is_online) {
+    if (incomingCandidateOrder && currentRider.is_online) {
       playAlertSound();
       setOrderCountdown(60);
     }
-  }, [incomingCandidate?.order.id, currentRider.is_online]);
+  }, [incomingCandidateOrder?.id, currentRider.is_online]);
 
   // Countdown timer for incoming request
   useEffect(() => {
-    if (!incomingCandidate || !currentRider.is_online) return;
+    if (!incomingCandidateOrder || !currentRider.is_online) return;
     const interval = setInterval(() => {
       setOrderCountdown((prev) => {
         if (prev <= 1) {
-          // Auto reject when countdown runs out
-          setRejectedOrderIds((r) => [...r, incomingCandidate.order.id]);
+          // Auto reject when countdown runs out -> pass to next rider
+          riderRejectOrder(incomingCandidateOrder.id, currentRider.id);
           return 60;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [incomingCandidate?.order.id, currentRider.is_online]);
+  }, [incomingCandidateOrder?.id, currentRider.is_online]);
+
+  const handleAcceptOrder = (orderId: string) => {
+    riderAcceptOrder(orderId, currentRider.id);
+  };
+
+  const handleRejectOrder = (orderId: string) => {
+    riderRejectOrder(orderId, currentRider.id);
+  };
 
   // Lock body scroll strictly while in Rider Portal
   useEffect(() => {
@@ -224,7 +274,7 @@ export const RiderPortal: React.FC = () => {
     const layer = routeLayerGroupRef.current;
     layer.clearLayers();
 
-    const targetOrder = activeOrder || incomingCandidate?.order;
+    const targetOrder = activeOrder || incomingCandidateOrder;
     if (targetOrder) {
       const vendor = vendors.find((v) => v.id === targetOrder.vendor_id);
       const points: [number, number][] = [
@@ -322,7 +372,7 @@ export const RiderPortal: React.FC = () => {
         console.error('Fitbounds error:', e);
       }
     }
-  }, [activeOrder?.id, incomingCandidate?.order.id, currentRider.current_latitude, currentRider.current_longitude]);
+  }, [activeOrder?.id, incomingCandidateOrder?.id, currentRider.current_latitude, currentRider.current_longitude]);
 
   // Recenter Map to Rider GPS
   const handleRecenter = () => {
@@ -333,16 +383,6 @@ export const RiderPortal: React.FC = () => {
         { animate: true }
       );
     }
-  };
-
-  // Reject Incoming Order
-  const handleRejectOrder = (orderId: string) => {
-    setRejectedOrderIds((prev) => [...prev, orderId]);
-  };
-
-  // Accept Incoming Order
-  const handleAcceptOrder = (orderId: string) => {
-    riderAcceptOrder(orderId, currentRider.id);
   };
 
   // Check if rider cash limit is exceeded (e.g. > 5000 BDT)
@@ -488,10 +528,10 @@ export const RiderPortal: React.FC = () => {
         </button>
 
         {/* Pink Turn-by-Turn Navigation Button [ ↗ ] (100% Matching Screenshot) */}
-        {(activeOrder || incomingCandidate) && (
+        {(activeOrder || incomingCandidateOrder) && (
           <button
             onClick={() => {
-              const target = activeOrder || incomingCandidate?.order;
+              const target = activeOrder || incomingCandidateOrder;
               if (target) {
                 const vendor = vendors.find(v => v.id === target.vendor_id);
                 const destLat = target.status === 'out_for_delivery' ? target.delivery_latitude : (vendor?.latitude || target.delivery_latitude);
@@ -520,17 +560,17 @@ export const RiderPortal: React.FC = () => {
 
           {/* 
             CASE A: NEW ORDER POPUP WITH ACCEPT & REJECT BUTTONS
-            (User explicitly requested: "red mark a order ppup show hobe accept and reject button thakbe")
+            (User requirement: "rider er kace vendor er and customer er all details show korbe with phone number and food price and delivery charge and totall amount and pay to vendor..jodi she reject kore tahole onno joner kace jabe")
           */}
-          {currentRider.is_online && incomingCandidate && !activeOrder && (
-            <div className="space-y-3.5">
+          {currentRider.is_online && incomingCandidateOrder && !activeOrder && (
+            <div className="space-y-3.5 animate-in fade-in">
               
               {/* Header: Incoming Order Alert + Countdown Timer */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 animate-ping" />
                   <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    New Delivery Request
+                    Zone Dispatch: {currentRider.zone}
                   </span>
                 </div>
 
@@ -541,79 +581,109 @@ export const RiderPortal: React.FC = () => {
               </div>
 
               {/* Order Code & Restaurant Pickup */}
-              <div className="p-3.5 bg-orange-50/80 border border-orange-200 rounded-2xl space-y-1">
+              <div className="p-3.5 bg-orange-50/80 border border-orange-200 rounded-2xl space-y-1.5">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[10px] font-black text-orange-700 uppercase">Pickup Restaurant</span>
+                    <span className="text-[10px] font-black text-orange-700 uppercase block">1. Pickup Restaurant</span>
                     <h3 className="text-base font-black text-slate-900 leading-tight">
-                      {incomingCandidate.order.vendor?.name || 'Restaurant Partner'}
+                      {candidateVendor?.name || 'Restaurant Partner'}
                     </h3>
-                    <p className="text-xs text-slate-600 line-clamp-1">
-                      {incomingCandidate.order.vendor?.address || 'Chattogram'}
+                    <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">
+                      {candidateVendor?.address || 'Chattogram'}
                     </p>
                   </div>
-                  <span className="text-xs font-black text-orange-600 bg-white px-2 py-0.5 rounded-lg border border-orange-200 shrink-0 font-mono">
-                    {incomingCandidate.distanceToRestaurantKm} km
+                  <span className="text-xs font-black text-orange-600 bg-white px-2.5 py-1 rounded-xl border border-orange-200 shrink-0 font-mono shadow-xs">
+                    {distanceToVendorKm} km
                   </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-orange-200/60">
+                  <span className="text-slate-600 font-bold flex items-center space-x-1">
+                    <Phone className="w-3 h-3 text-orange-600" />
+                    <span>{candidateVendor?.phone || 'Phone'}</span>
+                  </span>
+                  <a
+                    href={`tel:${candidateVendor?.phone}`}
+                    className="text-[11px] font-bold text-orange-700 underline"
+                  >
+                    Call Vendor
+                  </a>
                 </div>
               </div>
 
               {/* Customer Drop-off Target */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
-                <span className="text-[10px] font-black text-slate-500 uppercase">Deliver to Customer</span>
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                <span className="text-[10px] font-black text-slate-500 uppercase block">2. Deliver to Customer</span>
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-sm font-extrabold text-slate-900">
-                      {incomingCandidate.order.customer_name}
+                      {incomingCandidateOrder.customer_name}
                     </h4>
                     <p className="text-xs text-slate-600">
-                      {incomingCandidate.order.delivery_address}
+                      {incomingCandidateOrder.delivery_address}
                     </p>
                   </div>
                   <span className="text-xs font-bold text-slate-600 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shrink-0 font-mono">
-                    {incomingCandidate.order.delivery_distance_km} km
+                    {incomingCandidateOrder.delivery_distance_km.toFixed(2)} km
                   </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200">
+                  <span className="text-slate-600 font-bold flex items-center space-x-1">
+                    <Phone className="w-3 h-3 text-slate-500" />
+                    <span>{incomingCandidateOrder.customer_phone}</span>
+                  </span>
+                  <a
+                    href={`tel:${incomingCandidateOrder.customer_phone}`}
+                    className="text-[11px] font-bold text-slate-700 underline"
+                  >
+                    Call Customer
+                  </a>
                 </div>
               </div>
 
               {/* COD Financial Breakdown */}
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-1.5">
                 <div className="flex justify-between text-slate-700">
-                  <span>Pay restaurant in cash:</span>
+                  <span>Food Price (Pay Restaurant in cash):</span>
                   <span className="font-mono font-bold text-rose-600">
-                    -{settings.currency_symbol}{incomingCandidate.order.food_total}
+                    ৳{incomingCandidateOrder.food_total}
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>Collect cash from customer:</span>
+                  <span>Delivery Charge (Your earning):</span>
                   <span className="font-mono font-bold text-emerald-700">
-                    +{settings.currency_symbol}{incomingCandidate.order.total_cash_payable}
+                    +৳{incomingCandidateOrder.delivery_fee}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span>Total Cash to Collect from Customer:</span>
+                  <span className="font-mono font-bold text-indigo-700">
+                    ৳{incomingCandidateOrder.total_cash_payable}
                   </span>
                 </div>
                 <div className="pt-1.5 border-t border-amber-200 flex justify-between font-black text-slate-900 text-sm">
-                  <span>Your Net Earnings:</span>
-                  <span className="font-mono text-emerald-700 text-base">
-                    +{settings.currency_symbol}{incomingCandidate.order.delivery_fee}
+                  <span>Pay to Vendor:</span>
+                  <span className="font-mono text-rose-600">
+                    ৳{incomingCandidateOrder.food_total}
                   </span>
                 </div>
               </div>
 
-              {/* 
-                THE TWO REQUESTED BUTTONS: ACCEPT & REJECT
-                (Explicit user requirement: "accept and reject button thakbe")
-              */}
+              {/* Accept & Reject Buttons */}
               <div className="grid grid-cols-2 gap-3 pt-1">
                 {/* Reject Button */}
                 <button
-                  onClick={() => handleRejectOrder(incomingCandidate.order.id)}
-                  className="w-full py-3.5 px-4 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-300 font-extrabold text-xs rounded-2xl transition cursor-pointer active:scale-95"
+                  onClick={() => handleRejectOrder(incomingCandidateOrder.id)}
+                  className="w-full py-3.5 px-4 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-300 font-extrabold text-xs rounded-2xl transition cursor-pointer active:scale-95 flex items-center justify-center space-x-1"
                 >
-                  Reject / Decline
+                  <X className="w-4 h-4" />
+                  <span>Reject</span>
                 </button>
 
                 {/* Accept Button */}
                 <button
-                  onClick={() => handleAcceptOrder(incomingCandidate.order.id)}
+                  onClick={() => handleAcceptOrder(incomingCandidateOrder.id)}
                   className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
@@ -964,6 +1034,15 @@ export const RiderPortal: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Rider Auth Modal */}
+      {isAuthModalOpen && (
+        <AuthModal
+          targetRole="rider"
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+        />
       )}
 
     </div>

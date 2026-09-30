@@ -5,15 +5,20 @@ import {
   Vendor, 
   MenuItem, 
   CustomerAddress, 
+  CustomerUser,
   Rider, 
   Order, 
-  OrderStatus 
+  OrderStatus,
+  UserAccount,
+  DELIVERY_ZONES,
+  DeliveryZone
 } from '../types/database';
 import { 
   DEFAULT_SETTINGS, 
   INITIAL_VENDORS, 
   INITIAL_MENU_ITEMS, 
   INITIAL_ADDRESSES, 
+  INITIAL_CUSTOMERS,
   INITIAL_RIDERS, 
   INITIAL_ORDERS,
   supabase,
@@ -30,34 +35,67 @@ interface DeliveryContextType {
   role: PortalRole;
   setRole: (role: PortalRole) => void;
   
+  // Auth & Multi-User Privacy State
+  currentUser: UserAccount | null;
+  currentCustomer: CustomerUser | null;
+  loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; message?: string };
+  setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
+  registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
+  logoutUser: () => void;
+
+  // System Settings
   settings: SystemSettings;
   updateSettings: (newSettings: Partial<SystemSettings>) => void;
   
+  // Vendors & Admin Management
   vendors: Vendor[];
-  addVendor: (vendor: Omit<Vendor, 'id'>) => void;
-  updateVendor: (id: string, updates: Partial<Vendor>) => void;
   currentVendor: Vendor | null;
   setCurrentVendor: (vendor: Vendor) => void;
+  adminRegisterVendor: (data: {
+    name: string;
+    phone: string;
+    address: string;
+    cuisine: string;
+    zone: string;
+    latitude: number;
+    longitude: number;
+    description?: string;
+  }) => Vendor;
+  updateVendor: (id: string, updates: Partial<Vendor>) => void;
   
+  // Menu Items
   menuItems: MenuItem[];
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
   toggleMenuItemAvailability: (id: string) => void;
   deleteMenuItem: (id: string) => void;
   
+  // Customer Addresses & Map Pin Points
   addresses: CustomerAddress[];
   selectedAddress: CustomerAddress | null;
   setSelectedAddress: (addr: CustomerAddress) => void;
-  addAddress: (addr: Omit<CustomerAddress, 'id'>) => void;
+  addAddress: (addr: Omit<CustomerAddress, 'id'>) => CustomerAddress;
   updateAddress: (id: string, updates: Partial<CustomerAddress>) => void;
   deleteAddress: (id: string) => void;
   
+  // Riders & Fleet Management
   riders: Rider[];
   currentRider: Rider | null;
   setCurrentRider: (rider: Rider) => void;
+  adminRegisterRider: (data: {
+    name: string;
+    phone: string;
+    photo_url?: string;
+    home_address?: string;
+    zone: string;
+    vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
+    latitude?: number;
+    longitude?: number;
+  }) => Rider;
   toggleRiderOnline: (riderId: string, isOnline: boolean) => Promise<boolean>;
   updateRiderLocation: (riderId: string, lat: number, lng: number) => void;
   simulateRiderMovement: (stepLat: number, stepLng: number) => void;
   
+  // Cart & Order Workflow
   orders: Order[];
   cart: CartItem[];
   cartVendor: Vendor | null;
@@ -66,26 +104,31 @@ interface DeliveryContextType {
   updateCartQuantity: (menuItemId: string, qty: number) => void;
   clearCart: () => void;
   placeOrder: (instructions?: string) => Promise<Order | null>;
-  updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<Order>) => void;
   
-  // Specific Cash on Delivery Actions
+  // Step-by-Step Vendor Prep & Customer Confirmation
+  vendorAcceptOrderWithPrepTime: (orderId: string, prepMinutes: number) => void;
+  customerRespondToPrepTime: (orderId: string, accept: boolean) => void;
+  vendorMarkFoodReady: (orderId: string) => void;
+  
+  // Intelligent Single-Rider Proximity & Zone Dispatch
+  triggerRiderDispatch: (orderId: string) => boolean;
   riderAcceptOrder: (orderId: string, riderId: string) => void;
+  riderRejectOrder: (orderId: string, riderId: string) => void;
+  
+  // Cash on Delivery Handover
   riderConfirmCashPaidToVendor: (orderId: string) => void;
   riderConfirmCashCollectedFromCustomer: (orderId: string) => void;
   
-  // Helper to filter nearby orders for rider
-  getEligibleOrdersForRider: (rider: Rider) => { order: Order; distanceToRestaurantKm: number; isWithinRadius: boolean }[];
-  
-  // Audio notification feedback
+  updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<Order>) => void;
   playNotificationSound: () => void;
 }
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
-const STORAGE_KEY_PREFIX = 'foodvibe_cod_';
+const STORAGE_KEY_PREFIX = 'foodvibe_v3_';
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 1. Initial State from localStorage or fallback
+  // 1. Core State
   const [role, setRole] = useState<PortalRole>(() => {
     const hash = window.location.hash.replace('#', '') as PortalRole;
     if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) return hash;
@@ -109,6 +152,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
   });
 
+  const [customers, setCustomers] = useState<CustomerUser[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}customers`);
+    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+  });
+
   const [addresses, setAddresses] = useState<CustomerAddress[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}addresses`);
     return saved ? JSON.parse(saved) : INITIAL_ADDRESSES;
@@ -130,6 +178,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return saved ? JSON.parse(saved) : INITIAL_ORDERS;
   });
 
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}current_user`);
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartVendor, setCartVendor] = useState<Vendor | null>(null);
 
@@ -147,6 +200,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [menuItems]);
 
   useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}customers`, JSON.stringify(customers));
+  }, [customers]);
+
+  useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(addresses));
   }, [addresses]);
 
@@ -158,90 +215,380 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem(`${STORAGE_KEY_PREFIX}orders`, JSON.stringify(orders));
   }, [orders]);
 
-  // Keep window hash synced
   useEffect(() => {
-    window.location.hash = role;
-  }, [role]);
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(currentUser));
+  }, [currentUser]);
 
-  // Audio tone generator for real-time notifications
+  // Derived current customer
+  const currentCustomer = currentUser && currentUser.role === 'customer'
+    ? customers.find(c => c.id === currentUser.reference_id || c.phone === currentUser.phone) || null
+    : null;
+
+  // Sound notification
   const playNotificationSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+
       osc.type = 'sine';
       osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.45);
+      osc.stop(ctx.currentTime + 0.5);
     } catch {
-      // Audio context might be restricted before user gesture
+      // Ignore
     }
   };
 
   // -------------------------------------------------------------
-  // RIDER LOCATION TRACKING (Static & stable, no random auto-drift)
+  // USER AUTHENTICATION & LOGIN WORKFLOW
   // -------------------------------------------------------------
-  const riderWatchIdRef = useRef<number | null>(null);
+  const loginUser = (userRole: PortalRole, phone: string, password?: string) => {
+    const cleanPhone = phone.trim();
 
-  useEffect(() => {
-    if (!currentRider || !currentRider.is_online) {
-      if (riderWatchIdRef.current !== null) {
-        navigator.geolocation?.clearWatch?.(riderWatchIdRef.current);
-        riderWatchIdRef.current = null;
+    if (userRole === 'admin') {
+      if (password === 'admin123' || password === '123' || !password) {
+        const adminAccount: UserAccount = {
+          id: 'admin-001',
+          role: 'admin',
+          name: 'System Admin',
+          phone: cleanPhone || '01700000000',
+          is_password_set: true
+        };
+        setCurrentUser(adminAccount);
+        return { success: true };
       }
-      return;
+      return { success: false, message: 'Invalid Admin Password' };
     }
 
-    // Optional single real GPS sync without continuous random artificial drifting
-    if (navigator.geolocation && !riderWatchIdRef.current) {
-      try {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            updateRiderLocation(currentRider.id, pos.coords.latitude, pos.coords.longitude);
-          },
-          () => {
-            // Keep stable default coordinates if permission denied
-          },
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
-      } catch {
-        // ignore
+    if (userRole === 'vendor') {
+      const vendor = vendors.find(v => v.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || v.phone === cleanPhone);
+      if (!vendor) {
+        return { success: false, message: 'This phone number is not registered as a Vendor by Admin.' };
       }
-    }
-  }, [currentRider?.id, currentRider?.is_online]);
 
-  const updateRiderLocation = (riderId: string, lat: number, lng: number) => {
-    const nowIso = new Date().toISOString();
-    setRiders(prev => prev.map(r => {
-      if (r.id === riderId) {
-        return {
-          ...r,
-          current_latitude: lat,
-          current_longitude: lng,
-          last_location_updated_at: nowIso,
+      // If first time login (no password set yet)
+      if (!vendor.is_password_set || !vendor.password) {
+        return { 
+          success: false, 
+          requiresPasswordSetup: true, 
+          message: 'First-time login detected. Please set your new password.' 
         };
       }
-      return r;
-    }));
 
-    if (currentRider && currentRider.id === riderId) {
-      setCurrentRider(prev => prev ? {
-        ...prev,
-        current_latitude: lat,
+      if (vendor.password !== password) {
+        return { success: false, message: 'Incorrect password. Please try again.' };
+      }
+
+      const vendorAccount: UserAccount = {
+        id: `u-v-${vendor.id}`,
+        role: 'vendor',
+        name: vendor.name,
+        phone: vendor.phone,
+        is_password_set: true,
+        reference_id: vendor.id,
+        zone: vendor.zone
+      };
+      setCurrentUser(vendorAccount);
+      setCurrentVendor(vendor);
+      return { success: true };
+    }
+
+    if (userRole === 'rider') {
+      const rider = riders.find(r => r.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || r.phone === cleanPhone);
+      if (!rider) {
+        return { success: false, message: 'This phone number is not registered as a Rider by Admin.' };
+      }
+
+      if (!rider.is_password_set || !rider.password) {
+        return { 
+          success: false, 
+          requiresPasswordSetup: true, 
+          message: 'First-time login detected. Please set your new password.' 
+        };
+      }
+
+      if (rider.password !== password) {
+        return { success: false, message: 'Incorrect password. Please try again.' };
+      }
+
+      const riderAccount: UserAccount = {
+        id: `u-r-${rider.id}`,
+        role: 'rider',
+        name: rider.name,
+        phone: rider.phone,
+        is_password_set: true,
+        reference_id: rider.id,
+        zone: rider.zone,
+        photo_url: rider.photo_url
+      };
+      setCurrentUser(riderAccount);
+      setCurrentRider(rider);
+      return { success: true };
+    }
+
+    if (userRole === 'customer') {
+      const customer = customers.find(c => c.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || c.phone === cleanPhone);
+      if (!customer) {
+        return { success: false, message: 'Account not found. Please register first.' };
+      }
+
+      if (customer.password && customer.password !== password) {
+        return { success: false, message: 'Incorrect password.' };
+      }
+
+      const customerAccount: UserAccount = {
+        id: `u-c-${customer.id}`,
+        role: 'customer',
+        name: customer.name,
+        phone: customer.phone,
+        is_password_set: true,
+        reference_id: customer.id
+      };
+      setCurrentUser(customerAccount);
+      return { success: true };
+    }
+
+    return { success: false, message: 'Unknown role' };
+  };
+
+  const setPasswordForUser = (userRole: PortalRole, phone: string, newPassword: string): boolean => {
+    const cleanPhone = phone.trim();
+
+    if (userRole === 'vendor') {
+      const vendor = vendors.find(v => v.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || v.phone === cleanPhone);
+      if (!vendor) return false;
+      
+      setVendors(prev => prev.map(v => v.id === vendor.id ? { ...v, password: newPassword, is_password_set: true } : v));
+      const vendorAccount: UserAccount = {
+        id: `u-v-${vendor.id}`,
+        role: 'vendor',
+        name: vendor.name,
+        phone: vendor.phone,
+        is_password_set: true,
+        reference_id: vendor.id,
+        zone: vendor.zone
+      };
+      setCurrentUser(vendorAccount);
+      setCurrentVendor({ ...vendor, password: newPassword, is_password_set: true });
+      return true;
+    }
+
+    if (userRole === 'rider') {
+      const rider = riders.find(r => r.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || r.phone === cleanPhone);
+      if (!rider) return false;
+
+      setRiders(prev => prev.map(r => r.id === rider.id ? { ...r, password: newPassword, is_password_set: true } : r));
+      const riderAccount: UserAccount = {
+        id: `u-r-${rider.id}`,
+        role: 'rider',
+        name: rider.name,
+        phone: rider.phone,
+        is_password_set: true,
+        reference_id: rider.id,
+        zone: rider.zone,
+        photo_url: rider.photo_url
+      };
+      setCurrentUser(riderAccount);
+      setCurrentRider({ ...rider, password: newPassword, is_password_set: true });
+      return true;
+    }
+
+    return false;
+  };
+
+  const registerCustomer = (data: { name: string; phone: string; password: string; email?: string }) => {
+    const cleanPhone = data.phone.trim();
+    if (customers.some(c => c.phone === cleanPhone)) {
+      return { success: false, message: 'This phone number is already registered. Please login.' };
+    }
+
+    const newCustomer: CustomerUser = {
+      id: `c-${Date.now()}`,
+      name: data.name.trim(),
+      phone: cleanPhone,
+      password: data.password,
+      email: data.email?.trim(),
+      avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`,
+      addresses: [],
+      created_at: new Date().toISOString()
+    };
+
+    setCustomers(prev => [...prev, newCustomer]);
+    
+    const customerAccount: UserAccount = {
+      id: `u-c-${newCustomer.id}`,
+      role: 'customer',
+      name: newCustomer.name,
+      phone: newCustomer.phone,
+      is_password_set: true,
+      reference_id: newCustomer.id
+    };
+    setCurrentUser(customerAccount);
+    return { success: true };
+  };
+
+  const logoutUser = () => {
+    setCurrentUser(null);
+  };
+
+  // -------------------------------------------------------------
+  // ADMIN VENDOR & RIDER REGISTRATION
+  // -------------------------------------------------------------
+  const adminRegisterVendor = (data: {
+    name: string;
+    phone: string;
+    address: string;
+    cuisine: string;
+    zone: string;
+    latitude: number;
+    longitude: number;
+    description?: string;
+  }): Vendor => {
+    const newVendor: Vendor = {
+      id: `v-${Date.now()}`,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      address: data.address.trim(),
+      cuisine: data.cuisine.trim(),
+      zone: data.zone || 'Chawkbazar Zone',
+      latitude: data.latitude,
+      longitude: data.longitude,
+      description: data.description || 'Quality food prepared with fresh ingredients',
+      is_active: true,
+      rating: 5.0,
+      estimated_prep_time_minutes: 20,
+      is_password_set: false,
+      cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+      logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80',
+      created_at: new Date().toISOString()
+    };
+
+    setVendors(prev => [newVendor, ...prev]);
+    return newVendor;
+  };
+
+  const adminRegisterRider = (data: {
+    name: string;
+    phone: string;
+    photo_url?: string;
+    home_address?: string;
+    zone: string;
+    vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
+    latitude?: number;
+    longitude?: number;
+  }): Rider => {
+    const newRider: Rider = {
+      id: `r-${Date.now()}`,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      photo_url: data.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
+      home_address: data.home_address?.trim() || 'Chittagong',
+      zone: data.zone || 'Chawkbazar Zone',
+      vehicle_type: data.vehicle_type || 'Motorcycle',
+      is_online: false,
+      current_latitude: data.latitude || 22.3590,
+      current_longitude: data.longitude || 91.8380,
+      last_location_updated_at: new Date().toISOString(),
+      cash_in_hand: 2000,
+      is_approved: true,
+      is_password_set: false,
+      created_at: new Date().toISOString()
+    };
+
+    setRiders(prev => [newRider, ...prev]);
+    return newRider;
+  };
+
+  const updateVendor = (id: string, updates: Partial<Vendor>) => {
+    setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+    if (currentVendor && currentVendor.id === id) {
+      setCurrentVendor(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
+  const updateSettings = (newSettings: Partial<SystemSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings, updated_at: new Date().toISOString() }));
+  };
+
+  // -------------------------------------------------------------
+  // MENU ITEMS
+  // -------------------------------------------------------------
+  const addMenuItem = (item: Omit<MenuItem, 'id'>) => {
+    const newItem: MenuItem = { ...item, id: `m-${Date.now()}` };
+    setMenuItems(prev => [newItem, ...prev]);
+  };
+
+  const toggleMenuItemAvailability = (id: string) => {
+    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: !m.is_available } : m));
+  };
+
+  const deleteMenuItem = (id: string) => {
+    setMenuItems(prev => prev.filter(m => m.id !== id));
+  };
+
+  // -------------------------------------------------------------
+  // CUSTOMER ADDRESSES
+  // -------------------------------------------------------------
+  const addAddress = (addr: Omit<CustomerAddress, 'id'>) => {
+    const newAddr: CustomerAddress = { ...addr, id: `addr-${Date.now()}` };
+    setAddresses(prev => [newAddr, ...prev]);
+    setSelectedAddress(newAddr);
+    return newAddr;
+  };
+
+  const updateAddress = (id: string, updates: Partial<CustomerAddress>) => {
+    setAddresses(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    if (selectedAddress && selectedAddress.id === id) {
+      setSelectedAddress(prev => prev ? { ...prev, ...updates } : null);
+    }
+  };
+
+  const deleteAddress = (id: string) => {
+    setAddresses(prev => prev.filter(a => a.id !== id));
+    if (selectedAddress && selectedAddress.id === id) {
+      setSelectedAddress(addresses.find(a => a.id !== id) || null);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // RIDER GPS & LOCATION UPDATES
+  // -------------------------------------------------------------
+  const updateRiderLocation = (riderId: string, lat: number, lng: number) => {
+    setRiders(prev => prev.map(r => 
+      r.id === riderId ? { 
+        ...r, 
+        current_latitude: lat, 
         current_longitude: lng,
-        last_location_updated_at: nowIso,
+        last_location_updated_at: new Date().toISOString()
+      } : r
+    ));
+    if (currentRider && currentRider.id === riderId) {
+      setCurrentRider(prev => prev ? { 
+        ...prev, 
+        current_latitude: lat, 
+        current_longitude: lng,
+        last_location_updated_at: new Date().toISOString()
       } : null);
     }
   };
 
-  const simulateRiderMovement = (targetLat: number, targetLng: number) => {
+  const simulateRiderMovement = (stepLat: number, stepLng: number) => {
     if (!currentRider) return;
-    updateRiderLocation(currentRider.id, targetLat, targetLng);
+    updateRiderLocation(
+      currentRider.id,
+      currentRider.current_latitude + stepLat,
+      currentRider.current_longitude + stepLng
+    );
   };
 
   const toggleRiderOnline = async (riderId: string, isOnline: boolean): Promise<boolean> => {
@@ -249,16 +596,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 8000,
+            timeout: 6000,
             enableHighAccuracy: true
           });
         }).then((pos) => {
           updateRiderLocation(riderId, pos.coords.latitude, pos.coords.longitude);
         }).catch(() => {
-          // Continue online even if browser refuses hardware GPS
+          // Keep current lat/lng
         });
       } catch {
-        // continue
+        // Ignore
       }
     }
 
@@ -270,40 +617,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // -------------------------------------------------------------
-  // PROXIMITY DISPATCH CALCULATION (Admin radius check)
-  // -------------------------------------------------------------
-  const getEligibleOrdersForRider = (rider: Rider) => {
-    return orders
-      .filter(o => 
-        // Order is ready for pickup or actively assigned to this rider
-        o.rider_id === rider.id ||
-        (!o.rider_id && ['ready_for_pickup', 'food_preparing', 'vendor_accepted'].includes(o.status))
-      )
-      .map(o => {
-        const vendor = vendors.find(v => v.id === o.vendor_id);
-        const vendorLat = vendor ? vendor.latitude : 23.7937;
-        const vendorLng = vendor ? vendor.longitude : 90.4049;
-        const distanceToRestaurantKm = calculateDistanceKm(
-          vendorLat,
-          vendorLng,
-          rider.current_latitude,
-          rider.current_longitude
-        );
-
-        const isWithinRadius = distanceToRestaurantKm <= settings.rider_match_radius_km;
-        return {
-          order: {
-            ...o,
-            vendor: vendor || undefined
-          },
-          distanceToRestaurantKm,
-          isWithinRadius
-        };
-      });
-  };
-
-  // -------------------------------------------------------------
-  // CART & ORDER LIFECYCLE
+  // CART & ORDER CREATION (EXACT PIN POINT DELIVERY CALCULATION)
   // -------------------------------------------------------------
   const addToCart = (item: MenuItem, vendor: Vendor) => {
     if (cartVendor && cartVendor.id !== vendor.id && cart.length > 0) {
@@ -372,9 +686,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const newOrder: Order = {
       id: orderId,
       order_code: orderCode,
-      customer_name: selectedAddress.customer_name,
-      customer_phone: selectedAddress.customer_phone,
+      customer_id: currentCustomer?.id || 'guest',
+      customer_name: selectedAddress.customer_name || currentUser?.name || 'Customer',
+      customer_phone: selectedAddress.customer_phone || currentUser?.phone || '01800000000',
       vendor_id: cartVendor.id,
+      zone: cartVendor.zone || selectedAddress.zone || 'Chawkbazar Zone',
       delivery_address: `${selectedAddress.address_line}${selectedAddress.details ? ` (${selectedAddress.details})` : ''}`,
       delivery_latitude: selectedAddress.latitude,
       delivery_longitude: selectedAddress.longitude,
@@ -406,6 +722,218 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newOrder;
   };
 
+  // -------------------------------------------------------------
+  // STEP 2 & 3: VENDOR PREP TIME & CUSTOMER PERMISSION WINDOW
+  // -------------------------------------------------------------
+  const vendorAcceptOrderWithPrepTime = (orderId: string, prepMinutes: number) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: 'vendor_accepted',
+          vendor_prep_minutes: prepMinutes,
+          customer_confirmed_prep: false,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+    playNotificationSound();
+  };
+
+  const customerRespondToPrepTime = (orderId: string, accept: boolean) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        if (accept) {
+          const prepMinutes = o.vendor_prep_minutes || 15;
+          const prepEndsAt = new Date(Date.now() + prepMinutes * 60 * 1000).toISOString();
+          return {
+            ...o,
+            status: 'food_preparing',
+            customer_confirmed_prep: true,
+            prep_ends_at: prepEndsAt,
+            updated_at: new Date().toISOString()
+          };
+        } else {
+          return {
+            ...o,
+            status: 'cancelled',
+            customer_confirmed_prep: false,
+            cancellation_reason: 'Customer declined preparation wait time',
+            updated_at: new Date().toISOString()
+          };
+        }
+      }
+      return o;
+    }));
+    playNotificationSound();
+  };
+
+  const vendorMarkFoodReady = (orderId: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: 'ready_for_pickup',
+          updated_at: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+    playNotificationSound();
+    // Immediately attempt rider dispatch
+    triggerRiderDispatch(orderId);
+  };
+
+  // -------------------------------------------------------------
+  // STEP 4: INTELLIGENT SINGLE-RIDER PROXIMITY & ZONE DISPATCH ENGINE
+  // User Requirement:
+  // "rider zone registration korar shomoy admin set korbe...
+  // order Ta rider er kace tokoni Dukbe jokon vendor and customer ubhoy tar zone er bhitor thaken..
+  // order random j kono ekjon er kace Dukbe..jodi she reject kore tahole onno joner kace jabe"
+  // -------------------------------------------------------------
+  const triggerRiderDispatch = (orderId: string): boolean => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return false;
+
+    const vendor = vendors.find(v => v.id === order.vendor_id);
+    if (!vendor) return false;
+
+    const orderZone = order.zone || vendor.zone;
+    const rejectedRiderIds = order.rejected_rider_ids || [];
+
+    // Find eligible online riders matching:
+    // 1. Is online
+    // 2. Rider zone matches order/vendor zone
+    // 3. Has not already rejected this order
+    // 4. Distance to vendor is <= match radius (e.g. 1.0 km)
+    const eligibleRiders = riders.filter(r => {
+      if (!r.is_online) return false;
+      if (rejectedRiderIds.includes(r.id)) return false;
+      
+      // Zone match check (if zone is set)
+      if (r.zone && orderZone && r.zone.toLowerCase() !== orderZone.toLowerCase()) {
+        return false;
+      }
+
+      // Proximity distance check
+      const distKm = calculateDistanceKm(
+        vendor.latitude,
+        vendor.longitude,
+        r.current_latitude,
+        r.current_longitude
+      );
+
+      return distKm <= (settings.rider_match_radius_km || 1.5);
+    });
+
+    if (eligibleRiders.length === 0) {
+      // Fallback: If no rider within 1km in zone, expand to any online rider in that zone
+      const zoneRiders = riders.filter(r => r.is_online && !rejectedRiderIds.includes(r.id) && (r.zone === orderZone || !r.zone));
+      if (zoneRiders.length === 0) return false;
+      
+      const targetRider = zoneRiders[0];
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        dispatched_rider_id: targetRider.id,
+        dispatch_sent_at: new Date().toISOString()
+      } : o));
+      return true;
+    }
+
+    // Pick one candidate rider
+    const selectedCandidate = eligibleRiders[0];
+
+    setOrders(prev => prev.map(o => o.id === orderId ? {
+      ...o,
+      dispatched_rider_id: selectedCandidate.id,
+      dispatch_sent_at: new Date().toISOString()
+    } : o));
+
+    playNotificationSound();
+    return true;
+  };
+
+  const riderAcceptOrder = (orderId: string, riderId: string) => {
+    const rider = riders.find(r => r.id === riderId);
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: 'rider_assigned',
+          rider_id: riderId,
+          rider: rider || undefined,
+          dispatched_rider_id: undefined,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+    playNotificationSound();
+  };
+
+  const riderRejectOrder = (orderId: string, riderId: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        const rejected = o.rejected_rider_ids || [];
+        return {
+          ...o,
+          dispatched_rider_id: undefined,
+          rejected_rider_ids: [...rejected, riderId],
+          updated_at: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+
+    // Auto dispatch to the next eligible rider in zone
+    setTimeout(() => {
+      triggerRiderDispatch(orderId);
+    }, 500);
+  };
+
+  // -------------------------------------------------------------
+  // CASH ON DELIVERY HANDOVER
+  // -------------------------------------------------------------
+  const riderConfirmCashPaidToVendor = (orderId: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        if (o.rider_id) {
+          setRiders(rList => rList.map(r => 
+            r.id === o.rider_id ? { ...r, cash_in_hand: r.cash_in_hand - o.food_total } : r
+          ));
+        }
+        return {
+          ...o,
+          status: 'food_picked_up',
+          food_cash_paid_to_vendor: true,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+  };
+
+  const riderConfirmCashCollectedFromCustomer = (orderId: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        if (o.rider_id) {
+          setRiders(rList => rList.map(r => 
+            r.id === o.rider_id ? { ...r, cash_in_hand: r.cash_in_hand + o.total_cash_payable } : r
+          ));
+        }
+        return {
+          ...o,
+          status: 'delivered',
+          food_and_delivery_cash_collected_from_customer: true,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+    playNotificationSound();
+  };
+
   const updateOrderStatus = (orderId: string, status: OrderStatus, extra?: Partial<Order>) => {
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
@@ -421,132 +949,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playNotificationSound();
   };
 
-  const riderAcceptOrder = (orderId: string, riderId: string) => {
-    updateOrderStatus(orderId, 'rider_assigned', { rider_id: riderId });
-  };
-
-  // Stage 1 of COD: Rider reaches restaurant, buys food with cash
-  const riderConfirmCashPaidToVendor = (orderId: string) => {
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        // Decrease rider's cash in hand by food_total (since rider paid vendor)
-        if (o.rider_id) {
-          setRiders(rList => rList.map(r => 
-            r.id === o.rider_id ? { ...r, cash_in_hand: r.cash_in_hand - o.food_total } : r
-          ));
-        }
-        return {
-          ...o,
-          status: 'rider_on_way_to_customer',
-          food_cash_paid_to_vendor: true,
-          updated_at: new Date().toISOString()
-        };
-      }
-      return o;
-    }));
-  };
-
-  // Stage 2 of COD: Rider reaches customer, collects total cash (food bill + delivery fee)
-  const riderConfirmCashCollectedFromCustomer = (orderId: string) => {
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        // Increase rider's cash in hand by total_cash_payable (reimburses food bill + gives delivery fee)
-        if (o.rider_id) {
-          setRiders(rList => rList.map(r => 
-            r.id === o.rider_id ? { ...r, cash_in_hand: r.cash_in_hand + o.total_cash_payable } : r
-          ));
-        }
-        return {
-          ...o,
-          status: 'delivered',
-          food_and_delivery_cash_collected_from_customer: true,
-          updated_at: new Date().toISOString()
-        };
-      }
-      return o;
-    }));
-  };
-
-  // -------------------------------------------------------------
-  // SETTINGS & ENTITY MANAGEMENT
-  // -------------------------------------------------------------
-  const updateSettings = (newSettings: Partial<SystemSettings>) => {
-    setSettings(prev => ({
-      ...prev,
-      ...newSettings,
-      updated_at: new Date().toISOString()
-    }));
-  };
-
-  const addVendor = (newVendor: Omit<Vendor, 'id'>) => {
-    const id = `v-${Date.now()}`;
-    const vendor: Vendor = {
-      ...newVendor,
-      id,
-      rating: 4.8,
-      created_at: new Date().toISOString()
-    };
-    setVendors(prev => [vendor, ...prev]);
-  };
-
-  const updateVendor = (id: string, updates: Partial<Vendor>) => {
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
-    if (currentVendor && currentVendor.id === id) {
-      setCurrentVendor(prev => prev ? { ...prev, ...updates } : null);
-    }
-  };
-
-  const addMenuItem = (item: Omit<MenuItem, 'id'>) => {
-    const id = `m-${Date.now()}`;
-    const newItem: MenuItem = { ...item, id };
-    setMenuItems(prev => [...prev, newItem]);
-  };
-
-  const toggleMenuItemAvailability = (id: string) => {
-    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: !m.is_available } : m));
-  };
-
-  const deleteMenuItem = (id: string) => {
-    setMenuItems(prev => prev.filter(m => m.id !== id));
-  };
-
-  const addAddress = (addr: Omit<CustomerAddress, 'id'>) => {
-    const id = `addr-${Date.now()}`;
-    const newAddr: CustomerAddress = { ...addr, id };
-    if (newAddr.is_default || addresses.length === 0) {
-      setAddresses(prev => prev.map(a => ({ ...a, is_default: false })).concat({ ...newAddr, is_default: true }));
-      setSelectedAddress({ ...newAddr, is_default: true });
-    } else {
-      setAddresses(prev => [...prev, newAddr]);
-    }
-  };
-
-  const updateAddress = (id: string, updates: Partial<CustomerAddress>) => {
-    setAddresses(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
-    if (selectedAddress?.id === id) {
-      setSelectedAddress(prev => prev ? { ...prev, ...updates } : null);
-    }
-  };
-
-  const deleteAddress = (id: string) => {
-    setAddresses(prev => prev.filter(a => a.id !== id));
-    if (selectedAddress?.id === id) {
-      setSelectedAddress(addresses.find(a => a.id !== id) || null);
-    }
-  };
-
   return (
     <DeliveryContext.Provider
       value={{
         role,
         setRole,
+        currentUser,
+        currentCustomer,
+        loginUser,
+        setPasswordForUser,
+        registerCustomer,
+        logoutUser,
         settings,
         updateSettings,
         vendors,
-        addVendor,
-        updateVendor,
         currentVendor,
         setCurrentVendor,
+        adminRegisterVendor,
+        updateVendor,
         menuItems,
         addMenuItem,
         toggleMenuItemAvailability,
@@ -560,6 +980,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         riders,
         currentRider,
         setCurrentRider,
+        adminRegisterRider,
         toggleRiderOnline,
         updateRiderLocation,
         simulateRiderMovement,
@@ -571,12 +992,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateCartQuantity,
         clearCart,
         placeOrder,
-        updateOrderStatus,
+        vendorAcceptOrderWithPrepTime,
+        customerRespondToPrepTime,
+        vendorMarkFoodReady,
+        triggerRiderDispatch,
         riderAcceptOrder,
+        riderRejectOrder,
         riderConfirmCashPaidToVendor,
         riderConfirmCashCollectedFromCustomer,
-        getEligibleOrdersForRider,
-        playNotificationSound,
+        updateOrderStatus,
+        playNotificationSound
       }}
     >
       {children}
@@ -584,7 +1009,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 };
 
-export const useDelivery = () => {
+export const useDelivery = (): DeliveryContextType => {
   const context = useContext(DeliveryContext);
   if (!context) {
     throw new Error('useDelivery must be used within a DeliveryProvider');

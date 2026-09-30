@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { AuthModal } from '../common/AuthModal';
 import { Order, OrderStatus, Vendor } from '../../types/database';
 import {
   Bell,
@@ -29,7 +30,9 @@ import {
   ExternalLink,
   ShieldCheck,
   CheckSquare,
-  Square
+  Square,
+  KeyRound,
+  LogOut
 } from 'lucide-react';
 
 export const VendorOrdersTerminal: React.FC = () => {
@@ -39,8 +42,14 @@ export const VendorOrdersTerminal: React.FC = () => {
     setCurrentVendor,
     orders,
     updateOrderStatus,
-    riders
+    vendorAcceptOrderWithPrepTime,
+    vendorMarkFoodReady,
+    riders,
+    currentUser,
+    logoutUser
   } = useDelivery();
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Active Store Selection
   const [selectedVendorId, setSelectedVendorId] = useState<string>(
@@ -735,25 +744,46 @@ export const VendorOrdersTerminal: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => handleAcceptOrder(order.id)}
+                          onClick={() => vendorAcceptOrderWithPrepTime(order.id, selectedPrepMinutes)}
                           className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-lg shadow-emerald-950/40 cursor-pointer"
                         >
                           <Check className="w-4 h-4 stroke-[3]" />
-                          <span>Accept & Cook</span>
+                          <span>Accept ({selectedPrepMinutes}m)</span>
                         </button>
                       </div>
                     </div>
                   )}
 
+                  {/* CASE 1.5: WAITING FOR CUSTOMER CONFIRMATION */}
+                  {order.status === 'vendor_accepted' && !order.customer_confirmed_prep && (
+                    <div className="bg-amber-950/40 border border-amber-500/60 p-3 rounded-2xl text-center space-y-1 animate-pulse">
+                      <p className="text-xs font-bold text-amber-300 flex items-center justify-center space-x-1.5">
+                        <Clock className="w-4 h-4" />
+                        <span>Waiting for customer confirmation</span>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Proposed {order.vendor_prep_minutes || 15} mins cooking time sent to customer's screen.
+                      </p>
+                    </div>
+                  )}
+
                   {/* CASE 2: PREPARING IN KITCHEN (MARK READY) */}
-                  {isPreparing && (
+                  {order.status === 'food_preparing' && (
                     <div className="space-y-2">
+                      <div className="bg-amber-950/30 border border-amber-800/40 p-2 rounded-xl flex items-center justify-between text-xs text-amber-300 font-bold">
+                        <span className="flex items-center space-x-1">
+                          <Flame className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Customer Approved! Cooking in Kitchen</span>
+                        </span>
+                        <span>{order.vendor_prep_minutes || 15}m prep</span>
+                      </div>
+
                       <button
-                        onClick={() => handleMarkFoodReady(order.id)}
+                        onClick={() => vendorMarkFoodReady(order.id)}
                         className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg shadow-amber-950/50 cursor-pointer"
                       >
                         <ChefHat className="w-4 h-4" />
-                        <span>Food Ready for Rider Pickup</span>
+                        <span>Food Ready & Search Zone Rider</span>
                       </button>
                     </div>
                   )}

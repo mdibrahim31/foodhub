@@ -11,6 +11,21 @@ export interface SystemSettings {
   updated_at: string;
 }
 
+export const DELIVERY_ZONES = [
+  'Chawkbazar Zone',
+  'GEC Zone',
+  'Agrabad Zone',
+  'Nasirabad Zone',
+  'Halishahar Zone',
+  'Khulshi Zone',
+  'Banani & Gulshan Zone',
+  'Dhanmondi Zone',
+  'Uttara Zone',
+  'Mirpur Zone'
+] as const;
+
+export type DeliveryZone = typeof DELIVERY_ZONES[number] | string;
+
 export interface Vendor {
   id: string;
   name: string;
@@ -21,12 +36,15 @@ export interface Vendor {
   phone: string;
   email?: string;
   address: string;
+  zone: string;
   latitude: number;
   longitude: number;
   google_maps_link?: string;
   is_active: boolean;
   rating: number;
   estimated_prep_time_minutes: number;
+  is_password_set?: boolean;
+  password?: string;
   created_at?: string;
 }
 
@@ -50,13 +68,28 @@ export interface CustomerAddress {
   details?: string;
   latitude: number;
   longitude: number;
+  zone?: string;
   is_default: boolean;
+}
+
+export interface CustomerUser {
+  id: string;
+  name: string;
+  phone: string;
+  password?: string;
+  email?: string;
+  avatar_url?: string;
+  addresses: CustomerAddress[];
+  created_at: string;
 }
 
 export interface Rider {
   id: string;
   name: string;
   phone: string;
+  photo_url?: string;
+  home_address?: string;
+  zone: string;
   vehicle_type: 'Motorcycle' | 'Bicycle' | 'Scooter';
   is_online: boolean;
   current_latitude: number;
@@ -64,13 +97,27 @@ export interface Rider {
   last_location_updated_at?: string;
   cash_in_hand: number; // Floating cash held by rider
   is_approved: boolean;
+  is_password_set?: boolean;
+  password?: string;
+  created_at?: string;
+}
+
+export interface UserAccount {
+  id: string;
+  role: PortalRole;
+  name: string;
+  phone: string;
+  is_password_set: boolean;
+  reference_id?: string; // vendor_id or rider_id or customer_id
+  zone?: string;
+  photo_url?: string;
 }
 
 export type OrderStatus = 
   | 'pending'                  // Customer placed order
-  | 'vendor_accepted'          // Restaurant accepted order
-  | 'food_preparing'           // Food is being cooked
-  | 'ready_for_pickup'         // Ready at counter, waiting for nearby rider
+  | 'vendor_accepted'          // Restaurant accepted order, waiting for customer prep time confirmation
+  | 'food_preparing'           // Customer approved prep time, kitchen cooking
+  | 'ready_for_pickup'         // Food cooked & packaged, searching for nearby zone riders
   | 'rider_assigned'           // Rider accepted dispatch
   | 'rider_arrived_at_vendor'  // Rider arrived at restaurant
   | 'food_picked_up'           // Rider paid cash to restaurant & picked up food
@@ -91,10 +138,12 @@ export interface OrderItem {
 export interface Order {
   id: string;
   order_code: string;
+  customer_id?: string;
   customer_name: string;
   customer_phone: string;
   vendor_id: string;
   rider_id?: string;
+  zone?: string;
   
   delivery_address: string;
   delivery_latitude: number;
@@ -109,6 +158,16 @@ export interface Order {
   food_and_delivery_cash_collected_from_customer: boolean;
   
   status: OrderStatus;
+  vendor_prep_minutes?: number;
+  prep_ends_at?: string;
+  customer_confirmed_prep?: boolean;
+  cancellation_reason?: string;
+  
+  // Intelligent Single-Rider Proximity & Zone Dispatching Engine
+  dispatched_rider_id?: string;
+  dispatch_sent_at?: string;
+  rejected_rider_ids?: string[];
+  
   special_instructions?: string;
   created_at: string;
   updated_at: string;
