@@ -1,7 +1,7 @@
 -- ====================================================================
 -- FOODVIBE / CASH ON DELIVERY MULTI-PORTAL FOOD DELIVERY PLATFORM
--- POSTGRESQL & SUPABASE PRODUCTION DATABASE SCHEMA
--- File: supabase/migrations/001_initial_schema.sql
+-- POSTGRESQL & SUPABASE COMPLETE DATABASE SCHEMA
+-- File: schema.sql (Copy into Supabase SQL Editor)
 -- ====================================================================
 
 -- 1. Enable Required Extensions
