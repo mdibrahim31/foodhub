@@ -11,7 +11,8 @@ import {
   OrderStatus,
   UserAccount,
   DELIVERY_ZONES,
-  DeliveryZone
+  DeliveryZone,
+  RiderMessage
 } from '../types/database';
 import { 
   DEFAULT_SETTINGS, 
@@ -21,10 +22,12 @@ import {
   INITIAL_CUSTOMERS,
   INITIAL_RIDERS, 
   INITIAL_ORDERS,
+  INITIAL_FOOD_CATEGORIES,
   supabase,
   isSupabaseConfigured
 } from '../services/supabase';
 import { calculateDistanceKm, calculateDeliveryFee } from '../utils/geo';
+import { FoodCategory } from '../types/database';
 
 export interface CartItem {
   menuItem: MenuItem;
@@ -68,6 +71,12 @@ interface DeliveryContextType {
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
   toggleMenuItemAvailability: (id: string) => void;
   deleteMenuItem: (id: string) => void;
+
+  // Food Categories (Configurable by Admin)
+  foodCategories: FoodCategory[];
+  addFoodCategory: (category: Omit<FoodCategory, 'id'>) => void;
+  updateFoodCategory: (id: string, updates: Partial<FoodCategory>) => void;
+  deleteFoodCategory: (id: string) => void;
   
   // Customer Addresses & Map Pin Points
   addresses: CustomerAddress[];
@@ -121,6 +130,11 @@ interface DeliveryContextType {
   
   updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<Order>) => void;
   playNotificationSound: () => void;
+
+  // Admin Broadcast & Direct Messaging to Riders
+  riderMessages: RiderMessage[];
+  sendAdminMessage: (msg: Omit<RiderMessage, 'id' | 'created_at'>) => void;
+  markRiderMessageAsRead: (msgId: string) => void;
 }
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
@@ -178,6 +192,35 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return saved ? JSON.parse(saved) : INITIAL_ORDERS;
   });
 
+  const [foodCategories, setFoodCategories] = useState<FoodCategory[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}food_categories`);
+    return saved ? JSON.parse(saved) : INITIAL_FOOD_CATEGORIES;
+  });
+
+  const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}rider_messages`);
+    return saved ? JSON.parse(saved) : [
+      {
+        id: 'msg-101',
+        recipient_rider_id: 'ALL',
+        sender: 'FoodHub Admin',
+        title: 'Welcome to FoodHub Rider Fleet! 🛵',
+        body: 'Keep your GPS location active and status set to Online to receive automatic cash order dispatches.',
+        created_at: new Date(Date.now() - 3600000).toISOString(),
+        is_read: false
+      },
+      {
+        id: 'msg-102',
+        recipient_rider_id: 'ALL',
+        sender: 'FoodHub Operations',
+        title: 'Daily Cash Bonus Alert! 💰',
+        body: 'Complete 10 cash deliveries today in Chawkbazar or GEC Zone and earn an extra ৳200 bonus credited to your wallet.',
+        created_at: new Date(Date.now() - 18000000).toISOString(),
+        is_read: false
+      }
+    ];
+  });
+
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}current_user`);
     return saved ? JSON.parse(saved) : null;
@@ -198,6 +241,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(menuItems));
   }, [menuItems]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}food_categories`, JSON.stringify(foodCategories));
+  }, [foodCategories]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}rider_messages`, JSON.stringify(riderMessages));
+  }, [riderMessages]);
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}customers`, JSON.stringify(customers));
@@ -534,6 +585,25 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteMenuItem = (id: string) => {
     setMenuItems(prev => prev.filter(m => m.id !== id));
+  };
+
+  // -------------------------------------------------------------
+  // FOOD CATEGORIES (Admin Configurable)
+  // -------------------------------------------------------------
+  const addFoodCategory = (category: Omit<FoodCategory, 'id'>) => {
+    const newCat: FoodCategory = {
+      ...category,
+      id: `cat-${Date.now()}`
+    };
+    setFoodCategories(prev => [...prev, newCat]);
+  };
+
+  const updateFoodCategory = (id: string, updates: Partial<FoodCategory>) => {
+    setFoodCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
+  const deleteFoodCategory = (id: string) => {
+    setFoodCategories(prev => prev.filter(c => c.id !== id));
   };
 
   // -------------------------------------------------------------
@@ -949,6 +1019,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playNotificationSound();
   };
 
+  const sendAdminMessage = (msg: Omit<RiderMessage, 'id' | 'created_at'>) => {
+    const newMsg: RiderMessage = {
+      ...msg,
+      id: `msg-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      is_read: false
+    };
+    setRiderMessages(prev => [newMsg, ...prev]);
+    playNotificationSound();
+  };
+
+  const markRiderMessageAsRead = (msgId: string) => {
+    setRiderMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_read: true } : m));
+  };
+
   return (
     <DeliveryContext.Provider
       value={{
@@ -971,6 +1056,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addMenuItem,
         toggleMenuItemAvailability,
         deleteMenuItem,
+        foodCategories,
+        addFoodCategory,
+        updateFoodCategory,
+        deleteFoodCategory,
         addresses,
         selectedAddress,
         setSelectedAddress,
@@ -1001,7 +1090,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         riderConfirmCashPaidToVendor,
         riderConfirmCashCollectedFromCustomer,
         updateOrderStatus,
-        playNotificationSound
+        playNotificationSound,
+        riderMessages,
+        sendAdminMessage,
+        markRiderMessageAsRead
       }}
     >
       {children}

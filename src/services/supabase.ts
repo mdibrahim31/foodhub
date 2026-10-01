@@ -7,8 +7,23 @@ import {
   Rider, 
   Order,
   CustomerUser,
-  UserAccount
+  UserAccount,
+  FoodCategory
 } from '../types/database';
+
+export const INITIAL_FOOD_CATEGORIES: FoodCategory[] = [
+  { id: 'cat-1', name: 'Pizza', icon: '🍕', is_active: true, order_index: 1 },
+  { id: 'cat-2', name: 'Burgers', icon: '🍔', is_active: true, order_index: 2 },
+  { id: 'cat-3', name: 'Chicken & Grill', icon: '🍗', is_active: true, order_index: 3 },
+  { id: 'cat-4', name: 'Shawarma', icon: '🌯', is_active: true, order_index: 4 },
+  { id: 'cat-5', name: 'Biryani', icon: '🍚', is_active: true, order_index: 5 },
+  { id: 'cat-6', name: 'Kabab', icon: '🍢', is_active: true, order_index: 6 },
+  { id: 'cat-7', name: 'Fast Food', icon: '🍟', is_active: true, order_index: 7 },
+  { id: 'cat-8', name: 'Bangladeshi', icon: '🐟', is_active: true, order_index: 8 },
+  { id: 'cat-9', name: 'Chinese & Thai', icon: '🍜', is_active: true, order_index: 9 },
+  { id: 'cat-10', name: 'Bakery & Sweets', icon: '🍰', is_active: true, order_index: 10 },
+  { id: 'cat-11', name: 'Drinks & Shakes', icon: '🥤', is_active: true, order_index: 11 },
+];
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';

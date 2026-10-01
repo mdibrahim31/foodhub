@@ -37,16 +37,33 @@ export const AdminPortal: React.FC = () => {
     riders, 
     adminRegisterRider,
     orders,
-    menuItems 
+    menuItems,
+    foodCategories,
+    addFoodCategory,
+    updateFoodCategory,
+    deleteFoodCategory,
+    sendAdminMessage
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'settings' | 'vendors' | 'riders' | 'orders' | 'database'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'database'>('settings');
+
+  // Send Message Modal State
+  const [isSendMessageOpen, setIsSendMessageOpen] = useState(false);
+  const [msgRecipientId, setMsgRecipientId] = useState<'ALL' | string>('ALL');
+  const [msgTitle, setMsgTitle] = useState('');
+  const [msgBody, setMsgBody] = useState('');
 
   // Settings form state
   const [perKmCharge, setPerKmCharge] = useState(settings.per_km_delivery_charge);
   const [baseCharge, setBaseCharge] = useState(settings.base_delivery_charge);
   const [riderRadius, setRiderRadius] = useState(settings.rider_match_radius_km);
   const [settingsSaved, setSettingsSaved] = useState(false);
+
+  // New Category Form
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [catName, setCatName] = useState('');
+  const [catIcon, setCatIcon] = useState('🍕');
+  const [catImageUrl, setCatImageUrl] = useState('');
 
   // New Vendor Form
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
@@ -71,6 +88,27 @@ export const AdminPortal: React.FC = () => {
   const [rLng, setRLng] = useState(91.8380);
   const [isRiderMapPickerOpen, setIsRiderMapPickerOpen] = useState(false);
 
+  const handleAddCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName.trim()) {
+      alert('Please enter a food category name.');
+      return;
+    }
+
+    addFoodCategory({
+      name: catName.trim(),
+      icon: catIcon.trim() || '🍽️',
+      image_url: catImageUrl.trim() || undefined,
+      is_active: true
+    });
+
+    setIsAddCategoryOpen(false);
+    setCatName('');
+    setCatIcon('🍕');
+    setCatImageUrl('');
+    alert(`Category "${catName}" added successfully! It will now appear on the customer app category slider.`);
+  };
+
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({
@@ -80,6 +118,30 @@ export const AdminPortal: React.FC = () => {
     });
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 3000);
+  };
+
+  const handleSendMessageSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!msgTitle.trim() || !msgBody.trim()) {
+      alert('Please fill in message title and message body.');
+      return;
+    }
+
+    const recipientName = msgRecipientId === 'ALL' 
+      ? 'All Riders (Broadcast)' 
+      : riders.find(r => r.id === msgRecipientId)?.name || 'Rider';
+
+    sendAdminMessage({
+      recipient_rider_id: msgRecipientId,
+      sender: 'FoodHub Admin',
+      title: msgTitle.trim(),
+      body: msgBody.trim()
+    });
+
+    setIsSendMessageOpen(false);
+    setMsgTitle('');
+    setMsgBody('');
+    alert(`Message sent to ${recipientName}! It will appear in their Rider App Inbox.`);
   };
 
   const handleRegisterVendorSubmit = (e: React.FormEvent) => {
@@ -183,6 +245,16 @@ export const AdminPortal: React.FC = () => {
             >
               <Settings className="w-4 h-4" />
               <span>Rates & Radius</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+                activeTab === 'categories' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ChefHat className="w-4 h-4" />
+              <span>Food Categories ({foodCategories.length})</span>
             </button>
 
             <button
@@ -332,6 +404,84 @@ export const AdminPortal: React.FC = () => {
 
         {/* 
           ======================================================================
+          TAB: FOOD CATEGORIES MANAGEMENT (Slider Line 1 on Customer App)
+          ======================================================================
+        */}
+        {activeTab === 'categories' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                  <ChefHat className="w-5 h-5 text-rose-600" />
+                  <span>Food Categories Slider Line ({foodCategories.length})</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Manage the top horizontal slider categories (Pizza, Burgers, Shawarma, Biryani, Kabab, etc.) shown on the customer app.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAddCategoryOpen(true)}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition flex items-center space-x-1.5 cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>Add Food Category</span>
+              </button>
+            </div>
+
+            {/* Category Cards Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {foodCategories.map((cat) => (
+                <div
+                  key={cat.id}
+                  className={`bg-white border rounded-3xl p-4 flex flex-col items-center text-center justify-between space-y-3 transition shadow-xs hover:shadow-md ${
+                    cat.is_active ? 'border-slate-200' : 'border-dashed border-slate-300 opacity-60'
+                  }`}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-3xl shadow-2xs">
+                    {cat.image_url ? (
+                      <img src={cat.image_url} alt={cat.name} className="w-10 h-10 object-contain" />
+                    ) : (
+                      <span>{cat.icon || '🍽️'}</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <h4 className="font-extrabold text-sm text-slate-900 line-clamp-1">{cat.name}</h4>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                      cat.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {cat.is_active ? 'Active on App' : 'Hidden'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2 pt-2 border-t border-slate-100 w-full justify-center">
+                    <button
+                      onClick={() => updateFoodCategory(cat.id, { is_active: !cat.is_active })}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+                      title="Toggle Active on Customer App"
+                    >
+                      {cat.is_active ? 'Hide' : 'Show'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete food category "${cat.name}"?`)) {
+                          deleteFoodCategory(cat.id);
+                        }
+                      }}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 
+          ======================================================================
           TAB 2: VENDORS REGISTRATION & MANAGEMENT
           ======================================================================
         */}
@@ -392,6 +542,26 @@ export const AdminPortal: React.FC = () => {
                         Pin: Lat {v.latitude.toFixed(4)}, Lng {v.longitude.toFixed(4)}
                       </div>
                     </div>
+
+                    {/* Popular Brands Serial Control (1-5 ranking) */}
+                    <div className="bg-orange-50/70 p-2.5 rounded-2xl border border-orange-200/80 flex items-center justify-between gap-2 text-xs">
+                      <span className="font-extrabold text-orange-900 text-[11px]">Popular Rank (1-5):</span>
+                      <select
+                        value={v.featured_position || 0}
+                        onChange={(e) => {
+                          const pos = Number(e.target.value);
+                          updateVendor(v.id, { featured_position: pos > 0 ? pos : undefined });
+                        }}
+                        className="bg-white border border-orange-300 rounded-xl px-2 py-1 font-bold text-orange-950 focus:outline-hidden text-xs cursor-pointer shadow-2xs"
+                      >
+                        <option value={0}>Default (Sorted by Rating)</option>
+                        <option value={1}>#1 Serial (Top 1)</option>
+                        <option value={2}>#2 Serial (Top 2)</option>
+                        <option value={3}>#3 Serial (Top 3)</option>
+                        <option value={4}>#4 Serial (Top 4)</option>
+                        <option value={5}>#5 Serial (Top 5)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -440,13 +610,21 @@ export const AdminPortal: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={() => setIsAddRiderOpen(true)}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition flex items-center space-x-1.5 cursor-pointer shrink-0"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Register New Rider</span>
-              </button>
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  onClick={() => setIsSendMessageOpen(true)}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white font-black text-xs rounded-2xl shadow-md transition flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <span>✉️ Send Inbox Message</span>
+                </button>
+                <button
+                  onClick={() => setIsAddRiderOpen(true)}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Register New Rider</span>
+                </button>
+              </div>
             </div>
 
             {/* Riders Cards Grid */}
@@ -878,6 +1056,191 @@ export const AdminPortal: React.FC = () => {
                   className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition shadow-md shadow-rose-600/30 cursor-pointer"
                 >
                   Save & Register Rider
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: ADD NEW FOOD CATEGORY (FOR CUSTOMER SLIDER LINE 1)
+        ========================================================================
+      */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <ChefHat className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">Add New Food Category</h3>
+              </div>
+              <button
+                onClick={() => setIsAddCategoryOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategorySubmit} className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  placeholder="e.g. Shawarma, Pizza, Grilled Chicken, Biryani"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  required
+                />
+              </div>
+
+              {/* Emoji / Icon Selector */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">
+                  Icon / Emoji
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                  {['🍕', '🍔', '🍗', '🌯', '🍚', '🍢', '🍟', '🐟', '🍜', '🍰', '🥤', '🥪', '🥟', '🥗', '☕', '🍩', '🥩'].map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => setCatIcon(em)}
+                      className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center transition ${
+                        catIcon === em ? 'bg-rose-600 text-white shadow-xs' : 'bg-white hover:bg-slate-100'
+                      }`}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={catIcon}
+                  onChange={(e) => setCatIcon(e.target.value)}
+                  placeholder="Custom emoji or icon text"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 mt-1"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">
+                  Custom Image URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={catImageUrl}
+                  onChange={(e) => setCatImageUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                />
+              </div>
+
+              <div className="pt-3 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCategoryOpen(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition shadow-md shadow-rose-600/30 cursor-pointer"
+                >
+                  Add Category to App
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: SEND ADMIN MESSAGE / ANNOUNCEMENT TO RIDERS
+        ========================================================================
+      */}
+      {isSendMessageOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <Bike className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">Send Message / Inbox Notice</h3>
+              </div>
+              <button
+                onClick={() => setIsSendMessageOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSendMessageSubmit} className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">
+                  Recipient *
+                </label>
+                <select
+                  value={msgRecipientId}
+                  onChange={(e) => setMsgRecipientId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                >
+                  <option value="ALL">📢 All Riders (Broadcast Announcement)</option>
+                  {riders.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      👤 Personal: {r.name} ({r.phone})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">
+                  Message Title / Subject *
+                </label>
+                <input
+                  type="text"
+                  value={msgTitle}
+                  onChange={(e) => setMsgTitle(e.target.value)}
+                  placeholder="e.g. Daily Bonus Notice / Route Update"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">
+                  Message Body / Instructions *
+                </label>
+                <textarea
+                  value={msgBody}
+                  onChange={(e) => setMsgBody(e.target.value)}
+                  rows={4}
+                  placeholder="Type message content here..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-3 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSendMessageOpen(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition shadow-md shadow-rose-600/30 cursor-pointer"
+                >
+                  Send Message Now
                 </button>
               </div>
             </form>

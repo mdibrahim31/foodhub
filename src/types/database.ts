@@ -43,9 +43,19 @@ export interface Vendor {
   is_active: boolean;
   rating: number;
   estimated_prep_time_minutes: number;
+  featured_position?: number; // 1 to 5 for ranking in top serial
   is_password_set?: boolean;
   password?: string;
   created_at?: string;
+}
+
+export interface FoodCategory {
+  id: string;
+  name: string;
+  icon?: string; // emoji e.g. 🍕, 🍔 or icon name
+  image_url?: string;
+  is_active: boolean;
+  order_index?: number;
 }
 
 export interface MenuItem {
@@ -175,4 +185,14 @@ export interface Order {
   items?: OrderItem[];
   vendor?: Vendor;
   rider?: Rider;
+}
+
+export interface RiderMessage {
+  id: string;
+  recipient_rider_id: string; // 'ALL' or specific rider id
+  sender: string; // e.g. 'FoodHub Admin'
+  title: string;
+  body: string;
+  created_at: string;
+  is_read?: boolean;
 }

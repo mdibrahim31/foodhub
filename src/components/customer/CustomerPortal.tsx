@@ -32,13 +32,17 @@ import {
   Check,
   X,
   Phone,
-  Bike
+  Bike,
+  Tag,
+  Percent,
+  Flame
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
   const { 
     vendors, 
     menuItems, 
+    foodCategories,
     selectedAddress, 
     settings, 
     cart, 
@@ -55,7 +59,7 @@ export const CustomerPortal: React.FC = () => {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const [activeBottomNav, setActiveBottomNav] = useState<'food' | 'grocery' | 'search' | 'carts' | 'account'>('food');
+  const [activeBottomNav, setActiveBottomNav] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>('food');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   // Account Page States (Matching Screenshot_20260930_190517.jpg)
   const [accountSubView, setAccountSubView] = useState<'none' | 'orders' | 'favourites'>('none');
@@ -261,7 +265,107 @@ export const CustomerPortal: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-24">
-      {activeBottomNav === 'account' ? (
+      {activeBottomNav === 'offers' ? (
+        /* 
+          ========================================================================
+          OFFERS & DEALS VIEW (Replaced middle Search tab in Bottom Navigation)
+          ========================================================================
+        */
+        <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28">
+          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Exclusive Savings</span>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Offers & Discounts</h1>
+            </div>
+            <button 
+              onClick={() => setActiveBottomNav('food')}
+              className="p-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-xs font-bold px-3"
+            >
+              Back to Food
+            </button>
+          </div>
+
+          <div className="px-5 py-5 space-y-6">
+            {/* Promo Vouchers */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-black text-slate-900 flex items-center space-x-1.5">
+                <Ticket className="w-4 h-4 text-rose-600" />
+                <span>Active Voucher Codes</span>
+              </h3>
+
+              <div className="space-y-2.5">
+                {[
+                  { code: 'FOODVIBE40', title: '40% OFF on all Kacchi Biryani & Fast Food', minSpend: 'Min spend ৳300', expiry: 'Expires in 2 days' },
+                  { code: 'FREEDELIVERY', title: 'Free Delivery on All Cash Orders', minSpend: 'Min spend ৳250', expiry: 'Valid all month' },
+                  { code: 'CRISPY20', title: 'Flat ৳80 Discount on Burgers & Fried Chicken', minSpend: 'Min spend ৳350', expiry: 'Daily special' },
+                ].map((vouch) => (
+                  <div key={vouch.code} className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 shadow-xs flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2.5 py-0.5 bg-rose-600 text-white font-mono font-black text-xs rounded-lg shadow-2xs">
+                          {vouch.code}
+                        </span>
+                        <span className="text-[10px] font-bold text-rose-700">{vouch.expiry}</span>
+                      </div>
+                      <h4 className="text-xs font-black text-slate-900">{vouch.title}</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">{vouch.minSpend}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText(vouch.code);
+                        alert(`Voucher code "${vouch.code}" copied!`);
+                      }}
+                      className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 rounded-xl text-xs font-black shadow-xs shrink-0 cursor-pointer"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Restaurants with Big Offers */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-black text-slate-900 flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-orange-600" />
+                <span>Featured Restaurants with Big Savings</span>
+              </h3>
+
+              <div className="grid grid-cols-1 gap-3.5">
+                {vendors.map((v) => {
+                  const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => setSelectedVendorForMenu(v)}
+                      className="p-3.5 bg-white border border-slate-200 rounded-3xl shadow-xs hover:shadow-md hover:border-orange-300 transition cursor-pointer flex items-center gap-3.5"
+                    >
+                      <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
+                        <img src={v.cover_image || v.logo_url} alt={v.name} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-0 inset-x-0 bg-rose-600 text-white font-black text-[9px] text-center py-0.5">
+                          35% OFF
+                        </span>
+                      </div>
+
+                      <div className="flex-1 space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-extrabold text-sm text-slate-900">{v.name}</h4>
+                          <span className="flex items-center gap-0.5 font-bold text-xs text-slate-800">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {v.rating || 4.8}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">{v.cuisine}</p>
+                        <p className="text-[11px] text-emerald-700 font-bold">🛵 Delivery from ৳{settings.base_delivery_charge} &bull; {distanceKm.toFixed(1)} km</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : activeBottomNav === 'account' ? (
         /* 
           ========================================================================
           ACCOUNT PAGE (100% Matching Screenshot_20260930_190517.jpg)
@@ -601,51 +705,122 @@ export const CustomerPortal: React.FC = () => {
       */}
       <main className="max-w-md mx-auto px-4 py-4 space-y-6">
 
-        {/* 2. QUICK SERVICE ICONS ROW (Offers, foodmart, Pick-up, Health & Beauty, Restaurants) */}
-        <section className="grid grid-cols-5 gap-2 text-center pt-1">
-          {serviceShortcuts.map((svc) => (
-            <div 
-              key={svc.label}
-              onClick={() => {
-                if (svc.label === 'Offers') setHasOfferOnly(prev => !prev);
-              }}
-              className="flex flex-col items-center group cursor-pointer"
-            >
-              <div className="relative w-14 h-14 rounded-2xl bg-white shadow-xs border border-slate-100 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
-                {svc.badge && (
-                  <span className={`absolute -top-1.5 -right-1 px-1.5 py-0.2 ${svc.badgeBg} text-white font-black text-[9px] rounded-full shadow-xs whitespace-nowrap`}>
-                    {svc.badge}
-                  </span>
-                )}
-                <span>{svc.icon}</span>
-              </div>
-              <span className="text-[11px] font-bold text-slate-800 mt-1.5 leading-tight">
-                {svc.label}
-              </span>
+        {/* 
+          ======================================================================
+          TOP ROW (RED MARKED SECTION IN SCREENSHOT):
+          POPULAR BRANDS / TOP RESTAURANTS HORIZONTAL SLIDER
+          - Placed directly below hero carousel as requested by user
+          - Admin can assign 1-5 rank serial from Admin Panel
+          - Sorted primarily by Admin position (1-5), secondarily by Customer Rating
+          - Displays Customer Rating ⭐ under name instead of minutes
+          ======================================================================
+        */}
+        <section className="space-y-2 pt-1">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center space-x-1.5">
+                <span>Popular Brands</span>
+              </h3>
+              <p className="text-[10px] text-slate-500 font-medium">Top picks ranked by rating & admin priority</p>
             </div>
-          ))}
+            <span className="text-[10px] text-slate-400 font-semibold">Slide to explore &rarr;</span>
+          </div>
+
+          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none select-none">
+            {[...vendors].sort((a, b) => {
+              const posA = a.featured_position && a.featured_position >= 1 && a.featured_position <= 5 ? a.featured_position : 999;
+              const posB = b.featured_position && b.featured_position >= 1 && b.featured_position <= 5 ? b.featured_position : 999;
+              if (posA !== posB) return posA - posB;
+              return (b.rating || 0) - (a.rating || 0);
+            }).map((v) => {
+              const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
+              const isTop5 = v.featured_position && v.featured_position >= 1 && v.featured_position <= 5;
+              return (
+                <div
+                  key={v.id}
+                  onClick={() => setSelectedVendorForMenu(v)}
+                  className="shrink-0 w-36 bg-white rounded-3xl border border-slate-200 p-3 shadow-xs hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group flex flex-col items-center text-center justify-between space-y-2"
+                >
+                  {/* Logo Container */}
+                  <div className="relative w-24 h-20 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-100 shadow-2xs">
+                    <img 
+                      src={v.cover_image || v.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400'} 
+                      alt={v.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {isTop5 && (
+                      <span className="absolute top-1 left-1 px-1.5 py-0.2 bg-rose-600 text-white font-black text-[8px] rounded-md shadow-2xs">
+                        #{v.featured_position} Top
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Name & Customer Rating Underneath (Minutes replaced by Rating) */}
+                  <div className="w-full space-y-1">
+                    <h4 className="font-extrabold text-xs text-slate-900 truncate leading-tight group-hover:text-orange-600 transition-colors">
+                      {v.name}
+                    </h4>
+                    
+                    {/* Customer Rating Show (Instead of prep minutes) */}
+                    <div className="flex items-center justify-center space-x-1 text-xs font-black text-slate-800 bg-amber-50/80 border border-amber-200/80 rounded-lg py-0.5 px-2 w-fit mx-auto">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                      <span>{v.rating || 4.8}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">({distanceKm.toFixed(1)}km)</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
-        {/* 3. 3D CUISINE FOOD BUBBLES HORIZONTAL SCROLL (Pizza, Burgers, Fast Food, Bangladeshi, Rice) */}
-        <section className="space-y-2">
-          <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none">
-            {cuisineBubbles.map((c) => {
-              const isSelected = activeCuisineFilter === c.filter;
+        {/* 
+          ======================================================================
+          SECOND ROW: FOOD CATEGORIES HORIZONTAL SLIDER
+          (Pizza, Burgers, Chicken & Grill, Shawarma, Biryani, Kabab, Fast Food, etc. - dynamically managed by Admin)
+          ======================================================================
+        */}
+        <section className="space-y-2 pt-1">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+              <span>🍕 Food Categories</span>
+            </h3>
+            {activeCuisineFilter !== 'All' && (
+              <button 
+                onClick={() => setActiveCuisineFilter('All')} 
+                className="text-[11px] font-bold text-orange-600 hover:underline"
+              >
+                Clear filter ({activeCuisineFilter})
+              </button>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none select-none">
+            {foodCategories.filter(cat => cat.is_active !== false).map((cat) => {
+              const isSelected = activeCuisineFilter.toLowerCase() === cat.name.toLowerCase();
               return (
                 <button
-                  key={c.label}
-                  onClick={() => setActiveCuisineFilter(isSelected ? 'All' : c.filter)}
-                  className="flex flex-col items-center shrink-0 group cursor-pointer focus:outline-hidden"
+                  key={cat.id}
+                  onClick={() => setActiveCuisineFilter(isSelected ? 'All' : cat.name)}
+                  className={`flex flex-col items-center shrink-0 group cursor-pointer focus:outline-hidden transition-all ${
+                    isSelected ? 'scale-105' : 'hover:scale-102'
+                  }`}
                 >
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xs transition-transform ${
-                    isSelected ? 'ring-2 ring-orange-500 scale-105 bg-orange-50' : 'bg-slate-50 border border-slate-100'
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border ${
+                    isSelected 
+                      ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
+                      : 'bg-white border-slate-200/80 hover:border-slate-300'
                   }`}>
-                    <span>{c.icon}</span>
+                    {cat.image_url ? (
+                      <img src={cat.image_url} alt={cat.name} className="w-9 h-9 object-contain" />
+                    ) : (
+                      <span>{cat.icon || '🍽️'}</span>
+                    )}
                   </div>
-                  <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap ${
-                    isSelected ? 'text-orange-600' : 'text-slate-800'
+                  <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
+                    isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
                   }`}>
-                    {c.label}
+                    {cat.name}
                   </span>
                 </button>
               );
@@ -1480,20 +1655,23 @@ export const CustomerPortal: React.FC = () => {
             <span className="text-[10px] mt-0.5">Grocery</span>
           </button>
 
-          {/* Search */}
+          {/* Offers (Replaced Search) */}
           <button
             onClick={() => {
-              setActiveBottomNav('search');
+              setActiveBottomNav('offers');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
-              activeBottomNav === 'search' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+              activeBottomNav === 'offers' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'search' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <Search className="w-5 h-5" />
+            <div className={`relative p-1 rounded-xl ${activeBottomNav === 'offers' ? 'bg-orange-50 text-orange-600' : ''}`}>
+              <Tag className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 px-1 bg-rose-600 text-white font-black text-[8px] rounded-full">
+                %
+              </span>
             </div>
-            <span className="text-[10px] mt-0.5">Search</span>
+            <span className="text-[10px] mt-0.5">Offers</span>
           </button>
 
           {/* Carts */}

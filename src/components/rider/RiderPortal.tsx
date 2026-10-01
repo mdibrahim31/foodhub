@@ -29,7 +29,16 @@ import {
   Store,
   User,
   LogOut,
-  KeyRound
+  KeyRound,
+  Mail,
+  CreditCard,
+  Calendar,
+  Wallet,
+  Inbox,
+  Settings,
+  Flame,
+  HelpCircle,
+  FileText
 } from 'lucide-react';
 
 export const RiderPortal: React.FC = () => {
@@ -47,7 +56,9 @@ export const RiderPortal: React.FC = () => {
     riderConfirmCashCollectedFromCustomer,
     vendors,
     currentUser,
-    logoutUser
+    logoutUser,
+    riderMessages,
+    markRiderMessageAsRead
   } = useDelivery();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -57,6 +68,8 @@ export const RiderPortal: React.FC = () => {
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [isCashoutModalOpen, setIsCashoutModalOpen] = useState(false);
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [isOrdersListOpen, setIsOrdersListOpen] = useState(false);
   const [rejectedOrderIds, setRejectedOrderIds] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [orderCountdown, setOrderCountdown] = useState(60);
@@ -839,108 +852,367 @@ export const RiderPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: MENU DRAWER (Profile, Cash, Switch Rider, Location Simulator)
+        SIDE NAVIGATION DRAWER (100% Matching Screenshot_20261001_124714_pandarider.jpg)
         ========================================================================
       */}
       {isMenuDrawerOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Bike className="w-5 h-5 text-orange-600" />
-                <h3 className="font-black text-slate-900 text-base">Rider Profile & Settings</h3>
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex animate-in fade-in">
+          <div className="w-80 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between overflow-y-auto select-none">
+            
+            <div className="space-y-6">
+              {/* Pink / Rose Curve Header */}
+              <div className="bg-rose-600 text-white p-6 pt-8 rounded-b-[2.5rem] shadow-md relative">
+                <button 
+                  onClick={() => setIsMenuDrawerOpen(false)}
+                  className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full bg-white/10"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="space-y-1 pr-6">
+                  <h2 className="text-2xl font-black leading-tight tracking-tight">
+                    Hi, {currentRider.name} 👋
+                  </h2>
+                  <p className="text-xs text-rose-100 font-medium">
+                    {currentRider.phone} &bull; {currentRider.zone}
+                  </p>
+                </div>
+              </div>
+
+              {/* 4 Quick Action Cards Grid (Inbox, Schedule, Wallet, Payments) */}
+              <div className="px-5 grid grid-cols-2 gap-3">
+                {/* Inbox Card */}
+                <button 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsInboxOpen(true);
+                  }}
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-rose-300 transition flex flex-col justify-between space-y-3 relative group cursor-pointer text-left shadow-2xs"
+                >
+                  <div className="flex justify-between items-start">
+                    <Mail className="w-6 h-6 text-slate-800 group-hover:text-rose-600 transition" />
+                    {riderMessages.filter(m => (m.recipient_rider_id === 'ALL' || m.recipient_rider_id === currentRider.id) && !m.is_read).length > 0 && (
+                      <span className="px-2 py-0.5 bg-rose-600 text-white font-black text-[10px] rounded-full shadow-xs">
+                        +{riderMessages.filter(m => (m.recipient_rider_id === 'ALL' || m.recipient_rider_id === currentRider.id) && !m.is_read).length}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs font-black text-slate-800 group-hover:text-rose-600 transition">
+                    Inbox
+                  </span>
+                </button>
+
+                {/* Schedule / Orders Card */}
+                <button 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsOrdersListOpen(true);
+                  }}
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-rose-300 transition flex flex-col justify-between space-y-3 group cursor-pointer text-left shadow-2xs"
+                >
+                  <Clock className="w-6 h-6 text-slate-800 group-hover:text-rose-600 transition" />
+                  <span className="text-xs font-black text-slate-800 group-hover:text-rose-600 transition">
+                    Orders
+                  </span>
+                </button>
+
+                {/* Wallet Card */}
+                <button 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsCashoutModalOpen(true);
+                  }}
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-rose-300 transition flex flex-col justify-between space-y-3 group cursor-pointer text-left shadow-2xs"
+                >
+                  <Wallet className="w-6 h-6 text-slate-800 group-hover:text-rose-600 transition" />
+                  <span className="text-xs font-black text-slate-800 group-hover:text-rose-600 transition">
+                    Wallet (৳{currentRider.cash_in_hand})
+                  </span>
+                </button>
+
+                {/* Payments Card */}
+                <button 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsCashoutModalOpen(true);
+                  }}
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-rose-300 transition flex flex-col justify-between space-y-3 group cursor-pointer text-left shadow-2xs"
+                >
+                  <Banknote className="w-6 h-6 text-slate-800 group-hover:text-rose-600 transition" />
+                  <span className="text-xs font-black text-slate-800 group-hover:text-rose-600 transition">
+                    Payments
+                  </span>
+                </button>
+              </div>
+
+              {/* Vertical Menu Options List */}
+              <div className="px-5 space-y-1 divide-y divide-slate-100 border-t border-slate-100 pt-2 text-sm font-bold text-slate-800">
+                
+                {/* My Profile */}
+                <div 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                  }}
+                  className="py-3.5 flex items-center space-x-3.5 cursor-pointer hover:text-rose-600 group"
+                >
+                  <User className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
+                  <span>My profile</span>
+                </div>
+
+                {/* Orders List */}
+                <div 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsOrdersListOpen(true);
+                  }}
+                  className="py-3.5 flex items-center space-x-3.5 cursor-pointer hover:text-rose-600 group"
+                >
+                  <Calendar className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
+                  <span>Orders list</span>
+                </div>
+
+                {/* Inbox Messages */}
+                <div 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsInboxOpen(true);
+                  }}
+                  className="py-3.5 flex items-center justify-between cursor-pointer hover:text-rose-600 group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Mail className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
+                    <span>Inbox / Admin Messages</span>
+                  </div>
+                  {riderMessages.filter(m => (m.recipient_rider_id === 'ALL' || m.recipient_rider_id === currentRider.id) && !m.is_read).length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                  )}
+                </div>
+
+                {/* Active Rider Switcher */}
+                <div className="py-3.5 space-y-1.5">
+                  <span className="text-xs font-bold text-slate-500 block">Switch Active Rider Profile:</span>
+                  <select
+                    value={currentRider.id}
+                    onChange={(e) => {
+                      const r = riders.find((x) => x.id === e.target.value);
+                      if (r) setCurrentRider(r);
+                    }}
+                    className="w-full px-3 py-2 text-xs font-bold border border-slate-200 bg-slate-50 rounded-xl"
+                  >
+                    {riders.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.vehicle_type}) - ৳{r.cash_in_hand} Float
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Settings and privacy */}
+                <div className="py-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3.5">
+                      <Settings className="w-5 h-5 text-slate-700" />
+                      <span>Sound Chime</span>
+                    </div>
+                    <button
+                      onClick={() => setSoundEnabled(prev => !prev)}
+                      className={`p-1.5 rounded-lg text-xs font-bold ${
+                        soundEnabled ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {soundEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Simulator buttons */}
+                  <div className="pt-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Location Simulator:</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          updateRiderLocation(currentRider.id, 22.3600, 91.8250);
+                          handleRecenter();
+                        }}
+                        className="flex-1 py-1.5 px-2 bg-emerald-600 text-white rounded-lg text-[10px] font-bold"
+                      >
+                        Nasirabad (In Zone)
+                      </button>
+                      <button
+                        onClick={() => {
+                          updateRiderLocation(currentRider.id, 22.4200, 91.7800);
+                          handleRecenter();
+                        }}
+                        className="flex-1 py-1.5 px-2 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold"
+                      >
+                        Out of Zone
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Bottom Footer / Logout */}
+            <div className="p-5 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  logoutUser();
+                  setIsMenuDrawerOpen(false);
+                }}
+                className="w-full py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black rounded-2xl text-xs flex items-center justify-center space-x-2 transition"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Log out</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: RIDER INBOX (ADMIN MESSAGES & BROADCAST NOTICES)
+        ========================================================================
+      */}
+      {isInboxOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-5 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 bg-rose-100 text-rose-600 rounded-2xl">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">Rider Inbox</h3>
+                  <p className="text-[11px] text-slate-500">Official Admin & Operations Messages</p>
+                </div>
               </div>
               <button 
-                onClick={() => setIsMenuDrawerOpen(false)}
+                onClick={() => setIsInboxOpen(false)}
                 className="p-1 text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Rider Selector */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Active Rider Profile</label>
-              <select
-                value={currentRider.id}
-                onChange={(e) => {
-                  const r = riders.find((x) => x.id === e.target.value);
-                  if (r) setCurrentRider(r);
-                }}
-                className="w-full px-3 py-2 text-xs font-bold border border-slate-200 rounded-xl"
-              >
-                {riders.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} ({r.vehicle_type}) - ৳{r.cash_in_hand} Float
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {riderMessages.filter(m => m.recipient_rider_id === 'ALL' || m.recipient_rider_id === currentRider.id).length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                  No messages in your inbox yet.
+                </div>
+              ) : (
+                riderMessages
+                  .filter(m => m.recipient_rider_id === 'ALL' || m.recipient_rider_id === currentRider.id)
+                  .map((msg) => (
+                    <div 
+                      key={msg.id}
+                      onClick={() => markRiderMessageAsRead(msg.id)}
+                      className={`p-4 rounded-2xl border transition cursor-pointer space-y-1.5 ${
+                        msg.is_read 
+                          ? 'bg-white border-slate-200' 
+                          : 'bg-rose-50/60 border-rose-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md">
+                          {msg.sender || 'Admin'}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+
+                      <h4 className="font-extrabold text-xs text-slate-900">{msg.title}</h4>
+                      <p className="text-xs text-slate-600 leading-relaxed font-medium">{msg.body}</p>
+                    </div>
+                  ))
+              )}
             </div>
 
-            {/* Floating Cash in Hand Card */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-600">Cash in Hand (Floating Float)</span>
-                <span className="font-mono font-black text-lg text-slate-900">
-                  {settings.currency_symbol}{currentRider.cash_in_hand}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Cash limit: ৳4,000. Above limit triggers "Access restricted" until cash is deposited.
-              </p>
+            <div className="pt-2 border-t border-slate-100 shrink-0">
               <button
-                onClick={() => {
-                  setIsMenuDrawerOpen(false);
-                  setIsCashoutModalOpen(true);
-                }}
-                className="w-full py-2 bg-slate-900 hover:bg-black text-white font-black text-xs rounded-xl shadow-xs transition"
+                onClick={() => setIsInboxOpen(false)}
+                className="w-full py-2.5 bg-slate-900 text-white font-black text-xs rounded-2xl shadow-xs"
               >
-                Cash out / Deposit Cash
+                Close Inbox
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: RIDER ORDERS LIST
+        ========================================================================
+      */}
+      {isOrdersListOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-5 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-2xl">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">Your Delivery Orders</h3>
+                  <p className="text-[11px] text-slate-500">Assigned & Completed Cash Orders</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsOrdersListOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Sound Toggle */}
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-              <span className="text-xs font-bold text-slate-800">Order Audio Alert Chime</span>
-              <button
-                onClick={() => setSoundEnabled((prev) => !prev)}
-                className={`p-2 rounded-lg text-xs font-bold flex items-center space-x-1 ${
-                  soundEnabled ? 'bg-orange-100 text-orange-700' : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                <span>{soundEnabled ? 'Enabled' : 'Muted'}</span>
-              </button>
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {orders.filter(o => o.rider_id === currentRider.id).length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                  No orders assigned to you yet. Stay Online to receive cash order dispatches!
+                </div>
+              ) : (
+                orders
+                  .filter(o => o.rider_id === currentRider.id)
+                  .map((ord) => {
+                    const vend = vendors.find(v => v.id === ord.vendor_id);
+                    return (
+                      <div key={ord.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2 text-xs">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-mono font-black text-rose-600">{ord.order_code}</span>
+                            <h5 className="font-extrabold text-slate-900">{vend?.name || 'Restaurant'}</h5>
+                          </div>
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px] uppercase">
+                            {ord.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+
+                        <div className="text-slate-600 space-y-0.5">
+                          <p><span className="font-bold text-slate-800">Customer:</span> {ord.customer_name} ({ord.customer_phone})</p>
+                          <p><span className="font-bold text-slate-800">Address:</span> {ord.delivery_address}</p>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-100 font-mono font-black text-slate-900">
+                          <span>COD Collect Total:</span>
+                          <span className="text-emerald-600 text-sm">৳{ord.total_cash_payable}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
             </div>
 
-            {/* Dispatch Simulator Controls for Testing */}
-            <div className="p-3.5 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-2">
-              <span className="text-xs font-black text-orange-900 block">
-                Quick Location Simulator (Chattogram)
-              </span>
-              <p className="text-[11px] text-slate-600">
-                Test order popping up inside vs outside the {settings.rider_match_radius_km} km radius:
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    updateRiderLocation(currentRider.id, 22.3600, 91.8250);
-                    handleRecenter();
-                  }}
-                  className="flex-1 py-1.5 px-2 bg-emerald-600 text-white rounded-lg text-[11px] font-bold"
-                >
-                  Inside Zone (Nasirabad)
-                </button>
-                <button
-                  onClick={() => {
-                    updateRiderLocation(currentRider.id, 22.4200, 91.7800);
-                    handleRecenter();
-                  }}
-                  className="flex-1 py-1.5 px-2 bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold"
-                >
-                  Outside Zone (5km away)
-                </button>
-              </div>
+            <div className="pt-2 border-t border-slate-100 shrink-0">
+              <button
+                onClick={() => setIsOrdersListOpen(false)}
+                className="w-full py-2.5 bg-slate-900 text-white font-black text-xs rounded-2xl shadow-xs"
+              >
+                Close Orders List
+              </button>
             </div>
           </div>
         </div>
