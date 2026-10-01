@@ -70,6 +70,7 @@ export const RiderPortal: React.FC = () => {
   const [isCashoutModalOpen, setIsCashoutModalOpen] = useState(false);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [isOrdersListOpen, setIsOrdersListOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [rejectedOrderIds, setRejectedOrderIds] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [orderCountdown, setOrderCountdown] = useState(60);
@@ -879,7 +880,7 @@ export const RiderPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* 4 Quick Action Cards Grid (Inbox, Schedule, Wallet, Payments) */}
+              {/* Action Cards Grid (Only Inbox & Orders as requested) */}
               <div className="px-5 grid grid-cols-2 gap-3">
                 {/* Inbox Card */}
                 <button 
@@ -902,7 +903,7 @@ export const RiderPortal: React.FC = () => {
                   </span>
                 </button>
 
-                {/* Schedule / Orders Card */}
+                {/* Orders Card */}
                 <button 
                   onClick={() => {
                     setIsMenuDrawerOpen(false);
@@ -915,141 +916,21 @@ export const RiderPortal: React.FC = () => {
                     Orders
                   </span>
                 </button>
-
-                {/* Wallet Card */}
-                <button 
-                  onClick={() => {
-                    setIsMenuDrawerOpen(false);
-                    setIsCashoutModalOpen(true);
-                  }}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-rose-300 transition flex flex-col justify-between space-y-3 group cursor-pointer text-left shadow-2xs"
-                >
-                  <Wallet className="w-6 h-6 text-slate-800 group-hover:text-rose-600 transition" />
-                  <span className="text-xs font-black text-slate-800 group-hover:text-rose-600 transition">
-                    Wallet (৳{currentRider.cash_in_hand})
-                  </span>
-                </button>
-
-                {/* Payments Card */}
-                <button 
-                  onClick={() => {
-                    setIsMenuDrawerOpen(false);
-                    setIsCashoutModalOpen(true);
-                  }}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-rose-300 transition flex flex-col justify-between space-y-3 group cursor-pointer text-left shadow-2xs"
-                >
-                  <Banknote className="w-6 h-6 text-slate-800 group-hover:text-rose-600 transition" />
-                  <span className="text-xs font-black text-slate-800 group-hover:text-rose-600 transition">
-                    Payments
-                  </span>
-                </button>
               </div>
 
-              {/* Vertical Menu Options List */}
-              <div className="px-5 space-y-1 divide-y divide-slate-100 border-t border-slate-100 pt-2 text-sm font-bold text-slate-800">
-                
+              {/* Vertical Menu Options List (Only My profile) */}
+              <div className="px-5 border-t border-slate-100 pt-3 text-sm font-bold text-slate-800">
                 {/* My Profile */}
                 <div 
                   onClick={() => {
                     setIsMenuDrawerOpen(false);
+                    setIsProfileOpen(true);
                   }}
-                  className="py-3.5 flex items-center space-x-3.5 cursor-pointer hover:text-rose-600 group"
+                  className="py-3 px-1 rounded-xl flex items-center space-x-3.5 cursor-pointer hover:bg-slate-50 hover:text-rose-600 group transition"
                 >
                   <User className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
                   <span>My profile</span>
                 </div>
-
-                {/* Orders List */}
-                <div 
-                  onClick={() => {
-                    setIsMenuDrawerOpen(false);
-                    setIsOrdersListOpen(true);
-                  }}
-                  className="py-3.5 flex items-center space-x-3.5 cursor-pointer hover:text-rose-600 group"
-                >
-                  <Calendar className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
-                  <span>Orders list</span>
-                </div>
-
-                {/* Inbox Messages */}
-                <div 
-                  onClick={() => {
-                    setIsMenuDrawerOpen(false);
-                    setIsInboxOpen(true);
-                  }}
-                  className="py-3.5 flex items-center justify-between cursor-pointer hover:text-rose-600 group"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <Mail className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
-                    <span>Inbox / Admin Messages</span>
-                  </div>
-                  {riderMessages.filter(m => (m.recipient_rider_id === 'ALL' || m.recipient_rider_id === currentRider.id) && !m.is_read).length > 0 && (
-                    <span className="w-2 h-2 rounded-full bg-rose-600"></span>
-                  )}
-                </div>
-
-                {/* Active Rider Switcher */}
-                <div className="py-3.5 space-y-1.5">
-                  <span className="text-xs font-bold text-slate-500 block">Switch Active Rider Profile:</span>
-                  <select
-                    value={currentRider.id}
-                    onChange={(e) => {
-                      const r = riders.find((x) => x.id === e.target.value);
-                      if (r) setCurrentRider(r);
-                    }}
-                    className="w-full px-3 py-2 text-xs font-bold border border-slate-200 bg-slate-50 rounded-xl"
-                  >
-                    {riders.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name} ({r.vehicle_type}) - ৳{r.cash_in_hand} Float
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Settings and privacy */}
-                <div className="py-3.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3.5">
-                      <Settings className="w-5 h-5 text-slate-700" />
-                      <span>Sound Chime</span>
-                    </div>
-                    <button
-                      onClick={() => setSoundEnabled(prev => !prev)}
-                      className={`p-1.5 rounded-lg text-xs font-bold ${
-                        soundEnabled ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {soundEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-
-                  {/* Simulator buttons */}
-                  <div className="pt-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Location Simulator:</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          updateRiderLocation(currentRider.id, 22.3600, 91.8250);
-                          handleRecenter();
-                        }}
-                        className="flex-1 py-1.5 px-2 bg-emerald-600 text-white rounded-lg text-[10px] font-bold"
-                      >
-                        Nasirabad (In Zone)
-                      </button>
-                      <button
-                        onClick={() => {
-                          updateRiderLocation(currentRider.id, 22.4200, 91.7800);
-                          handleRecenter();
-                        }}
-                        className="flex-1 py-1.5 px-2 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold"
-                      >
-                        Out of Zone
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
 
@@ -1212,6 +1093,92 @@ export const RiderPortal: React.FC = () => {
                 className="w-full py-2.5 bg-slate-900 text-white font-black text-xs rounded-2xl shadow-xs"
               >
                 Close Orders List
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: RIDER MY PROFILE
+        ========================================================================
+      */}
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <User className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">My Profile</h3>
+              </div>
+              <button 
+                onClick={() => setIsProfileOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="flex items-center space-x-3.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <img
+                  src={currentRider.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
+                  alt={currentRider.name}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-xs"
+                />
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">{currentRider.name}</h4>
+                  <p className="text-[11px] text-slate-500 font-mono">{currentRider.phone}</p>
+                  <span className="inline-block mt-0.5 px-2 py-0.2 bg-rose-100 text-rose-800 font-bold text-[9px] rounded-md">
+                    {currentRider.zone} &bull; {currentRider.vehicle_type}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-slate-600">Floating Cash Held:</span>
+                  <span className="font-mono font-black text-sm text-slate-900">৳{currentRider.cash_in_hand}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-slate-600">Duty Status:</span>
+                  <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] ${
+                    currentRider.is_online ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {currentRider.is_online ? 'ONLINE' : 'OFFLINE'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Rider Selector */}
+              <div>
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">
+                  Switch Active Rider Account:
+                </label>
+                <select
+                  value={currentRider.id}
+                  onChange={(e) => {
+                    const r = riders.find((x) => x.id === e.target.value);
+                    if (r) setCurrentRider(r);
+                  }}
+                  className="w-full px-3 py-2 text-xs font-bold border border-slate-200 bg-white rounded-xl focus:outline-hidden"
+                >
+                  {riders.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.vehicle_type}) - ৳{r.cash_in_hand} Float
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setIsProfileOpen(false)}
+                className="w-full py-2.5 bg-slate-900 text-white font-black text-xs rounded-2xl"
+              >
+                Close Profile
               </button>
             </div>
           </div>
