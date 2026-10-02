@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
@@ -99,41 +99,53 @@ export const CustomerPortal: React.FC = () => {
   });
 
   const [activeSlide, setActiveSlide] = useState(0);
+  const [prevSlide, setPrevSlide] = useState<number | null>(null);
+
+  const lastActiveSlideRef = useRef(activeSlide);
+  useEffect(() => {
+    if (lastActiveSlideRef.current !== activeSlide) {
+      setPrevSlide(lastActiveSlideRef.current);
+      lastActiveSlideRef.current = activeSlide;
+    }
+  }, [activeSlide]);
 
   // Auto slide every 3 seconds (starts from slide index 0 on refresh or page enter)
   useEffect(() => {
     setActiveSlide(0);
+    setPrevSlide(null);
+    lastActiveSlideRef.current = 0;
     const interval = setInterval(() => {
       setActiveSlide(prev => (prev + 1) % heroSlides.length);
     }, 3000);
 
     return () => clearInterval(interval);
   }, [heroSlides.length]);
+
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
   const getSlideStyle = (index: number) => {
     if (heroSlides.length <= 1) {
       return { transform: 'translateX(0)', opacity: 1, zIndex: 10 };
     }
 
-    // Active slide
+    // Active slide (Entering from right to left into center)
     if (index === activeSlide) {
       return { 
         transform: 'translateX(0)', 
         opacity: 1, 
         zIndex: 10,
-        transition: 'transform 700ms ease-in-out, opacity 700ms ease-in-out'
+        transition: 'transform 800ms cubic-bezier(0.16, 1, 0.3, 1), opacity 800ms ease-in-out'
       };
     }
 
-    // Check if it's the previous slide (exiting to left)
-    const prevIndex = (activeSlide - 1 + heroSlides.length) % heroSlides.length;
-    if (index === prevIndex) {
+    // Previous active slide (Exiting leftwards out of center)
+    if (index === prevSlide) {
       return { 
         transform: 'translateX(-100%)', 
         opacity: 0, 
         zIndex: 0,
-        transition: 'transform 700ms ease-in-out, opacity 700ms ease-in-out'
+        transition: 'transform 800ms cubic-bezier(0.16, 1, 0.3, 1), opacity 800ms ease-in-out'
       };
     }
 
