@@ -111,8 +111,40 @@ export const CustomerPortal: React.FC = () => {
   }, [heroSlides.length]);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const getSlideStyle = (index: number) => {
+    if (heroSlides.length <= 1) {
+      return { transform: 'translateX(0)', opacity: 1, zIndex: 10 };
+    }
 
-  // Static slide - no auto-play movement (manual swipe or dot click only)
+    // Active slide
+    if (index === activeSlide) {
+      return { 
+        transform: 'translateX(0)', 
+        opacity: 1, 
+        zIndex: 10,
+        transition: 'transform 700ms ease-in-out, opacity 700ms ease-in-out'
+      };
+    }
+
+    // Check if it's the previous slide (exiting to left)
+    const prevIndex = (activeSlide - 1 + heroSlides.length) % heroSlides.length;
+    if (index === prevIndex) {
+      return { 
+        transform: 'translateX(-100%)', 
+        opacity: 0, 
+        zIndex: 0,
+        transition: 'transform 700ms ease-in-out, opacity 700ms ease-in-out'
+      };
+    }
+
+    // Otherwise, place it on the right (waiting to enter)
+    return { 
+      transform: 'translateX(100%)', 
+      opacity: 0, 
+      zIndex: 0,
+      transition: 'transform 700ms ease-in-out, opacity 700ms ease-in-out'
+    };
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -646,11 +678,8 @@ export const CustomerPortal: React.FC = () => {
                         setSelectedVendorForMenu(slide.vendor);
                       }
                     }}
-                    className={`absolute inset-0 w-full h-full flex items-center justify-between gap-3 px-0.5 cursor-pointer select-none transition-all duration-700 ease-in-out ${
-                      activeSlide === i 
-                        ? 'opacity-100 scale-100 pointer-events-auto z-10' 
-                        : 'opacity-0 scale-95 pointer-events-none z-0'
-                    }`}
+                    style={getSlideStyle(i)}
+                    className="absolute inset-0 w-full h-full flex items-center justify-between gap-3 px-0.5 cursor-pointer select-none"
                   >
                     <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
                       <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
