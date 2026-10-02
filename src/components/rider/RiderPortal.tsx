@@ -548,8 +548,8 @@ export const RiderPortal: React.FC = () => {
               const target = activeOrder || incomingCandidateOrder;
               if (target) {
                 const vendor = vendors.find(v => v.id === target.vendor_id);
-                const destLat = target.status === 'out_for_delivery' ? target.delivery_latitude : (vendor?.latitude || target.delivery_latitude);
-                const destLng = target.status === 'out_for_delivery' ? target.delivery_longitude : (vendor?.longitude || target.delivery_longitude);
+                const destLat = (target.status === 'rider_on_way_to_customer' || target.status === 'food_picked_up') ? target.delivery_latitude : (vendor?.latitude || target.delivery_latitude);
+                const destLng = (target.status === 'rider_on_way_to_customer' || target.status === 'food_picked_up') ? target.delivery_longitude : (vendor?.longitude || target.delivery_longitude);
                 window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
               }
             }}
@@ -792,7 +792,7 @@ export const RiderPortal: React.FC = () => {
             CASE C: ACCESS RESTRICTED / OFFLINE / SEARCHING
             (Matching Screenshot_20260930_201012_pandarider.jpg!)
           */}
-          {!activeOrder && !incomingCandidate && (
+          {!activeOrder && !incomingCandidateOrder && (
             <div className="space-y-3">
               {isCashRestricted ? (
                 /* Screenshot matching: "Access restricted - To end this restriction, return cash through wallet cashout" */
