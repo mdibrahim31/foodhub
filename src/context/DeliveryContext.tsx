@@ -244,6 +244,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchAdBanners();
   }, []);
 
+  // Fetch vendors and riders from database on mount
+  useEffect(() => {
+    const fetchVendorsAndRiders = async () => {
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data: vData, error: vError } = await supabase
+            .from('vendors')
+            .select('*');
+          if (!vError && vData) {
+            setVendors(vData as Vendor[]);
+          }
+
+          const { data: rData, error: rError } = await supabase
+            .from('riders')
+            .select('*');
+          if (!rError && rData) {
+            setRiders(rData as Rider[]);
+          }
+        } catch (err) {
+          console.error('Failed to load vendors/riders from database:', err);
+        }
+      }
+    };
+
+    fetchVendorsAndRiders();
+  }, []);
+
   const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}rider_messages`);
     return saved ? JSON.parse(saved) : [
@@ -471,6 +498,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!vendor) return false;
       
       setVendors(prev => prev.map(v => v.id === vendor.id ? { ...v, password: newPassword, is_password_set: true } : v));
+      
+      if (isSupabaseConfigured && supabase) {
+        supabase
+          .from('vendors')
+          .update({ password: newPassword, is_password_set: true })
+          .eq('id', vendor.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Error updating vendor password in Supabase:', error);
+            }
+          });
+      }
+
       const vendorAccount: UserAccount = {
         id: `u-v-${vendor.id}`,
         role: 'vendor',
@@ -490,6 +530,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!rider) return false;
 
       setRiders(prev => prev.map(r => r.id === rider.id ? { ...r, password: newPassword, is_password_set: true } : r));
+
+      if (isSupabaseConfigured && supabase) {
+        supabase
+          .from('riders')
+          .update({ password: newPassword, is_password_set: true })
+          .eq('id', rider.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Error updating rider password in Supabase:', error);
+            }
+          });
+      }
+
       const riderAccount: UserAccount = {
         id: `u-r-${rider.id}`,
         role: 'rider',
@@ -557,7 +610,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     description?: string;
   }): Vendor => {
     const newVendor: Vendor = {
-      id: `v-${Date.now()}`,
+      id: crypto.randomUUID(),
       unique_id: `VND-${Math.floor(1000 + Math.random() * 9000)}`,
       name: data.name.trim(),
       phone: data.phone.trim(),
@@ -577,16 +630,61 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
+    if (isSupabaseConfigured && supabase) {
+      supabase
+        .from('vendors')
+        .insert([
+          {
+            id: newVendor.id,
+            unique_id: newVendor.unique_id,
+            name: newVendor.name,
+            phone: newVendor.phone,
+            address: newVendor.address,
+            cuisine: newVendor.cuisine,
+            zone: newVendor.zone,
+            latitude: newVendor.latitude,
+            longitude: newVendor.longitude,
+            description: newVendor.description,
+            is_active: newVendor.is_active,
+            is_paused: newVendor.is_paused,
+            rating: newVendor.rating,
+            estimated_prep_time_minutes: newVendor.estimated_prep_time_minutes,
+            is_password_set: newVendor.is_password_set,
+            password: null,
+            logo_url: newVendor.logo_url,
+            cover_image: newVendor.cover_image,
+            created_at: newVendor.created_at
+          }
+        ])
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error inserting vendor to Supabase:', error);
+          }
+        });
+    }
+
     setVendors(prev => [newVendor, ...prev]);
     return newVendor;
   };
 
   const toggleVendorPause = (id: string) => {
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_paused: !v.is_paused } : v));
+    setVendors(prev => {
+      const updated = prev.map(v => v.id === id ? { ...v, is_paused: !v.is_paused } : v);
+      if (isSupabaseConfigured && supabase) {
+        const matched = updated.find(x => x.id === id);
+        if (matched) {
+          supabase.from('vendors').update({ is_paused: matched.is_paused }).eq('id', id).then();
+        }
+      }
+      return updated;
+    });
   };
 
   const deleteVendor = (id: string) => {
     setVendors(prev => prev.filter(v => v.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('vendors').delete().eq('id', id).then();
+    }
   };
 
   const adminRegisterRider = (data: {
@@ -600,7 +698,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     longitude?: number;
   }): Rider => {
     const newRider: Rider = {
-      id: `r-${Date.now()}`,
+      id: crypto.randomUUID(),
       unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
       name: data.name.trim(),
       phone: data.phone.trim(),
@@ -619,16 +717,60 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
+    if (isSupabaseConfigured && supabase) {
+      supabase
+        .from('riders')
+        .insert([
+          {
+            id: newRider.id,
+            unique_id: newRider.unique_id,
+            name: newRider.name,
+            phone: newRider.phone,
+            photo_url: newRider.photo_url,
+            home_address: newRider.home_address,
+            zone: newRider.zone,
+            vehicle_type: newRider.vehicle_type,
+            is_online: newRider.is_online,
+            is_paused: newRider.is_paused,
+            current_latitude: newRider.current_latitude,
+            current_longitude: newRider.current_longitude,
+            last_location_updated_at: newRider.last_location_updated_at,
+            cash_in_hand: newRider.cash_in_hand,
+            is_approved: newRider.is_approved,
+            is_password_set: newRider.is_password_set,
+            password: null,
+            created_at: newRider.created_at
+          }
+        ])
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error inserting rider to Supabase:', error);
+          }
+        });
+    }
+
     setRiders(prev => [newRider, ...prev]);
     return newRider;
   };
 
   const toggleRiderPause = (id: string) => {
-    setRiders(prev => prev.map(r => r.id === id ? { ...r, is_paused: !r.is_paused } : r));
+    setRiders(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, is_paused: !r.is_paused } : r);
+      if (isSupabaseConfigured && supabase) {
+        const matched = updated.find(x => x.id === id);
+        if (matched) {
+          supabase.from('riders').update({ is_paused: matched.is_paused }).eq('id', id).then();
+        }
+      }
+      return updated;
+    });
   };
 
   const deleteRider = (id: string) => {
     setRiders(prev => prev.filter(r => r.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('riders').delete().eq('id', id).then();
+    }
   };
 
   const updateVendor = (id: string, updates: Partial<Vendor>) => {
