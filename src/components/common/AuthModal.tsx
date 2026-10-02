@@ -324,6 +324,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Complete Setup for Vendor or Rider */}
+            {(targetRole === 'vendor' || targetRole === 'rider') && (
+              <div className="text-center pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                    const cleanPhone = phone.trim();
+                    if (!cleanPhone) {
+                      setErrorMessage('Please enter your registered mobile number first to setup your password');
+                      return;
+                    }
+                    // Verify if the phone number is pre-registered in the database
+                    if (targetRole === 'vendor') {
+                      const exists = vendors.some(v => v.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || v.phone === cleanPhone);
+                      if (!exists) {
+                        setErrorMessage('This phone number is not registered as a Vendor in the database. Please request Admin to register your store first.');
+                        return;
+                      }
+                    } else if (targetRole === 'rider') {
+                      const exists = riders.some(r => r.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || r.phone === cleanPhone);
+                      if (!exists) {
+                        setErrorMessage('This phone number is not registered as a Rider in the database. Please request Admin to register you as a Rider first.');
+                        return;
+                      }
+                    }
+                    setMode('set_password');
+                    setSuccessMessage('Pre-registered account verified successfully! Please set your secure password.');
+                  }}
+                  className="text-rose-600 font-black hover:underline tracking-tight text-xs flex items-center justify-center mx-auto space-x-1.5"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>First-Time Login? Complete Setup / Choose Password</span>
+                </button>
+              </div>
+            )}
           </form>
         )}
 
