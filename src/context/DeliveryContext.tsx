@@ -25,7 +25,9 @@ import {
   INITIAL_ORDERS,
   INITIAL_FOOD_CATEGORIES,
   supabase,
-  isSupabaseConfigured
+  isSupabaseConfigured,
+  updateSupabaseCredentials,
+  getSupabaseConfig
 } from '../services/supabase';
 import { calculateDistanceKm, calculateDeliveryFee } from '../utils/geo';
 import { FoodCategory } from '../types/database';
@@ -64,7 +66,7 @@ interface DeliveryContextType {
     latitude: number;
     longitude: number;
     description?: string;
-  }) => Vendor;
+  }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
   toggleVendorPause: (id: string) => void;
   deleteVendor: (id: string) => void;
@@ -109,7 +111,7 @@ interface DeliveryContextType {
     vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
     latitude?: number;
     longitude?: number;
-  }) => Rider;
+  }) => Promise<{ rider: Rider; savedToDatabase: boolean; dbMessage?: string }>;
   toggleRiderOnline: (riderId: string, isOnline: boolean) => Promise<boolean>;
   toggleRiderPause: (riderId: string) => void;
   deleteRider: (riderId: string) => void;
@@ -148,6 +150,9 @@ interface DeliveryContextType {
   sendAdminMessage: (msg: Omit<RiderMessage, 'id' | 'created_at'>) => void;
   markRiderMessageAsRead: (msgId: string) => void;
   isSupabaseConfigured: boolean;
+  supabaseConfig: { url: string; anonKey: string; isConfigured: boolean };
+  connectSupabase: (url: string, anonKey: string) => Promise<{ success: boolean; message: string }>;
+  syncAllToSupabase: () => Promise<{ success: boolean; message: string; vendorsCount: number; ridersCount: number }>;
 }
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
@@ -597,10 +602,113 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrentUser(null);
   };
 
+  const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
+
+  const connectSupabase = async (url: string, anonKey: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = updateSupabaseCredentials(url, anonKey);
+      setSupabaseConfig(getSupabaseConfig());
+      
+      if (!res.isConfigured || !res.client) {
+        return { success: false, message: 'Please provide valid Supabase Project URL and Public Anon Key.' };
+      }
+
+      // Test querying riders
+      const { error } = await res.client.from('riders').select('id').limit(1);
+      if (error) {
+        return { 
+          success: false, 
+          message: `Connected, but query to riders table failed: ${error.message} (${error.hint || error.details || 'Check if table exists & RLS is disabled'})` 
+        };
+      }
+
+      // Load live records from Supabase
+      try {
+        const { data: vData } = await res.client.from('vendors').select('*');
+        if (vData && vData.length > 0) {
+          setVendors(vData as Vendor[]);
+        }
+
+        const { data: rData } = await res.client.from('riders').select('*');
+        if (rData && rData.length > 0) {
+          setRiders(rData as Rider[]);
+        }
+      } catch (loadErr) {
+        console.warn('Initial data load warning:', loadErr);
+      }
+
+      return { success: true, message: 'Connected to Supabase database successfully!' };
+    } catch (e: any) {
+      return { success: false, message: `Connection error: ${e?.message || String(e)}` };
+    }
+  };
+
+  const syncAllToSupabase = async () => {
+    if (!supabase || !isSupabaseConfigured) {
+      return { 
+        success: false, 
+        message: 'Supabase is not connected in this browser session. Enter URL and Key first.', 
+        vendorsCount: 0, 
+        ridersCount: 0 
+      };
+    }
+
+    let rCount = 0;
+    let vCount = 0;
+
+    for (const r of riders) {
+      try {
+        const payload: Record<string, any> = {
+          id: r.id,
+          name: r.name,
+          phone: r.phone,
+          zone: r.zone || 'Chawkbazar Zone',
+          is_online: r.is_online || false,
+          is_paused: r.is_paused || false,
+          is_approved: true,
+          is_password_set: r.is_password_set || false,
+          password: r.password || null
+        };
+        const { error } = await supabase.from('riders').upsert([payload]);
+        if (!error) rCount++;
+      } catch (err) {
+        console.warn('Sync rider error:', err);
+      }
+    }
+
+    for (const v of vendors) {
+      try {
+        const payload: Record<string, any> = {
+          id: v.id,
+          name: v.name,
+          phone: v.phone,
+          address: v.address || 'Chittagong',
+          cuisine: v.cuisine || 'Fast Food',
+          zone: v.zone || 'Chawkbazar Zone',
+          latitude: v.latitude || 22.3585,
+          longitude: v.longitude || 91.8385,
+          is_active: v.is_active ?? true,
+          is_paused: v.is_paused ?? false
+        };
+        const { error } = await supabase.from('vendors').upsert([payload]);
+        if (!error) vCount++;
+      } catch (err) {
+        console.warn('Sync vendor error:', err);
+      }
+    }
+
+    return { 
+      success: true, 
+      message: `Successfully synced ${rCount} riders and ${vCount} vendors to Supabase database!`, 
+      ridersCount: rCount, 
+      vendorsCount: vCount 
+    };
+  };
+
   // -------------------------------------------------------------
   // ADMIN VENDOR & RIDER REGISTRATION
   // -------------------------------------------------------------
-  const adminRegisterVendor = (data: {
+  const adminRegisterVendor = async (data: {
     name: string;
     phone: string;
     address: string;
@@ -609,7 +717,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     latitude: number;
     longitude: number;
     description?: string;
-  }): Vendor => {
+  }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {
     const newVendor: Vendor = {
       id: crypto.randomUUID(),
       unique_id: `VND-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -631,41 +739,64 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
+    let savedToDatabase = false;
+    let dbMessage = '';
+
     if (isSupabaseConfigured && supabase) {
-      supabase
-        .from('vendors')
-        .insert([
-          {
+      try {
+        const fullPayload = {
+          id: newVendor.id,
+          unique_id: newVendor.unique_id,
+          name: newVendor.name,
+          phone: newVendor.phone,
+          address: newVendor.address,
+          cuisine: newVendor.cuisine,
+          zone: newVendor.zone,
+          latitude: newVendor.latitude,
+          longitude: newVendor.longitude,
+          description: newVendor.description,
+          is_active: newVendor.is_active,
+          is_paused: newVendor.is_paused,
+          rating: newVendor.rating,
+          estimated_prep_time_minutes: newVendor.estimated_prep_time_minutes,
+          is_password_set: newVendor.is_password_set,
+          password: null,
+          logo_url: newVendor.logo_url,
+          cover_image: newVendor.cover_image,
+          created_at: newVendor.created_at
+        };
+
+        const { error } = await supabase.from('vendors').insert([fullPayload]);
+        if (error) {
+          console.warn('Vendor full payload insert error:', error);
+          const fallbackPayload: Record<string, any> = {
             id: newVendor.id,
-            unique_id: newVendor.unique_id,
             name: newVendor.name,
             phone: newVendor.phone,
             address: newVendor.address,
-            cuisine: newVendor.cuisine,
-            zone: newVendor.zone,
             latitude: newVendor.latitude,
-            longitude: newVendor.longitude,
-            description: newVendor.description,
-            is_active: newVendor.is_active,
-            is_paused: newVendor.is_paused,
-            rating: newVendor.rating,
-            estimated_prep_time_minutes: newVendor.estimated_prep_time_minutes,
-            is_password_set: newVendor.is_password_set,
-            password: null,
-            logo_url: newVendor.logo_url,
-            cover_image: newVendor.cover_image,
-            created_at: newVendor.created_at
+            longitude: newVendor.longitude
+          };
+          const retryRes = await supabase.from('vendors').insert([fallbackPayload]);
+          if (!retryRes.error) {
+            savedToDatabase = true;
+            dbMessage = 'Saved to Supabase vendors table (essential columns).';
+          } else {
+            dbMessage = `Database Error: ${retryRes.error.message || error.message}`;
           }
-        ])
-        .then(({ error }) => {
-          if (error) {
-            console.error('Error inserting vendor to Supabase:', error);
-          }
-        });
+        } else {
+          savedToDatabase = true;
+          dbMessage = 'Saved to Supabase vendors table successfully.';
+        }
+      } catch (err: any) {
+        dbMessage = `Database Exception: ${err?.message || String(err)}`;
+      }
+    } else {
+      dbMessage = 'Supabase is not connected in this browser session. Saved in Local Storage.';
     }
 
     setVendors(prev => [newVendor, ...prev]);
-    return newVendor;
+    return { vendor: newVendor, savedToDatabase, dbMessage };
   };
 
   const toggleVendorPause = (id: string) => {
@@ -688,7 +819,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const adminRegisterRider = (data: {
+  const adminRegisterRider = async (data: {
     name: string;
     phone: string;
     photo_url?: string;
@@ -697,7 +828,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
     latitude?: number;
     longitude?: number;
-  }): Rider => {
+  }): Promise<{ rider: Rider; savedToDatabase: boolean; dbMessage?: string }> => {
     const newRider: Rider = {
       id: crypto.randomUUID(),
       unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -718,40 +849,62 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
+    let savedToDatabase = false;
+    let dbMessage = '';
+
     if (isSupabaseConfigured && supabase) {
-      supabase
-        .from('riders')
-        .insert([
-          {
+      try {
+        const fullPayload = {
+          id: newRider.id,
+          unique_id: newRider.unique_id,
+          name: newRider.name,
+          phone: newRider.phone,
+          photo_url: newRider.photo_url,
+          home_address: newRider.home_address,
+          zone: newRider.zone,
+          vehicle_type: newRider.vehicle_type,
+          is_online: newRider.is_online,
+          is_paused: newRider.is_paused,
+          current_latitude: newRider.current_latitude,
+          current_longitude: newRider.current_longitude,
+          last_location_updated_at: newRider.last_location_updated_at,
+          cash_in_hand: newRider.cash_in_hand,
+          is_approved: newRider.is_approved,
+          is_password_set: newRider.is_password_set,
+          password: null,
+          created_at: newRider.created_at
+        };
+
+        const { error } = await supabase.from('riders').insert([fullPayload]);
+        
+        if (error) {
+          console.warn('Initial rider payload insert failed:', error);
+          // If schema has fewer columns, retry with essential columns
+          const fallbackPayload: Record<string, any> = {
             id: newRider.id,
-            unique_id: newRider.unique_id,
             name: newRider.name,
             phone: newRider.phone,
-            photo_url: newRider.photo_url,
-            home_address: newRider.home_address,
-            zone: newRider.zone,
-            vehicle_type: newRider.vehicle_type,
-            is_online: newRider.is_online,
-            is_paused: newRider.is_paused,
-            current_latitude: newRider.current_latitude,
-            current_longitude: newRider.current_longitude,
-            last_location_updated_at: newRider.last_location_updated_at,
-            cash_in_hand: newRider.cash_in_hand,
-            is_approved: newRider.is_approved,
-            is_password_set: newRider.is_password_set,
-            password: null,
-            created_at: newRider.created_at
+          };
+          const retryRes = await supabase.from('riders').insert([fallbackPayload]);
+          if (!retryRes.error) {
+            savedToDatabase = true;
+            dbMessage = 'Saved to Supabase riders table (using essential columns).';
+          } else {
+            dbMessage = `Database Error: ${retryRes.error.message || error.message} (${error.hint || ''})`;
           }
-        ])
-        .then(({ error }) => {
-          if (error) {
-            console.error('Error inserting rider to Supabase:', error);
-          }
-        });
+        } else {
+          savedToDatabase = true;
+          dbMessage = 'Saved to Supabase riders table successfully.';
+        }
+      } catch (err: any) {
+        dbMessage = `Database Exception: ${err?.message || String(err)}`;
+      }
+    } else {
+      dbMessage = 'Supabase is not connected in this browser session. Saved in Local Storage.';
     }
 
     setRiders(prev => [newRider, ...prev]);
-    return newRider;
+    return { rider: newRider, savedToDatabase, dbMessage };
   };
 
   const toggleRiderPause = (id: string) => {
@@ -1425,7 +1578,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         riderMessages,
         sendAdminMessage,
         markRiderMessageAsRead,
-        isSupabaseConfigured
+        isSupabaseConfigured,
+        supabaseConfig,
+        connectSupabase,
+        syncAllToSupabase
       }}
     >
       {children}

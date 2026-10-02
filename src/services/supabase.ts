@@ -25,18 +25,73 @@ export const INITIAL_FOOD_CATEGORIES: FoodCategory[] = [
   { id: 'cat-11', name: 'Drinks & Shakes', icon: '🥤', is_active: true, order_index: 11 },
 ];
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const getStoredUrl = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('foodhub_supabase_url');
+    if (saved && saved.trim() && saved !== 'https://your-project.supabase.co') return saved.trim();
+  }
+  return import.meta.env.VITE_SUPABASE_URL || '';
+};
 
-export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  supabaseUrl !== 'https://your-project.supabase.co'
+const getStoredKey = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('foodhub_supabase_anon_key');
+    if (saved && saved.trim() && saved !== 'your-anon-key') return saved.trim();
+  }
+  return import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+};
+
+let activeUrl = getStoredUrl();
+let activeKey = getStoredKey();
+
+export let isSupabaseConfigured = Boolean(
+  activeUrl && 
+  activeKey && 
+  activeUrl !== 'https://your-project.supabase.co' &&
+  !activeUrl.includes('your-project')
 );
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+export let supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(activeUrl, activeKey)
   : null;
+
+export const updateSupabaseCredentials = (url: string, anonKey: string) => {
+  activeUrl = (url || '').trim();
+  activeKey = (anonKey || '').trim();
+  
+  if (typeof window !== 'undefined') {
+    if (activeUrl) {
+      localStorage.setItem('foodhub_supabase_url', activeUrl);
+    } else {
+      localStorage.removeItem('foodhub_supabase_url');
+    }
+    
+    if (activeKey) {
+      localStorage.setItem('foodhub_supabase_anon_key', activeKey);
+    } else {
+      localStorage.removeItem('foodhub_supabase_anon_key');
+    }
+  }
+
+  isSupabaseConfigured = Boolean(
+    activeUrl && 
+    activeKey && 
+    activeUrl !== 'https://your-project.supabase.co' &&
+    !activeUrl.includes('your-project')
+  );
+
+  supabase = isSupabaseConfigured
+    ? createClient(activeUrl, activeKey)
+    : null;
+
+  return { isConfigured: isSupabaseConfigured, client: supabase };
+};
+
+export const getSupabaseConfig = () => ({
+  url: activeUrl,
+  anonKey: activeKey,
+  isConfigured: isSupabaseConfigured
+});
 
 // Initial Seed Data for immediate testing & local sync
 export const DEFAULT_SETTINGS: SystemSettings = {

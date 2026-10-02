@@ -67,10 +67,21 @@ export const AdminPortal: React.FC = () => {
     toggleAdBannerStatus,
     sendAdminMessage,
     updateOrderStatus,
-    isSupabaseConfigured
+    isSupabaseConfigured,
+    supabaseConfig,
+    connectSupabase,
+    syncAllToSupabase
   } = useDelivery();
 
   const [activeTab, setActiveTab] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database'>('settings');
+
+  // Supabase Connection State
+  const [dbUrlInput, setDbUrlInput] = useState(supabaseConfig.url || '');
+  const [dbKeyInput, setDbKeyInput] = useState(supabaseConfig.anonKey || '');
+  const [isConnectingDb, setIsConnectingDb] = useState(false);
+  const [dbConnectStatus, setDbConnectStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [isSyncingDb, setIsSyncingDb] = useState(false);
+  const [dbSyncStatus, setDbSyncStatus] = useState<string>('');
 
   // Ad Banner Form State
   const [isAddAdOpen, setIsAddAdOpen] = useState(false);
@@ -191,14 +202,14 @@ export const AdminPortal: React.FC = () => {
     alert(`Message sent to ${recipientName}! It will appear in their Rider App Inbox.`);
   };
 
-  const handleRegisterVendorSubmit = (e: React.FormEvent) => {
+  const handleRegisterVendorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vName.trim() || !vPhone.trim() || !vAddress.trim()) {
       alert('Please enter restaurant name, phone number, and address.');
       return;
     }
 
-    const created = adminRegisterVendor({
+    const res = await adminRegisterVendor({
       name: vName.trim(),
       phone: vPhone.trim(),
       address: vAddress.trim(),
@@ -212,17 +223,22 @@ export const AdminPortal: React.FC = () => {
     setVName('');
     setVPhone('');
     setVAddress('');
-    alert(`Vendor "${created.name}" registered! ID: ${created.unique_id || created.id}. Phone: ${created.phone}`);
+    
+    if (res.savedToDatabase) {
+      alert(`✅ Vendor "${res.vendor.name}" registered & saved to Supabase Database!\nID: ${res.vendor.unique_id || res.vendor.id}\nPhone: ${res.vendor.phone}`);
+    } else {
+      alert(`⚠️ Vendor "${res.vendor.name}" registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
+    }
   };
 
-  const handleRegisterRiderSubmit = (e: React.FormEvent) => {
+  const handleRegisterRiderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rName.trim() || !rPhone.trim()) {
       alert('Please enter rider name and phone number.');
       return;
     }
 
-    const created = adminRegisterRider({
+    const res = await adminRegisterRider({
       name: rName.trim(),
       phone: rPhone.trim(),
       photo_url: rPhotoUrl.trim() || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
@@ -237,7 +253,12 @@ export const AdminPortal: React.FC = () => {
     setRName('');
     setRPhone('');
     setRHomeAddress('');
-    alert(`Rider "${created.name}" registered! ID: ${created.unique_id || created.id}. Phone: ${created.phone}`);
+
+    if (res.savedToDatabase) {
+      alert(`✅ Rider "${res.rider.name}" registered & saved to Supabase Database!\nID: ${res.rider.unique_id || res.rider.id}\nPhone: ${res.rider.phone}`);
+    } else {
+      alert(`⚠️ Rider "${res.rider.name}" registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
+    }
   };
 
   const handleAddCategorySubmit = (e: React.FormEvent) => {
@@ -335,17 +356,38 @@ export const AdminPortal: React.FC = () => {
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 space-y-6">
         
-        {!isSupabaseConfigured && (
-          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs font-bold gap-3 text-amber-800">
+        {!isSupabaseConfigured ? (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs font-bold gap-3 text-amber-900 shadow-xs">
             <div className="space-y-0.5">
-              <span className="text-sm font-black flex items-center space-x-1.5 text-amber-900">
-                <span>⚠️ Supabase Database is not Connected</span>
+              <span className="text-sm font-black flex items-center space-x-1.5 text-amber-950">
+                <Database className="w-4 h-4 text-amber-700" />
+                <span>⚠️ Supabase Database Disconnected (Using Local Storage)</span>
               </span>
-              <p className="text-[11px] text-amber-700">Your web app is running in Local Storage fallback mode because VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing from your environment variables.</p>
+              <p className="text-[11px] text-amber-800">
+                Riders and vendors are currently saving only in this browser! Enter your Supabase Project URL & Anon Key so riders are stored in your Supabase cloud table.
+              </p>
             </div>
-            <div className="px-3 py-1.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0">
-              LocalStorage Fallback Active
+            <button
+              onClick={() => setActiveTab('database')}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-wider shrink-0 transition flex items-center space-x-1.5 cursor-pointer shadow-md"
+            >
+              <Database className="w-3.5 h-3.5 text-rose-400" />
+              <span>Connect Supabase Now</span>
+            </button>
+          </div>
+        ) : (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-3xl px-4 py-2.5 flex items-center justify-between text-xs font-bold text-emerald-800">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>✅ Connected to Supabase Cloud Database</span>
+              <span className="text-[11px] text-emerald-600 font-mono hidden sm:inline">({supabaseConfig.url ? new URL(supabaseConfig.url).hostname : 'Supabase'})</span>
             </div>
+            <button
+              onClick={() => setActiveTab('database')}
+              className="text-emerald-700 hover:text-emerald-900 underline text-[11px] cursor-pointer"
+            >
+              Manage Connection / Sync
+            </button>
           </div>
         )}
         
@@ -1169,47 +1211,260 @@ export const AdminPortal: React.FC = () => {
           ======================================================================
         */}
         {activeTab === 'database' && (
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-4">
-            <div>
-              <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
-                <Database className="w-5 h-5 text-rose-600" />
-                <span>System Database & Local Storage</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                All foodiplace application state is automatically synced with LocalStorage & ready for Supabase integration.
-              </p>
+          <div className="space-y-6">
+            {/* 1. Supabase Cloud Connection Card */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                    <Database className="w-5 h-5 text-rose-600" />
+                    <span>Supabase Cloud PostgreSQL Database</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Connect your Supabase project so riders and vendors are stored directly in your cloud PostgreSQL tables.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {isSupabaseConfigured ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Connected</span>
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-100 text-amber-800 border border-amber-200 flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span>Disconnected (Local Only)</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Form to enter/update Supabase Credentials */}
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!dbUrlInput.trim() || !dbKeyInput.trim()) {
+                    setDbConnectStatus({ type: 'error', message: 'Please enter both Supabase Project URL and Public Anon Key.' });
+                    return;
+                  }
+                  setIsConnectingDb(true);
+                  setDbConnectStatus({ type: 'idle', message: '' });
+                  const res = await connectSupabase(dbUrlInput.trim(), dbKeyInput.trim());
+                  setIsConnectingDb(false);
+                  if (res.success) {
+                    setDbConnectStatus({ type: 'success', message: res.message });
+                  } else {
+                    setDbConnectStatus({ type: 'error', message: res.message });
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                      Supabase Project URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={dbUrlInput}
+                      onChange={(e) => setDbUrlInput(e.target.value)}
+                      placeholder="https://xyzabcdefghijklmnop.supabase.co"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                      required
+                    />
+                    <span className="text-[10px] text-slate-400 block">
+                      Found in Supabase: Project Settings ➔ API ➔ Project URL
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                      Supabase Public Anon Key *
+                    </label>
+                    <input
+                      type="password"
+                      value={dbKeyInput}
+                      onChange={(e) => setDbKeyInput(e.target.value)}
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                      required
+                    />
+                    <span className="text-[10px] text-slate-400 block">
+                      Found in Supabase: Project Settings ➔ API ➔ Project API Keys (anon public)
+                    </span>
+                  </div>
+                </div>
+
+                {dbConnectStatus.message && (
+                  <div className={`p-3.5 rounded-2xl text-xs font-bold flex items-start space-x-2 ${
+                    dbConnectStatus.type === 'success' 
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}>
+                    {dbConnectStatus.type === 'success' ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <X className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p>{dbConnectStatus.message}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isConnectingDb}
+                    className="px-5 py-2.5 bg-slate-900 hover:bg-black disabled:bg-slate-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center space-x-2 shadow-md cursor-pointer"
+                  >
+                    <Database className="w-4 h-4 text-rose-400" />
+                    <span>{isConnectingDb ? 'Connecting & Verifying...' : 'Save & Connect to Supabase'}</span>
+                  </button>
+
+                  {isSupabaseConfigured && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsSyncingDb(true);
+                        setDbSyncStatus('Syncing riders and vendors to Supabase...');
+                        const res = await syncAllToSupabase();
+                        setIsSyncingDb(false);
+                        setDbSyncStatus(res.message);
+                        alert(res.message);
+                      }}
+                      disabled={isSyncingDb}
+                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center space-x-2 shadow-md cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>{isSyncingDb ? 'Syncing...' : 'Upload All Local Riders & Vendors to Supabase'}</span>
+                    </button>
+                  )}
+
+                  {isSupabaseConfigured && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Disconnect Supabase and switch back to Local Storage?')) {
+                          connectSupabase('', '');
+                          setDbUrlInput('');
+                          setDbKeyInput('');
+                          setDbConnectStatus({ type: 'idle', message: 'Disconnected from Supabase.' });
+                        }
+                      }}
+                      className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </div>
+
+                {dbSyncStatus && (
+                  <p className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                    {dbSyncStatus}
+                  </p>
+                )}
+              </form>
             </div>
 
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs font-bold text-slate-700">
-              <div className="flex justify-between">
-                <span>Registered Vendors:</span>
-                <span className="font-mono text-slate-900">{vendors.length}</span>
+            {/* 2. SQL Setup Quick Code */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">Supabase SQL Editor Code (riders table)</h4>
+                  <p className="text-xs text-slate-500">
+                    If your Supabase riders table is missing or gives an error, run this SQL in Supabase ➔ SQL Editor:
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sql = `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS public.riders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    unique_id VARCHAR(50),
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    photo_url TEXT,
+    home_address TEXT,
+    zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
+    vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
+    is_online BOOLEAN DEFAULT false,
+    current_latitude DOUBLE PRECISION DEFAULT 22.3590,
+    current_longitude DOUBLE PRECISION DEFAULT 91.8380,
+    last_location_updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    cash_in_hand NUMERIC(10, 2) DEFAULT 0.00,
+    is_approved BOOLEAN DEFAULT true,
+    is_password_set BOOLEAN DEFAULT false,
+    password TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`;
+                    navigator.clipboard.writeText(sql);
+                    alert('✅ SQL copied to clipboard! Paste it into Supabase SQL Editor and click RUN.');
+                  }}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold cursor-pointer transition"
+                >
+                  Copy SQL Code
+                </button>
               </div>
-              <div className="flex justify-between">
-                <span>Registered Riders:</span>
-                <span className="font-mono text-slate-900">{riders.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Food Categories:</span>
-                <span className="font-mono text-slate-900">{foodCategories.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total Orders Recorded:</span>
-                <span className="font-mono text-slate-900">{orders.length}</span>
-              </div>
+
+              <pre className="bg-slate-900 text-slate-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto">
+{`CREATE TABLE IF NOT EXISTS public.riders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    unique_id VARCHAR(50),
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
+    vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
+    is_online BOOLEAN DEFAULT false,
+    is_password_set BOOLEAN DEFAULT false,
+    password TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
+              </pre>
             </div>
 
-            <button
-              onClick={() => {
-                if (confirm('Reset local storage state to default seed data?')) {
-                  localStorage.clear();
-                  window.location.reload();
-                }
-              }}
-              className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-xs rounded-2xl transition cursor-pointer"
-            >
-              Reset Local Storage
-            </button>
+            {/* 3. Local Storage Diagnostics */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-4">
+              <h4 className="text-sm font-black text-slate-900">Local Browser Storage Diagnostics</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-slate-500 block text-[10px] uppercase">Local Vendors</span>
+                  <span className="font-mono text-base text-slate-900">{vendors.length}</span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-slate-500 block text-[10px] uppercase">Local Riders</span>
+                  <span className="font-mono text-base text-slate-900">{riders.length}</span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-slate-500 block text-[10px] uppercase">Categories</span>
+                  <span className="font-mono text-base text-slate-900">{foodCategories.length}</span>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-slate-500 block text-[10px] uppercase">Orders</span>
+                  <span className="font-mono text-base text-slate-900">{orders.length}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (confirm('Reset local storage state to default seed data? (Your Supabase cloud database will NOT be affected)')) {
+                    localStorage.removeItem('foodvibe_v3_riders');
+                    localStorage.removeItem('foodvibe_v3_vendors');
+                    window.location.reload();
+                  }
+                }}
+                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Reset Local Storage Cache
+              </button>
+            </div>
           </div>
         )}
 
