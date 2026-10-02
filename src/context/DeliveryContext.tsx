@@ -65,6 +65,8 @@ interface DeliveryContextType {
     description?: string;
   }) => Vendor;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
+  toggleVendorPause: (id: string) => void;
+  deleteVendor: (id: string) => void;
   
   // Menu Items
   menuItems: MenuItem[];
@@ -101,6 +103,8 @@ interface DeliveryContextType {
     longitude?: number;
   }) => Rider;
   toggleRiderOnline: (riderId: string, isOnline: boolean) => Promise<boolean>;
+  toggleRiderPause: (riderId: string) => void;
+  deleteRider: (riderId: string) => void;
   updateRiderLocation: (riderId: string, lat: number, lng: number) => void;
   simulateRiderMovement: (stepLat: number, stepLng: number) => void;
   
@@ -507,6 +511,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }): Vendor => {
     const newVendor: Vendor = {
       id: `v-${Date.now()}`,
+      unique_id: `VND-${Math.floor(1000 + Math.random() * 9000)}`,
       name: data.name.trim(),
       phone: data.phone.trim(),
       address: data.address.trim(),
@@ -516,6 +521,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       longitude: data.longitude,
       description: data.description || 'Quality food prepared with fresh ingredients',
       is_active: true,
+      is_paused: false,
       rating: 5.0,
       estimated_prep_time_minutes: 20,
       is_password_set: false,
@@ -526,6 +532,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setVendors(prev => [newVendor, ...prev]);
     return newVendor;
+  };
+
+  const toggleVendorPause = (id: string) => {
+    setVendors(prev => prev.map(v => v.id === id ? { ...v, is_paused: !v.is_paused } : v));
+  };
+
+  const deleteVendor = (id: string) => {
+    setVendors(prev => prev.filter(v => v.id !== id));
   };
 
   const adminRegisterRider = (data: {
@@ -540,6 +554,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }): Rider => {
     const newRider: Rider = {
       id: `r-${Date.now()}`,
+      unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
       name: data.name.trim(),
       phone: data.phone.trim(),
       photo_url: data.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
@@ -547,6 +562,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       zone: data.zone || 'Chawkbazar Zone',
       vehicle_type: data.vehicle_type || 'Motorcycle',
       is_online: false,
+      is_paused: false,
       current_latitude: data.latitude || 22.3590,
       current_longitude: data.longitude || 91.8380,
       last_location_updated_at: new Date().toISOString(),
@@ -558,6 +574,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setRiders(prev => [newRider, ...prev]);
     return newRider;
+  };
+
+  const toggleRiderPause = (id: string) => {
+    setRiders(prev => prev.map(r => r.id === id ? { ...r, is_paused: !r.is_paused } : r));
+  };
+
+  const deleteRider = (id: string) => {
+    setRiders(prev => prev.filter(r => r.id !== id));
   };
 
   const updateVendor = (id: string, updates: Partial<Vendor>) => {
@@ -1052,6 +1076,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentVendor,
         adminRegisterVendor,
         updateVendor,
+        toggleVendorPause,
+        deleteVendor,
         menuItems,
         addMenuItem,
         toggleMenuItemAvailability,
@@ -1071,6 +1097,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentRider,
         adminRegisterRider,
         toggleRiderOnline,
+        toggleRiderPause,
+        deleteRider,
         updateRiderLocation,
         simulateRiderMovement,
         orders,

@@ -51,16 +51,27 @@ export const VendorPortal: React.FC = () => {
     orders, 
     updateOrderStatus,
     settings,
-    riders
+    riders,
+    currentUser,
+    loginUser,
+    setPasswordForUser,
+    logoutUser
   } = useDelivery();
+
+  // Vendor Auth State
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [authPhone, setAuthPhone] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
   // Navigation & View States
   const [activeBottomNav, setActiveBottomNav] = useState<'overview' | 'menu' | 'ads' | 'more'>('overview');
   const [performancePeriod, setPerformancePeriod] = useState<'Today' | 'Yesterday' | 'This Week'>('Today');
   const [isStoreOnline, setIsStoreOnline] = useState(true);
   const [isStoreSelectorOpen, setIsStoreSelectorOpen] = useState(false);
-  
-  // Menu Page States (Matching Screenshot_20260930_194219_panda partner.jpg)
+
+  // Menu Page States
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -85,10 +96,188 @@ export const VendorPortal: React.FC = () => {
   const [dishDescription, setDishDescription] = useState('');
   const [dishImageUrl, setDishImageUrl] = useState('');
 
-  if (!currentVendor) {
+  // Auth Handlers
+  const handleVendorLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    const res = loginUser('vendor', authPhone, authPassword);
+    if (!res.success) {
+      if (res.requiresPasswordSetup) {
+        setAuthTab('register');
+        setAuthError('First-time login detected. Please set your new password below.');
+      } else {
+        setAuthError(res.message || 'Login failed. Please check phone and password.');
+      }
+    }
+  };
+
+  const handleVendorRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!authPhone.trim() || !authPassword.trim()) {
+      setAuthError('Please enter phone number and password.');
+      return;
+    }
+    if (authPassword !== authConfirmPassword) {
+      setAuthError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    const ok = setPasswordForUser('vendor', authPhone, authPassword);
+    if (!ok) {
+      setAuthError('This phone number is not registered as a Vendor by Admin. Please contact Admin.');
+    }
+  };
+
+  if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        No active vendor selected. Please register a vendor in Admin or choose from list.
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-md">
+              <Store className="w-7 h-7 stroke-[2.5]" />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">
+              foodiplace Partner
+            </h2>
+            <p className="text-xs text-slate-500 font-bold">
+              Vendor Portal Registration & Login
+            </p>
+          </div>
+
+          {/* Auth Tab Switcher */}
+          <div className="bg-slate-100 p-1 rounded-2xl flex text-xs font-black">
+            <button
+              onClick={() => { setAuthTab('login'); setAuthError(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
+                authTab === 'login' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Partner Login
+            </button>
+            <button
+              onClick={() => { setAuthTab('register'); setAuthError(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
+                authTab === 'register' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Set New Password
+            </button>
+          </div>
+
+          {authError && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-2xl animate-in fade-in">
+              {authError}
+            </div>
+          )}
+
+          {authTab === 'login' ? (
+            <form onSubmit={handleVendorLoginSubmit} className="space-y-4 text-xs font-bold">
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Registered Phone Number</label>
+                <input
+                  type="tel"
+                  value={authPhone}
+                  onChange={(e) => setAuthPhone(e.target.value)}
+                  placeholder="e.g. 01711122233"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Password</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+              >
+                Login to Partner Dashboard
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVendorRegisterSubmit} className="space-y-4 text-xs font-bold">
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Admin Registered Phone Number *</label>
+                <input
+                  type="tel"
+                  value={authPhone}
+                  onChange={(e) => setAuthPhone(e.target.value)}
+                  placeholder="e.g. 01711122233"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+                <p className="text-[10px] text-slate-400 font-normal">
+                  Enter the phone number provided during registration by Admin.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Set New Password *</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Create password"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Confirm Password *</label>
+                <input
+                  type="password"
+                  value={authConfirmPassword}
+                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+              >
+                Complete Registration & Login
+              </button>
+            </form>
+          )}
+
+          {/* Quick Select Preset Account for Testing */}
+          <div className="pt-4 border-t border-slate-100 text-center space-y-2">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+              Quick Test Vendor Login:
+            </span>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {vendors.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setAuthPhone(v.phone);
+                    setAuthPassword(v.password || '123');
+                    loginUser('vendor', v.phone, v.password || '123');
+                  }}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
       </div>
     );
   }

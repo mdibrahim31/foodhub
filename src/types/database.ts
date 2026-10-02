@@ -28,6 +28,7 @@ export type DeliveryZone = typeof DELIVERY_ZONES[number] | string;
 
 export interface Vendor {
   id: string;
+  unique_id?: string; // e.g. VND-1001
   name: string;
   description?: string;
   logo_url?: string;
@@ -41,6 +42,7 @@ export interface Vendor {
   longitude: number;
   google_maps_link?: string;
   is_active: boolean;
+  is_paused?: boolean; // Admin can pause/resume vendor
   rating: number;
   estimated_prep_time_minutes: number;
   featured_position?: number; // 1 to 5 for ranking in top serial
@@ -95,6 +97,7 @@ export interface CustomerUser {
 
 export interface Rider {
   id: string;
+  unique_id?: string; // e.g. RDR-5001
   name: string;
   phone: string;
   photo_url?: string;
@@ -102,6 +105,7 @@ export interface Rider {
   zone: string;
   vehicle_type: 'Motorcycle' | 'Bicycle' | 'Scooter';
   is_online: boolean;
+  is_paused?: boolean; // Admin can pause/resume rider
   current_latitude: number;
   current_longitude: number;
   last_location_updated_at?: string;
