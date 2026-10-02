@@ -27,7 +27,13 @@ import {
   Sparkles,
   User,
   Clock,
-  Banknote
+  Banknote,
+  ArrowLeft,
+  Crosshair,
+  Compass,
+  Navigation,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
@@ -1011,114 +1017,131 @@ export const AdminPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: FULL RIDER PROFILE DETAILS
+        FULLSCREEN RIDER PROFILE WINDOW
         ========================================================================
       */}
       {selectedRiderForProfile && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+          
+          {/* Top Fullscreen Header with Back Arrow Button */}
+          <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSelectedRiderForProfile(null)}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer shadow-xs active:scale-95"
+              >
+                <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
+                <span>Back to Admin Panel</span>
+              </button>
+
+              <div className="hidden sm:block h-6 w-px bg-slate-800" />
+
               <div className="flex items-center space-x-3">
                 <img
                   src={selectedRiderForProfile.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
                   alt={selectedRiderForProfile.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-xs"
+                  className="w-10 h-10 rounded-2xl object-cover border border-rose-500/40 shadow-xs"
                 />
                 <div>
-                  <h3 className="font-black text-slate-900 text-base">{selectedRiderForProfile.name}</h3>
-                  <span className="text-[10px] font-mono font-bold text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md">
+                  <h2 className="font-black text-white text-base tracking-tight leading-none">{selectedRiderForProfile.name}</h2>
+                  <span className="text-[10px] font-mono font-bold text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-md mt-1 inline-block">
                     ID: {selectedRiderForProfile.unique_id || selectedRiderForProfile.id}
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase ${
+                selectedRiderForProfile.is_paused 
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                  : selectedRiderForProfile.is_online 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+              }`}>
+                {selectedRiderForProfile.is_paused ? 'PAUSED BY ADMIN' : selectedRiderForProfile.is_online ? 'ONLINE ON DUTY' : 'OFFLINE'}
+              </span>
+
               <button
                 onClick={() => setSelectedRiderForProfile(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-full"
+                className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                title="Close Window"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+          </header>
 
-            <div className="space-y-3 text-xs font-bold">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Phone Number</span>
-                  <span className="font-mono text-slate-900 text-sm">{selectedRiderForProfile.phone}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Zone</span>
-                  <span className="text-pink-600">{selectedRiderForProfile.zone}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Vehicle Type</span>
-                  <span className="text-slate-800">{selectedRiderForProfile.vehicle_type}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Float Cash Held</span>
-                  <span className="text-emerald-700 font-mono text-sm">৳{selectedRiderForProfile.cash_in_hand}</span>
-                </div>
+          {/* Body Container */}
+          <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            
+            {/* Overview Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</span>
+                <span className="font-mono font-bold text-white text-base">{selectedRiderForProfile.phone}</span>
               </div>
 
-              <div className="space-y-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <span className="text-[10px] text-slate-400 uppercase block">Home Base Address</span>
-                <p className="text-slate-800">{selectedRiderForProfile.home_address || 'Chittagong'}</p>
-                <p className="text-[10px] font-mono text-slate-500">Base Lat: {selectedRiderForProfile.current_latitude}, Lng: {selectedRiderForProfile.current_longitude}</p>
+              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Primary Zone</span>
+                <span className="font-extrabold text-pink-400 text-base">{selectedRiderForProfile.zone}</span>
               </div>
 
-              <div className="flex justify-between items-center bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <span>Account Status:</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                  selectedRiderForProfile.is_paused 
-                    ? 'bg-red-100 text-red-800' 
-                    : selectedRiderForProfile.is_online 
-                    ? 'bg-emerald-100 text-emerald-800' 
-                    : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {selectedRiderForProfile.is_paused ? 'PAUSED BY ADMIN' : selectedRiderForProfile.is_online ? 'ONLINE ON DUTY' : 'OFFLINE'}
-                </span>
+              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vehicle Type</span>
+                <span className="font-bold text-white text-base">{selectedRiderForProfile.vehicle_type}</span>
               </div>
 
-              {/* Live Location Map */}
-              <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider flex items-center space-x-1">
-                    <MapPin className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Rider Live GPS Location</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500 font-extrabold">
-                    Lat: {selectedRiderForProfile.current_latitude.toFixed(4)}, Lng: {selectedRiderForProfile.current_longitude.toFixed(4)}
-                  </span>
-                </div>
-
-                <div className="rounded-2xl overflow-hidden border border-slate-200/90 shadow-2xs">
-                  <InteractiveMap
-                    center={[selectedRiderForProfile.current_latitude, selectedRiderForProfile.current_longitude]}
-                    zoom={15}
-                    heightClass="h-48"
-                    markers={[
-                      {
-                        id: selectedRiderForProfile.id,
-                        latitude: selectedRiderForProfile.current_latitude,
-                        longitude: selectedRiderForProfile.current_longitude,
-                        title: selectedRiderForProfile.name,
-                        subtitle: `${selectedRiderForProfile.zone} • ${selectedRiderForProfile.vehicle_type}`,
-                        type: 'rider'
-                      }
-                    ]}
-                  />
-                </div>
+              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Float Cash Held (COD)</span>
+                <span className="font-mono font-black text-emerald-400 text-lg">৳{selectedRiderForProfile.cash_in_hand}</span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => setSelectedRiderForProfile(null)}
-                className="px-5 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl"
-              >
-                Close Profile
-              </button>
+            {/* Address Info */}
+            <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Home Address Base</span>
+              <p className="font-bold text-white text-sm">{selectedRiderForProfile.home_address || 'Chittagong'}</p>
             </div>
-          </div>
+
+            {/* Live Location Map Section */}
+            <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-black text-white text-base flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-rose-500 animate-bounce" />
+                    <span>Rider Live GPS Tracking Map</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                    Current Coordinates: Lat {selectedRiderForProfile.current_latitude.toFixed(4)}, Lng {selectedRiderForProfile.current_longitude.toFixed(4)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Fullscreen & Interactive Map Box */}
+              <div className="rounded-2xl overflow-hidden border border-slate-700 shadow-xl bg-slate-900">
+                <InteractiveMap
+                  center={[selectedRiderForProfile.current_latitude, selectedRiderForProfile.current_longitude]}
+                  zoom={16}
+                  heightClass="h-96 md:h-[520px]"
+                  showControls={true}
+                  showFullscreenButton={true}
+                  showRecenterButton={true}
+                  markers={[
+                    {
+                      id: selectedRiderForProfile.id,
+                      latitude: selectedRiderForProfile.current_latitude,
+                      longitude: selectedRiderForProfile.current_longitude,
+                      title: `${selectedRiderForProfile.name} (Live GPS)`,
+                      subtitle: `${selectedRiderForProfile.zone} • ${selectedRiderForProfile.vehicle_type}`,
+                      type: 'rider'
+                    }
+                  ]}
+                />
+              </div>
+            </div>
+
+          </main>
         </div>
       )}
 

@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import { Maximize2, Minimize2, Crosshair, MapPin, Compass } from 'lucide-react';
 
 export interface MapMarkerItem {
   id: string;
@@ -24,6 +25,9 @@ interface InteractiveMapProps {
   onMapClick?: (lat: number, lng: number) => void;
   onMarkerDragEnd?: (id: string, lat: number, lng: number) => void;
   heightClass?: string;
+  showControls?: boolean;
+  showFullscreenButton?: boolean;
+  showRecenterButton?: boolean;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
@@ -34,10 +38,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   onMapClick,
   onMarkerDragEnd,
   heightClass = 'h-72',
+  showControls = true,
+  showFullscreenButton = true,
+  showRecenterButton = true,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Initialize Map Once
   useEffect(() => {
@@ -68,12 +77,32 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     };
   }, []);
 
+  // Invalidate map size when fullscreen mode toggles
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [isFullscreen]);
+
   // Update Center & Zoom
   useEffect(() => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView(center, zoom);
     }
   }, [center[0], center[1], zoom]);
+
+  // Recenter Map on Target Location
+  const handleRecenter = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(center, 17, {
+        animate: true,
+        duration: 1,
+      });
+    }
+  };
 
   // Click handler
   useEffect(() => {
@@ -96,7 +125,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const layerGroup = layerGroupRef.current;
     layerGroup.clearLayers();
 
-    // 1. Draw Radius Circle if provided (e.g. 1km rider proximity)
+    // 1. Draw Radius Circle if provided
     if (radiusCircle) {
       const circle = L.circle(radiusCircle.center, {
         color: radiusCircle.color || '#10b981',
@@ -167,8 +196,54 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   }, [markers, radiusCircle, onMarkerDragEnd]);
 
   return (
-    <div className={`relative w-full ${heightClass} rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0`}>
+    <div 
+      className={`relative transition-all duration-300 ${
+        isFullscreen 
+          ? 'fixed inset-0 z-50 w-screen h-screen bg-slate-900 rounded-none border-none p-0 overflow-hidden' 
+          : `w-full ${heightClass} rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0`
+      }`}
+    >
       <div ref={mapContainerRef} className="w-full h-full z-0 clean-foodpanda-map" />
+
+      {/* Floating Map Overlay Control Buttons */}
+      {showControls && (
+        <div className="absolute top-3 right-3 z-10 flex flex-col space-y-2">
+          {/* Recenter / Focus on Target Location */}
+          {showRecenterButton && (
+            <button
+              type="button"
+              onClick={handleRecenter}
+              className="bg-white/95 hover:bg-white text-slate-800 p-2.5 rounded-2xl shadow-lg border border-slate-200 backdrop-blur-xs transition active:scale-95 flex items-center space-x-1.5 text-xs font-bold cursor-pointer"
+              title="Focus on Location / Rider GPS Pin"
+            >
+              <Crosshair className="w-4 h-4 text-rose-600 animate-pulse" />
+              <span className="hidden sm:inline">Focus Location</span>
+            </button>
+          )}
+
+          {/* Fullscreen Map Toggle */}
+          {showFullscreenButton && (
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(prev => !prev)}
+              className="bg-white/95 hover:bg-white text-slate-800 p-2.5 rounded-2xl shadow-lg border border-slate-200 backdrop-blur-xs transition active:scale-95 flex items-center space-x-1.5 text-xs font-bold cursor-pointer"
+              title={isFullscreen ? 'Exit Fullscreen Map' : 'Expand Fullscreen Map'}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-4 h-4 text-slate-700" />
+                  <span className="hidden sm:inline">Exit Fullscreen</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-4 h-4 text-slate-700" />
+                  <span className="hidden sm:inline">Fullscreen Map</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
