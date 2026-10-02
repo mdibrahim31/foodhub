@@ -9,6 +9,8 @@ export interface SystemSettings {
   currency_symbol: string;
   is_active: boolean;
   updated_at: string;
+  banner_slide_interval_seconds?: number; // e.g. 3
+  banner_slide_auto_play?: boolean;       // e.g. true
 }
 
 export const DELIVERY_ZONES = [

@@ -109,17 +109,25 @@ export const CustomerPortal: React.FC = () => {
     }
   }, [activeSlide]);
 
-  // Auto slide every 3 seconds (starts from slide index 0 on refresh or page enter)
+  // Auto slide according to Admin configurations
   useEffect(() => {
     setActiveSlide(0);
     setPrevSlide(null);
     lastActiveSlideRef.current = 0;
+
+    const isAutoPlay = settings.banner_slide_auto_play !== false; // default true
+    const intervalSeconds = settings.banner_slide_interval_seconds || 3;
+
+    if (!isAutoPlay || heroSlides.length <= 1) {
+      return;
+    }
+
     const interval = setInterval(() => {
       setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 3000);
+    }, intervalSeconds * 1000);
 
     return () => clearInterval(interval);
-  }, [heroSlides.length]);
+  }, [heroSlides.length, settings.banner_slide_auto_play, settings.banner_slide_interval_seconds]);
 
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);

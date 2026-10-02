@@ -48,6 +48,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   currency_symbol: '৳',
   is_active: true,
   updated_at: new Date().toISOString(),
+  banner_slide_interval_seconds: 3,
+  banner_slide_auto_play: true,
 };
 
 export const INITIAL_VENDORS: Vendor[] = [
