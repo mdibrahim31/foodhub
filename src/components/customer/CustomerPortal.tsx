@@ -84,7 +84,10 @@ export const CustomerPortal: React.FC = () => {
 
   const heroSlides = [
     ...activeAdBanners.map((ad) => {
-      const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
+      const targetVendorId = ad.target_vendor_id;
+      const targetVendor = targetVendorId 
+        ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
+        : null;
       return {
         id: `ad-${ad.id}`,
         title: ad.title,

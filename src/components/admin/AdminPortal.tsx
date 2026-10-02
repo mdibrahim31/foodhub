@@ -76,6 +76,7 @@ export const AdminPortal: React.FC = () => {
   const [adActionText, setAdActionText] = useState('Redeem now');
   const [adImageUrl, setAdImageUrl] = useState('https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80');
   const [adTargetVendorId, setAdTargetVendorId] = useState('');
+  const [targetVendorSearchQuery, setTargetVendorSearchQuery] = useState('');
 
   // Search Filters
   const [vendorSearch, setVendorSearch] = useState('');
@@ -2092,31 +2093,153 @@ export const AdminPortal: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-slate-600">Action Button Text</label>
-                  <input
-                    type="text"
-                    value={adActionText}
-                    onChange={(e) => setAdActionText(e.target.value)}
-                    placeholder="e.g. Redeem now"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
-                  />
+              <div className="space-y-1">
+                <label className="text-slate-600">Action Button Text</label>
+                <input
+                  type="text"
+                  value={adActionText}
+                  onChange={(e) => setAdActionText(e.target.value)}
+                  placeholder="e.g. Redeem now"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                />
+              </div>
+
+              {/* Target Restaurant Search & ID Selection Box */}
+              <div className="space-y-2 bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-700 font-extrabold flex items-center space-x-1.5">
+                    <Store className="w-4 h-4 text-rose-600" />
+                    <span>Target Restaurant Search & Selection</span>
+                  </label>
+                  {adTargetVendorId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdTargetVendorId('');
+                        setTargetVendorSearchQuery('');
+                      }}
+                      className="text-[10px] text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-md cursor-pointer"
+                    >
+                      Clear Link (✕)
+                    </button>
+                  )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-slate-600">Target Restaurant (Optional)</label>
-                  <select
-                    value={adTargetVendorId}
-                    onChange={(e) => setAdTargetVendorId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer"
-                  >
-                    <option value="">-- General Ad (All Restaurants) --</option>
-                    {vendors.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name} ({v.zone})</option>
-                    ))}
-                  </select>
-                </div>
+                {/* If a restaurant is already selected */}
+                {(() => {
+                  const selectedVendorObj = adTargetVendorId 
+                    ? vendors.find(v => v.id === adTargetVendorId || (v.unique_id && v.unique_id.toLowerCase() === adTargetVendorId.toLowerCase()))
+                    : null;
+
+                  if (selectedVendorObj) {
+                    return (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className="p-1.5 bg-emerald-600 text-white rounded-lg shrink-0">
+                            <Store className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="font-black text-xs truncate">{selectedVendorObj.name}</span>
+                              <span className="px-1.5 py-0.2 bg-emerald-200 text-emerald-800 font-mono font-bold text-[10px] rounded-md shrink-0">
+                                {selectedVendorObj.unique_id || selectedVendorObj.id}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-emerald-700 font-medium truncate">
+                              📞 {selectedVendorObj.phone} &bull; {selectedVendorObj.zone}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-extrabold bg-emerald-600 text-white px-2 py-1 rounded-lg shrink-0">
+                          ✓ Linked
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {/* Search Bar Input */}
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="text"
+                          value={targetVendorSearchQuery}
+                          onChange={(e) => {
+                            setTargetVendorSearchQuery(e.target.value);
+                            setAdTargetVendorId(e.target.value.trim()); // Also supports direct ID typing
+                          }}
+                          placeholder="Search restaurant by Name, ID (VND-1001), or Phone..."
+                          className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-slate-900 text-xs focus:outline-hidden focus:border-rose-500 font-bold"
+                        />
+                      </div>
+
+                      {/* Matching Restaurants Dropdown Results */}
+                      {targetVendorSearchQuery.trim().length > 0 && (() => {
+                        const q = targetVendorSearchQuery.toLowerCase().trim();
+                        const matchingVendors = vendors.filter(v => 
+                          v.name.toLowerCase().includes(q) ||
+                          v.phone.includes(q) ||
+                          v.id.toLowerCase().includes(q) ||
+                          (v.unique_id && v.unique_id.toLowerCase().includes(q))
+                        );
+
+                        if (matchingVendors.length === 0) {
+                          return (
+                            <div className="p-3 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-500 font-bold">
+                              No restaurant found matching "{targetVendorSearchQuery}". Enter valid Vendor ID or search name.
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 shadow-md">
+                            {matchingVendors.map((v) => (
+                              <div
+                                key={v.id}
+                                onClick={() => {
+                                  setAdTargetVendorId(v.id);
+                                  setTargetVendorSearchQuery('');
+                                }}
+                                className="p-2.5 hover:bg-rose-50 cursor-pointer transition flex items-center justify-between text-xs"
+                              >
+                                <div>
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="font-extrabold text-slate-900">{v.name}</span>
+                                    <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 font-mono font-bold text-[9px] rounded-md">
+                                      {v.unique_id || v.id}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 font-medium">📞 {v.phone} &bull; {v.zone}</span>
+                                </div>
+                                <span className="px-2 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold">
+                                  Select &rarr;
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Dropdown Quick Select Fallback */}
+                      <div className="pt-1">
+                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Or select directly from registered partners list:</span>
+                        <select
+                          value={adTargetVendorId}
+                          onChange={(e) => setAdTargetVendorId(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
+                        >
+                          <option value="">-- General Ad (Unlinked Offer Banner) --</option>
+                          {vendors.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              🎯 [{v.unique_id || v.id}] {v.name} ({v.phone} - {v.zone})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-1">
