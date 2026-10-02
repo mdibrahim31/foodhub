@@ -186,6 +186,358 @@ export const RiderPortal: React.FC = () => {
     }
   };
 
+  const riderLat = Number(currentRider?.current_latitude) || 22.3590;
+  const riderLng = Number(currentRider?.current_longitude) || 91.8380;
+
+  // Active delivery assigned to this rider that is not completed
+  const activeOrder = currentRider
+    ? orders.find(
+        (o) => o.rider_id === currentRider.id && !['delivered', 'cancelled'].includes(o.status)
+      )
+    : undefined;
+
+  // Incoming Candidate Order based on zone, distance, and dispatched single rider logic
+  const incomingCandidateOrder = currentRider?.is_online && !activeOrder
+    ? orders.find((o) => {
+        if (o.rider_id || ['delivered', 'cancelled'].includes(o.status)) return false;
+        if (currentRider && o.rejected_rider_ids?.includes(currentRider.id)) return false;
+        if (currentRider && o.dispatched_rider_id === currentRider.id) return true;
+        if (
+          !o.dispatched_rider_id &&
+          (o.status === 'ready_for_pickup' || o.status === 'food_preparing')
+        ) {
+          const v = vendors.find((vend) => vend.id === o.vendor_id);
+          const orderZone = o.zone || v?.zone;
+          if (currentRider?.zone && orderZone && currentRider.zone.toLowerCase() !== orderZone.toLowerCase()) {
+            return false;
+          }
+          if (v && Number.isFinite(v.latitude) && Number.isFinite(v.longitude)) {
+            const dist = calculateDistanceKm(v.latitude, v.longitude, riderLat, riderLng);
+            return dist <= (settings?.rider_match_radius_km || 1.5);
+          }
+          return true;
+        }
+        return false;
+      })
+    : null;
+
+  const candidateVendor = incomingCandidateOrder
+    ? (vendors.find((v) => v.id === incomingCandidateOrder.vendor_id) || incomingCandidateOrder.vendor)
+    : null;
+
+  const distanceToVendorKm = incomingCandidateOrder && candidateVendor && Number.isFinite(candidateVendor.latitude) && Number.isFinite(candidateVendor.longitude)
+    ? (calculateDistanceKm(
+        candidateVendor.latitude,
+        candidateVendor.longitude,
+        riderLat,
+        riderLng
+      ) || 0.4).toFixed(2)
+    : '0.4';
+
+  // Audio chime for new incoming order
+  const playAlertSound = () => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.55);
+    } catch {
+      // Ignore
+    }
+  };
+
+  // Sound chime when a new candidate appears
+  useEffect(() => {
+    if (incomingCandidateOrder && currentRider?.is_online) {
+      playAlertSound();
+      setOrderCountdown(60);
+    }
+  }, [incomingCandidateOrder?.id, currentRider?.is_online]);
+
+  // Countdown timer for incoming request
+  useEffect(() => {
+    if (!incomingCandidateOrder || !currentRider?.is_online) return;
+    const interval = setInterval(() => {
+      setOrderCountdown((prev) => {
+        if (prev <= 1) {
+          // Auto reject when countdown runs out -> pass to next rider
+          if (currentRider) {
+            riderRejectOrder(incomingCandidateOrder.id, currentRider.id);
+          }
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [incomingCandidateOrder?.id, currentRider?.is_online]);
+
+  const handleAcceptOrder = (orderId: string) => {
+    if (currentRider) {
+      riderAcceptOrder(orderId, currentRider.id);
+    }
+  };
+
+  const handleRejectOrder = (orderId: string) => {
+    if (currentRider) {
+      riderRejectOrder(orderId, currentRider.id);
+    }
+  };
+
+  // Lock body scroll strictly while in Rider Portal
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'rider' || !currentRider) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [currentUser?.id, currentRider?.id]);
+
+  // Online / Offline Switch Toggle handler
+  const handleToggleOnlineSwitch = async () => {
+    if (!currentRider) return;
+    setIsTogglingOnline(true);
+    try {
+      await toggleRiderOnline(currentRider.id, !currentRider.is_online);
+    } finally {
+      setIsTogglingOnline(false);
+    }
+  };
+
+  // Initialize Fullscreen Leaflet Map (Runs when currentRider and map container mount)
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'rider' || !currentRider) return;
+    if (!mapContainerRef.current) return;
+
+    try {
+      if ((mapContainerRef.current as any)._leaflet_id) {
+        delete (mapContainerRef.current as any)._leaflet_id;
+      }
+
+      const lat = Number(currentRider?.current_latitude) || 22.3590;
+      const lng = Number(currentRider?.current_longitude) || 91.8380;
+
+      if (!mapInstanceRef.current) {
+        const map = L.map(mapContainerRef.current, {
+          center: [lat, lng],
+          zoom: 15,
+          zoomControl: false, // Clean custom mobile view
+        });
+
+        // 100% Free OpenStreetMap Tiles (No API key, No watermarks)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
+
+        const routeGroup = L.layerGroup().addTo(map);
+        routeLayerGroupRef.current = routeGroup;
+
+        // Rider Marker with custom navigation icon + heading cone
+        const riderIcon = L.divIcon({
+          className: 'rider-live-pin',
+          html: `
+            <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+              <!-- Heading Field of View Cone -->
+              <div style="position: absolute; top: -14px; width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 36px solid rgba(2, 132, 199, 0.3); filter: blur(1.5px);"></div>
+              <!-- Outer soft ring -->
+              <div style="position: absolute; width: 34px; height: 34px; border-radius: 9999px; background: rgba(2, 132, 199, 0.22);"></div>
+              <!-- Inner white border circle -->
+              <div style="width: 22px; height: 22px; border-radius: 9999px; background: #0284c7; border: 3.5px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 2;"></div>
+            </div>
+          `,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        });
+
+        const marker = L.marker(
+          [lat, lng],
+          { icon: riderIcon }
+        ).addTo(map);
+
+        riderMarkerRef.current = marker;
+        mapInstanceRef.current = map;
+      }
+    } catch (err) {
+      console.error('Leaflet map initialization error:', err);
+    }
+
+    return () => {
+      try {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+      } catch (err) {
+        console.error('Leaflet map cleanup error:', err);
+      }
+    };
+  }, [currentUser?.id, currentRider?.id]);
+
+  // Update Rider Marker position & Map View when coordinates update
+  useEffect(() => {
+    try {
+      if (!mapInstanceRef.current || !riderMarkerRef.current || !currentRider) return;
+      const lat = Number(currentRider?.current_latitude) || 22.3590;
+      const lng = Number(currentRider?.current_longitude) || 91.8380;
+      riderMarkerRef.current.setLatLng([lat, lng]);
+    } catch (err) {
+      console.error('Error updating marker position:', err);
+    }
+  }, [currentRider?.current_latitude, currentRider?.current_longitude]);
+
+  // Update Route Polyline & Destination Markers on Map (Exact Foodpanda Style Store & Customer Icons)
+  useEffect(() => {
+    try {
+      if (!mapInstanceRef.current || !routeLayerGroupRef.current || !currentRider) return;
+      const layer = routeLayerGroupRef.current;
+      layer.clearLayers();
+
+      const targetOrder = activeOrder || incomingCandidateOrder;
+      if (targetOrder) {
+        const vendor = vendors.find((v) => v.id === targetOrder.vendor_id);
+        const rLat = Number(currentRider?.current_latitude) || 22.3590;
+        const rLng = Number(currentRider?.current_longitude) || 91.8380;
+
+        const points: [number, number][] = [
+          [rLat, rLng]
+        ];
+
+        // 1. VENDOR / RESTAURANT LOCATION PIN (Pink Storefront Badge with ground target stem)
+        if (vendor && Number.isFinite(vendor.latitude) && Number.isFinite(vendor.longitude)) {
+          const vendorIcon = L.divIcon({
+            className: 'custom-foodpanda-vendor-pin',
+            html: `
+              <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
+                <!-- Pink Circle Store Badge -->
+                <div style="width: 38px; height: 38px; border-radius: 9999px; background: #e21b70; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(226, 27, 112, 0.45);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+                    <path d="M2 7h20"/>
+                  </svg>
+                </div>
+                <!-- Black Connector Stem -->
+                <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
+                <!-- Pink Target Base Ring -->
+                <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #e21b70; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
+              </div>
+            `,
+            iconSize: [42, 60],
+            iconAnchor: [21, 58],
+            popupAnchor: [0, -56],
+          });
+
+          const vMarker = L.marker([vendor.latitude, vendor.longitude], { icon: vendorIcon }).addTo(layer);
+          vMarker.bindPopup(`
+            <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
+              <span style="color: #e21b70; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Pickup Store</span>
+              ${vendor.name}
+              <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${vendor.address}</span>
+            </div>
+          `);
+          points.push([vendor.latitude, vendor.longitude]);
+        }
+
+        // 2. CUSTOMER DROPOFF LOCATION PIN (Black User Badge with ground target stem)
+        if (Number.isFinite(targetOrder.delivery_latitude) && Number.isFinite(targetOrder.delivery_longitude)) {
+          const customerIcon = L.divIcon({
+            className: 'custom-foodpanda-customer-pin',
+            html: `
+              <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
+                <!-- Black Circle User Badge -->
+                <div style="width: 38px; height: 38px; border-radius: 9999px; background: #0f172a; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.45);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <!-- Black Connector Stem -->
+                <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
+                <!-- Black Target Base Ring -->
+                <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #0f172a; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
+              </div>
+            `,
+            iconSize: [42, 60],
+            iconAnchor: [21, 58],
+            popupAnchor: [0, -56],
+          });
+
+          const cMarker = L.marker([targetOrder.delivery_latitude, targetOrder.delivery_longitude], { icon: customerIcon }).addTo(layer);
+          cMarker.bindPopup(`
+            <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
+              <span style="color: #0f172a; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Customer Dropoff</span>
+              ${targetOrder.customer_name}
+              <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${targetOrder.delivery_address}</span>
+            </div>
+          `);
+          points.push([targetOrder.delivery_latitude, targetOrder.delivery_longitude]);
+        }
+
+        // 3. Connect route with dashed line
+        if (points.length >= 2) {
+          L.polyline(points, {
+            color: '#e21b70',
+            weight: 3.5,
+            dashArray: '6, 8',
+            opacity: 0.85,
+          }).addTo(layer);
+
+          // Fit map viewport smoothly to show all points
+          try {
+            const bounds = L.latLngBounds(points);
+            mapInstanceRef.current.fitBounds(bounds, {
+              paddingTopLeft: [40, 90],
+              paddingBottomRight: [40, 240],
+              maxZoom: 16,
+              animate: true,
+            });
+          } catch (e) {
+            console.warn('Fitbounds warning:', e);
+          }
+        }
+      }
+    } catch (routeErr) {
+      console.warn('Route drawing exception caught safely:', routeErr);
+    }
+  }, [activeOrder?.id, incomingCandidateOrder?.id, currentRider?.current_latitude, currentRider?.current_longitude]);
+
+  // Recenter Map to Rider GPS
+  const handleRecenter = () => {
+    if (mapInstanceRef.current && currentRider) {
+      const lat = Number(currentRider?.current_latitude) || 22.3590;
+      const lng = Number(currentRider?.current_longitude) || 91.8380;
+      mapInstanceRef.current.setView([lat, lng], 16, { animate: true });
+    }
+  };
+
+  // Check if rider cash limit is exceeded (e.g. > 5000 BDT)
+  const isCashRestricted = (Number(currentRider?.cash_in_hand) || 0) > 4000;
+
+  // Unauthenticated / Logged out state - Display registration and login form
   if (!currentUser || currentUser.role !== 'rider' || !currentRider) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
@@ -353,347 +705,6 @@ export const RiderPortal: React.FC = () => {
       </div>
     );
   }
-
-  const riderLat = Number(currentRider?.current_latitude) || 22.3590;
-  const riderLng = Number(currentRider?.current_longitude) || 91.8380;
-
-  // Active delivery assigned to this rider that is not completed
-  const activeOrder = orders.find(
-    (o) => o.rider_id === currentRider.id && !['delivered', 'cancelled'].includes(o.status)
-  );
-
-  // Incoming Candidate Order based on zone, distance, and dispatched single rider logic
-  const incomingCandidateOrder = currentRider.is_online && !activeOrder
-    ? orders.find((o) => {
-        if (o.rider_id || ['delivered', 'cancelled'].includes(o.status)) return false;
-        if (o.rejected_rider_ids?.includes(currentRider.id)) return false;
-        if (o.dispatched_rider_id === currentRider.id) return true;
-        if (
-          !o.dispatched_rider_id &&
-          (o.status === 'ready_for_pickup' || o.status === 'food_preparing')
-        ) {
-          const v = vendors.find((vend) => vend.id === o.vendor_id);
-          const orderZone = o.zone || v?.zone;
-          if (currentRider.zone && orderZone && currentRider.zone.toLowerCase() !== orderZone.toLowerCase()) {
-            return false;
-          }
-          if (v && Number.isFinite(v.latitude) && Number.isFinite(v.longitude)) {
-            const dist = calculateDistanceKm(v.latitude, v.longitude, riderLat, riderLng);
-            return dist <= (settings.rider_match_radius_km || 1.5);
-          }
-          return true;
-        }
-        return false;
-      })
-    : null;
-
-  const candidateVendor = incomingCandidateOrder
-    ? (vendors.find((v) => v.id === incomingCandidateOrder.vendor_id) || incomingCandidateOrder.vendor)
-    : null;
-
-  const distanceToVendorKm = incomingCandidateOrder && candidateVendor && Number.isFinite(candidateVendor.latitude) && Number.isFinite(candidateVendor.longitude)
-    ? (calculateDistanceKm(
-        candidateVendor.latitude,
-        candidateVendor.longitude,
-        riderLat,
-        riderLng
-      ) || 0.4).toFixed(2)
-    : '0.4';
-
-  // Audio chime for new incoming order
-  const playAlertSound = () => {
-    if (!soundEnabled) return;
-    try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.55);
-    } catch {
-      // Ignore
-    }
-  };
-
-  // Sound chime when a new candidate appears
-  useEffect(() => {
-    if (incomingCandidateOrder && currentRider.is_online) {
-      playAlertSound();
-      setOrderCountdown(60);
-    }
-  }, [incomingCandidateOrder?.id, currentRider.is_online]);
-
-  // Countdown timer for incoming request
-  useEffect(() => {
-    if (!incomingCandidateOrder || !currentRider.is_online) return;
-    const interval = setInterval(() => {
-      setOrderCountdown((prev) => {
-        if (prev <= 1) {
-          // Auto reject when countdown runs out -> pass to next rider
-          riderRejectOrder(incomingCandidateOrder.id, currentRider.id);
-          return 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [incomingCandidateOrder?.id, currentRider.is_online]);
-
-  const handleAcceptOrder = (orderId: string) => {
-    riderAcceptOrder(orderId, currentRider.id);
-  };
-
-  const handleRejectOrder = (orderId: string) => {
-    riderRejectOrder(orderId, currentRider.id);
-  };
-
-  // Lock body scroll strictly while in Rider Portal
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalTouchAction = document.body.style.touchAction;
-
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
-    document.body.style.touchAction = 'none';
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.width = '';
-      document.body.style.height = '';
-      document.body.style.touchAction = originalTouchAction;
-    };
-  }, []);
-
-  // Online / Offline Switch Toggle handler
-  const handleToggleOnlineSwitch = async () => {
-    setIsTogglingOnline(true);
-    try {
-      await toggleRiderOnline(currentRider.id, !currentRider.is_online);
-    } finally {
-      setIsTogglingOnline(false);
-    }
-  };
-
-  // Initialize Fullscreen Leaflet Map (Runs when currentRider and map container mount)
-  useEffect(() => {
-    if (!currentUser || currentUser.role !== 'rider' || !currentRider) return;
-    if (!mapContainerRef.current) return;
-
-    try {
-      if ((mapContainerRef.current as any)._leaflet_id) {
-        delete (mapContainerRef.current as any)._leaflet_id;
-      }
-
-      const lat = Number(currentRider?.current_latitude) || 22.3590;
-      const lng = Number(currentRider?.current_longitude) || 91.8380;
-
-      if (!mapInstanceRef.current) {
-        const map = L.map(mapContainerRef.current, {
-          center: [lat, lng],
-          zoom: 15,
-          zoomControl: false, // Clean custom mobile view
-        });
-
-        // 100% Free OpenStreetMap Tiles (No API key, No watermarks)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          maxZoom: 19,
-        }).addTo(map);
-
-        const routeGroup = L.layerGroup().addTo(map);
-        routeLayerGroupRef.current = routeGroup;
-
-        // Rider Marker with custom navigation icon + heading cone
-        const riderIcon = L.divIcon({
-          className: 'rider-live-pin',
-          html: `
-            <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-              <!-- Heading Field of View Cone -->
-              <div style="position: absolute; top: -14px; width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 36px solid rgba(2, 132, 199, 0.3); filter: blur(1.5px);"></div>
-              <!-- Outer soft ring -->
-              <div style="position: absolute; width: 34px; height: 34px; border-radius: 9999px; background: rgba(2, 132, 199, 0.22);"></div>
-              <!-- Inner white border circle -->
-              <div style="width: 22px; height: 22px; border-radius: 9999px; background: #0284c7; border: 3.5px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 2;"></div>
-            </div>
-          `,
-          iconSize: [44, 44],
-          iconAnchor: [22, 22],
-        });
-
-        const marker = L.marker(
-          [lat, lng],
-          { icon: riderIcon }
-        ).addTo(map);
-
-        riderMarkerRef.current = marker;
-        mapInstanceRef.current = map;
-      }
-    } catch (err) {
-      console.error('Leaflet map initialization error:', err);
-    }
-
-    return () => {
-      try {
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.remove();
-          mapInstanceRef.current = null;
-        }
-      } catch (err) {
-        console.error('Leaflet map cleanup error:', err);
-      }
-    };
-  }, [currentUser?.id, currentRider?.id]);
-
-  // Update Rider Marker position & Map View when coordinates update
-  useEffect(() => {
-    try {
-      if (!mapInstanceRef.current || !riderMarkerRef.current) return;
-      const lat = Number(currentRider?.current_latitude) || 22.3590;
-      const lng = Number(currentRider?.current_longitude) || 91.8380;
-      riderMarkerRef.current.setLatLng([lat, lng]);
-    } catch (err) {
-      console.error('Error updating marker position:', err);
-    }
-  }, [currentRider?.current_latitude, currentRider?.current_longitude]);
-
-  // Update Route Polyline & Destination Markers on Map (Exact Foodpanda Style Store & Customer Icons)
-  useEffect(() => {
-    try {
-      if (!mapInstanceRef.current || !routeLayerGroupRef.current) return;
-      const layer = routeLayerGroupRef.current;
-      layer.clearLayers();
-
-      const targetOrder = activeOrder || incomingCandidateOrder;
-      if (targetOrder) {
-        const vendor = vendors.find((v) => v.id === targetOrder.vendor_id);
-        const rLat = Number(currentRider?.current_latitude) || 22.3590;
-        const rLng = Number(currentRider?.current_longitude) || 91.8380;
-
-        const points: [number, number][] = [
-          [rLat, rLng]
-        ];
-
-        // 1. VENDOR / RESTAURANT LOCATION PIN (Pink Storefront Badge with ground target stem)
-        if (vendor && Number.isFinite(vendor.latitude) && Number.isFinite(vendor.longitude)) {
-          const vendorIcon = L.divIcon({
-            className: 'custom-foodpanda-vendor-pin',
-            html: `
-              <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
-                <!-- Pink Circle Store Badge -->
-                <div style="width: 38px; height: 38px; border-radius: 9999px; background: #e21b70; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(226, 27, 112, 0.45);">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
-                    <path d="M2 7h20"/>
-                  </svg>
-                </div>
-                <!-- Black Connector Stem -->
-                <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
-                <!-- Pink Target Base Ring -->
-                <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #e21b70; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
-              </div>
-            `,
-            iconSize: [42, 60],
-            iconAnchor: [21, 58],
-            popupAnchor: [0, -56],
-          });
-
-          const vMarker = L.marker([vendor.latitude, vendor.longitude], { icon: vendorIcon }).addTo(layer);
-          vMarker.bindPopup(`
-            <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
-              <span style="color: #e21b70; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Pickup Store</span>
-              ${vendor.name}
-              <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${vendor.address}</span>
-            </div>
-          `);
-          points.push([vendor.latitude, vendor.longitude]);
-        }
-
-        // 2. CUSTOMER DROPOFF LOCATION PIN (Black User Badge with ground target stem)
-        if (Number.isFinite(targetOrder.delivery_latitude) && Number.isFinite(targetOrder.delivery_longitude)) {
-          const customerIcon = L.divIcon({
-            className: 'custom-foodpanda-customer-pin',
-            html: `
-              <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
-                <!-- Black Circle User Badge -->
-                <div style="width: 38px; height: 38px; border-radius: 9999px; background: #0f172a; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.45);">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                </div>
-                <!-- Black Connector Stem -->
-                <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
-                <!-- Black Target Base Ring -->
-                <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #0f172a; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
-              </div>
-            `,
-            iconSize: [42, 60],
-            iconAnchor: [21, 58],
-            popupAnchor: [0, -56],
-          });
-
-          const cMarker = L.marker([targetOrder.delivery_latitude, targetOrder.delivery_longitude], { icon: customerIcon }).addTo(layer);
-          cMarker.bindPopup(`
-            <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
-              <span style="color: #0f172a; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Customer Dropoff</span>
-              ${targetOrder.customer_name}
-              <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${targetOrder.delivery_address}</span>
-            </div>
-          `);
-          points.push([targetOrder.delivery_latitude, targetOrder.delivery_longitude]);
-        }
-
-        // 3. Connect route with dashed line
-        if (points.length >= 2) {
-          L.polyline(points, {
-            color: '#e21b70',
-            weight: 3.5,
-            dashArray: '6, 8',
-            opacity: 0.85,
-          }).addTo(layer);
-
-          // Fit map viewport smoothly to show all points
-          try {
-            const bounds = L.latLngBounds(points);
-            mapInstanceRef.current.fitBounds(bounds, {
-              paddingTopLeft: [40, 90],
-              paddingBottomRight: [40, 240],
-              maxZoom: 16,
-              animate: true,
-            });
-          } catch (e) {
-            console.warn('Fitbounds warning:', e);
-          }
-        }
-      }
-    } catch (routeErr) {
-      console.warn('Route drawing exception caught safely:', routeErr);
-    }
-  }, [activeOrder?.id, incomingCandidateOrder?.id, currentRider?.current_latitude, currentRider?.current_longitude]);
-
-  // Recenter Map to Rider GPS
-  const handleRecenter = () => {
-    if (mapInstanceRef.current) {
-      const lat = Number(currentRider?.current_latitude) || 22.3590;
-      const lng = Number(currentRider?.current_longitude) || 91.8380;
-      mapInstanceRef.current.setView([lat, lng], 16, { animate: true });
-    }
-  };
-
-  // Check if rider cash limit is exceeded (e.g. > 5000 BDT)
-  const isCashRestricted = (Number(currentRider?.cash_in_hand) || 0) > 4000;
 
   return (
     <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-slate-100 font-sans select-none touch-none overscroll-none">
