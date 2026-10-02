@@ -147,6 +147,7 @@ interface DeliveryContextType {
   riderMessages: RiderMessage[];
   sendAdminMessage: (msg: Omit<RiderMessage, 'id' | 'created_at'>) => void;
   markRiderMessageAsRead: (msgId: string) => void;
+  isSupabaseConfigured: boolean;
 }
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
@@ -1423,7 +1424,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         playNotificationSound,
         riderMessages,
         sendAdminMessage,
-        markRiderMessageAsRead
+        markRiderMessageAsRead,
+        isSupabaseConfigured
       }}
     >
       {children}

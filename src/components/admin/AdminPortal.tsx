@@ -66,7 +66,8 @@ export const AdminPortal: React.FC = () => {
     deleteAdBanner,
     toggleAdBannerStatus,
     sendAdminMessage,
-    updateOrderStatus
+    updateOrderStatus,
+    isSupabaseConfigured
   } = useDelivery();
 
   const [activeTab, setActiveTab] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database'>('settings');
@@ -333,6 +334,20 @@ export const AdminPortal: React.FC = () => {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 space-y-6">
+        
+        {!isSupabaseConfigured && (
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs font-bold gap-3 text-amber-800">
+            <div className="space-y-0.5">
+              <span className="text-sm font-black flex items-center space-x-1.5 text-amber-900">
+                <span>⚠️ Supabase Database is not Connected</span>
+              </span>
+              <p className="text-[11px] text-amber-700">Your web app is running in Local Storage fallback mode because VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing from your environment variables.</p>
+            </div>
+            <div className="px-3 py-1.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0">
+              LocalStorage Fallback Active
+            </div>
+          </div>
+        )}
         
         {/* Compact Navigation Tabs Bar */}
         <div className="bg-white border border-slate-200/90 p-1.5 rounded-2xl shadow-xs flex items-center justify-between overflow-x-auto gap-1 text-xs">
