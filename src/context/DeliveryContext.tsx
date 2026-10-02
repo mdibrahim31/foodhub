@@ -209,41 +209,40 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return saved ? JSON.parse(saved) : INITIAL_FOOD_CATEGORIES;
   });
 
-  const [adBanners, setAdBanners] = useState<AdBanner[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}ad_banners`);
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'ad-101',
-        title: 'Welcome back! Enjoy 35% off & free delivery',
-        subtitle: 'Order from top Chittagong restaurants with 100% Cash On Delivery',
-        action_text: 'Redeem now',
-        image_url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
-        is_active: true,
-        order_index: 1,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'ad-102',
-        title: 'Craving Kacchi Biryani? Flat 40% OFF',
-        subtitle: 'Authentic Dum Biryani, Borhani and Chutney delivered fast',
-        action_text: 'Order Biryani now',
-        image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
-        is_active: true,
-        order_index: 2,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'ad-103',
-        title: 'Cheesy Overloaded Pizza Starting at ৳199',
-        subtitle: 'Fresh artisan pizzas with extra mozzarella & dips',
-        action_text: 'Explore Pizzas',
-        image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
-        is_active: true,
-        order_index: 3,
-        created_at: new Date().toISOString()
+  const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
+
+  // Fetch ad banners from database (Supabase) on mount
+  useEffect(() => {
+    const fetchAdBanners = async () => {
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('ads_banners')
+            .select('*')
+            .order('order_index', { ascending: true });
+          
+          if (error) {
+            console.error('Error fetching ads from Supabase:', error);
+          } else if (data) {
+            setAdBanners(data as AdBanner[]);
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to load ads from database:', err);
+        }
       }
-    ];
-  });
+      
+      // Fallback local storage
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}ad_banners`);
+      if (saved) {
+        setAdBanners(JSON.parse(saved));
+      } else {
+        setAdBanners([]);
+      }
+    };
+
+    fetchAdBanners();
+  }, []);
 
   const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}rider_messages`);
@@ -681,25 +680,109 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // PROMOTIONAL ADS & HERO BANNERS
   // -------------------------------------------------------------
-  const addAdBanner = (ad: Omit<AdBanner, 'id'>) => {
+  const addAdBanner = async (ad: Omit<AdBanner, 'id'>) => {
+    const newId = `ad-${Date.now()}`;
     const newAd: AdBanner = {
       ...ad,
-      id: `ad-${Date.now()}`,
+      id: newId,
       created_at: new Date().toISOString()
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('ads_banners')
+          .insert([
+            {
+              id: newAd.id,
+              title: newAd.title,
+              subtitle: newAd.subtitle || null,
+              action_text: newAd.action_text || 'Redeem now',
+              image_url: newAd.image_url,
+              target_vendor_id: newAd.target_vendor_id || null,
+              is_active: newAd.is_active,
+              order_index: newAd.order_index || 0,
+              created_at: newAd.created_at
+            }
+          ]);
+        if (error) {
+          console.error('Supabase error inserting banner:', error);
+          alert('Database Error: ' + error.message);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to insert banner in database:', err);
+      }
+    }
+
     setAdBanners(prev => [newAd, ...prev]);
   };
 
-  const updateAdBanner = (id: string, updates: Partial<AdBanner>) => {
+  const updateAdBanner = async (id: string, updates: Partial<AdBanner>) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('ads_banners')
+          .update({
+            title: updates.title,
+            subtitle: updates.subtitle || null,
+            action_text: updates.action_text,
+            image_url: updates.image_url,
+            target_vendor_id: updates.target_vendor_id || null,
+            is_active: updates.is_active,
+            order_index: updates.order_index
+          })
+          .eq('id', id);
+        if (error) {
+          console.error('Supabase error updating banner:', error);
+        }
+      } catch (err) {
+        console.error('Failed to update banner in database:', err);
+      }
+    }
+
     setAdBanners(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
-  const deleteAdBanner = (id: string) => {
+  const deleteAdBanner = async (id: string) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('ads_banners')
+          .delete()
+          .eq('id', id);
+        if (error) {
+          console.error('Supabase error deleting banner:', error);
+        }
+      } catch (err) {
+        console.error('Failed to delete banner in database:', err);
+      }
+    }
+
     setAdBanners(prev => prev.filter(a => a.id !== id));
   };
 
-  const toggleAdBannerStatus = (id: string) => {
-    setAdBanners(prev => prev.map(a => a.id === id ? { ...a, is_active: !a.is_active } : a));
+  const toggleAdBannerStatus = async (id: string) => {
+    const targetAd = adBanners.find(a => a.id === id);
+    if (!targetAd) return;
+
+    const newStatus = !targetAd.is_active;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('ads_banners')
+          .update({ is_active: newStatus })
+          .eq('id', id);
+        if (error) {
+          console.error('Supabase error toggling banner status:', error);
+        }
+      } catch (err) {
+        console.error('Failed to toggle status in database:', err);
+      }
+    }
+
+    setAdBanners(prev => prev.map(a => a.id === id ? { ...a, is_active: newStatus } : a));
   };
 
   // -------------------------------------------------------------
