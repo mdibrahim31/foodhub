@@ -1029,64 +1029,6 @@ export const AdminPortal: React.FC = () => {
               </button>
             </div>
 
-            {/* Slide Configuration Card */}
-            <div className="bg-slate-50 border border-slate-200 p-5 rounded-3xl space-y-4 shadow-xs">
-              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center space-x-1.5">
-                <span>⚙️ Banner Auto-Slide Configuration</span>
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Auto Play Switch */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/85 flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-black text-slate-800">Auto-Slide Autoplay</span>
-                    <p className="text-[10px] font-bold text-slate-400">Enable automatic transitions on customer app</p>
-                  </div>
-                  <button
-                    onClick={() => updateSettings({ banner_slide_auto_play: settings.banner_slide_auto_play === false ? true : false })}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                      settings.banner_slide_auto_play !== false ? 'bg-rose-600' : 'bg-slate-300'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        settings.banner_slide_auto_play !== false ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Interval Timer Select */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/85 flex flex-col justify-center space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-0.5">
-                      <span className="text-xs font-black text-slate-800">Auto-Slide Interval</span>
-                      <p className="text-[10px] font-bold text-slate-400">Time gap between each slide</p>
-                    </div>
-                    <span className="text-xs font-mono font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100">
-                      {settings.banner_slide_interval_seconds || 3}s
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="15"
-                    step="1"
-                    disabled={settings.banner_slide_auto_play === false}
-                    value={settings.banner_slide_interval_seconds || 3}
-                    onChange={(e) => updateSettings({ banner_slide_interval_seconds: parseInt(e.target.value) })}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600 disabled:opacity-50"
-                  />
-                  <div className="flex justify-between text-[9px] font-bold text-slate-400 font-mono">
-                    <span>1s</span>
-                    <span>3s</span>
-                    <span>5s</span>
-                    <span>10s</span>
-                    <span>15s</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* List of Current Ads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {adBanners.length === 0 ? (
