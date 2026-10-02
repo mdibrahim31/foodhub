@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
 import { DELIVERY_ZONES, Vendor, Rider } from '../../types/database';
 import { 
@@ -216,15 +217,31 @@ export const AdminPortal: React.FC = () => {
     );
   });
 
-  const filteredRiders = riders.filter(r => {
-    const q = riderSearch.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      r.name.toLowerCase().includes(q) ||
-      r.phone.includes(q) ||
-      (r.unique_id && r.unique_id.toLowerCase().includes(q))
-    );
-  });
+  const filteredRiders = riders
+    .filter(r => {
+      const q = riderSearch.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        r.name.toLowerCase().includes(q) ||
+        r.phone.includes(q) ||
+        (r.unique_id && r.unique_id.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      // Working / Online riders placed at the top of the list
+      const aWorking = a.is_online && !a.is_paused;
+      const bWorking = b.is_online && !b.is_paused;
+      if (aWorking && !bWorking) return -1;
+      if (!aWorking && bWorking) return 1;
+
+      if (a.is_online && !b.is_online) return -1;
+      if (!a.is_online && b.is_online) return 1;
+
+      if (!a.is_paused && b.is_paused) return -1;
+      if (a.is_paused && !b.is_paused) return 1;
+
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 pb-12 font-sans selection:bg-rose-500 selection:text-white">
@@ -1059,6 +1076,37 @@ export const AdminPortal: React.FC = () => {
                 }`}>
                   {selectedRiderForProfile.is_paused ? 'PAUSED BY ADMIN' : selectedRiderForProfile.is_online ? 'ONLINE ON DUTY' : 'OFFLINE'}
                 </span>
+              </div>
+
+              {/* Live Location Map */}
+              <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider flex items-center space-x-1">
+                    <MapPin className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Rider Live GPS Location</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-500 font-extrabold">
+                    Lat: {selectedRiderForProfile.current_latitude.toFixed(4)}, Lng: {selectedRiderForProfile.current_longitude.toFixed(4)}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden border border-slate-200/90 shadow-2xs">
+                  <InteractiveMap
+                    center={[selectedRiderForProfile.current_latitude, selectedRiderForProfile.current_longitude]}
+                    zoom={15}
+                    heightClass="h-48"
+                    markers={[
+                      {
+                        id: selectedRiderForProfile.id,
+                        latitude: selectedRiderForProfile.current_latitude,
+                        longitude: selectedRiderForProfile.current_longitude,
+                        title: selectedRiderForProfile.name,
+                        subtitle: `${selectedRiderForProfile.zone} • ${selectedRiderForProfile.vehicle_type}`,
+                        type: 'rider'
+                      }
+                    ]}
+                  />
+                </div>
               </div>
             </div>
 
