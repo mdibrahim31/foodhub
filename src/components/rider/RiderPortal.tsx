@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AuthModal } from '../common/AuthModal';
 import { calculateDistanceKm } from '../../utils/geo';
-import { Order, Rider } from '../../types/database';
+import { Order, Rider, DELIVERY_ZONES } from '../../types/database';
 import { 
   Bike, 
   Menu, 
@@ -60,15 +60,28 @@ export const RiderPortal: React.FC = () => {
     riderMessages,
     markRiderMessageAsRead,
     loginUser,
-    setPasswordForUser
+    setPasswordForUser,
+    completeRiderRegistration,
+    updateRiderProfile
   } = useDelivery();
 
   // Rider Auth State
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [authPhone, setAuthPhone] = useState('');
+  const [authName, setAuthName] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  // Profile Edit State
+  const [editName, setEditName] = useState('');
+  const [editVehicle, setEditVehicle] = useState<'Motorcycle' | 'Bicycle' | 'Scooter'>('Motorcycle');
+  const [editZone, setEditZone] = useState('Chawkbazar Zone');
+  const [editAddress, setEditAddress] = useState('');
+  const [editPhotoUrl, setEditPhotoUrl] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -98,28 +111,78 @@ export const RiderPortal: React.FC = () => {
     if (!res.success) {
       if (res.requiresPasswordSetup) {
         setAuthTab('register');
-        setAuthError('First-time login detected. Please set your new password below.');
+        setAuthError('First-time login detected! Please enter your name & set a new password below.');
       } else {
         setAuthError(res.message || 'Login failed. Please check phone and password.');
       }
     }
   };
 
-  const handleRiderRegisterSubmit = (e: React.FormEvent) => {
+  // Sync current rider to edit profile state whenever currentRider changes or profile modal opens
+  useEffect(() => {
+    if (currentRider) {
+      setEditName(currentRider.name || '');
+      setEditVehicle((currentRider.vehicle_type as any) || 'Motorcycle');
+      setEditZone(currentRider.zone || 'Chawkbazar Zone');
+      setEditAddress(currentRider.home_address || '');
+      setEditPhotoUrl(currentRider.photo_url || '');
+    }
+  }, [currentRider?.id, isProfileOpen]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentRider) return;
+    setIsSavingProfile(true);
+    setProfileSuccessMsg('');
+    try {
+      const res = await updateRiderProfile(currentRider.id, {
+        name: editName.trim() || currentRider.name,
+        vehicle_type: editVehicle,
+        zone: editZone,
+        home_address: editAddress.trim(),
+        photo_url: editPhotoUrl.trim() || undefined
+      });
+      setProfileSuccessMsg(res.message || 'Profile updated successfully!');
+      setTimeout(() => setProfileSuccessMsg(''), 4000);
+    } catch (err: any) {
+      console.error('Error saving rider profile:', err);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleRiderRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    if (!authPhone.trim() || !authPassword.trim()) {
-      setAuthError('Please enter phone number and password.');
+    if (!authPhone.trim()) {
+      setAuthError('Please enter your Admin-registered Phone Number.');
       return;
     }
-    if (authPassword !== authConfirmPassword) {
+    if (!authPassword.trim()) {
+      setAuthError('Please enter a password.');
+      return;
+    }
+    if (authConfirmPassword.trim() && authPassword.trim() !== authConfirmPassword.trim()) {
       setAuthError('Passwords do not match. Please re-enter.');
       return;
     }
 
-    const ok = setPasswordForUser('rider', authPhone, authPassword);
-    if (!ok) {
-      setAuthError('This phone number is not registered as a Rider by Admin. Please contact Admin.');
+    setIsRegistering(true);
+    try {
+      const res = await completeRiderRegistration({
+        phone: authPhone.trim(),
+        name: authName.trim() || undefined,
+        password: authPassword.trim()
+      });
+
+      if (!res.success) {
+        setAuthError(res.message);
+      }
+    } catch (err: any) {
+      console.error('Registration exception:', err);
+      setAuthError(err?.message || 'Registration error occurred. Please try again.');
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -201,19 +264,34 @@ export const RiderPortal: React.FC = () => {
             </form>
           ) : (
             <form onSubmit={handleRiderRegisterSubmit} className="space-y-4 text-xs font-bold">
+              <div className="p-3 bg-pink-50 border border-pink-200 rounded-2xl text-[11px] text-pink-900 font-medium">
+                Enter your Admin-registered Phone Number and set your password to complete registration & login. Name can be set now or in profile!
+              </div>
+
               <div className="space-y-1">
                 <label className="text-slate-600 uppercase tracking-wider text-[10px]">Admin Registered Phone Number *</label>
                 <input
                   type="tel"
                   value={authPhone}
                   onChange={(e) => setAuthPhone(e.target.value)}
-                  placeholder="e.g. 01755500011"
+                  placeholder="e.g. 017XXXXXXXX"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
                 <p className="text-[10px] text-slate-400 font-normal">
-                  Enter the phone number registered for you by Admin.
+                  The phone number added for you by Admin.
                 </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Your Full Name (Optional)</label>
+                <input
+                  type="text"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="e.g. Md. Rahim (Or set later in profile)"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                />
               </div>
 
               <div className="space-y-1">
@@ -222,29 +300,29 @@ export const RiderPortal: React.FC = () => {
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Create password"
+                  placeholder="Create your password"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Confirm Password *</label>
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Confirm Password</label>
                 <input
                   type="password"
                   value={authConfirmPassword}
                   onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
+                  placeholder="Re-enter password (Optional)"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+                disabled={isRegistering}
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-400 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
               >
-                Complete Registration & Login
+                {isRegistering ? 'Completing Registration...' : 'Complete Registration & Login'}
               </button>
             </form>
           )}
@@ -276,6 +354,9 @@ export const RiderPortal: React.FC = () => {
     );
   }
 
+  const riderLat = Number(currentRider?.current_latitude) || 22.3590;
+  const riderLng = Number(currentRider?.current_longitude) || 91.8380;
+
   // Active delivery assigned to this rider that is not completed
   const activeOrder = orders.find(
     (o) => o.rider_id === currentRider.id && !['delivered', 'cancelled'].includes(o.status)
@@ -296,8 +377,8 @@ export const RiderPortal: React.FC = () => {
           if (currentRider.zone && orderZone && currentRider.zone.toLowerCase() !== orderZone.toLowerCase()) {
             return false;
           }
-          if (v) {
-            const dist = calculateDistanceKm(v.latitude, v.longitude, currentRider.current_latitude, currentRider.current_longitude);
+          if (v && Number.isFinite(v.latitude) && Number.isFinite(v.longitude)) {
+            const dist = calculateDistanceKm(v.latitude, v.longitude, riderLat, riderLng);
             return dist <= (settings.rider_match_radius_km || 1.5);
           }
           return true;
@@ -310,13 +391,13 @@ export const RiderPortal: React.FC = () => {
     ? (vendors.find((v) => v.id === incomingCandidateOrder.vendor_id) || incomingCandidateOrder.vendor)
     : null;
 
-  const distanceToVendorKm = incomingCandidateOrder && candidateVendor
-    ? calculateDistanceKm(
+  const distanceToVendorKm = incomingCandidateOrder && candidateVendor && Number.isFinite(candidateVendor.latitude) && Number.isFinite(candidateVendor.longitude)
+    ? (calculateDistanceKm(
         candidateVendor.latitude,
         candidateVendor.longitude,
-        currentRider.current_latitude,
-        currentRider.current_longitude
-      ).toFixed(2)
+        riderLat,
+        riderLng
+      ) || 0.4).toFixed(2)
     : '0.4';
 
   // Audio chime for new incoming order
@@ -403,11 +484,16 @@ export const RiderPortal: React.FC = () => {
     }
   };
 
-  // Initialize Fullscreen Leaflet Map
+  // Initialize Fullscreen Leaflet Map (Runs when currentRider and map container mount)
   useEffect(() => {
+    if (!currentUser || currentUser.role !== 'rider' || !currentRider) return;
     if (!mapContainerRef.current) return;
 
     try {
+      if ((mapContainerRef.current as any)._leaflet_id) {
+        delete (mapContainerRef.current as any)._leaflet_id;
+      }
+
       const lat = Number(currentRider?.current_latitude) || 22.3590;
       const lng = Number(currentRider?.current_longitude) || 91.8380;
 
@@ -466,7 +552,7 @@ export const RiderPortal: React.FC = () => {
         console.error('Leaflet map cleanup error:', err);
       }
     };
-  }, []);
+  }, [currentUser?.id, currentRider?.id]);
 
   // Update Rider Marker position & Map View when coordinates update
   useEffect(() => {
@@ -482,123 +568,132 @@ export const RiderPortal: React.FC = () => {
 
   // Update Route Polyline & Destination Markers on Map (Exact Foodpanda Style Store & Customer Icons)
   useEffect(() => {
-    if (!mapInstanceRef.current || !routeLayerGroupRef.current) return;
-    const layer = routeLayerGroupRef.current;
-    layer.clearLayers();
+    try {
+      if (!mapInstanceRef.current || !routeLayerGroupRef.current) return;
+      const layer = routeLayerGroupRef.current;
+      layer.clearLayers();
 
-    const targetOrder = activeOrder || incomingCandidateOrder;
-    if (targetOrder) {
-      const vendor = vendors.find((v) => v.id === targetOrder.vendor_id);
-      const points: [number, number][] = [
-        [currentRider.current_latitude, currentRider.current_longitude]
-      ];
+      const targetOrder = activeOrder || incomingCandidateOrder;
+      if (targetOrder) {
+        const vendor = vendors.find((v) => v.id === targetOrder.vendor_id);
+        const rLat = Number(currentRider?.current_latitude) || 22.3590;
+        const rLng = Number(currentRider?.current_longitude) || 91.8380;
 
-      // 1. VENDOR / RESTAURANT LOCATION PIN (Pink Storefront Badge with ground target stem)
-      if (vendor) {
-        const vendorIcon = L.divIcon({
-          className: 'custom-foodpanda-vendor-pin',
-          html: `
-            <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
-              <!-- Pink Circle Store Badge -->
-              <div style="width: 38px; height: 38px; border-radius: 9999px; background: #e21b70; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(226, 27, 112, 0.45);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                  <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
-                  <path d="M2 7h20"/>
-                </svg>
+        const points: [number, number][] = [
+          [rLat, rLng]
+        ];
+
+        // 1. VENDOR / RESTAURANT LOCATION PIN (Pink Storefront Badge with ground target stem)
+        if (vendor && Number.isFinite(vendor.latitude) && Number.isFinite(vendor.longitude)) {
+          const vendorIcon = L.divIcon({
+            className: 'custom-foodpanda-vendor-pin',
+            html: `
+              <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
+                <!-- Pink Circle Store Badge -->
+                <div style="width: 38px; height: 38px; border-radius: 9999px; background: #e21b70; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(226, 27, 112, 0.45);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+                    <path d="M2 7h20"/>
+                  </svg>
+                </div>
+                <!-- Black Connector Stem -->
+                <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
+                <!-- Pink Target Base Ring -->
+                <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #e21b70; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
               </div>
-              <!-- Black Connector Stem -->
-              <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
-              <!-- Pink Target Base Ring -->
-              <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #e21b70; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
+            `,
+            iconSize: [42, 60],
+            iconAnchor: [21, 58],
+            popupAnchor: [0, -56],
+          });
+
+          const vMarker = L.marker([vendor.latitude, vendor.longitude], { icon: vendorIcon }).addTo(layer);
+          vMarker.bindPopup(`
+            <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
+              <span style="color: #e21b70; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Pickup Store</span>
+              ${vendor.name}
+              <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${vendor.address}</span>
             </div>
-          `,
-          iconSize: [42, 60],
-          iconAnchor: [21, 58],
-          popupAnchor: [0, -56],
-        });
+          `);
+          points.push([vendor.latitude, vendor.longitude]);
+        }
 
-        const vMarker = L.marker([vendor.latitude, vendor.longitude], { icon: vendorIcon }).addTo(layer);
-        vMarker.bindPopup(`
-          <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
-            <span style="color: #e21b70; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Pickup Store</span>
-            ${vendor.name}
-            <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${vendor.address}</span>
-          </div>
-        `);
-        points.push([vendor.latitude, vendor.longitude]);
-      }
+        // 2. CUSTOMER DROPOFF LOCATION PIN (Black User Badge with ground target stem)
+        if (Number.isFinite(targetOrder.delivery_latitude) && Number.isFinite(targetOrder.delivery_longitude)) {
+          const customerIcon = L.divIcon({
+            className: 'custom-foodpanda-customer-pin',
+            html: `
+              <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
+                <!-- Black Circle User Badge -->
+                <div style="width: 38px; height: 38px; border-radius: 9999px; background: #0f172a; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.45);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <!-- Black Connector Stem -->
+                <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
+                <!-- Black Target Base Ring -->
+                <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #0f172a; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
+              </div>
+            `,
+            iconSize: [42, 60],
+            iconAnchor: [21, 58],
+            popupAnchor: [0, -56],
+          });
 
-      // 2. CUSTOMER DROPOFF LOCATION PIN (Black User Badge with ground target stem)
-      const customerIcon = L.divIcon({
-        className: 'custom-foodpanda-customer-pin',
-        html: `
-          <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); cursor: pointer;">
-            <!-- Black Circle User Badge -->
-            <div style="width: 38px; height: 38px; border-radius: 9999px; background: #0f172a; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.45);">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
+          const cMarker = L.marker([targetOrder.delivery_latitude, targetOrder.delivery_longitude], { icon: customerIcon }).addTo(layer);
+          cMarker.bindPopup(`
+            <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
+              <span style="color: #0f172a; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Customer Dropoff</span>
+              ${targetOrder.customer_name}
+              <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${targetOrder.delivery_address}</span>
             </div>
-            <!-- Black Connector Stem -->
-            <div style="width: 3.5px; height: 10px; background: #0f172a; margin-top: -1px;"></div>
-            <!-- Black Target Base Ring -->
-            <div style="width: 14px; height: 14px; border-radius: 9999px; border: 3px solid #0f172a; background: #ffffff; margin-top: -2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></div>
-          </div>
-        `,
-        iconSize: [42, 60],
-        iconAnchor: [21, 58],
-        popupAnchor: [0, -56],
-      });
+          `);
+          points.push([targetOrder.delivery_latitude, targetOrder.delivery_longitude]);
+        }
 
-      const cMarker = L.marker([targetOrder.delivery_latitude, targetOrder.delivery_longitude], { icon: customerIcon }).addTo(layer);
-      cMarker.bindPopup(`
-        <div style="padding: 2px; font-family: inherit; font-size: 12px; font-weight: bold; color: #0f172a;">
-          <span style="color: #0f172a; text-transform: uppercase; font-size: 9px; font-weight: 900; display: block;">Customer Dropoff</span>
-          ${targetOrder.customer_name}
-          <span style="font-size: 10px; color: #64748b; display: block; font-weight: normal;">${targetOrder.delivery_address}</span>
-        </div>
-      `);
-      points.push([targetOrder.delivery_latitude, targetOrder.delivery_longitude]);
+        // 3. Connect route with dashed line
+        if (points.length >= 2) {
+          L.polyline(points, {
+            color: '#e21b70',
+            weight: 3.5,
+            dashArray: '6, 8',
+            opacity: 0.85,
+          }).addTo(layer);
 
-      // 3. Connect route with dashed line
-      L.polyline(points, {
-        color: '#e21b70',
-        weight: 3.5,
-        dashArray: '6, 8',
-        opacity: 0.85,
-      }).addTo(layer);
-
-      // Fit map viewport smoothly to show all points
-      try {
-        const bounds = L.latLngBounds(points);
-        mapInstanceRef.current.fitBounds(bounds, {
-          paddingTopLeft: [40, 90],
-          paddingBottomRight: [40, 240],
-          maxZoom: 16,
-          animate: true,
-        });
-      } catch (e) {
-        console.error('Fitbounds error:', e);
+          // Fit map viewport smoothly to show all points
+          try {
+            const bounds = L.latLngBounds(points);
+            mapInstanceRef.current.fitBounds(bounds, {
+              paddingTopLeft: [40, 90],
+              paddingBottomRight: [40, 240],
+              maxZoom: 16,
+              animate: true,
+            });
+          } catch (e) {
+            console.warn('Fitbounds warning:', e);
+          }
+        }
       }
+    } catch (routeErr) {
+      console.warn('Route drawing exception caught safely:', routeErr);
     }
-  }, [activeOrder?.id, incomingCandidateOrder?.id, currentRider.current_latitude, currentRider.current_longitude]);
+  }, [activeOrder?.id, incomingCandidateOrder?.id, currentRider?.current_latitude, currentRider?.current_longitude]);
 
   // Recenter Map to Rider GPS
   const handleRecenter = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView(
-        [currentRider.current_latitude, currentRider.current_longitude],
-        16,
-        { animate: true }
-      );
+      const lat = Number(currentRider?.current_latitude) || 22.3590;
+      const lng = Number(currentRider?.current_longitude) || 91.8380;
+      mapInstanceRef.current.setView([lat, lng], 16, { animate: true });
     }
   };
 
   // Check if rider cash limit is exceeded (e.g. > 5000 BDT)
-  const isCashRestricted = currentRider.cash_in_hand > 4000;
+  const isCashRestricted = (Number(currentRider?.cash_in_hand) || 0) > 4000;
 
   return (
     <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-slate-100 font-sans select-none touch-none overscroll-none">
@@ -836,7 +931,7 @@ export const RiderPortal: React.FC = () => {
                     </p>
                   </div>
                   <span className="text-xs font-bold text-slate-600 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shrink-0 font-mono">
-                    {incomingCandidateOrder.delivery_distance_km.toFixed(2)} km
+                    {(Number(incomingCandidateOrder.delivery_distance_km) || 1.2).toFixed(2)} km
                   </span>
                 </div>
 
@@ -1304,79 +1399,148 @@ export const RiderPortal: React.FC = () => {
       */}
       {isProfileOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2 text-rose-600">
                 <User className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">My Profile</h3>
+                <h3 className="font-black text-slate-900 text-base">My Profile & Details</h3>
               </div>
               <button 
                 onClick={() => setIsProfileOpen(false)} 
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              <div className="flex items-center space-x-3.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <img
-                  src={currentRider.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
-                  alt={currentRider.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-xs"
-                />
-                <div>
-                  <h4 className="font-extrabold text-sm text-slate-900">{currentRider.name}</h4>
-                  <p className="text-[11px] text-slate-500 font-mono">{currentRider.phone}</p>
-                  <span className="inline-block mt-0.5 px-2 py-0.2 bg-rose-100 text-rose-800 font-bold text-[9px] rounded-md">
+            {profileSuccessMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold animate-in fade-in">
+                ✅ {profileSuccessMsg}
+              </div>
+            )}
+
+            {/* Profile Overview Card */}
+            <div className="flex items-center space-x-3.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              <img
+                src={editPhotoUrl || currentRider.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
+                alt={currentRider.name}
+                className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-xs"
+              />
+              <div className="space-y-0.5">
+                <h4 className="font-extrabold text-sm text-slate-900">{currentRider.name}</h4>
+                <p className="text-[11px] text-slate-500 font-mono font-bold">📞 {currentRider.phone}</p>
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold text-[9px] rounded-md">
                     {currentRider.zone} &bull; {currentRider.vehicle_type}
                   </span>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-600">Floating Cash Held:</span>
-                  <span className="font-mono font-black text-sm text-slate-900">৳{currentRider.cash_in_hand}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-600">Duty Status:</span>
-                  <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] ${
+                  <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] ${
                     currentRider.is_online ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
                   }`}>
                     {currentRider.is_online ? 'ONLINE' : 'OFFLINE'}
                   </span>
                 </div>
               </div>
-
-              {/* Rider Selector */}
-              <div>
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">
-                  Switch Active Rider Account:
-                </label>
-                <select
-                  value={currentRider.id}
-                  onChange={(e) => {
-                    const r = riders.find((x) => x.id === e.target.value);
-                    if (r) setCurrentRider(r);
-                  }}
-                  className="w-full px-3 py-2 text-xs font-bold border border-slate-200 bg-white rounded-xl focus:outline-hidden"
-                >
-                  {riders.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} ({r.vehicle_type}) - ৳{r.cash_in_hand} Float
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100">
+            {/* Floating Cash Held */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-600">Floating Cash In Hand:</span>
+              <span className="font-mono font-black text-sm text-slate-900">৳{currentRider.cash_in_hand}</span>
+            </div>
+
+            {/* Edit Profile Form */}
+            <form onSubmit={handleSaveProfile} className="space-y-3 pt-1 text-xs">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                Edit Rider Details
+              </span>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                    Vehicle Type
+                  </label>
+                  <select
+                    value={editVehicle}
+                    onChange={(e) => setEditVehicle(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    <option value="Motorcycle">Motorcycle 🏍️</option>
+                    <option value="Bicycle">Bicycle 🚲</option>
+                    <option value="Scooter">Scooter 🛵</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                    Delivery Zone
+                  </label>
+                  <select
+                    value={editZone}
+                    onChange={(e) => setEditZone(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    {DELIVERY_ZONES.map((zone) => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                  Home Address / Area
+                </label>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  placeholder="e.g. Chawkbazar, Chattogram"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                  Photo URL
+                </label>
+                <input
+                  type="url"
+                  value={editPhotoUrl}
+                  onChange={(e) => setEditPhotoUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingProfile}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer"
+              >
+                {isSavingProfile ? 'Saving Details...' : 'Save Profile Details'}
+              </button>
+            </form>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
               <button
                 onClick={() => setIsProfileOpen(false)}
-                className="w-full py-2.5 bg-slate-900 text-white font-black text-xs rounded-2xl"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
-                Close Profile
+                Close
               </button>
             </div>
           </div>

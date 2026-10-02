@@ -233,20 +233,16 @@ export const AdminPortal: React.FC = () => {
 
   const handleRegisterRiderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rName.trim() || !rPhone.trim()) {
-      alert('Please enter rider name and phone number.');
+    if (!rPhone.trim()) {
+      alert('Please enter rider phone number.');
       return;
     }
 
     const res = await adminRegisterRider({
-      name: rName.trim(),
       phone: rPhone.trim(),
-      photo_url: rPhotoUrl.trim() || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-      home_address: rHomeAddress.trim() || 'Chittagong',
-      zone: rZone,
-      vehicle_type: rVehicle,
-      latitude: rLat,
-      longitude: rLng,
+      name: rName.trim() || undefined,
+      zone: rZone || 'Chawkbazar Zone',
+      vehicle_type: rVehicle || 'Motorcycle'
     });
 
     setIsAddRiderOpen(false);
@@ -255,9 +251,9 @@ export const AdminPortal: React.FC = () => {
     setRHomeAddress('');
 
     if (res.savedToDatabase) {
-      alert(`✅ Rider "${res.rider.name}" registered & saved to Supabase Database!\nID: ${res.rider.unique_id || res.rider.id}\nPhone: ${res.rider.phone}`);
+      alert(`✅ Rider phone "${res.rider.phone}" registered & saved to Supabase Database!\nThe rider can now complete registration with their name and password from the Rider App.\nID: ${res.rider.unique_id || res.rider.id}`);
     } else {
-      alert(`⚠️ Rider "${res.rider.name}" registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
+      alert(`⚠️ Rider registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
     }
   };
 
@@ -2205,58 +2201,64 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               </button>
             </div>
 
-            <form onSubmit={handleRegisterRiderSubmit} className="space-y-3.5 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Rider Full Name *</label>
-                <input
-                  type="text"
-                  value={rName}
-                  onChange={(e) => setRName(e.target.value)}
-                  placeholder="e.g. Rahim Rider"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                  required
-                />
+            <form onSubmit={handleRegisterRiderSubmit} className="space-y-4 text-xs">
+              <div className="p-3 bg-pink-50 border border-pink-200 rounded-2xl text-[11px] text-pink-900 font-medium">
+                Admin only needs to register the rider's phone number! The rider will complete their name and set password from the Rider App.
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Login Phone Number *</label>
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Rider Phone Number *</label>
                 <input
                   type="tel"
                   value={rPhone}
                   onChange={(e) => setRPhone(e.target.value)}
                   placeholder="017XXXXXXXX"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
+                />
+                <span className="text-[10px] text-slate-400">Rider will use this phone number to complete registration.</span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Rider Name (Optional - Rider can set this themselves)</label>
+                <input
+                  type="text"
+                  value={rName}
+                  onChange={(e) => setRName(e.target.value)}
+                  placeholder="Optional (e.g. Rahim)"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Primary Delivery Zone *</label>
-                <select
-                  value={rZone}
-                  onChange={(e) => setRZone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                >
-                  {DELIVERY_ZONES.map((zone) => (
-                    <option key={zone} value={zone}>{zone}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Delivery Zone</label>
+                  <select
+                    value={rZone}
+                    onChange={(e) => setRZone(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    {DELIVERY_ZONES.map((zone) => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Vehicle</label>
+                  <select
+                    value={rVehicle}
+                    onChange={(e) => setRVehicle(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    <option value="Motorcycle">Motorcycle 🏍️</option>
+                    <option value="Bicycle">Bicycle 🚲</option>
+                    <option value="Scooter">Scooter 🛵</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Vehicle Type *</label>
-                <select
-                  value={rVehicle}
-                  onChange={(e) => setRVehicle(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                >
-                  <option value="Motorcycle">Motorcycle 🏍️</option>
-                  <option value="Bicycle">Bicycle 🚲</option>
-                  <option value="Scooter">Scooter 🛵</option>
-                </select>
-              </div>
-
-              <div className="pt-3 flex space-x-3">
+              <div className="pt-2 flex space-x-3">
                 <button
                   type="button"
                   onClick={() => setIsAddRiderOpen(false)}
@@ -2268,7 +2270,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                   type="submit"
                   className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-md"
                 >
-                  Register Rider
+                  Add Rider
                 </button>
               </div>
             </form>

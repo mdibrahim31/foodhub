@@ -103,15 +103,21 @@ interface DeliveryContextType {
   currentRider: Rider | null;
   setCurrentRider: (rider: Rider) => void;
   adminRegisterRider: (data: {
-    name: string;
     phone: string;
+    name?: string;
     photo_url?: string;
     home_address?: string;
-    zone: string;
+    zone?: string;
     vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
     latitude?: number;
     longitude?: number;
   }) => Promise<{ rider: Rider; savedToDatabase: boolean; dbMessage?: string }>;
+  completeRiderRegistration: (data: {
+    phone: string;
+    name?: string;
+    password: string;
+  }) => Promise<{ success: boolean; message: string; rider?: Rider }>;
+  updateRiderProfile: (riderId: string, updates: Partial<Rider>) => Promise<{ success: boolean; message: string }>;
   toggleRiderOnline: (riderId: string, isOnline: boolean) => Promise<boolean>;
   toggleRiderPause: (riderId: string) => void;
   deleteRider: (riderId: string) => void;
@@ -439,7 +445,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     if (userRole === 'rider') {
-      const rider = riders.find(r => r.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || r.phone === cleanPhone);
+      const rider = riders.find(r => {
+        if (!r || !r.phone) return false;
+        const rDigits = String(r.phone).replace(/\D/g, '');
+        const cleanDigits = String(cleanPhone).replace(/\D/g, '');
+        return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
+      });
       if (!rider) {
         return { success: false, message: 'This phone number is not registered as a Rider by Admin.' };
       }
@@ -820,20 +831,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const adminRegisterRider = async (data: {
-    name: string;
     phone: string;
+    name?: string;
     photo_url?: string;
     home_address?: string;
-    zone: string;
+    zone?: string;
     vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
     latitude?: number;
     longitude?: number;
   }): Promise<{ rider: Rider; savedToDatabase: boolean; dbMessage?: string }> => {
+    const cleanPhone = data.phone.trim();
+    const cleanName = data.name?.trim() || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
     const newRider: Rider = {
       id: crypto.randomUUID(),
       unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: data.name.trim(),
-      phone: data.phone.trim(),
+      name: cleanName,
+      phone: cleanPhone,
       photo_url: data.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
       home_address: data.home_address?.trim() || 'Chittagong',
       zone: data.zone || 'Chawkbazar Zone',
@@ -843,7 +856,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       current_latitude: data.latitude || 22.3590,
       current_longitude: data.longitude || 91.8380,
       last_location_updated_at: new Date().toISOString(),
-      cash_in_hand: 2000,
+      cash_in_hand: 0,
       is_approved: true,
       is_password_set: false,
       created_at: new Date().toISOString()
@@ -890,7 +903,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             savedToDatabase = true;
             dbMessage = 'Saved to Supabase riders table (using essential columns).';
           } else {
-            dbMessage = `Database Error: ${retryRes.error.message || error.message} (${error.hint || ''})`;
+            // Also try inserting with just id and phone if name column has issues
+            const phoneOnlyPayload: Record<string, any> = {
+              id: newRider.id,
+              phone: newRider.phone,
+            };
+            const phoneOnlyRes = await supabase.from('riders').insert([phoneOnlyPayload]);
+            if (!phoneOnlyRes.error) {
+              savedToDatabase = true;
+              dbMessage = 'Saved to Supabase riders table (id and phone).';
+            } else {
+              dbMessage = `Database Error: ${retryRes.error.message || error.message} (${error.hint || ''})`;
+            }
           }
         } else {
           savedToDatabase = true;
@@ -905,6 +929,126 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setRiders(prev => [newRider, ...prev]);
     return { rider: newRider, savedToDatabase, dbMessage };
+  };
+
+  const completeRiderRegistration = async (data: {
+    phone: string;
+    name?: string;
+    password: string;
+  }): Promise<{ success: boolean; message: string; rider?: Rider }> => {
+    const cleanPhone = (data.phone || '').trim();
+    const cleanName = (data.name || '').trim();
+    const password = (data.password || '').trim();
+
+    if (!cleanPhone || !password) {
+      return { success: false, message: 'Please provide phone number and password.' };
+    }
+
+    const rider = riders.find(r => {
+      if (!r || !r.phone) return false;
+      const rDigits = String(r.phone).replace(/\D/g, '');
+      const cleanDigits = String(cleanPhone).replace(/\D/g, '');
+      return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
+    });
+
+    if (!rider) {
+      return { 
+        success: false, 
+        message: 'This phone number has not been registered by Admin. Please ask Admin to add your phone number first.' 
+      };
+    }
+
+    const resolvedName = cleanName || rider.name || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
+
+    const updatedRider: Rider = {
+      ...rider,
+      name: resolvedName,
+      password: password,
+      is_password_set: true,
+      is_online: false,
+      current_latitude: Number(rider.current_latitude) || 22.3590,
+      current_longitude: Number(rider.current_longitude) || 91.8380,
+      cash_in_hand: Number(rider.cash_in_hand) || 0,
+      vehicle_type: rider.vehicle_type || 'Motorcycle',
+      zone: rider.zone || 'Chawkbazar Zone'
+    };
+
+    // Update in Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('riders').update({
+          name: resolvedName,
+          password: password,
+          is_password_set: true
+        }).eq('id', rider.id);
+        
+        if (error) {
+          console.warn('Supabase rider password update error:', error);
+          // Try fallback updating name only if password columns don't exist
+          const fallbackRes = await supabase.from('riders').update({
+            name: resolvedName
+          }).eq('id', rider.id);
+          if (fallbackRes.error) {
+            console.warn('Supabase rider name update fallback warning:', fallbackRes.error);
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase update exception:', err);
+      }
+    }
+
+    // Update local state
+    setRiders(prev => prev.map(r => r.id === rider.id ? updatedRider : r));
+
+    const riderAccount: UserAccount = {
+      id: `u-r-${updatedRider.id}`,
+      role: 'rider',
+      name: updatedRider.name,
+      phone: updatedRider.phone,
+      is_password_set: true,
+      reference_id: updatedRider.id,
+      zone: updatedRider.zone,
+      photo_url: updatedRider.photo_url
+    };
+
+    setCurrentUser(riderAccount);
+    setCurrentRider(updatedRider);
+
+    return { 
+      success: true, 
+      message: 'Registration completed successfully! Welcome to the Rider App.', 
+      rider: updatedRider 
+    };
+  };
+
+  const updateRiderProfile = async (riderId: string, updates: Partial<Rider>): Promise<{ success: boolean; message: string }> => {
+    setRiders(prev => prev.map(r => r.id === riderId ? { ...r, ...updates } : r));
+    
+    if (currentRider && currentRider.id === riderId) {
+      setCurrentRider(prev => prev ? { ...prev, ...updates } : null);
+    }
+    
+    if (currentUser && currentUser.reference_id === riderId) {
+      setCurrentUser(prev => prev ? { 
+        ...prev, 
+        name: updates.name !== undefined ? updates.name : prev.name, 
+        zone: updates.zone !== undefined ? updates.zone : prev.zone,
+        photo_url: updates.photo_url !== undefined ? updates.photo_url : prev.photo_url
+      } : null);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('riders').update(updates).eq('id', riderId);
+        if (error) {
+          console.warn('Supabase updateRiderProfile error:', error);
+        }
+      } catch (err) {
+        console.warn('Supabase exception in updateRiderProfile:', err);
+      }
+    }
+
+    return { success: true, message: 'Rider profile updated successfully!' };
   };
 
   const toggleRiderPause = (id: string) => {
@@ -1552,6 +1696,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentRider,
         setCurrentRider,
         adminRegisterRider,
+        completeRiderRegistration,
+        updateRiderProfile,
         toggleRiderOnline,
         toggleRiderPause,
         deleteRider,
