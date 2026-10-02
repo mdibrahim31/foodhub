@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
-import { DELIVERY_ZONES, Vendor, Rider } from '../../types/database';
+import { DELIVERY_ZONES, Vendor, Rider, Order, OrderStatus } from '../../types/database';
 import { 
   ShieldCheck, 
   Settings, 
@@ -64,9 +64,11 @@ export const AdminPortal: React.FC = () => {
   const [vendorSearch, setVendorSearch] = useState('');
   const [riderSearch, setRiderSearch] = useState('');
 
-  // Selected for Full Profile Modals
+  // Selected for Full Profile Modals & Order Inspector
   const [selectedVendorForProfile, setSelectedVendorForProfile] = useState<Vendor | null>(null);
   const [selectedRiderForProfile, setSelectedRiderForProfile] = useState<Rider | null>(null);
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
+  const [orderFilterTab, setOrderFilterTab] = useState<'active' | 'history'>('active');
 
   // Send Message Modal State
   const [isSendMessageOpen, setIsSendMessageOpen] = useState(false);
@@ -809,69 +811,140 @@ export const AdminPortal: React.FC = () => {
           TAB 5: LIVE ORDERS STREAM
           ======================================================================
         */}
-        {activeTab === 'orders' && (
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200/90 p-4 rounded-3xl shadow-xs flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-slate-900">
-                  Live Orders Stream ({orders.length})
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Central dispatch & status tracking across all vendors and riders.
-                </p>
+        {activeTab === 'orders' && (() => {
+          const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
+          const historyOrders = orders.filter(o => o.status === 'delivered' || o.status === 'cancelled');
+          const displayOrders = orderFilterTab === 'active' ? activeOrders : historyOrders;
+
+          return (
+            <div className="space-y-4">
+              <div className="bg-white border border-slate-200/90 p-4 rounded-3xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    foodiplace Orders Dispatch Stream
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Central dispatch & status tracking across all vendors and riders.
+                  </p>
+                </div>
+
+                <a
+                  href="./orders.html"
+                  className="px-4 py-2 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-2xl transition flex items-center space-x-1 cursor-pointer"
+                >
+                  <span>Kitchen Terminal</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
 
-              <a
-                href="./orders.html"
-                className="px-4 py-2 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-2xl transition flex items-center space-x-1"
-              >
-                <span>Full Kitchen Terminal</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
+              {/* Two Sub-Tab Switchers: Ongoing Orders vs Order History */}
+              <div className="bg-slate-200/80 p-1.5 rounded-2xl flex text-xs font-black">
+                <button
+                  onClick={() => setOrderFilterTab('active')}
+                  className={`flex-1 py-3 rounded-xl transition cursor-pointer flex items-center justify-center space-x-2 ${
+                    orderFilterTab === 'active' 
+                      ? 'bg-rose-600 text-white shadow-md' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>চলমান অর্ডার (Active Orders)</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                    orderFilterTab === 'active' ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-800'
+                  }`}>
+                    {activeOrders.length}
+                  </span>
+                </button>
 
-            <div className="space-y-3">
-              {orders.length === 0 ? (
-                <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs">
-                  No orders placed yet in the system.
-                </div>
-              ) : (
-                orders.map((ord) => {
-                  const vend = vendors.find(v => v.id === ord.vendor_id);
-                  const rid = riders.find(r => r.id === ord.rider_id);
-                  return (
-                    <div key={ord.id} className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3 text-xs">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-mono font-black text-rose-600 text-sm">{ord.order_code}</span>
-                          <h4 className="font-extrabold text-slate-900 text-base">{vend?.name || 'Restaurant'}</h4>
-                          <span className="text-slate-400 text-[10px] font-mono">{new Date(ord.created_at).toLocaleString()}</span>
+                <button
+                  onClick={() => setOrderFilterTab('history')}
+                  className={`flex-1 py-3 rounded-xl transition cursor-pointer flex items-center justify-center space-x-2 ${
+                    orderFilterTab === 'history' 
+                      ? 'bg-slate-900 text-white shadow-md' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>অর্ডার হিস্ট্রি (Order History)</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                    orderFilterTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-800'
+                  }`}>
+                    {historyOrders.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Orders Cards List */}
+              <div className="space-y-3">
+                {displayOrders.length === 0 ? (
+                  <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs space-y-1">
+                    <p className="text-sm text-slate-600">
+                      {orderFilterTab === 'active' ? 'বর্তমানে কোনো চলমান অর্ডার নেই' : 'অর্ডার হিস্ট্রিতে কোনো রেকর্ড নেই'}
+                    </p>
+                    <p className="text-[11px] font-normal">
+                      {orderFilterTab === 'active' ? 'নতুন কাস্টমার অর্ডার সরাসরি এই তালিকায় দেখাবে।' : 'সম্পন্ন বা বাতিলকৃত সকল অর্ডার হিস্ট্রি তালিকায় থাকবে।'}
+                    </p>
+                  </div>
+                ) : (
+                  displayOrders.map((ord) => {
+                    const vend = vendors.find(v => v.id === ord.vendor_id);
+                    const rid = riders.find(r => r.id === ord.rider_id);
+                    return (
+                      <div 
+                        key={ord.id} 
+                        onClick={() => setSelectedOrderForDetails(ord)}
+                        className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs hover:shadow-md transition cursor-pointer space-y-3 text-xs group"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-mono font-black text-rose-600 text-sm group-hover:underline">{ord.order_code}</span>
+                            <h4 className="font-extrabold text-slate-900 text-base">{vend?.name || 'Restaurant'}</h4>
+                            <span className="text-slate-400 text-[10px] font-mono">{new Date(ord.created_at).toLocaleString()}</span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-3 py-1 font-black text-[10px] rounded-full uppercase ${
+                              ord.status === 'delivered' 
+                                ? 'bg-emerald-100 text-emerald-800' 
+                                : ord.status === 'cancelled' 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-amber-100 text-amber-800 animate-pulse'
+                            }`}>
+                              {ord.status.replace(/_/g, ' ')}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrderForDetails(ord);
+                              }}
+                              className="px-3 py-1.5 bg-slate-900 text-white font-bold text-[11px] rounded-xl hover:bg-black transition flex items-center space-x-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>All Details</span>
+                            </button>
+                          </div>
                         </div>
 
-                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full uppercase">
-                          {ord.status.replace(/_/g, ' ')}
-                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Customer:</span>
+                            <p className="font-extrabold text-slate-900">{ord.customer_name} ({ord.customer_phone})</p>
+                            <p className="text-[11px] text-slate-600">{ord.delivery_address}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Assigned Rider:</span>
+                            <p className="font-extrabold text-slate-900">{rid ? `${rid.name} (${rid.phone})` : 'Searching Proximity Rider...'}</p>
+                            <p className="text-[11px] text-emerald-700 font-mono font-black">COD Collect: ৳{ord.total_cash_payable} (Food: ৳{ord.food_total} + Delivery: ৳{ord.delivery_fee})</p>
+                          </div>
+                        </div>
                       </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
-                        <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">Customer:</span>
-                          <p className="font-extrabold text-slate-900">{ord.customer_name} ({ord.customer_phone})</p>
-                          <p className="text-[11px] text-slate-600">{ord.delivery_address}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">Assigned Rider:</span>
-                          <p className="font-extrabold text-slate-900">{rid ? `${rid.name} (${rid.phone})` : 'Searching Proximity Rider...'}</p>
-                          <p className="text-[11px] text-emerald-700 font-mono font-black">COD Collect: ৳{ord.total_cash_payable}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 
           ======================================================================
@@ -1144,6 +1217,274 @@ export const AdminPortal: React.FC = () => {
           </main>
         </div>
       )}
+
+      {/* 
+        ========================================================================
+        FULLSCREEN ORDER INSPECTOR WINDOW
+        ========================================================================
+      */}
+      {selectedOrderForDetails && (() => {
+        const ordVendor = vendors.find(v => v.id === selectedOrderForDetails.vendor_id);
+        const ordRider = riders.find(r => r.id === selectedOrderForDetails.rider_id);
+
+        // Build map markers list for Vendor, Customer, and Rider
+        const orderMapMarkers: any[] = [];
+        
+        if (ordVendor) {
+          orderMapMarkers.push({
+            id: 'vendor-pin',
+            latitude: ordVendor.latitude,
+            longitude: ordVendor.longitude,
+            title: ordVendor.name,
+            subtitle: `Restaurant Pickup • ${ordVendor.address}`,
+            type: 'vendor'
+          });
+        }
+
+        orderMapMarkers.push({
+          id: 'customer-pin',
+          latitude: selectedOrderForDetails.delivery_latitude,
+          longitude: selectedOrderForDetails.delivery_longitude,
+          title: `Customer: ${selectedOrderForDetails.customer_name}`,
+          subtitle: `Delivery Address: ${selectedOrderForDetails.delivery_address}`,
+          type: 'customer'
+        });
+
+        if (ordRider) {
+          orderMapMarkers.push({
+            id: 'rider-pin',
+            latitude: ordRider.current_latitude,
+            longitude: ordRider.current_longitude,
+            title: `Rider: ${ordRider.name} (Live GPS)`,
+            subtitle: `Vehicle: ${ordRider.vehicle_type} • Phone: ${ordRider.phone}`,
+            type: 'rider'
+          });
+        }
+
+        const initialCenter: [number, number] = ordRider 
+          ? [ordRider.current_latitude, ordRider.current_longitude]
+          : [selectedOrderForDetails.delivery_latitude, selectedOrderForDetails.delivery_longitude];
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+            
+            {/* Top Header */}
+            <header className="bg-black/90 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg backdrop-blur-md">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSelectedOrderForDetails(null)}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer active:scale-95"
+                >
+                  <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
+                  <span>Back to Orders Stream</span>
+                </button>
+
+                <div className="hidden sm:block h-6 w-px bg-slate-800" />
+
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-black text-rose-500 text-base">{selectedOrderForDetails.order_code}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {new Date(selectedOrderForDetails.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-bold truncate">
+                    {ordVendor?.name || 'Restaurant'} &bull; {selectedOrderForDetails.customer_name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                {/* Admin Order Status Override Dropdown */}
+                <div className="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded-2xl px-3 py-1 text-xs">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase hidden md:inline">Status:</span>
+                  <select
+                    value={selectedOrderForDetails.status}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as OrderStatus;
+                      updateOrderStatus(selectedOrderForDetails.id, newStatus);
+                      setSelectedOrderForDetails(prev => prev ? { ...prev, status: newStatus } : null);
+                    }}
+                    className="bg-transparent text-emerald-400 font-black text-xs focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="pending" className="bg-slate-900 text-amber-400">PENDING</option>
+                    <option value="vendor_accepted" className="bg-slate-900 text-blue-400">VENDOR ACCEPTED</option>
+                    <option value="food_preparing" className="bg-slate-900 text-orange-400">KITCHEN PREPARING</option>
+                    <option value="ready_for_pickup" className="bg-slate-900 text-yellow-400">READY FOR PICKUP</option>
+                    <option value="rider_assigned" className="bg-slate-900 text-purple-400">RIDER ASSIGNED</option>
+                    <option value="rider_on_way_to_customer" className="bg-slate-900 text-cyan-400">ON THE WAY</option>
+                    <option value="delivered" className="bg-slate-900 text-emerald-400">DELIVERED</option>
+                    <option value="cancelled" className="bg-slate-900 text-red-400">CANCELLED</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => setSelectedOrderForDetails(null)}
+                  className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  title="Close Inspector"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </header>
+
+            {/* Main Content Grid */}
+            <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+              
+              {/* 3-Column Info Cards (Customer, Vendor, Rider) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                
+                {/* 1. Customer Details */}
+                <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
+                  <div className="flex items-center space-x-2 text-blue-400 border-b border-slate-800 pb-2.5">
+                    <User className="w-4 h-4" />
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider">Customer Details</h3>
+                  </div>
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <p className="text-white text-sm font-black">{selectedOrderForDetails.customer_name}</p>
+                    <div className="flex items-center space-x-2 text-slate-300">
+                      <Phone className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-mono text-sm text-emerald-400">{selectedOrderForDetails.customer_phone}</span>
+                    </div>
+                    <div className="flex items-start space-x-2 text-slate-300">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                      <span>{selectedOrderForDetails.delivery_address}</span>
+                    </div>
+                    <span className="inline-block px-2.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md text-[10px] font-mono">
+                      Zone: {selectedOrderForDetails.zone || 'Chawkbazar Zone'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Vendor / Restaurant Details */}
+                <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
+                  <div className="flex items-center space-x-2 text-orange-400 border-b border-slate-800 pb-2.5">
+                    <Store className="w-4 h-4" />
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider">Vendor Details</h3>
+                  </div>
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <p className="text-white text-sm font-black">{ordVendor?.name || 'Restaurant'}</p>
+                    <div className="flex items-center space-x-2 text-slate-300">
+                      <Phone className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-mono text-sm text-emerald-400">{ordVendor?.phone || 'N/A'}</span>
+                    </div>
+                    <p className="text-slate-400 text-[11px]">{ordVendor?.cuisine}</p>
+                    <p className="text-slate-300 text-[11px] truncate">{ordVendor?.address}</p>
+                  </div>
+                </div>
+
+                {/* 3. Assigned Rider Details */}
+                <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
+                  <div className="flex items-center space-x-2 text-pink-400 border-b border-slate-800 pb-2.5">
+                    <Bike className="w-4 h-4" />
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider">Assigned Rider Details</h3>
+                  </div>
+                  {ordRider ? (
+                    <div className="space-y-1.5 text-xs font-bold">
+                      <div className="flex items-center justify-between">
+                        <p className="text-white text-sm font-black">{ordRider.name}</p>
+                        <span className="px-2 py-0.5 bg-pink-500/10 text-pink-400 border border-pink-500/20 text-[10px] font-mono rounded-md">
+                          {ordRider.unique_id || 'RDR-2001'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-slate-300">
+                        <Phone className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="font-mono text-sm text-emerald-400">{ordRider.phone}</span>
+                      </div>
+                      <p className="text-slate-300 text-[11px]">Vehicle: {ordRider.vehicle_type} &bull; Zone: {ordRider.zone}</p>
+                      <p className="text-emerald-400 font-mono text-[11px]">Float Cash Held: ৳{ordRider.cash_in_hand}</p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-800/60 rounded-2xl text-slate-400 font-bold text-xs text-center space-y-1">
+                      <p>No rider assigned yet.</p>
+                      <p className="text-[10px] text-amber-400">Dispatch system searching proximity riders within 1 km radius...</p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Food Items & Pricing Breakup Table */}
+              <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-4">
+                <h3 className="font-black text-white text-base flex items-center space-x-2">
+                  <Banknote className="w-5 h-5 text-emerald-400" />
+                  <span>Order Items & Pricing Financial Breakup</span>
+                </h3>
+
+                {/* Items List Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs font-bold">
+                    <thead>
+                      <tr className="bg-slate-800 text-slate-400 uppercase text-[10px]">
+                        <th className="p-3 rounded-l-xl">Food Item Name</th>
+                        <th className="p-3">Quantity</th>
+                        <th className="p-3">Unit Price</th>
+                        <th className="p-3 text-right rounded-r-xl">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-200">
+                      {(selectedOrderForDetails.items || []).map((itm, idx) => (
+                        <tr key={idx}>
+                          <td className="p-3 font-extrabold text-white">{itm.item_name}</td>
+                          <td className="p-3 font-mono text-rose-400 font-black">x{itm.quantity}</td>
+                          <td className="p-3 font-mono">৳{itm.item_price}</td>
+                          <td className="p-3 font-mono text-right text-emerald-400 font-black">৳{itm.subtotal || (itm.item_price * itm.quantity)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Price Breakdown Footer */}
+                <div className="bg-black/60 p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase block">Food Items Subtotal</span>
+                    <span className="text-white font-mono text-base font-black">৳{selectedOrderForDetails.food_total}</span>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase block">Distance Delivery Fee ({selectedOrderForDetails.delivery_distance_km.toFixed(1)} km)</span>
+                    <span className="text-rose-400 font-mono text-base font-black">৳{selectedOrderForDetails.delivery_fee}</span>
+                  </div>
+
+                  <div className="space-y-0.5 bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-500/30">
+                    <span className="text-[10px] text-emerald-300 uppercase block">Total Payable Cash (COD)</span>
+                    <span className="text-emerald-400 font-mono text-xl font-black">৳{selectedOrderForDetails.total_cash_payable}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Location Map (Vendor, Customer, Rider) */}
+              <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-black text-white text-base flex items-center space-x-2">
+                      <MapPin className="w-5 h-5 text-rose-500 animate-bounce" />
+                      <span>Live Order GPS Dispatch Map</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Showing Vendor Pickup 🏪, Customer Address 🏠, and Live Rider 🛵 Pin Point.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-black">
+                  <InteractiveMap
+                    center={initialCenter}
+                    zoom={15}
+                    heightClass="h-96 md:h-[500px]"
+                    showControls={true}
+                    showFullscreenButton={true}
+                    showRecenterButton={true}
+                    markers={orderMapMarkers}
+                  />
+                </div>
+              </div>
+
+            </main>
+          </div>
+        );
+      })()}
 
       {/* 
         ========================================================================
