@@ -35,7 +35,9 @@ import {
   Maximize2,
   Minimize2,
   Flame,
-  UtensilsCrossed
+  UtensilsCrossed,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
@@ -99,6 +101,30 @@ export const AdminPortal: React.FC = () => {
   const [baseCharge, setBaseCharge] = useState(settings.base_delivery_charge);
   const [riderRadius, setRiderRadius] = useState(settings.rider_match_radius_km);
   const [settingsSaved, setSettingsSaved] = useState(false);
+
+  const handleMoveAdBanner = async (adId: string, direction: 'up' | 'down') => {
+    const sorted = [...adBanners].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const index = sorted.findIndex(b => b.id === adId);
+    if (index === -1) return;
+
+    if (direction === 'up' && index > 0) {
+      const current = sorted[index];
+      const other = sorted[index - 1];
+      const currentIdx = current.order_index || 0;
+      const otherIdx = other.order_index || 0;
+
+      await updateAdBanner(current.id, { order_index: otherIdx });
+      await updateAdBanner(other.id, { order_index: currentIdx === otherIdx ? currentIdx + 1 : currentIdx });
+    } else if (direction === 'down' && index < sorted.length - 1) {
+      const current = sorted[index];
+      const other = sorted[index + 1];
+      const currentIdx = current.order_index || 0;
+      const otherIdx = other.order_index || 0;
+
+      await updateAdBanner(current.id, { order_index: otherIdx });
+      await updateAdBanner(other.id, { order_index: currentIdx === otherIdx ? Math.max(0, currentIdx - 1) : currentIdx });
+    }
+  };
 
   // New Category Form
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
@@ -1010,7 +1036,7 @@ export const AdminPortal: React.FC = () => {
                   No promotional banner ads running yet. Click "Post New Banner Ad" above to create one.
                 </div>
               ) : (
-                adBanners.map((ad) => {
+                [...adBanners].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((ad, idx, sortedArr) => {
                   const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
                   return (
                     <div 
@@ -1027,7 +1053,7 @@ export const AdminPortal: React.FC = () => {
                           <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
                             ad.is_active ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-700'
                           }`}>
-                            {ad.is_active ? '● LIVE AD' : 'INACTIVE'}
+                            {ad.is_active ? `● LIVE AD (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
                           </span>
                           <h4 className="font-black text-base sm:text-lg leading-tight tracking-tight">
                             {ad.title}
@@ -1071,6 +1097,34 @@ export const AdminPortal: React.FC = () => {
                             }`}
                           >
                             {ad.is_active ? 'Pause Ad' : 'Activate Ad'}
+                          </button>
+
+                          {/* Up Arrow (Disabled for first item) */}
+                          <button
+                            onClick={() => handleMoveAdBanner(ad.id, 'up')}
+                            disabled={idx === 0}
+                            className={`p-1.5 rounded-xl transition cursor-pointer ${
+                              idx === 0 
+                                ? 'bg-white/10 text-white/40 cursor-not-allowed' 
+                                : 'bg-black/30 hover:bg-black/50 text-white'
+                            }`}
+                            title="Move Up (Show First)"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+
+                          {/* Down Arrow (Disabled for last item) */}
+                          <button
+                            onClick={() => handleMoveAdBanner(ad.id, 'down')}
+                            disabled={idx === sortedArr.length - 1}
+                            className={`p-1.5 rounded-xl transition cursor-pointer ${
+                              idx === sortedArr.length - 1 
+                                ? 'bg-white/10 text-white/40 cursor-not-allowed' 
+                                : 'bg-black/30 hover:bg-black/50 text-white'
+                            }`}
+                            title="Move Down (Show Later)"
+                          >
+                            <ArrowDown className="w-4 h-4" />
                           </button>
 
                           <button

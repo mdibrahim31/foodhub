@@ -407,63 +407,78 @@ export const RiderPortal: React.FC = () => {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [currentRider.current_latitude, currentRider.current_longitude],
-        zoom: 15,
-        zoomControl: false, // Clean custom mobile view
-      });
+    try {
+      const lat = Number(currentRider?.current_latitude) || 22.3590;
+      const lng = Number(currentRider?.current_longitude) || 91.8380;
 
-      // 100% Free OpenStreetMap Tiles (No API key, No watermarks)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
+      if (!mapInstanceRef.current) {
+        const map = L.map(mapContainerRef.current, {
+          center: [lat, lng],
+          zoom: 15,
+          zoomControl: false, // Clean custom mobile view
+        });
 
-      const routeGroup = L.layerGroup().addTo(map);
-      routeLayerGroupRef.current = routeGroup;
+        // 100% Free OpenStreetMap Tiles (No API key, No watermarks)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
 
-      // Rider Marker with custom navigation icon + heading cone
-      const riderIcon = L.divIcon({
-        className: 'rider-live-pin',
-        html: `
-          <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-            <!-- Heading Field of View Cone -->
-            <div style="position: absolute; top: -14px; width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 36px solid rgba(2, 132, 199, 0.3); filter: blur(1.5px);"></div>
-            <!-- Outer soft ring -->
-            <div style="position: absolute; width: 34px; height: 34px; border-radius: 9999px; background: rgba(2, 132, 199, 0.22);"></div>
-            <!-- Inner white border circle -->
-            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #0284c7; border: 3.5px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 2;"></div>
-          </div>
-        `,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-      });
+        const routeGroup = L.layerGroup().addTo(map);
+        routeLayerGroupRef.current = routeGroup;
 
-      const marker = L.marker(
-        [currentRider.current_latitude, currentRider.current_longitude],
-        { icon: riderIcon }
-      ).addTo(map);
+        // Rider Marker with custom navigation icon + heading cone
+        const riderIcon = L.divIcon({
+          className: 'rider-live-pin',
+          html: `
+            <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+              <!-- Heading Field of View Cone -->
+              <div style="position: absolute; top: -14px; width: 0; height: 0; border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 36px solid rgba(2, 132, 199, 0.3); filter: blur(1.5px);"></div>
+              <!-- Outer soft ring -->
+              <div style="position: absolute; width: 34px; height: 34px; border-radius: 9999px; background: rgba(2, 132, 199, 0.22);"></div>
+              <!-- Inner white border circle -->
+              <div style="width: 22px; height: 22px; border-radius: 9999px; background: #0284c7; border: 3.5px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 2;"></div>
+            </div>
+          `,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        });
 
-      riderMarkerRef.current = marker;
-      mapInstanceRef.current = map;
+        const marker = L.marker(
+          [lat, lng],
+          { icon: riderIcon }
+        ).addTo(map);
+
+        riderMarkerRef.current = marker;
+        mapInstanceRef.current = map;
+      }
+    } catch (err) {
+      console.error('Leaflet map initialization error:', err);
     }
 
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      try {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+      } catch (err) {
+        console.error('Leaflet map cleanup error:', err);
       }
     };
   }, []);
 
   // Update Rider Marker position & Map View when coordinates update
   useEffect(() => {
-    if (!mapInstanceRef.current || !riderMarkerRef.current) return;
-    const lat = currentRider.current_latitude;
-    const lng = currentRider.current_longitude;
-    riderMarkerRef.current.setLatLng([lat, lng]);
-  }, [currentRider.current_latitude, currentRider.current_longitude]);
+    try {
+      if (!mapInstanceRef.current || !riderMarkerRef.current) return;
+      const lat = Number(currentRider?.current_latitude) || 22.3590;
+      const lng = Number(currentRider?.current_longitude) || 91.8380;
+      riderMarkerRef.current.setLatLng([lat, lng]);
+    } catch (err) {
+      console.error('Error updating marker position:', err);
+    }
+  }, [currentRider?.current_latitude, currentRider?.current_longitude]);
 
   // Update Route Polyline & Destination Markers on Map (Exact Foodpanda Style Store & Customer Icons)
   useEffect(() => {

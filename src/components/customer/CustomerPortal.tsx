@@ -79,50 +79,33 @@ export const CustomerPortal: React.FC = () => {
   
   // Hero Carousel Slides & Swipe state
   // Dynamically build slides from Admin Ad Banners & Boosted Vendors
-  const activeAdBanners = (adBanners || []).filter(a => a.is_active);
+  const activeAdBanners = [...(adBanners || [])]
+    .filter(a => a.is_active)
+    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const boostedVendors = vendors.filter(v => v.is_boosted);
 
-  const heroSlides = [
-    ...activeAdBanners.map((ad) => {
-      const targetVendorId = ad.target_vendor_id;
-      const targetVendor = targetVendorId 
-        ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
-        : null;
-      return {
-        id: `ad-${ad.id}`,
-        title: ad.title,
-        actionText: ad.action_text || 'Redeem now',
-        image: ad.image_url,
-        vendor: targetVendor || vendors[0] || null
-      };
-    }),
-    ...boostedVendors.map((v) => ({
-      id: `boosted-${v.id}`,
-      title: v.boost_banner_title || `Welcome back! Enjoy 35% off & free delivery`,
-      actionText: 'Redeem now',
-      image: v.cover_image || v.logo_url || 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80',
-      vendor: v
-    }))
-  ];
-
-  if (heroSlides.length === 0) {
-    heroSlides.push({
-      id: 'default-0',
-      title: 'Welcome back! Enjoy 35% off & free delivery',
-      actionText: 'Redeem now',
-      image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80',
-      vendor: vendors[0] || null
-    });
-  }
+  const heroSlides = activeAdBanners.map((ad) => {
+    const targetVendorId = ad.target_vendor_id;
+    const targetVendor = targetVendorId 
+      ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
+      : null;
+    return {
+      id: `ad-${ad.id}`,
+      title: ad.title,
+      actionText: ad.action_text || 'Redeem now',
+      image: ad.image_url,
+      vendor: targetVendor || null
+    };
+  });
 
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Auto slide every 2 seconds (starts from slide index 0 on refresh or page enter)
+  // Auto slide every 3 seconds (starts from slide index 0 on refresh or page enter)
   useEffect(() => {
     setActiveSlide(0);
     const interval = setInterval(() => {
       setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [heroSlides.length]);
@@ -646,70 +629,73 @@ export const CustomerPortal: React.FC = () => {
             />
           </div>
 
-          {/* Interactive Slideable Hero Carousel */}
-          <div 
-            className="relative overflow-hidden pt-2 pb-1 select-none"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <div 
-              className="flex transition-transform duration-500 ease-out"
-              style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-            >
-              {heroSlides.map((slide) => (
-                <div 
-                  key={slide.id}
-                  onClick={() => {
-                    if (slide.vendor) {
-                      setSelectedVendorForMenu(slide.vendor);
-                    }
-                  }}
-                  className="w-full shrink-0 flex items-center justify-between gap-3 px-0.5 cursor-pointer select-none"
-                >
-                  <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
-                    <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
-                      {slide.title}
-                    </h2>
-                    <button 
-                      type="button"
-                      className="inline-flex items-center space-x-1 text-xs font-black text-white bg-black/20 hover:bg-black/30 backdrop-blur-xs px-3 py-1 rounded-xl transition pt-1 cursor-pointer"
-                    >
-                      <span>{slide.actionText}</span>
-                      <ChevronRight className="w-4 h-4 stroke-[3]" />
-                    </button>
-                  </div>
+          {/* Interactive Slideable Hero Carousel with Infinite Opacity Fade */}
+          {heroSlides.length > 0 && (
+            <>
+              <div 
+                className="relative overflow-hidden pt-2 pb-1 select-none h-36 flex items-center justify-center"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                {heroSlides.map((slide, i) => (
+                  <div 
+                    key={slide.id}
+                    onClick={() => {
+                      if (slide.vendor) {
+                        setSelectedVendorForMenu(slide.vendor);
+                      }
+                    }}
+                    className={`absolute inset-0 w-full h-full flex items-center justify-between gap-3 px-0.5 cursor-pointer select-none transition-all duration-700 ease-in-out ${
+                      activeSlide === i 
+                        ? 'opacity-100 scale-100 pointer-events-auto z-10' 
+                        : 'opacity-0 scale-95 pointer-events-none z-0'
+                    }`}
+                  >
+                    <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
+                      <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
+                        {slide.title}
+                      </h2>
+                      <button 
+                        type="button"
+                        className="inline-flex items-center space-x-1 text-xs font-black text-white bg-black/20 hover:bg-black/30 backdrop-blur-xs px-3 py-1 rounded-xl transition pt-1 cursor-pointer"
+                      >
+                        <span>{slide.actionText || 'Redeem now'}</span>
+                        <ChevronRight className="w-4 h-4 stroke-[3]" />
+                      </button>
+                    </div>
 
-                  {/* Food Graphic */}
-                  <div className="relative shrink-0 w-36 h-28 sm:w-44 sm:h-32">
-                    <img 
-                      src={slide.image} 
-                      alt={slide.title} 
-                      className="w-full h-full object-cover rounded-2xl drop-shadow-md pointer-events-none"
+                    {/* Food Graphic */}
+                    <div className="relative shrink-0 w-36 h-28 sm:w-44 sm:h-32">
+                      <img 
+                        src={slide.image} 
+                        alt={slide.title} 
+                        className="w-full h-full object-cover rounded-2xl drop-shadow-md pointer-events-none"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Interactive Carousel Dots Pill Indicator [ — • • • • ] */}
+              <div className="flex justify-center pt-1">
+                <div className="inline-flex items-center space-x-1.5 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
+                  {heroSlides.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveSlide(i)}
+                      className={`transition-all duration-300 rounded-full cursor-pointer ${
+                        activeSlide === i 
+                          ? 'w-6 h-1 bg-white' 
+                          : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'
+                      }`}
+                      aria-label={`Go to slide ${i + 1}`}
                     />
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Interactive Carousel Dots Pill Indicator [ — • • • • ] */}
-          <div className="flex justify-center pt-1">
-            <div className="inline-flex items-center space-x-1.5 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
-              {heroSlides.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveSlide(i)}
-                  className={`transition-all duration-300 rounded-full cursor-pointer ${
-                    activeSlide === i 
-                      ? 'w-6 h-1 bg-white' 
-                      : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'
-                  }`}
-                  aria-label={`Go to slide ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </header>
 
