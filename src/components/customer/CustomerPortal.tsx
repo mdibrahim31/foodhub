@@ -137,12 +137,12 @@ export const CustomerPortal: React.FC = () => {
       };
     }
 
-    // Otherwise, place it on the right (waiting to enter)
+    // Otherwise, place it on the right (waiting to enter) instantly without transition
     return { 
       transform: 'translateX(100%)', 
       opacity: 0, 
       zIndex: 0,
-      transition: 'transform 700ms ease-in-out, opacity 700ms ease-in-out'
+      transition: 'none'
     };
   };
 
