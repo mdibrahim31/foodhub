@@ -43,6 +43,9 @@ export interface Vendor {
   google_maps_link?: string;
   is_active: boolean;
   is_paused?: boolean; // Admin can pause/resume vendor
+  is_boosted?: boolean; // Admin boost vendor to top banner carousel
+  boost_banner_title?: string;
+  boost_banner_subtitle?: string;
   rating: number;
   estimated_prep_time_minutes: number;
   featured_position?: number; // 1 to 5 for ranking in top serial
@@ -58,6 +61,19 @@ export interface FoodCategory {
   image_url?: string;
   is_active: boolean;
   order_index?: number;
+}
+
+export interface AdBanner {
+  id: string;
+  title: string;
+  subtitle?: string;
+  action_text?: string;
+  image_url: string;
+  target_vendor_id?: string;
+  target_category?: string;
+  is_active: boolean;
+  order_index?: number;
+  created_at?: string;
 }
 
 export interface MenuItem {

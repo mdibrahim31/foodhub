@@ -33,7 +33,9 @@ import {
   Compass,
   Navigation,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Flame,
+  UtensilsCrossed
 } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
@@ -45,6 +47,8 @@ export const AdminPortal: React.FC = () => {
     updateVendor,
     toggleVendorPause,
     deleteVendor, 
+    menuItems,
+    toggleMenuItemAvailability,
     riders, 
     adminRegisterRider,
     toggleRiderPause,
@@ -54,11 +58,24 @@ export const AdminPortal: React.FC = () => {
     addFoodCategory,
     updateFoodCategory,
     deleteFoodCategory,
+    adBanners,
+    addAdBanner,
+    updateAdBanner,
+    deleteAdBanner,
+    toggleAdBannerStatus,
     sendAdminMessage,
     updateOrderStatus
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'database'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database'>('settings');
+
+  // Ad Banner Form State
+  const [isAddAdOpen, setIsAddAdOpen] = useState(false);
+  const [adTitle, setAdTitle] = useState('Welcome back! Enjoy 35% off & free delivery');
+  const [adSubtitle, setAdSubtitle] = useState('Order from top Chittagong restaurants with 100% Cash On Delivery');
+  const [adActionText, setAdActionText] = useState('Redeem now');
+  const [adImageUrl, setAdImageUrl] = useState('https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80');
+  const [adTargetVendorId, setAdTargetVendorId] = useState('');
 
   // Search Filters
   const [vendorSearch, setVendorSearch] = useState('');
@@ -350,6 +367,18 @@ export const AdminPortal: React.FC = () => {
           >
             <ClipboardList className="w-4 h-4" />
             <span>Orders ({orders.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ads')}
+            className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'ads' 
+                ? 'bg-rose-600 text-white shadow-xs' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Ads & Banners ({adBanners.length})</span>
           </button>
 
           <button
@@ -948,6 +977,124 @@ export const AdminPortal: React.FC = () => {
 
         {/* 
           ======================================================================
+          TAB: PROMOTIONAL ADS & HERO BANNERS MANAGEMENT
+          ======================================================================
+        */}
+        {activeTab === 'ads' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-rose-600" />
+                  <span>Customer Top Hero Banner Ads ({adBanners.length})</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Manage promotional ads & banners displayed at the top of the customer home page with 2-second auto-slide.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAddAdOpen(true)}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-1.5 shadow-md cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post New Banner Ad</span>
+              </button>
+            </div>
+
+            {/* List of Current Ads */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {adBanners.length === 0 ? (
+                <div className="col-span-2 p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs">
+                  No promotional banner ads running yet. Click "Post New Banner Ad" above to create one.
+                </div>
+              ) : (
+                adBanners.map((ad) => {
+                  const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
+                  return (
+                    <div 
+                      key={ad.id} 
+                      className={`border rounded-3xl p-4 shadow-xs space-y-3 transition-all ${
+                        ad.is_active 
+                          ? 'bg-gradient-to-br from-rose-500 to-orange-500 text-white border-rose-400' 
+                          : 'bg-slate-100 text-slate-600 border-slate-300 opacity-75'
+                      }`}
+                    >
+                      {/* Live Banner Mockup */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-1 max-w-[220px]">
+                          <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
+                            ad.is_active ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-700'
+                          }`}>
+                            {ad.is_active ? '● LIVE AD' : 'INACTIVE'}
+                          </span>
+                          <h4 className="font-black text-base sm:text-lg leading-tight tracking-tight">
+                            {ad.title}
+                          </h4>
+                          {ad.subtitle && (
+                            <p className="text-[11px] font-medium opacity-90 truncate">{ad.subtitle}</p>
+                          )}
+                          <div className="pt-1">
+                            <span className="inline-flex items-center space-x-1 text-xs font-black bg-black/20 px-3 py-1 rounded-xl">
+                              <span>{ad.action_text || 'Redeem now'}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="relative w-32 h-24 sm:w-36 sm:h-28 rounded-2xl overflow-hidden shrink-0 shadow-md">
+                          <img 
+                            src={ad.image_url} 
+                            alt={ad.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Control Footer */}
+                      <div className="pt-3 border-t border-white/20 flex items-center justify-between text-xs font-bold">
+                        <div className="text-[11px]">
+                          {targetVendor ? (
+                            <span>Linked Vendor: <strong className="underline">{targetVendor.name}</strong></span>
+                          ) : (
+                            <span>General Offer Ad</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => toggleAdBannerStatus(ad.id)}
+                            className={`px-3 py-1 rounded-xl text-[11px] font-extrabold cursor-pointer transition ${
+                              ad.is_active 
+                                ? 'bg-white text-rose-700 hover:bg-slate-100' 
+                                : 'bg-slate-800 text-white hover:bg-black'
+                            }`}
+                          >
+                            {ad.is_active ? 'Pause Ad' : 'Activate Ad'}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this promotional ad banner?')) {
+                                deleteAdBanner(ad.id);
+                              }
+                            }}
+                            className="p-1.5 bg-black/30 hover:bg-black/50 text-white rounded-xl transition cursor-pointer"
+                            title="Delete Banner"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 
+          ======================================================================
           TAB 6: DATABASE & BACKUP
           ======================================================================
         */}
@@ -1000,93 +1147,223 @@ export const AdminPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: FULL VENDOR PROFILE DETAILS
+        FULLSCREEN VENDOR PROFILE & MENU INSPECTOR WINDOW
         ========================================================================
       */}
-      {selectedVendorForProfile && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 bg-orange-100 text-orange-600 rounded-2xl">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900 text-base">{selectedVendorForProfile.name}</h3>
-                  <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-                    ID: {selectedVendorForProfile.unique_id || selectedVendorForProfile.id}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedVendorForProfile(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {selectedVendorForProfile && (() => {
+        const vendorMenuItems = menuItems.filter(m => m.vendor_id === selectedVendorForProfile.id);
 
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 font-bold">
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Phone Number</span>
-                  <span className="font-mono text-slate-900 text-sm">{selectedVendorForProfile.phone}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Zone</span>
-                  <span className="text-rose-600">{selectedVendorForProfile.zone}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Cuisine</span>
-                  <span className="text-slate-800">{selectedVendorForProfile.cuisine}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Password Status</span>
-                  <span className={selectedVendorForProfile.is_password_set ? 'text-emerald-600' : 'text-amber-600'}>
-                    {selectedVendorForProfile.is_password_set ? 'Password Set' : 'Awaiting 1st Login'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 font-bold">
-                <span className="text-[10px] text-slate-400 uppercase block">Address & Coordinates</span>
-                <p className="text-slate-800">{selectedVendorForProfile.address}</p>
-                <p className="text-[10px] font-mono text-slate-500">Lat: {selectedVendorForProfile.latitude}, Lng: {selectedVendorForProfile.longitude}</p>
-              </div>
-
-              {/* Popular Serial Position Control */}
-              <div className="bg-orange-50 p-3.5 rounded-2xl border border-orange-200 flex items-center justify-between gap-2">
-                <span className="font-extrabold text-orange-950">Popular Brands Serial (1-5):</span>
-                <select
-                  value={selectedVendorForProfile.featured_position || 0}
-                  onChange={(e) => {
-                    const pos = Number(e.target.value);
-                    updateVendor(selectedVendorForProfile.id, { featured_position: pos > 0 ? pos : undefined });
-                    setSelectedVendorForProfile(prev => prev ? { ...prev, featured_position: pos > 0 ? pos : undefined } : null);
-                  }}
-                  className="bg-white border border-orange-300 rounded-xl px-2.5 py-1.5 font-bold text-orange-950 focus:outline-hidden cursor-pointer"
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+            
+            {/* Header Bar with Back Arrow & Boost Vendor Toggle */}
+            <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSelectedVendorForProfile(null)}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer active:scale-95"
                 >
-                  <option value={0}>Default (Sorted by Rating)</option>
-                  <option value={1}>#1 Serial (Top 1)</option>
-                  <option value={2}>#2 Serial (Top 2)</option>
-                  <option value={3}>#3 Serial (Top 3)</option>
-                  <option value={4}>#4 Serial (Top 4)</option>
-                  <option value={5}>#5 Serial (Top 5)</option>
-                </select>
-              </div>
-            </div>
+                  <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
+                  <span>Back to Vendors List</span>
+                </button>
 
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => setSelectedVendorForProfile(null)}
-                className="px-5 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl"
-              >
-                Close Profile
-              </button>
-            </div>
+                <div className="hidden sm:block h-6 w-px bg-slate-800" />
+
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-2xl">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-white text-base tracking-tight leading-none">{selectedVendorForProfile.name}</h2>
+                    <span className="text-[10px] font-mono font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-md mt-1 inline-block">
+                      ID: {selectedVendorForProfile.unique_id || selectedVendorForProfile.id}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons: Boost Toggle & Close */}
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    const nextBoosted = !selectedVendorForProfile.is_boosted;
+                    updateVendor(selectedVendorForProfile.id, { 
+                      is_boosted: nextBoosted,
+                      boost_banner_title: selectedVendorForProfile.boost_banner_title || `Welcome back! Enjoy 35% off & free delivery`,
+                      boost_banner_subtitle: selectedVendorForProfile.boost_banner_subtitle || `Special offer from ${selectedVendorForProfile.name}`
+                    });
+                    setSelectedVendorForProfile(prev => prev ? { ...prev, is_boosted: nextBoosted } : null);
+                  }}
+                  className={`px-4 py-2 font-black text-xs rounded-2xl transition flex items-center space-x-2 cursor-pointer shadow-lg active:scale-95 ${
+                    selectedVendorForProfile.is_boosted 
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border border-amber-300 animate-pulse' 
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  }`}
+                >
+                  <Flame className="w-4 h-4 fill-amber-300 text-amber-300" />
+                  <span>{selectedVendorForProfile.is_boosted ? '🔥 Vendor Boosted (Hero Banner Active)' : 'Boost Vendor (Show in Top Banner)'}</span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedVendorForProfile(null)}
+                  className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  title="Close Window"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </header>
+
+            {/* Main Content Body */}
+            <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+              
+              {/* Vendor Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</span>
+                  <span className="font-mono font-bold text-white text-base">{selectedVendorForProfile.phone}</span>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Operating Zone</span>
+                  <span className="font-extrabold text-rose-400 text-base">{selectedVendorForProfile.zone}</span>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cuisine Specialty</span>
+                  <span className="font-bold text-white text-base">{selectedVendorForProfile.cuisine}</span>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rating & Prep Time</span>
+                  <span className="font-black text-amber-400 text-base">⭐ {selectedVendorForProfile.rating} &bull; {selectedVendorForProfile.estimated_prep_time_minutes} mins</span>
+                </div>
+              </div>
+
+              {/* Popular Serial & Address */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Address</span>
+                  <p className="text-white text-xs font-bold">{selectedVendorForProfile.address}</p>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider block">Popular Brands Ranking (1-5 Serial)</span>
+                    <p className="text-slate-400 text-[11px]">Controls order in home page Popular Brands slider</p>
+                  </div>
+                  <select
+                    value={selectedVendorForProfile.featured_position || 0}
+                    onChange={(e) => {
+                      const pos = Number(e.target.value);
+                      updateVendor(selectedVendorForProfile.id, { featured_position: pos > 0 ? pos : undefined });
+                      setSelectedVendorForProfile(prev => prev ? { ...prev, featured_position: pos > 0 ? pos : undefined } : null);
+                    }}
+                    className="bg-slate-900 border border-orange-500/40 rounded-xl px-3 py-1.5 font-bold text-orange-400 text-xs focus:outline-hidden cursor-pointer"
+                  >
+                    <option value={0}>Default (Sorted by Rating)</option>
+                    <option value={1}>#1 Serial (Top 1)</option>
+                    <option value={2}>#2 Serial (Top 2)</option>
+                    <option value={3}>#3 Serial (Top 3)</option>
+                    <option value={4}>#4 Serial (Top 4)</option>
+                    <option value={5}>#5 Serial (Top 5)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Boost Customization Panel (if boosted) */}
+              {selectedVendorForProfile.is_boosted && (
+                <div className="bg-gradient-to-r from-orange-950/60 to-amber-950/60 border border-orange-500/40 p-5 rounded-3xl space-y-3">
+                  <div className="flex items-center space-x-2 text-orange-400">
+                    <Flame className="w-5 h-5 fill-orange-400" />
+                    <h3 className="font-black text-sm uppercase tracking-wider">Top Banner Boost Customization</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-orange-300 font-bold uppercase">Banner Offer Heading Title:</label>
+                      <input
+                        type="text"
+                        value={selectedVendorForProfile.boost_banner_title || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateVendor(selectedVendorForProfile.id, { boost_banner_title: val });
+                          setSelectedVendorForProfile(prev => prev ? { ...prev, boost_banner_title: val } : null);
+                        }}
+                        placeholder="e.g. Welcome back! Enjoy 35% off & free delivery"
+                        className="w-full bg-slate-900 border border-orange-500/30 rounded-xl px-3 py-2 text-white font-bold focus:outline-hidden focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-orange-300 font-bold uppercase">Banner Subtitle / Offer Details:</label>
+                      <input
+                        type="text"
+                        value={selectedVendorForProfile.boost_banner_subtitle || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateVendor(selectedVendorForProfile.id, { boost_banner_subtitle: val });
+                          setSelectedVendorForProfile(prev => prev ? { ...prev, boost_banner_subtitle: val } : null);
+                        }}
+                        placeholder="e.g. Special discounts on all menu items"
+                        className="w-full bg-slate-900 border border-orange-500/30 rounded-xl px-3 py-2 text-white font-bold focus:outline-hidden focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Vendor Food Menu List */}
+              <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-white text-base flex items-center space-x-2">
+                    <UtensilsCrossed className="w-5 h-5 text-orange-400" />
+                    <span>Restaurant Food Menu ({vendorMenuItems.length} Items)</span>
+                  </h3>
+                </div>
+
+                {vendorMenuItems.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-dashed border-slate-700 text-slate-400 font-bold text-xs">
+                    No menu items added for this restaurant yet.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {vendorMenuItems.map((item) => (
+                      <div 
+                        key={item.id} 
+                        className="bg-slate-900 border border-slate-700/80 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs"
+                      >
+                        <img 
+                          src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'} 
+                          alt={item.name}
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-800"
+                        />
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h4 className="font-black text-white text-xs truncate">{item.name}</h4>
+                          <span className="text-[10px] text-slate-400 block">{item.category}</span>
+                          <span className="text-emerald-400 font-mono font-black text-xs block">৳{item.price}</span>
+                          
+                          <button
+                            onClick={() => toggleMenuItemAvailability(item.id)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold cursor-pointer transition ${
+                              item.is_available 
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}
+                          >
+                            {item.is_available ? 'Available' : 'Sold Out'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </main>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 
         ========================================================================
@@ -1746,6 +2023,161 @@ export const AdminPortal: React.FC = () => {
                   className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-md"
                 >
                   Send Message
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* 
+        ========================================================================
+        MODAL: POST NEW PROMOTIONAL BANNER AD
+        ========================================================================
+      */}
+      {isAddAdOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <Sparkles className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">Post Custom Promotional Banner Ad</h3>
+              </div>
+              <button onClick={() => setIsAddAdOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!adTitle.trim() || !adImageUrl.trim()) {
+                  alert('Please enter banner heading title and image URL');
+                  return;
+                }
+                addAdBanner({
+                  title: adTitle.trim(),
+                  subtitle: adSubtitle.trim(),
+                  action_text: adActionText.trim() || 'Redeem now',
+                  image_url: adImageUrl.trim(),
+                  target_vendor_id: adTargetVendorId || undefined,
+                  is_active: true
+                });
+                setIsAddAdOpen(false);
+                setAdTitle('Welcome back! Enjoy 35% off & free delivery');
+                setAdSubtitle('');
+                alert('New Promotional Banner Ad Published Successfully! 🎉');
+              }}
+              className="space-y-3.5 text-xs font-bold"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-600">Banner Heading Title (Bold Text)*</label>
+                <input
+                  type="text"
+                  required
+                  value={adTitle}
+                  onChange={(e) => setAdTitle(e.target.value)}
+                  placeholder="e.g. Welcome back! Enjoy 35% off & free delivery"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600">Banner Subtitle / Description (Optional)</label>
+                <input
+                  type="text"
+                  value={adSubtitle}
+                  onChange={(e) => setAdSubtitle(e.target.value)}
+                  placeholder="e.g. Order from top Chittagong restaurants with 100% COD"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-600">Action Button Text</label>
+                  <input
+                    type="text"
+                    value={adActionText}
+                    onChange={(e) => setAdActionText(e.target.value)}
+                    placeholder="e.g. Redeem now"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-600">Target Restaurant (Optional)</label>
+                  <select
+                    value={adTargetVendorId}
+                    onChange={(e) => setAdTargetVendorId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer"
+                  >
+                    <option value="">-- General Ad (All Restaurants) --</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name} ({v.zone})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600">Banner Image URL*</label>
+                <input
+                  type="url"
+                  required
+                  value={adImageUrl}
+                  onChange={(e) => setAdImageUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
+                />
+                
+                {/* Preset Image Options */}
+                <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
+                  <span className="text-[10px] text-slate-400 shrink-0">Sample Images:</span>
+                  {[
+                    { name: 'Fried Chicken', url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80' },
+                    { name: 'Biryani', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80' },
+                    { name: 'Pizza', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80' },
+                    { name: 'Burger', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setAdImageUrl(preset.url)}
+                      className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-md text-[10px] font-bold shrink-0 cursor-pointer"
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Banner Live Preview */}
+              <div className="p-3 bg-gradient-to-r from-rose-500 to-orange-500 rounded-2xl text-white space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">Live Banner Preview</span>
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <div>
+                    <h4 className="font-black text-sm">{adTitle || 'Your Banner Title'}</h4>
+                    <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-lg mt-1 inline-block">{adActionText || 'Redeem now'} &rarr;</span>
+                  </div>
+                  {adImageUrl && (
+                    <img src={adImageUrl} alt="Preview" className="w-16 h-14 object-cover rounded-xl shadow-xs shrink-0" />
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAdOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                >
+                  Publish Banner Ad
                 </button>
               </div>
             </form>

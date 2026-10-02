@@ -68,6 +68,9 @@ export const INITIAL_VENDORS: Vendor[] = [
     estimated_prep_time_minutes: 20,
     is_password_set: true,
     password: '123',
+    is_boosted: true,
+    boost_banner_title: 'Welcome back! Enjoy 35% off & free delivery',
+    boost_banner_subtitle: 'Order artisan steaks, club sandwiches & shakes from Khulshi Mart Kitchen',
     cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
     logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80'
   },
@@ -88,6 +91,9 @@ export const INITIAL_VENDORS: Vendor[] = [
     estimated_prep_time_minutes: 15,
     is_password_set: true,
     password: '123',
+    is_boosted: true,
+    boost_banner_title: 'Crispy Crunchy Delights! Flat 20% OFF',
+    boost_banner_subtitle: 'Hot & Crispy Fried Chicken, Zinger Burgers & Spicy Fries from KRUNCH',
     cover_image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80',
     logo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150&auto=format&fit=crop&q=80'
   },

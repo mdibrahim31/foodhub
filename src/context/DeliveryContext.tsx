@@ -12,7 +12,8 @@ import {
   UserAccount,
   DELIVERY_ZONES,
   DeliveryZone,
-  RiderMessage
+  RiderMessage,
+  AdBanner
 } from '../types/database';
 import { 
   DEFAULT_SETTINGS, 
@@ -79,6 +80,13 @@ interface DeliveryContextType {
   addFoodCategory: (category: Omit<FoodCategory, 'id'>) => void;
   updateFoodCategory: (id: string, updates: Partial<FoodCategory>) => void;
   deleteFoodCategory: (id: string) => void;
+
+  // Promotional Ads & Hero Banners
+  adBanners: AdBanner[];
+  addAdBanner: (ad: Omit<AdBanner, 'id'>) => void;
+  updateAdBanner: (id: string, updates: Partial<AdBanner>) => void;
+  deleteAdBanner: (id: string) => void;
+  toggleAdBannerStatus: (id: string) => void;
   
   // Customer Addresses & Map Pin Points
   addresses: CustomerAddress[];
@@ -201,6 +209,42 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return saved ? JSON.parse(saved) : INITIAL_FOOD_CATEGORIES;
   });
 
+  const [adBanners, setAdBanners] = useState<AdBanner[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}ad_banners`);
+    return saved ? JSON.parse(saved) : [
+      {
+        id: 'ad-101',
+        title: 'Welcome back! Enjoy 35% off & free delivery',
+        subtitle: 'Order from top Chittagong restaurants with 100% Cash On Delivery',
+        action_text: 'Redeem now',
+        image_url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
+        is_active: true,
+        order_index: 1,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'ad-102',
+        title: 'Craving Kacchi Biryani? Flat 40% OFF',
+        subtitle: 'Authentic Dum Biryani, Borhani and Chutney delivered fast',
+        action_text: 'Order Biryani now',
+        image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
+        is_active: true,
+        order_index: 2,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'ad-103',
+        title: 'Cheesy Overloaded Pizza Starting at ৳199',
+        subtitle: 'Fresh artisan pizzas with extra mozzarella & dips',
+        action_text: 'Explore Pizzas',
+        image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
+        is_active: true,
+        order_index: 3,
+        created_at: new Date().toISOString()
+      }
+    ];
+  });
+
   const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}rider_messages`);
     return saved ? JSON.parse(saved) : [
@@ -249,6 +293,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}food_categories`, JSON.stringify(foodCategories));
   }, [foodCategories]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(adBanners));
+  }, [adBanners]);
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}rider_messages`, JSON.stringify(riderMessages));
@@ -628,6 +676,30 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteFoodCategory = (id: string) => {
     setFoodCategories(prev => prev.filter(c => c.id !== id));
+  };
+
+  // -------------------------------------------------------------
+  // PROMOTIONAL ADS & HERO BANNERS
+  // -------------------------------------------------------------
+  const addAdBanner = (ad: Omit<AdBanner, 'id'>) => {
+    const newAd: AdBanner = {
+      ...ad,
+      id: `ad-${Date.now()}`,
+      created_at: new Date().toISOString()
+    };
+    setAdBanners(prev => [newAd, ...prev]);
+  };
+
+  const updateAdBanner = (id: string, updates: Partial<AdBanner>) => {
+    setAdBanners(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+
+  const deleteAdBanner = (id: string) => {
+    setAdBanners(prev => prev.filter(a => a.id !== id));
+  };
+
+  const toggleAdBannerStatus = (id: string) => {
+    setAdBanners(prev => prev.map(a => a.id === id ? { ...a, is_active: !a.is_active } : a));
   };
 
   // -------------------------------------------------------------
@@ -1086,6 +1158,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addFoodCategory,
         updateFoodCategory,
         deleteFoodCategory,
+        adBanners,
+        addAdBanner,
+        updateAdBanner,
+        deleteAdBanner,
+        toggleAdBannerStatus,
         addresses,
         selectedAddress,
         setSelectedAddress,

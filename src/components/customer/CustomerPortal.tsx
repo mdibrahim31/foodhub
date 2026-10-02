@@ -43,6 +43,7 @@ export const CustomerPortal: React.FC = () => {
     vendors, 
     menuItems, 
     foodCategories,
+    adBanners,
     selectedAddress, 
     settings, 
     cart, 
@@ -77,45 +78,51 @@ export const CustomerPortal: React.FC = () => {
   const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
   
   // Hero Carousel Slides & Swipe state
+  // Dynamically build slides from Admin Ad Banners & Boosted Vendors
+  const activeAdBanners = (adBanners || []).filter(a => a.is_active);
+  const boostedVendors = vendors.filter(v => v.is_boosted);
+
   const heroSlides = [
-    {
-      id: 0,
+    ...activeAdBanners.map((ad) => {
+      const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
+      return {
+        id: `ad-${ad.id}`,
+        title: ad.title,
+        actionText: ad.action_text || 'Redeem now',
+        image: ad.image_url,
+        vendor: targetVendor || vendors[0] || null
+      };
+    }),
+    ...boostedVendors.map((v) => ({
+      id: `boosted-${v.id}`,
+      title: v.boost_banner_title || `Welcome back! Enjoy 35% off & free delivery`,
+      actionText: 'Redeem now',
+      image: v.cover_image || v.logo_url || 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80',
+      vendor: v
+    }))
+  ];
+
+  if (heroSlides.length === 0) {
+    heroSlides.push({
+      id: 'default-0',
       title: 'Welcome back! Enjoy 35% off & free delivery',
       actionText: 'Redeem now',
       image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop&q=80',
-      filter: 'All'
-    },
-    {
-      id: 1,
-      title: 'Craving Kacchi Biryani? Flat 40% OFF',
-      actionText: 'Order Biryani now',
-      image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&auto=format&fit=crop&q=80',
-      filter: 'Biryani'
-    },
-    {
-      id: 2,
-      title: 'Cheesy Overloaded Pizza Starting at ৳199',
-      actionText: 'Explore Pizzas',
-      image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&auto=format&fit=crop&q=80',
-      filter: 'Pizza'
-    },
-    {
-      id: 3,
-      title: 'Flame Grilled Shawarma & Doner Rolls',
-      actionText: 'Snackza Specials',
-      image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80',
-      filter: 'Snacks'
-    },
-    {
-      id: 4,
-      title: 'Free Delivery on All Cash Orders Above ৳299',
-      actionText: 'Order Fast Food',
-      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=80',
-      filter: 'Fast Food'
-    }
-  ];
+      vendor: vendors[0] || null
+    });
+  }
 
   const [activeSlide, setActiveSlide] = useState(0);
+
+  // Auto slide every 2 seconds (starts from slide index 0 on refresh or page enter)
+  useEffect(() => {
+    setActiveSlide(0);
+    const interval = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % heroSlides.length);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [heroSlides.length]);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -650,15 +657,20 @@ export const CustomerPortal: React.FC = () => {
               {heroSlides.map((slide) => (
                 <div 
                   key={slide.id}
-                  className="w-full shrink-0 flex items-center justify-between gap-3 px-0.5 cursor-grab active:cursor-grabbing"
+                  onClick={() => {
+                    if (slide.vendor) {
+                      setSelectedVendorForMenu(slide.vendor);
+                    }
+                  }}
+                  className="w-full shrink-0 flex items-center justify-between gap-3 px-0.5 cursor-pointer select-none"
                 >
                   <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
                     <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
                       {slide.title}
                     </h2>
                     <button 
-                      onClick={() => setActiveCuisineFilter(slide.filter)}
-                      className="inline-flex items-center space-x-1 text-xs font-bold text-white hover:text-orange-100 transition pt-1 cursor-pointer"
+                      type="button"
+                      className="inline-flex items-center space-x-1 text-xs font-black text-white bg-black/20 hover:bg-black/30 backdrop-blur-xs px-3 py-1 rounded-xl transition pt-1 cursor-pointer"
                     >
                       <span>{slide.actionText}</span>
                       <ChevronRight className="w-4 h-4 stroke-[3]" />
