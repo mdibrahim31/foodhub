@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
@@ -117,6 +118,55 @@ export const CustomerPortal: React.FC = () => {
     }
     return null;
   });
+
+  // Refs for scroll sync and sticky header
+  const menuScrollContainerRef = useRef<HTMLDivElement>(null);
+  const categorySectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [headerScrollOpacity, setHeaderScrollOpacity] = useState(1);
+  const [isMenuHeaderSticky, setIsMenuHeaderSticky] = useState(false);
+
+  useEffect(() => {
+    if (!selectedVendorForMenu) return;
+
+    const handleScroll = () => {
+      if (!menuScrollContainerRef.current) return;
+      const scrollPos = menuScrollContainerRef.current.scrollTop;
+      
+      // Header fade/parallax effect
+      const opacity = Math.max(0, 1 - scrollPos / 200);
+      setHeaderScrollOpacity(opacity);
+      
+      // Sticky detection
+      setIsMenuHeaderSticky(scrollPos > 240);
+
+      // Scroll Sync: find which section is currently active
+      let currentActive = 'All';
+      const sections = Object.entries(categorySectionRefs.current);
+      for (const [cat, ref] of sections) {
+        if (ref && ref.offsetTop - 150 <= scrollPos) {
+          currentActive = cat;
+        }
+      }
+      if (currentActive !== activeMenuCategory) {
+        setActiveMenuCategory(currentActive);
+      }
+    };
+
+    const container = menuScrollContainerRef.current;
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [selectedVendorForMenu, activeMenuCategory]);
+
+  const scrollToCategory = (cat: string) => {
+    const ref = categorySectionRefs.current[cat];
+    if (ref && menuScrollContainerRef.current) {
+      menuScrollContainerRef.current.scrollTo({
+        top: ref.offsetTop - 130,
+        behavior: 'smooth'
+      });
+      setActiveMenuCategory(cat);
+    }
+  };
 
   const setSelectedVendorForMenu = (v: Vendor | null) => {
     setSelectedVendorForMenuState(v);
@@ -1109,180 +1159,188 @@ export const CustomerPortal: React.FC = () => {
         RESTAURANT MENU MODAL
         ========================================================================
       */}
+      <AnimatePresence>
       {selectedVendorForMenu && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {/* 1. Header Cover Area */}
-          <div className="relative h-64 shrink-0 overflow-hidden bg-slate-900">
-            <img 
-              src={selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'} 
-              alt={selectedVendorForMenu.name}
-              className="w-full h-full object-cover opacity-90"
-            />
-            
-            {/* Top Navigation Overlay */}
-            <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
-              <button 
-                onClick={() => setSelectedVendorForMenu(null)}
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-800 active:scale-90 transition-transform"
-              >
-                <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-              </button>
+        <motion.div 
+          initial={{ opacity: 0, y: 100 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 100 }}
+          className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden"
+        >
+          {/* Main Scrollable Content */}
+          <div 
+            ref={menuScrollContainerRef}
+            className="flex-1 overflow-y-auto scrollbar-none"
+          >
+            {/* 1. Header Cover Area */}
+            <div className="relative h-64 overflow-hidden bg-slate-900">
+              <motion.img 
+                style={{ opacity: headerScrollOpacity }}
+                src={selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'} 
+                alt={selectedVendorForMenu.name}
+                className="w-full h-full object-cover"
+              />
               
-              <div className="flex items-center space-x-2">
-                <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-800 active:scale-90 transition-transform">
-                  <Info className="w-5 h-5" />
-                </button>
+              {/* Top Navigation Overlay (Always Fixed relative to modal) */}
+              <div className="absolute top-4 inset-x-4 flex items-center justify-between z-40">
                 <button 
-                  onClick={(e) => toggleFavorite(selectedVendorForMenu.id, e)}
-                  className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-800 active:scale-90 transition-transform"
+                  onClick={() => setSelectedVendorForMenu(null)}
+                  className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800 active:scale-90 transition-transform"
                 >
-                  <Heart className={`w-5 h-5 ${favorites.includes(selectedVendorForMenu.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
                 </button>
-                <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-800 active:scale-90 transition-transform">
-                  <Share2 className="w-5 h-5" />
-                </button>
+                
+                <div className="flex items-center space-x-2">
+                  <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800">
+                    <Info className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={(e) => toggleFavorite(selectedVendorForMenu.id, e)}
+                    className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800"
+                  >
+                    <Heart className={`w-5 h-5 ${favorites.includes(selectedVendorForMenu.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  </button>
+                  <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800">
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Floating Logo */}
+              <motion.div 
+                style={{ scale: headerScrollOpacity, opacity: headerScrollOpacity }}
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
+              >
+                <div className="w-20 h-20 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image} 
+                    alt="Logo"
+                    className="w-full h-full object-contain rounded-xl"
+                  />
+                </div>
+              </motion.div>
             </div>
 
-            {/* Floating Logo At Bottom Edge */}
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20">
-              <div className="w-20 h-20 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
-                <img 
-                  src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image} 
-                  alt="Logo"
-                  className="w-full h-full object-contain rounded-xl"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Content Area */}
-          <div className="flex-1 flex flex-col pt-10 overflow-hidden">
-            {/* Basic Info */}
-            <div className="px-6 pb-4 text-center space-y-1">
+            {/* 2. Restaurant Info Section */}
+            <div className="pt-10 px-6 pb-4 text-center space-y-1">
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 {selectedVendorForMenu.name}
               </h3>
               <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600">
                 <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                <span className="text-slate-900">{selectedVendorForMenu.rating || 4.4}</span>
-                <span className="text-slate-400">(15k+ ratings)</span>
+                <span className="text-slate-900">{selectedVendorForMenu.rating || 4.7}</span>
+                <span className="text-slate-400">(2k+ ratings)</span>
               </div>
               <button className="text-[11px] font-bold text-rose-600 hover:underline">
                 See all outlets
               </button>
             </div>
 
-            {/* Delivery / Pick-Up Tabs */}
+            {/* 3. Delivery / Pick-Up Tabs */}
             <div className="px-5 pb-4">
               <div className="bg-slate-100 p-1 rounded-2xl flex items-center">
                 <button className="flex-1 py-2.5 bg-white shadow-xs rounded-xl text-sm font-black text-slate-900">
                   Delivery
                 </button>
                 <button className="flex-1 py-2.5 rounded-xl text-sm font-black text-slate-500 flex items-center justify-center gap-1.5">
-                  Pick-Up <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-md">10% off</span>
+                  Pick-Up <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-md">15% off</span>
                 </button>
               </div>
             </div>
 
-            {/* Menu Search */}
-            <div className="px-5 pb-3">
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search menu"
-                  value={menuSearchQuery}
-                  onChange={(e) => setMenuSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-100 border-none rounded-2xl text-sm font-bold placeholder:text-slate-500 focus:ring-2 focus:ring-rose-500/20"
-                />
+            {/* 4. Sticky Search & Category Bar */}
+            <div className={`sticky top-0 z-30 transition-colors duration-300 ${isMenuHeaderSticky ? 'bg-white shadow-md' : 'bg-transparent'}`}>
+              {/* Search Menu (Visible only when not sticky or partially visible?) In video it sticks */}
+              <div className="px-5 py-2">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search menu"
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border-none rounded-2xl text-xs font-bold placeholder:text-slate-500 focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              {/* Categories Scroller */}
+              <div className="px-5 py-1 overflow-x-auto scrollbar-none flex items-center space-x-6 border-b border-slate-50">
+                {['Popular', ...new Set(menuItems.filter(m => m.vendor_id === selectedVendorForMenu.id).map(m => m.category))].map((cat) => {
+                  const isSelected = activeMenuCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => scrollToCategory(cat)}
+                      className={`whitespace-nowrap pb-2.5 text-xs font-black transition-all relative ${
+                        isSelected ? 'text-slate-900' : 'text-slate-400'
+                      }`}
+                    >
+                      {cat}
+                      {isSelected && (
+                        <motion.div 
+                          layoutId="cat-underline"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-full" 
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Menu Categories Scroller */}
-            <div className="px-5 py-2 overflow-x-auto scrollbar-none flex items-center space-x-6 border-b border-slate-100 mb-2">
-              {['All', ...new Set(menuItems.filter(m => m.vendor_id === selectedVendorForMenu.id).map(m => m.category))].map((cat) => {
-                const isSelected = activeMenuCategory === cat;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveMenuCategory(cat)}
-                    className={`whitespace-nowrap pb-3 text-sm font-bold transition-all relative ${
-                      isSelected ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {cat}
-                    {isSelected && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 rounded-full" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Actual Menu Items */}
-            <div className="flex-1 overflow-y-auto px-5 pb-24">
-              <div className="py-4">
-                <div className="mb-6">
-                  <h4 className="flex items-center gap-2 text-base font-black text-slate-900">
-                    <Flame className="w-5 h-5 text-orange-600 fill-orange-600" />
-                    <span>Popular</span>
-                  </h4>
-                  <p className="text-xs font-bold text-slate-400 mt-0.5">Most ordered right now</p>
+            {/* 5. Menu Sections */}
+            <div className="px-5 pb-32 space-y-8 mt-4">
+              {/* Popular Section (Grid Layout) */}
+              <div 
+                ref={(el) => (categorySectionRefs.current['Popular'] = el)}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-600 fill-orange-600" />
+                  <div>
+                    <h4 className="text-base font-black text-slate-900">Popular</h4>
+                    <p className="text-[10px] font-bold text-slate-400">Most ordered right now</p>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 gap-8">
+
+                <div className="grid grid-cols-2 gap-4">
                   {menuItems
                     .filter((m) => m.vendor_id === selectedVendorForMenu.id)
-                    .filter(m => activeMenuCategory === 'All' || m.category === activeMenuCategory)
-                    .filter(m => !menuSearchQuery || m.name.toLowerCase().includes(menuSearchQuery.toLowerCase()))
+                    .slice(0, 6) // Mock "Popular" logic
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                       return (
-                        <div 
-                          key={dish.id}
-                          className="flex items-start justify-between gap-4 group"
-                        >
-                          <div className="flex-1 space-y-1.5">
-                            <h5 className="font-extrabold text-slate-900 text-[15px] leading-tight group-hover:text-rose-600 transition-colors">{dish.name}</h5>
-                            <p className="text-[12px] text-slate-500 line-clamp-2 leading-relaxed">{dish.description}</p>
-                            <span className="font-black text-[15px] text-slate-900 mt-2 block">
-                              {settings.currency_symbol}{dish.price}
-                            </span>
-                          </div>
-
-                          <div className="relative w-32 h-32 shrink-0">
+                        <div key={dish.id} className="space-y-2 group">
+                          <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-2xs">
                             <img 
-                              src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300'} 
-                              alt={dish.name} 
-                              className="w-full h-full rounded-2xl object-cover shadow-xs border border-slate-100" 
+                              src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400'} 
+                              alt={dish.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
-                            
-                            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-[85%]">
+                            {/* Floating '+' Button style from video */}
+                            <div className="absolute bottom-2 right-2">
                               {cartItem ? (
-                                <div className="flex items-center bg-white shadow-xl border border-slate-100 rounded-xl px-1 py-1">
-                                  <button 
-                                    onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)}
-                                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                  >
-                                    <Minus className="w-3.5 h-3.5" />
-                                  </button>
-                                  <span className="text-xs font-black text-slate-900 px-3">{cartItem.quantity}</span>
-                                  <button 
-                                    onClick={() => addToCart(dish, selectedVendorForMenu)}
-                                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                  </button>
+                                <div className="flex items-center bg-white shadow-lg rounded-full p-1 border border-slate-100">
+                                  <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-50 rounded-full"><Minus className="w-3 h-3" /></button>
+                                  <span className="text-[10px] font-black px-1">{cartItem.quantity}</span>
+                                  <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-full"><Plus className="w-3 h-3" /></button>
                                 </div>
                               ) : (
-                                <button
+                                <button 
                                   onClick={() => addToCart(dish, selectedVendorForMenu)}
-                                  className="px-6 py-2 bg-white text-rose-600 font-black text-xs uppercase tracking-wider rounded-xl shadow-xl border border-slate-100 hover:bg-rose-50 transition active:scale-95"
+                                  className="w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-800 hover:bg-rose-600 hover:text-white transition-colors border border-slate-100"
                                 >
-                                  Add
+                                  <Plus className="w-4 h-4 stroke-[3]" />
                                 </button>
                               )}
+                            </div>
+                          </div>
+                          <div className="px-0.5">
+                            <h5 className="font-bold text-[13px] text-slate-900 leading-tight line-clamp-1">{dish.name}</h5>
+                            <p className="text-[11px] font-black text-slate-900 mt-0.5">{settings.currency_symbol}{dish.price}</p>
+                            <div className="flex items-center gap-1 mt-1 opacity-70">
+                              <span className="text-[10px] font-bold text-slate-400">👍 90%</span>
                             </div>
                           </div>
                         </div>
@@ -1290,38 +1348,89 @@ export const CustomerPortal: React.FC = () => {
                     })}
                 </div>
               </div>
+
+              {/* Other Category Sections (List Layout) */}
+              {[...new Set(menuItems.filter(m => m.vendor_id === selectedVendorForMenu.id).map(m => m.category))].map((cat) => (
+                <div 
+                  key={cat}
+                  ref={(el) => (categorySectionRefs.current[cat] = el)}
+                  className="space-y-4"
+                >
+                  <h4 className="text-base font-black text-slate-900 border-t border-slate-50 pt-4">{cat}</h4>
+                  <div className="space-y-6">
+                    {menuItems
+                      .filter(m => m.vendor_id === selectedVendorForMenu.id && m.category === cat)
+                      .map((dish) => {
+                        const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
+                        return (
+                          <div key={dish.id} className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-1">
+                              <h5 className="font-extrabold text-[14px] text-slate-900 leading-tight">{dish.name}</h5>
+                              <p className="text-[11px] font-bold text-slate-900">{settings.currency_symbol}{dish.price}</p>
+                              <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">{dish.description}</p>
+                            </div>
+                            <div className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border border-slate-100 shadow-2xs">
+                              <img 
+                                src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200'} 
+                                alt={dish.name}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute bottom-1 right-1">
+                                {cartItem ? (
+                                  <div className="flex items-center bg-white shadow-lg rounded-full p-1 border border-slate-100 scale-90">
+                                    <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-50 rounded-full"><Minus className="w-3 h-3" /></button>
+                                    <span className="text-[10px] font-black px-1">{cartItem.quantity}</span>
+                                    <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-full"><Plus className="w-3 h-3" /></button>
+                                  </div>
+                                ) : (
+                                  <button 
+                                    onClick={() => addToCart(dish, selectedVendorForMenu)}
+                                    className="w-7 h-7 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-800 hover:bg-rose-600 hover:text-white transition-colors border border-slate-100"
+                                  >
+                                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Bottom Floating Cart Summary (Only if items present) */}
+          {/* 6. Bottom Floating Cart Summary */}
           {cart.length > 0 && (
-            <div className="fixed bottom-6 left-6 right-6 z-30">
+            <div className="absolute bottom-6 left-6 right-6 z-50">
               <button
                 onClick={() => {
                   setSelectedVendorForMenu(null);
                   setIsCartOpen(true);
                 }}
-                className="w-full bg-rose-600 text-white rounded-2xl py-4 px-5 flex items-center justify-between shadow-2xl animate-in slide-in-from-bottom duration-300 active:scale-[0.98] transition-transform"
+                className="w-full bg-rose-600 text-white rounded-2xl py-3.5 px-5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-white/20 px-2 py-1 rounded-lg text-sm font-black">
+                  <div className="bg-white/20 px-2 py-0.5 rounded-lg text-sm font-black">
                     {totalCartCount}
                   </div>
-                  <div className="text-left">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">View Cart</p>
-                    <p className="text-sm font-black">{cartVendor?.name}</p>
+                  <div className="text-left leading-tight">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">View your cart</p>
+                    <p className="text-xs font-black truncate max-w-[140px]">{cartVendor?.name}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-black font-mono">
+                  <p className="text-sm font-black font-mono">
                     {settings.currency_symbol}{foodTotal}
                   </p>
                 </div>
               </button>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* 
         ========================================================================
