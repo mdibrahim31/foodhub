@@ -1228,7 +1228,7 @@ export const CustomerPortal: React.FC = () => {
             <div className="px-5 pb-32 space-y-8 mt-4">
               {/* Popular Section (Grid Layout) */}
               <div 
-                ref={(el) => (categorySectionRefs.current['Popular'] = el)}
+                ref={(el) => { categorySectionRefs.current['Popular'] = el; }}
                 className="space-y-4"
               >
                 <div className="flex items-center gap-2">
@@ -1288,7 +1288,7 @@ export const CustomerPortal: React.FC = () => {
               {[...new Set(menuItems.filter(m => m.vendor_id === selectedVendorForMenu.id).map(m => m.category))].map((cat) => (
                 <div 
                   key={cat}
-                  ref={(el) => (categorySectionRefs.current[cat] = el)}
+                  ref={(el) => { categorySectionRefs.current[cat] = el; }}
                   className="space-y-4"
                 >
                   <h4 className="text-base font-black text-slate-900 border-t border-slate-50 pt-4">{cat}</h4>

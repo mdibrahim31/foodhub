@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { InteractiveMap } from './InteractiveMap';
 import { DELIVERY_ZONES } from '../../types/database';
+import { useDelivery } from '../../context/DeliveryContext';
 import { MapPin, Check, X, Compass, Search } from 'lucide-react';
 
 interface LocationPickerModalProps {
@@ -22,6 +23,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   onConfirm,
   onClose
 }) => {
+  const { zones } = useDelivery();
   const [pickedLat, setPickedLat] = useState(initialLat || 22.3590);
   const [pickedLng, setPickedLng] = useState(initialLng || 91.8380);
   const [pickedZone, setPickedZone] = useState(initialZone);

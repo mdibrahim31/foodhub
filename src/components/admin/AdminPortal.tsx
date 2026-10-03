@@ -360,7 +360,6 @@ export const AdminPortal: React.FC = () => {
       zone: vZone,
       latitude: vLat,
       longitude: vLng,
-      vendor_type: vType,
     });
 
     setIsAddVendorOpen(false);
@@ -3396,6 +3395,115 @@ export const AdminPortal: React.FC = () => {
           }}
           onClose={() => setIsRiderMapPickerOpen(false)}
         />
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: ADD NEW CATEGORY (Food / Shop / Grocery)
+        ========================================================================
+      */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <ChefHat className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">
+                  Add New {catType === 'food' ? 'Food' : 'Shop'} Category
+                </h3>
+              </div>
+              <button onClick={() => setIsAddCategoryOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!catName.trim()) {
+                  alert('Please enter category name.');
+                  return;
+                }
+                addFoodCategory({
+                  name: catName.trim(),
+                  icon: catIcon.trim() || (catType === 'food' ? '🍕' : '🛒'),
+                  image_url: catImageUrl.trim() || undefined,
+                  is_active: true,
+                  category_type: catType
+                });
+                setIsAddCategoryOpen(false);
+                setCatName('');
+                setCatImageUrl('');
+                alert(`✅ New ${catType === 'food' ? 'Food' : 'Shop'} Category "${catName}" added successfully!`);
+              }}
+              className="space-y-3.5 text-xs font-bold"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-600">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  placeholder={catType === 'food' ? 'e.g. Biryani, Fast Food, Desi' : 'e.g. Vegetables, Fresh Milk, Snacks'}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600">Emoji Icon / Symbol</label>
+                <input
+                  type="text"
+                  value={catIcon}
+                  onChange={(e) => setCatIcon(e.target.value)}
+                  placeholder={catType === 'food' ? '🍕' : '🛒'}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-bold text-center text-xl"
+                  maxLength={5}
+                />
+                <div className="flex items-center space-x-1 pt-1 overflow-x-auto">
+                  <span className="text-[10px] text-slate-400">Quick Emojis:</span>
+                  {(catType === 'food' ? ['🍕', '🍔', '🍗', '🍜', '☕', '🍰', '🍣', '🍛'] : ['🛒', '🥛', '🥦', '🍎', '🍞', '🧼', '🥚', '🥫']).map(emoji => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setCatIcon(emoji)}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-sm cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600">Image URL (Optional)</label>
+                <input
+                  type="url"
+                  value={catImageUrl}
+                  onChange={(e) => setCatImageUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCategoryOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                >
+                  Save Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

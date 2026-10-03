@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.ads_banners (
 );
 
 -- ====================================================================
--- 6. FOOD CATEGORIES TABLE (Admin Configured)
+-- 6. FOOD CATEGORIES & GROCERY CATEGORIES TABLES (Admin Configured)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.food_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -113,7 +113,17 @@ CREATE TABLE IF NOT EXISTS public.food_categories (
     image_url TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
     order_index INT DEFAULT 0,
-    category_type VARCHAR(20) DEFAULT 'food', -- 'food' or 'grocery'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.grocery_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    icon VARCHAR(50) DEFAULT '🛒',
+    image_url TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    order_index INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
