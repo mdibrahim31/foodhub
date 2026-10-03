@@ -201,6 +201,19 @@ const foodiplaceRealtimeChannel = typeof window !== 'undefined' && 'BroadcastCha
   ? new BroadcastChannel('foodiplace_realtime_sync')
   : null;
 
+function safeJsonParse<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    return parsed !== null && parsed !== undefined ? parsed : fallback;
+  } catch (err) {
+    console.error(`Failed to parse localStorage key "${key}":`, err);
+    return fallback;
+  }
+}
+
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Core State
   // Persistent Role: checks URL hash, query param, and localStorage so refreshing never resets to home
@@ -231,57 +244,47 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const [settings, setSettings] = useState<SystemSettings>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}settings`);
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    return safeJsonParse(`${STORAGE_KEY_PREFIX}settings`, DEFAULT_SETTINGS);
   });
 
   const [zones, setZones] = useState<DeliveryZone[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}zones`);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-    return INITIAL_ZONES;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}zones`, INITIAL_ZONES);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_ZONES;
   });
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}vendors`);
-    return saved ? JSON.parse(saved) : INITIAL_VENDORS;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}vendors`, INITIAL_VENDORS);
+    return Array.isArray(parsed) ? parsed : INITIAL_VENDORS;
   });
 
   const [currentVendor, setCurrentVendor] = useState<Vendor | null>(() => vendors[0] || null);
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}menu_items`);
-    return saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}menu_items`, INITIAL_MENU_ITEMS);
+    return Array.isArray(parsed) ? parsed : INITIAL_MENU_ITEMS;
   });
 
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}customers`);
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}customers`, INITIAL_CUSTOMERS);
+    return Array.isArray(parsed) ? parsed : INITIAL_CUSTOMERS;
   });
 
   const [addresses, setAddresses] = useState<CustomerAddress[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}addresses`);
-    return saved ? JSON.parse(saved) : INITIAL_ADDRESSES;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}addresses`, INITIAL_ADDRESSES);
+    return Array.isArray(parsed) ? parsed : INITIAL_ADDRESSES;
   });
 
   const [selectedAddress, setSelectedAddress] = useState<CustomerAddress | null>(
-    () => addresses.find(a => a.is_default) || addresses[0] || null
+    () => (Array.isArray(addresses) ? addresses.find(a => a?.is_default) || addresses[0] : null) || null
   );
 
   // Riders state: strictly enforces persistent is_paused so paused riders never auto-resume
   const [riders, setRiders] = useState<Rider[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}riders`);
-    const list: Rider[] = saved ? JSON.parse(saved) : INITIAL_RIDERS;
+    const list: Rider[] = safeJsonParse(`${STORAGE_KEY_PREFIX}riders`, INITIAL_RIDERS);
+    const validList = Array.isArray(list) ? list : INITIAL_RIDERS;
     const pausedIds = getStoredPausedRiderIds();
-    return list.map(r => {
+    return validList.map(r => {
+      if (!r) return r;
       const isPaused = pausedIds.has(r.id) ? true : Boolean(r.is_paused);
       return {
         ...r,
@@ -294,13 +297,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentRider, setCurrentRider] = useState<Rider | null>(() => riders[0] || null);
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}orders`);
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}orders`, INITIAL_ORDERS);
+    return Array.isArray(parsed) ? parsed : INITIAL_ORDERS;
   });
 
   const [foodCategories, setFoodCategories] = useState<FoodCategory[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}food_categories`);
-    return saved ? JSON.parse(saved) : INITIAL_FOOD_CATEGORIES;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}food_categories`, INITIAL_FOOD_CATEGORIES);
+    return Array.isArray(parsed) ? parsed : INITIAL_FOOD_CATEGORIES;
   });
 
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
@@ -327,12 +330,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       
       // Fallback local storage
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}ad_banners`);
-      if (saved) {
-        setAdBanners(JSON.parse(saved));
-      } else {
-        setAdBanners([]);
-      }
+      const savedAds = safeJsonParse(`${STORAGE_KEY_PREFIX}ad_banners`, []);
+      setAdBanners(Array.isArray(savedAds) ? savedAds : []);
     };
 
     fetchAdBanners();
@@ -554,13 +553,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}rider_messages`);
-    return saved ? JSON.parse(saved) : [
+    const defaultMsgs: RiderMessage[] = [
       {
         id: 'msg-101',
         recipient_rider_id: 'ALL',
-        sender: 'FoodHub Admin',
-        title: 'Welcome to FoodHub Rider Fleet! 🛵',
+        sender: 'foodiplace Admin',
+        title: 'Welcome to foodiplace Rider Fleet! 🛵',
         body: 'Keep your GPS location active and status set to Online to receive automatic cash order dispatches.',
         created_at: new Date(Date.now() - 3600000).toISOString(),
         is_read: false
@@ -568,18 +566,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {
         id: 'msg-102',
         recipient_rider_id: 'ALL',
-        sender: 'FoodHub Operations',
+        sender: 'foodiplace Operations',
         title: 'Daily Cash Bonus Alert! 💰',
         body: 'Complete 10 cash deliveries today in Chawkbazar or GEC Zone and earn an extra ৳200 bonus credited to your wallet.',
         created_at: new Date(Date.now() - 18000000).toISOString(),
         is_read: false
       }
     ];
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}rider_messages`, defaultMsgs);
+    return Array.isArray(parsed) ? parsed : defaultMsgs;
   });
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}current_user`);
-    return saved ? JSON.parse(saved) : null;
+    return safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
   });
 
   const [cart, setCart] = useState<CartItem[]>([]);
