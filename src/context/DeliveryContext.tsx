@@ -116,6 +116,8 @@ interface DeliveryContextType {
     phone: string;
     name?: string;
     password: string;
+    zone?: string;
+    vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
   }) => Promise<{ success: boolean; message: string; rider?: Rider }>;
   updateRiderProfile: (riderId: string, updates: Partial<Rider>) => Promise<{ success: boolean; message: string }>;
   toggleRiderOnline: (riderId: string, isOnline: boolean) => Promise<boolean>;
@@ -452,7 +454,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
       });
       if (!rider) {
-        return { success: false, message: 'This phone number is not registered as a Rider by Admin.' };
+        return { 
+          success: false, 
+          message: 'Phone number not found. If you are new, click Rider Registration below to join.' 
+        };
       }
 
       if (!rider.is_password_set || !rider.password) {
@@ -935,6 +940,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     phone: string;
     name?: string;
     password: string;
+    zone?: string;
+    vehicle_type?: 'Motorcycle' | 'Bicycle' | 'Scooter';
   }): Promise<{ success: boolean; message: string; rider?: Rider }> => {
     const cleanPhone = (data.phone || '').trim();
     const cleanName = (data.name || '').trim();
@@ -944,80 +951,133 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { success: false, message: 'Please provide phone number and password.' };
     }
 
-    const rider = riders.find(r => {
+    const existingRider = riders.find(r => {
       if (!r || !r.phone) return false;
       const rDigits = String(r.phone).replace(/\D/g, '');
       const cleanDigits = String(cleanPhone).replace(/\D/g, '');
       return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
     });
 
-    if (!rider) {
-      return { 
-        success: false, 
-        message: 'This phone number has not been registered by Admin. Please ask Admin to add your phone number first.' 
+    let targetRider: Rider;
+
+    if (existingRider) {
+      // Existing rider added by admin -> activate with new password and info
+      const resolvedName = cleanName || existingRider.name || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
+      targetRider = {
+        ...existingRider,
+        name: resolvedName,
+        password: password,
+        is_password_set: true,
+        vehicle_type: data.vehicle_type || existingRider.vehicle_type || 'Motorcycle',
+        zone: data.zone || existingRider.zone || 'Chawkbazar Zone',
+        is_online: false,
+        is_approved: true,
       };
-    }
 
-    const resolvedName = cleanName || rider.name || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { error } = await supabase.from('riders').update({
+            name: targetRider.name,
+            password: targetRider.password,
+            is_password_set: true,
+            vehicle_type: targetRider.vehicle_type,
+            zone: targetRider.zone
+          }).eq('id', existingRider.id);
 
-    const updatedRider: Rider = {
-      ...rider,
-      name: resolvedName,
-      password: password,
-      is_password_set: true,
-      is_online: false,
-      current_latitude: Number(rider.current_latitude) || 22.3590,
-      current_longitude: Number(rider.current_longitude) || 91.8380,
-      cash_in_hand: Number(rider.cash_in_hand) || 0,
-      vehicle_type: rider.vehicle_type || 'Motorcycle',
-      zone: rider.zone || 'Chawkbazar Zone'
-    };
-
-    // Update in Supabase
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.from('riders').update({
-          name: resolvedName,
-          password: password,
-          is_password_set: true
-        }).eq('id', rider.id);
-        
-        if (error) {
-          console.warn('Supabase rider password update error:', error);
-          // Try fallback updating name only if password columns don't exist
-          const fallbackRes = await supabase.from('riders').update({
-            name: resolvedName
-          }).eq('id', rider.id);
-          if (fallbackRes.error) {
-            console.warn('Supabase rider name update fallback warning:', fallbackRes.error);
+          if (error) {
+            console.warn('Supabase rider update warning, trying fallback:', error);
+            await supabase.from('riders').update({
+              name: targetRider.name
+            }).eq('id', existingRider.id);
           }
+        } catch (err) {
+          console.warn('Supabase rider update exception:', err);
         }
-      } catch (err) {
-        console.warn('Supabase update exception:', err);
       }
-    }
 
-    // Update local state
-    setRiders(prev => prev.map(r => r.id === rider.id ? updatedRider : r));
+      setRiders(prev => prev.map(r => r.id === existingRider.id ? targetRider : r));
+    } else {
+      // Direct registration by rider
+      const resolvedName = cleanName || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
+      targetRider = {
+        id: crypto.randomUUID(),
+        unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
+        name: resolvedName,
+        phone: cleanPhone,
+        photo_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
+        home_address: 'Chittagong',
+        zone: data.zone || 'Chawkbazar Zone',
+        vehicle_type: data.vehicle_type || 'Motorcycle',
+        is_online: false,
+        is_paused: false,
+        current_latitude: 22.3590,
+        current_longitude: 91.8380,
+        last_location_updated_at: new Date().toISOString(),
+        cash_in_hand: 0,
+        is_approved: true,
+        is_password_set: true,
+        password: password,
+        created_at: new Date().toISOString()
+      };
+
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const fullPayload = {
+            id: targetRider.id,
+            unique_id: targetRider.unique_id,
+            name: targetRider.name,
+            phone: targetRider.phone,
+            photo_url: targetRider.photo_url,
+            home_address: targetRider.home_address,
+            zone: targetRider.zone,
+            vehicle_type: targetRider.vehicle_type,
+            is_online: false,
+            is_paused: false,
+            current_latitude: targetRider.current_latitude,
+            current_longitude: targetRider.current_longitude,
+            last_location_updated_at: targetRider.last_location_updated_at,
+            cash_in_hand: 0,
+            is_approved: true,
+            is_password_set: true,
+            password: targetRider.password,
+            created_at: targetRider.created_at
+          };
+
+          const { error } = await supabase.from('riders').insert([fullPayload]);
+          if (error) {
+            console.warn('Initial self-registered rider insert warning, using fallback:', error);
+            await supabase.from('riders').insert([{
+              id: targetRider.id,
+              name: targetRider.name,
+              phone: targetRider.phone
+            }]);
+          }
+        } catch (err) {
+          console.warn('Supabase rider insert exception:', err);
+        }
+      }
+
+      setRiders(prev => [targetRider, ...prev]);
+    }
 
     const riderAccount: UserAccount = {
-      id: `u-r-${updatedRider.id}`,
+      id: `u-r-${targetRider.id}`,
       role: 'rider',
-      name: updatedRider.name,
-      phone: updatedRider.phone,
+      name: targetRider.name,
+      phone: targetRider.phone,
       is_password_set: true,
-      reference_id: updatedRider.id,
-      zone: updatedRider.zone,
-      photo_url: updatedRider.photo_url
+      reference_id: targetRider.id,
+      zone: targetRider.zone,
+      photo_url: targetRider.photo_url
     };
 
     setCurrentUser(riderAccount);
-    setCurrentRider(updatedRider);
+    setCurrentRider(targetRider);
 
     return { 
       success: true, 
       message: 'Registration completed successfully! Welcome to the Rider App.', 
-      rider: updatedRider 
+      rider: targetRider 
     };
   };
 

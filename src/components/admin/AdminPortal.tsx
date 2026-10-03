@@ -276,13 +276,12 @@ export const AdminPortal: React.FC = () => {
     setCatImageUrl('');
   };
 
-  // Filtered lists
   const filteredVendors = vendors.filter(v => {
     const q = vendorSearch.toLowerCase().trim();
     if (!q) return true;
     return (
-      v.name.toLowerCase().includes(q) ||
-      v.phone.includes(q) ||
+      (v.name && v.name.toLowerCase().includes(q)) ||
+      (v.phone && v.phone.includes(q)) ||
       (v.unique_id && v.unique_id.toLowerCase().includes(q))
     );
   });

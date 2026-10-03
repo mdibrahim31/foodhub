@@ -71,6 +71,8 @@ export const RiderPortal: React.FC = () => {
   const [authName, setAuthName] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [regVehicle, setRegVehicle] = useState<'Motorcycle' | 'Bicycle' | 'Scooter'>('Motorcycle');
+  const [regZone, setRegZone] = useState('Chawkbazar Zone');
   const [authError, setAuthError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -155,7 +157,7 @@ export const RiderPortal: React.FC = () => {
     e.preventDefault();
     setAuthError('');
     if (!authPhone.trim()) {
-      setAuthError('Please enter your Admin-registered Phone Number.');
+      setAuthError('Please enter your Phone Number.');
       return;
     }
     if (!authPassword.trim()) {
@@ -172,7 +174,9 @@ export const RiderPortal: React.FC = () => {
       const res = await completeRiderRegistration({
         phone: authPhone.trim(),
         name: authName.trim() || undefined,
-        password: authPassword.trim()
+        password: authPassword.trim(),
+        vehicle_type: regVehicle,
+        zone: regZone
       });
 
       if (!res.success) {
@@ -571,7 +575,7 @@ export const RiderPortal: React.FC = () => {
                 authTab === 'register' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Set New Password
+              Rider Registration
             </button>
           </div>
 
@@ -589,7 +593,7 @@ export const RiderPortal: React.FC = () => {
                   type="tel"
                   value={authPhone}
                   onChange={(e) => setAuthPhone(e.target.value)}
-                  placeholder="e.g. 01755500011"
+                  placeholder="e.g. 017XXXXXXXX"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
@@ -615,45 +619,69 @@ export const RiderPortal: React.FC = () => {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleRiderRegisterSubmit} className="space-y-4 text-xs font-bold">
-              <div className="p-3 bg-pink-50 border border-pink-200 rounded-2xl text-[11px] text-pink-900 font-medium">
-                Enter your Admin-registered Phone Number and set your password to complete registration & login. Name can be set now or in profile!
+            <form onSubmit={handleRiderRegisterSubmit} className="space-y-3.5 text-xs font-bold">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[11px] text-rose-900 font-medium">
+                Enter your phone number & set your password to join the fleet! (If pre-registered by Admin, this activates your account).
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Admin Registered Phone Number *</label>
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Phone Number *</label>
                 <input
                   type="tel"
                   value={authPhone}
                   onChange={(e) => setAuthPhone(e.target.value)}
                   placeholder="e.g. 017XXXXXXXX"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
-                <p className="text-[10px] text-slate-400 font-normal">
-                  The phone number added for you by Admin.
-                </p>
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Your Full Name (Optional)</label>
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Your Full Name</label>
                 <input
                   type="text"
                   value={authName}
                   onChange={(e) => setAuthName(e.target.value)}
-                  placeholder="e.g. Md. Rahim (Or set later in profile)"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  placeholder="e.g. Md. Rahim"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-slate-600 uppercase tracking-wider text-[10px]">Vehicle</label>
+                  <select
+                    value={regVehicle}
+                    onChange={(e) => setRegVehicle(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-rose-500"
+                  >
+                    <option value="Motorcycle">Motorcycle</option>
+                    <option value="Bicycle">Bicycle</option>
+                    <option value="Scooter">Scooter</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-600 uppercase tracking-wider text-[10px]">Zone</label>
+                  <select
+                    value={regZone}
+                    onChange={(e) => setRegZone(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-rose-500"
+                  >
+                    {DELIVERY_ZONES.map((z) => (
+                      <option key={z} value={z}>{z}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Set New Password *</label>
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Set Password *</label>
                 <input
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   placeholder="Create your password"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
               </div>
@@ -664,8 +692,8 @@ export const RiderPortal: React.FC = () => {
                   type="password"
                   value={authConfirmPassword}
                   onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password (Optional)"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  placeholder="Confirm password"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                 />
               </div>
 
@@ -674,7 +702,7 @@ export const RiderPortal: React.FC = () => {
                 disabled={isRegistering}
                 className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-400 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
               >
-                {isRegistering ? 'Completing Registration...' : 'Complete Registration & Login'}
+                {isRegistering ? 'Registering Rider...' : 'Complete Registration & Launch App'}
               </button>
             </form>
           )}
