@@ -141,11 +141,11 @@ export const CustomerPortal: React.FC = () => {
       const scrollPos = menuScrollContainerRef.current.scrollTop;
       
       // Header fade/parallax effect
-      const opacity = Math.max(0, 1 - scrollPos / 200);
+      const opacity = Math.max(0, 1 - scrollPos / 240);
       setHeaderScrollOpacity(opacity);
       
       // Sticky detection
-      setIsMenuHeaderSticky(scrollPos > 240);
+      setIsMenuHeaderSticky(scrollPos > 280);
 
       // Scroll Sync: find which section is currently active
       let currentActive = 'All';
@@ -1099,7 +1099,7 @@ export const CustomerPortal: React.FC = () => {
             className="flex-1 overflow-y-auto scrollbar-none"
           >
             {/* 1. Header Cover Area */}
-            <div className="relative h-36 overflow-hidden bg-slate-900">
+            <div className="relative h-52 overflow-hidden bg-slate-900">
               <motion.img 
                 initial={false}
                 animate={{ 
@@ -1146,7 +1146,7 @@ export const CustomerPortal: React.FC = () => {
                 }}
                 className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
               >
-                <div className="w-16 h-16 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
                   <img 
                     src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image} 
                     alt="Logo"

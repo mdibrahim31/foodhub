@@ -122,6 +122,20 @@ export const AdminPortal: React.FC = () => {
   const [adTargetVendorId, setAdTargetVendorId] = useState('');
   const [targetVendorSearchQuery, setTargetVendorSearchQuery] = useState('');
   const [adPortalType, setAdPortalType] = useState<'food' | 'grocery'>('food');
+  const [activeAdPortalTab, setActiveAdPortalTabState] = useState<'food' | 'grocery'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('foodiplace_admin_active_ad_portal_tab') as 'food' | 'grocery';
+      if (['food', 'grocery'].includes(saved)) return saved;
+    }
+    return 'food';
+  });
+
+  const setActiveAdPortalTab = (tab: 'food' | 'grocery') => {
+    setActiveAdPortalTabState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('foodiplace_admin_active_ad_portal_tab', tab);
+    }
+  };
 
   // Vendor Type State
   const [vType, setVType] = useState<'restaurant' | 'shop'>('restaurant');
@@ -237,7 +251,14 @@ export const AdminPortal: React.FC = () => {
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   const handleMoveAdBanner = async (adId: string, direction: 'up' | 'down') => {
-    const sorted = [...adBanners].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const ad = adBanners.find(a => a.id === adId);
+    if (!ad) return;
+    const type = ad.portal_type || 'food';
+    
+    const sorted = [...adBanners]
+      .filter(a => (a.portal_type || 'food') === type)
+      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      
     const index = sorted.findIndex(b => b.id === adId);
     if (index === -1) return;
 
@@ -1228,36 +1249,65 @@ export const AdminPortal: React.FC = () => {
         */}
         {activeTab === 'ads' && (
           <div className="space-y-6">
+            <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-2xl w-fit">
+              <button
+                onClick={() => setActiveAdPortalTab('food')}
+                className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
+                  activeAdPortalTab === 'food' 
+                    ? 'bg-white text-rose-600 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Food Banners ({adBanners.filter(a => (a.portal_type || 'food') === 'food').length})
+              </button>
+              <button
+                onClick={() => setActiveAdPortalTab('grocery')}
+                className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
+                  activeAdPortalTab === 'grocery' 
+                    ? 'bg-white text-rose-600 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Grocery Banners ({adBanners.filter(a => a.portal_type === 'grocery').length})
+              </button>
+            </div>
+
             <div className="bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-rose-600" />
-                  <span>Customer Top Hero Banner Ads ({adBanners.length})</span>
+                  <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Hero Banner Ads ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab).length})</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Manage promotional ads & banners displayed at the top of the customer home page with customizable slide settings.
+                  Manage promotional ads & banners displayed at the top of the {activeAdPortalTab} home page.
                 </p>
               </div>
 
               <button
-                onClick={() => setIsAddAdOpen(true)}
+                onClick={() => {
+                  setAdPortalType(activeAdPortalTab);
+                  setIsAddAdOpen(true);
+                }}
                 className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-1.5 shadow-md cursor-pointer active:scale-95"
               >
                 <Plus className="w-4 h-4" />
-                <span>Post New Banner Ad</span>
+                <span>Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Ad</span>
               </button>
             </div>
 
             {/* List of Current Ads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {adBanners.length === 0 ? (
+              {adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab).length === 0 ? (
                 <div className="col-span-2 p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs">
-                  No promotional banner ads running yet. Click "Post New Banner Ad" above to create one.
+                  No {activeAdPortalTab} promotional banner ads running yet. Click "Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Ad" above to create one.
                 </div>
               ) : (
-                [...adBanners].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map((ad, idx, sortedArr) => {
-                  const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
-                  return (
+                [...adBanners]
+                  .filter(a => (a.portal_type || 'food') === activeAdPortalTab)
+                  .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                  .map((ad, idx, sortedArr) => {
+                    const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
+                    return (
                     <div 
                       key={ad.id} 
                       className={`border rounded-3xl p-4 shadow-xs space-y-3 transition-all ${
