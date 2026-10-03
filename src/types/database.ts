@@ -13,7 +13,7 @@ export interface SystemSettings {
   banner_slide_auto_play?: boolean;       // e.g. true
 }
 
-export const DELIVERY_ZONES = [
+export const DEFAULT_DELIVERY_ZONE_NAMES = [
   'Chawkbazar Zone',
   'GEC Zone',
   'Agrabad Zone',
@@ -26,7 +26,23 @@ export const DELIVERY_ZONES = [
   'Mirpur Zone'
 ] as const;
 
-export type DeliveryZone = typeof DELIVERY_ZONES[number] | string;
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  bn_name?: string;
+  description?: string;
+  center_latitude: number;
+  center_longitude: number;
+  radius_km: number;
+  boundary_coordinates?: [number, number][]; // Polygon coordinates [[lat, lng], ...]
+  color?: string; // Color badge & map overlay e.g. '#E11D48'
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const DELIVERY_ZONES = DEFAULT_DELIVERY_ZONE_NAMES;
+export type DeliveryZoneName = string;
 
 export interface Vendor {
   id: string;

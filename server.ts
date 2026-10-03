@@ -22,6 +22,7 @@ interface ServerState {
   supabaseConfig: { url: string; anonKey: string };
   pausedRiderIds: string[];
   pausedVendorIds: string[];
+  zones: any[];
   riders: any[];
   vendors: any[];
   orders: any[];
@@ -39,6 +40,80 @@ const INITIAL_SERVER_STATE: ServerState = {
   },
   pausedRiderIds: [],
   pausedVendorIds: [],
+  zones: [
+    {
+      id: 'zone-001',
+      name: 'Chawkbazar Zone',
+      bn_name: 'চকবাজার জোন',
+      description: 'Chawkbazar, Parade Square, Chatteshwari, Gani Bakery, DC Hill',
+      center_latitude: 22.3590,
+      center_longitude: 91.8380,
+      radius_km: 2.5,
+      color: '#E11D48',
+      is_active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'zone-002',
+      name: 'GEC Zone',
+      bn_name: 'জিইসি জোন',
+      description: 'GEC Circle, CDA Avenue, Dampara, Golpahar, Prabartak Circle',
+      center_latitude: 22.3595,
+      center_longitude: 91.8215,
+      radius_km: 2.5,
+      color: '#2563EB',
+      is_active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'zone-003',
+      name: 'Khulshi Zone',
+      bn_name: 'খুলশী জোন',
+      description: 'South Khulshi, North Khulshi, Zakir Hossain Road, Wireless Gate',
+      center_latitude: 22.3650,
+      center_longitude: 91.8150,
+      radius_km: 2.5,
+      color: '#7C3AED',
+      is_active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'zone-004',
+      name: 'Agrabad Zone',
+      bn_name: 'আগ্রাবাদ জোন',
+      description: 'Commercial Area, Badamtali, Sheikh Mujib Road, Chowmuhani',
+      center_latitude: 22.3275,
+      center_longitude: 91.8120,
+      radius_km: 3.0,
+      color: '#059669',
+      is_active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'zone-005',
+      name: 'Nasirabad Zone',
+      bn_name: 'নাসিরাবাদ জোন',
+      description: 'Nasirabad Housing, Polytechnic, Baizid Bostami, Sholashahar',
+      center_latitude: 22.3780,
+      center_longitude: 91.8250,
+      radius_km: 3.0,
+      color: '#D97706',
+      is_active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'zone-006',
+      name: 'Halishahar Zone',
+      bn_name: 'হালিশহর জোন',
+      description: 'Halishahar Housing Estate, Boropool, Rampur, Block A-L',
+      center_latitude: 22.3350,
+      center_longitude: 91.7850,
+      radius_km: 3.5,
+      color: '#0D9488',
+      is_active: true,
+      created_at: new Date().toISOString()
+    }
+  ],
   riders: [
     {
       id: 'r0000001-0000-0000-0000-000000000001',
@@ -158,6 +233,80 @@ app.post('/api/config', (req, res) => {
   };
   saveState(serverState);
   res.json({ success: true, config: serverState.supabaseConfig });
+});
+
+// 3B. Zones API (Rider Zones / Delivery Zones)
+app.get('/api/zones', (_req, res) => {
+  if (!serverState.zones || !Array.isArray(serverState.zones) || serverState.zones.length === 0) {
+    serverState.zones = INITIAL_SERVER_STATE.zones;
+    saveState(serverState);
+  }
+  res.json(serverState.zones);
+});
+
+// Create new Zone
+app.post('/api/zones', (req, res) => {
+  const newZone = req.body;
+  if (!newZone.id) {
+    newZone.id = `zone-${Date.now()}`;
+  }
+  if (!serverState.zones) serverState.zones = [];
+  
+  const existingIdx = serverState.zones.findIndex(z => z.id === newZone.id || (newZone.name && z.name.toLowerCase() === newZone.name.toLowerCase()));
+  if (existingIdx >= 0) {
+    serverState.zones[existingIdx] = { ...serverState.zones[existingIdx], ...newZone, updated_at: new Date().toISOString() };
+    saveState(serverState);
+    return res.json({ success: true, zone: serverState.zones[existingIdx] });
+  }
+
+  const zoneToSave = {
+    id: newZone.id,
+    name: newZone.name,
+    bn_name: newZone.bn_name || '',
+    description: newZone.description || '',
+    center_latitude: Number(newZone.center_latitude) || 22.3590,
+    center_longitude: Number(newZone.center_longitude) || 91.8380,
+    radius_km: Number(newZone.radius_km) || 3.0,
+    boundary_coordinates: newZone.boundary_coordinates || [],
+    color: newZone.color || '#E11D48',
+    is_active: newZone.is_active !== false,
+    created_at: newZone.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  serverState.zones.push(zoneToSave);
+  saveState(serverState);
+  console.log(`[API] Zone created: ${zoneToSave.name} (${zoneToSave.id})`);
+  res.json({ success: true, zone: zoneToSave });
+});
+
+// Update Zone
+app.put('/api/zones/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.zones) serverState.zones = [];
+
+  const idx = serverState.zones.findIndex(z => z.id === id);
+  if (idx >= 0) {
+    serverState.zones[idx] = { 
+      ...serverState.zones[idx], 
+      ...updates, 
+      updated_at: new Date().toISOString() 
+    };
+    saveState(serverState);
+    return res.json({ success: true, zone: serverState.zones[idx] });
+  }
+
+  res.status(404).json({ success: false, message: 'Zone not found' });
+});
+
+// Delete Zone
+app.delete('/api/zones/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.zones) serverState.zones = [];
+  serverState.zones = serverState.zones.filter(z => z.id !== id);
+  saveState(serverState);
+  res.json({ success: true });
 });
 
 // 4. Riders API

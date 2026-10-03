@@ -22,6 +22,24 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
 );
 
 -- ====================================================================
+-- 2B. RIDERS & DELIVERY ZONES TABLE (Admin Configured Boundary & Map)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.zones (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    bn_name VARCHAR(100),
+    description TEXT,
+    center_latitude DOUBLE PRECISION NOT NULL DEFAULT 22.3590,
+    center_longitude DOUBLE PRECISION NOT NULL DEFAULT 91.8380,
+    radius_km NUMERIC(10, 2) NOT NULL DEFAULT 3.00,
+    boundary_coordinates JSONB,
+    color VARCHAR(20) DEFAULT '#E11D48',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
 -- 3. CUSTOMER USERS TABLE (Self-Registered Customers)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customers (
@@ -201,6 +219,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 -- ====================================================================
 -- 11. INDEXES FOR HIGH PERFORMANCE REAL-TIME QUERIES
 -- ====================================================================
+CREATE INDEX IF NOT EXISTS idx_zones_active ON public.zones(is_active);
 CREATE INDEX IF NOT EXISTS idx_vendors_zone ON public.vendors(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_zone ON public.riders(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_online ON public.riders(is_online);
@@ -214,6 +233,7 @@ CREATE INDEX IF NOT EXISTS idx_ads_active ON public.ads_banners(is_active);
 -- 12. ROW LEVEL SECURITY (RLS) POLICIES
 -- ====================================================================
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.zones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ads_banners ENABLE ROW LEVEL SECURITY;
@@ -226,6 +246,10 @@ ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 -- Global System Settings Policies
 CREATE POLICY "Public read system settings" ON public.system_settings FOR SELECT USING (true);
 CREATE POLICY "Admin update system settings" ON public.system_settings FOR ALL USING (true);
+
+-- Zones Policies
+CREATE POLICY "Public read zones" ON public.zones FOR SELECT USING (true);
+CREATE POLICY "Admin manage zones" ON public.zones FOR ALL USING (true);
 
 -- Customers Policies
 CREATE POLICY "Public insert customers" ON public.customers FOR INSERT WITH CHECK (true);

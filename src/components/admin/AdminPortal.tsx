@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
-import { DELIVERY_ZONES, Vendor, Rider, Order, OrderStatus } from '../../types/database';
+import { DELIVERY_ZONES, DeliveryZone, Vendor, Rider, Order, OrderStatus } from '../../types/database';
 import { 
   ShieldCheck, 
   Settings, 
   Store, 
   Bike, 
   ClipboardList, 
-  Database, 
   MapPin, 
   Plus, 
   Check, 
@@ -37,13 +36,22 @@ import {
   Flame,
   UtensilsCrossed,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Edit2,
+  Layers,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
   const { 
     settings, 
     updateSettings, 
+    zones,
+    addZone,
+    updateZone,
+    deleteZone,
+    toggleZoneActive,
     vendors, 
     adminRegisterVendor,
     updateVendor,
@@ -73,30 +81,37 @@ export const AdminPortal: React.FC = () => {
     syncAllToSupabase
   } = useDelivery();
 
-  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database'>(() => {
+  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('foodiplace_admin_active_tab') as any;
-      if (['settings', 'categories', 'vendors', 'riders', 'orders', 'ads', 'database'].includes(saved)) {
+      if (['settings', 'categories', 'zones', 'vendors', 'riders', 'orders', 'ads'].includes(saved)) {
         return saved;
       }
     }
-    return 'settings';
+    return 'zones';
   });
 
-  const setActiveTab = (tab: 'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database') => {
+  const setActiveTab = (tab: 'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads') => {
     setActiveTabState(tab);
     if (typeof window !== 'undefined') {
       localStorage.setItem('foodiplace_admin_active_tab', tab);
     }
   };
 
-  // Supabase Connection State
-  const [dbUrlInput, setDbUrlInput] = useState(supabaseConfig.url || '');
-  const [dbKeyInput, setDbKeyInput] = useState(supabaseConfig.anonKey || '');
-  const [isConnectingDb, setIsConnectingDb] = useState(false);
-  const [dbConnectStatus, setDbConnectStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
-  const [isSyncingDb, setIsSyncingDb] = useState(false);
-  const [dbSyncStatus, setDbSyncStatus] = useState<string>('');
+  // Zone Management Form State
+  const [isAddZoneOpen, setIsAddZoneOpen] = useState(false);
+  const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
+  const [zName, setZName] = useState('');
+  const [zBnName, setZBnName] = useState('');
+  const [zDescription, setZDescription] = useState('');
+  const [zLat, setZLat] = useState(22.3590);
+  const [zLng, setZLng] = useState(91.8380);
+  const [zRadiusKm, setZRadiusKm] = useState(3.0);
+  const [zColor, setZColor] = useState('#E11D48');
+  const [zIsActive, setZIsActive] = useState(true);
+  const [selectedMapZoneId, setSelectedMapZoneId] = useState<string | null>(null);
+  const [zoneSearch, setZoneSearch] = useState('');
+  const [isZoneMapPickerOpen, setIsZoneMapPickerOpen] = useState(false);
 
   // Ad Banner Form State
   const [isAddAdOpen, setIsAddAdOpen] = useState(false);
@@ -325,9 +340,9 @@ export const AdminPortal: React.FC = () => {
     setVAddress('');
     
     if (res.savedToDatabase) {
-      alert(`✅ Vendor "${res.vendor.name}" registered & saved to Supabase Database!\nID: ${res.vendor.unique_id || res.vendor.id}\nPhone: ${res.vendor.phone}`);
+      alert(`✅ Vendor "${res.vendor.name}" registered & saved to Database!\nID: ${res.vendor.unique_id || res.vendor.id}\nPhone: ${res.vendor.phone}\nZone: ${res.vendor.zone}`);
     } else {
-      alert(`⚠️ Vendor "${res.vendor.name}" registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
+      alert(`✅ Vendor "${res.vendor.name}" registered successfully!\nZone: ${res.vendor.zone}`);
     }
   };
 
@@ -341,7 +356,7 @@ export const AdminPortal: React.FC = () => {
     const res = await adminRegisterRider({
       phone: rPhone.trim(),
       name: rName.trim() || undefined,
-      zone: rZone || 'Chawkbazar Zone',
+      zone: rZone || (zones[0]?.name || 'Chawkbazar Zone'),
       vehicle_type: rVehicle || 'Motorcycle'
     });
 
@@ -351,10 +366,73 @@ export const AdminPortal: React.FC = () => {
     setRHomeAddress('');
 
     if (res.savedToDatabase) {
-      alert(`✅ Rider phone "${res.rider.phone}" registered & saved to Database!\nThe rider can now complete registration with their name and password from the Rider App.\nID: ${res.rider.id}`);
+      alert(`✅ Rider phone "${res.rider.phone}" registered & saved to Database!\nZone: ${res.rider.zone}\nThe rider can now complete registration with their name and password from the Rider App.\nID: ${res.rider.id}`);
     } else {
-      alert(`⚠️ Rider registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
+      alert(`✅ Rider "${res.rider.name || res.rider.phone}" registered successfully!\nZone: ${res.rider.zone}`);
     }
+  };
+
+  const handleOpenAddZone = () => {
+    setEditingZone(null);
+    setZName('');
+    setZBnName('');
+    setZDescription('');
+    setZLat(22.3590);
+    setZLng(91.8380);
+    setZRadiusKm(3.0);
+    setZColor('#E11D48');
+    setZIsActive(true);
+    setIsAddZoneOpen(true);
+  };
+
+  const handleOpenEditZone = (zone: DeliveryZone) => {
+    setEditingZone(zone);
+    setZName(zone.name);
+    setZBnName(zone.bn_name || '');
+    setZDescription(zone.description || '');
+    setZLat(zone.center_latitude || 22.3590);
+    setZLng(zone.center_longitude || 91.8380);
+    setZRadiusKm(zone.radius_km || 3.0);
+    setZColor(zone.color || '#E11D48');
+    setZIsActive(zone.is_active !== false);
+    setIsAddZoneOpen(true);
+  };
+
+  const handleSaveZoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!zName.trim()) {
+      alert('Please enter a Zone Name (e.g. Chawkbazar Zone).');
+      return;
+    }
+
+    if (editingZone) {
+      await updateZone(editingZone.id, {
+        name: zName.trim(),
+        bn_name: zBnName.trim() || undefined,
+        description: zDescription.trim() || undefined,
+        center_latitude: zLat,
+        center_longitude: zLng,
+        radius_km: zRadiusKm,
+        color: zColor,
+        is_active: zIsActive
+      });
+      alert(`✅ Zone "${zName.trim()}" updated successfully!`);
+    } else {
+      await addZone({
+        name: zName.trim(),
+        bn_name: zBnName.trim() || undefined,
+        description: zDescription.trim() || undefined,
+        center_latitude: zLat,
+        center_longitude: zLng,
+        radius_km: zRadiusKm,
+        color: zColor,
+        is_active: zIsActive
+      });
+      alert(`✅ New Zone "${zName.trim()}" created successfully!`);
+    }
+
+    setIsAddZoneOpen(false);
+    setEditingZone(null);
   };
 
   const handleAddCategorySubmit = (e: React.FormEvent) => {
@@ -375,6 +453,16 @@ export const AdminPortal: React.FC = () => {
     setCatName('');
     setCatImageUrl('');
   };
+
+  const filteredZones = zones.filter(z => {
+    const q = zoneSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (z.name && z.name.toLowerCase().includes(q)) ||
+      (z.bn_name && z.bn_name.toLowerCase().includes(q)) ||
+      (z.description && z.description.toLowerCase().includes(q))
+    );
+  });
 
   const filteredVendors = vendors.filter(v => {
     const q = vendorSearch.toLowerCase().trim();
@@ -451,41 +539,6 @@ export const AdminPortal: React.FC = () => {
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 space-y-6">
         
-        {!isSupabaseConfigured ? (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs font-bold gap-3 text-amber-900 shadow-xs">
-            <div className="space-y-0.5">
-              <span className="text-sm font-black flex items-center space-x-1.5 text-amber-950">
-                <Database className="w-4 h-4 text-amber-700" />
-                <span>⚠️ Supabase Database Disconnected (Using Local Storage)</span>
-              </span>
-              <p className="text-[11px] text-amber-800">
-                Riders and vendors are currently saving only in this browser! Enter your Supabase Project URL & Anon Key so riders are stored in your Supabase cloud table.
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveTab('database')}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-wider shrink-0 transition flex items-center space-x-1.5 cursor-pointer shadow-md"
-            >
-              <Database className="w-3.5 h-3.5 text-rose-400" />
-              <span>Connect Supabase Now</span>
-            </button>
-          </div>
-        ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-3xl px-4 py-2.5 flex items-center justify-between text-xs font-bold text-emerald-800">
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>✅ Connected to Supabase Cloud Database</span>
-              <span className="text-[11px] text-emerald-600 font-mono hidden sm:inline">({supabaseConfig.url ? new URL(supabaseConfig.url).hostname : 'Supabase'})</span>
-            </div>
-            <button
-              onClick={() => setActiveTab('database')}
-              className="text-emerald-700 hover:text-emerald-900 underline text-[11px] cursor-pointer"
-            >
-              Manage Connection / Sync
-            </button>
-          </div>
-        )}
-        
         {/* Compact Navigation Tabs Bar */}
         <div className="bg-white border border-slate-200/90 p-1.5 rounded-2xl shadow-xs flex items-center justify-between overflow-x-auto gap-1 text-xs">
           <button
@@ -510,6 +563,18 @@ export const AdminPortal: React.FC = () => {
           >
             <ChefHat className="w-4 h-4" />
             <span>Categories ({foodCategories.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('zones')}
+            className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'zones' 
+                ? 'bg-rose-600 text-white shadow-xs' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Rider Zones ({zones.length})</span>
           </button>
 
           <button
@@ -558,18 +623,6 @@ export const AdminPortal: React.FC = () => {
           >
             <Sparkles className="w-4 h-4" />
             <span>Ads & Banners ({adBanners.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('database')}
-            className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
-              activeTab === 'database' 
-                ? 'bg-rose-600 text-white shadow-xs' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            <span>Database</span>
           </button>
         </div>
 
@@ -1305,256 +1358,318 @@ export const AdminPortal: React.FC = () => {
 
         {/* 
           ======================================================================
-          TAB 6: DATABASE & BACKUP
+          TAB: RIDER & DELIVERY ZONES MANAGEMENT
           ======================================================================
         */}
-        {activeTab === 'database' && (
+        {activeTab === 'zones' && (
           <div className="space-y-6">
-            {/* 1. Supabase Cloud Connection Card */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-5">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
-                    <Database className="w-5 h-5 text-rose-600" />
-                    <span>Supabase Cloud PostgreSQL Database</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Connect your Supabase project so riders and vendors are stored directly in your cloud PostgreSQL tables.
-                  </p>
-                </div>
-
+            {/* Header & Action Bar */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
                 <div className="flex items-center space-x-2">
-                  {isSupabaseConfigured ? (
-                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center space-x-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>Connected</span>
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-100 text-amber-800 border border-amber-200 flex items-center space-x-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      <span>Disconnected (Local Only)</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Form to enter/update Supabase Credentials */}
-              <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!dbUrlInput.trim() || !dbKeyInput.trim()) {
-                    setDbConnectStatus({ type: 'error', message: 'Please enter both Supabase Project URL and Public Anon Key.' });
-                    return;
-                  }
-                  setIsConnectingDb(true);
-                  setDbConnectStatus({ type: 'idle', message: '' });
-                  const res = await connectSupabase(dbUrlInput.trim(), dbKeyInput.trim());
-                  setIsConnectingDb(false);
-                  if (res.success) {
-                    setDbConnectStatus({ type: 'success', message: res.message });
-                  } else {
-                    setDbConnectStatus({ type: 'error', message: res.message });
-                  }
-                }}
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                      Supabase Project URL *
-                    </label>
-                    <input
-                      type="url"
-                      value={dbUrlInput}
-                      onChange={(e) => setDbUrlInput(e.target.value)}
-                      placeholder="https://xyzabcdefghijklmnop.supabase.co"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-400 block">
-                      Found in Supabase: Project Settings ➔ API ➔ Project URL
-                    </span>
+                  <span className="p-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-2xl">
+                    <MapPin className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                      Rider & Delivery Zones (রাইডার ও ডেলিভারি জোন)
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Create geographic zones and boundary circles. Orders from a zone are strictly dispatched ONLY to riders in that zone!
+                    </p>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                      Supabase Public Anon Key *
-                    </label>
-                    <input
-                      type="password"
-                      value={dbKeyInput}
-                      onChange={(e) => setDbKeyInput(e.target.value)}
-                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-400 block">
-                      Found in Supabase: Project Settings ➔ API ➔ Project API Keys (anon public)
-                    </span>
-                  </div>
-                </div>
-
-                {dbConnectStatus.message && (
-                  <div className={`p-3.5 rounded-2xl text-xs font-bold flex items-start space-x-2 ${
-                    dbConnectStatus.type === 'success' 
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                      : 'bg-rose-50 text-rose-800 border border-rose-200'
-                  }`}>
-                    {dbConnectStatus.type === 'success' ? (
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <X className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <p>{dbConnectStatus.message}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <button
-                    type="submit"
-                    disabled={isConnectingDb}
-                    className="px-5 py-2.5 bg-slate-900 hover:bg-black disabled:bg-slate-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center space-x-2 shadow-md cursor-pointer"
-                  >
-                    <Database className="w-4 h-4 text-rose-400" />
-                    <span>{isConnectingDb ? 'Connecting & Verifying...' : 'Save & Connect to Supabase'}</span>
-                  </button>
-
-                  {isSupabaseConfigured && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIsSyncingDb(true);
-                        setDbSyncStatus('Syncing riders and vendors to Supabase...');
-                        const res = await syncAllToSupabase();
-                        setIsSyncingDb(false);
-                        setDbSyncStatus(res.message);
-                        alert(res.message);
-                      }}
-                      disabled={isSyncingDb}
-                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center space-x-2 shadow-md cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      <span>{isSyncingDb ? 'Syncing...' : 'Upload All Local Riders & Vendors to Supabase'}</span>
-                    </button>
-                  )}
-
-                  {isSupabaseConfigured && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm('Disconnect Supabase and switch back to Local Storage?')) {
-                          connectSupabase('', '');
-                          setDbUrlInput('');
-                          setDbKeyInput('');
-                          setDbConnectStatus({ type: 'idle', message: 'Disconnected from Supabase.' });
-                        }
-                      }}
-                      className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
-                    >
-                      Disconnect
-                    </button>
-                  )}
-                </div>
-
-                {dbSyncStatus && (
-                  <p className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
-                    {dbSyncStatus}
-                  </p>
-                )}
-              </form>
-            </div>
-
-            {/* 2. SQL Setup Quick Code */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-black text-slate-900">Supabase SQL Editor Code (riders table)</h4>
-                  <p className="text-xs text-slate-500">
-                    If your Supabase riders table is missing or gives an error, run this SQL in Supabase ➔ SQL Editor:
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const sql = `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-CREATE TABLE IF NOT EXISTS public.riders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    photo_url TEXT,
-    home_address TEXT,
-    zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
-    vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
-    is_online BOOLEAN DEFAULT false,
-    is_paused BOOLEAN NOT NULL DEFAULT false,
-    current_latitude DOUBLE PRECISION DEFAULT 22.3590,
-    current_longitude DOUBLE PRECISION DEFAULT 91.8380,
-    last_location_updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    cash_in_hand NUMERIC(10, 2) DEFAULT 0.00,
-    is_approved BOOLEAN DEFAULT true,
-    is_password_set BOOLEAN DEFAULT false,
-    password TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Migration for existing table:
-ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`;
-                    navigator.clipboard.writeText(sql);
-                    alert('✅ SQL copied to clipboard! Paste it into Supabase SQL Editor and click RUN.');
-                  }}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold cursor-pointer transition"
-                >
-                  Copy SQL Code
-                </button>
-              </div>
-
-              <pre className="bg-slate-900 text-slate-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto">
-{`-- Add is_paused column to riders table (Run in Supabase SQL Editor)
-ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
-              </pre>
-            </div>
-
-            {/* 3. Local Storage Diagnostics */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-4">
-              <h4 className="text-sm font-black text-slate-900">Local Browser Storage Diagnostics</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <span className="text-slate-500 block text-[10px] uppercase">Local Vendors</span>
-                  <span className="font-mono text-base text-slate-900">{vendors.length}</span>
-                </div>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <span className="text-slate-500 block text-[10px] uppercase">Local Riders</span>
-                  <span className="font-mono text-base text-slate-900">{riders.length}</span>
-                </div>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <span className="text-slate-500 block text-[10px] uppercase">Categories</span>
-                  <span className="font-mono text-base text-slate-900">{foodCategories.length}</span>
-                </div>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <span className="text-slate-500 block text-[10px] uppercase">Orders</span>
-                  <span className="font-mono text-base text-slate-900">{orders.length}</span>
                 </div>
               </div>
 
               <button
-                onClick={() => {
-                  if (confirm('Reset local storage state to default seed data? (Your Supabase cloud database will NOT be affected)')) {
-                    localStorage.removeItem('foodvibe_v3_riders');
-                    localStorage.removeItem('foodvibe_v3_vendors');
-                    window.location.reload();
-                  }
-                }}
-                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer"
+                type="button"
+                onClick={handleOpenAddZone}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition flex items-center space-x-2 cursor-pointer shrink-0"
               >
-                Reset Local Storage Cache
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>Create New Zone</span>
               </button>
+            </div>
+
+            {/* Zone Statistics Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200/90 p-4.5 rounded-3xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 mb-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider">Total Zones</span>
+                  <MapPin className="w-4 h-4 text-rose-500" />
+                </div>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-2xl font-black text-slate-900">{zones.length}</span>
+                  <span className="text-[11px] text-slate-400 font-bold">configured</span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 p-4.5 rounded-3xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 mb-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider">Active Zones</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-2xl font-black text-emerald-600">
+                    {zones.filter(z => z.is_active !== false).length}
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-bold">operational</span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 p-4.5 rounded-3xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 mb-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider">Assigned Riders</span>
+                  <Bike className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-2xl font-black text-slate-900">{riders.length}</span>
+                  <span className="text-[11px] text-emerald-600 font-bold">
+                    ({riders.filter(r => r.is_online && !r.is_paused).length} online)
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 p-4.5 rounded-3xl shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 mb-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider">Covered Vendors</span>
+                  <Store className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-2xl font-black text-slate-900">{vendors.length}</span>
+                  <span className="text-[11px] text-slate-400 font-bold">merchants</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Interactive Zones Map */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 flex items-center space-x-2">
+                    <Compass className="w-4 h-4 text-rose-600" />
+                    <span>Live Geographic Delivery Zones Map</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Visual representation of all delivery boundary radiuses and active online rider positions in Chittagong.
+                  </p>
+                </div>
+
+                {selectedMapZoneId && (
+                  <button
+                    onClick={() => setSelectedMapZoneId(null)}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200"
+                  >
+                    Reset Map Selection
+                  </button>
+                )}
+              </div>
+
+              <div className="rounded-2xl overflow-hidden border border-slate-200">
+                <InteractiveMap
+                  center={[22.3590, 91.8380]}
+                  zoom={13}
+                  heightClass="h-96 w-full"
+                  zonesOverlay={zones.map(z => ({
+                    id: z.id,
+                    name: z.name,
+                    bn_name: z.bn_name,
+                    center: [z.center_latitude || 22.3590, z.center_longitude || 91.8380],
+                    radiusKm: z.radius_km || 3.0,
+                    color: z.color || '#E11D48',
+                    isActive: z.is_active !== false
+                  }))}
+                  selectedZoneId={selectedMapZoneId || undefined}
+                  onZoneClick={(zid) => setSelectedMapZoneId(zid)}
+                  markers={riders
+                    .filter(r => r.is_online && !r.is_paused)
+                    .map(r => ({
+                      id: r.id,
+                      latitude: r.current_latitude,
+                      longitude: r.current_longitude,
+                      title: `${r.name} (${r.zone || 'Zone Unassigned'})`,
+                      subtitle: `Phone: ${r.phone} • ${r.vehicle_type}`,
+                      type: 'rider'
+                    }))}
+                  showControls={true}
+                  showFullscreenButton={true}
+                  showRecenterButton={true}
+                />
+              </div>
+            </div>
+
+            {/* Zones Grid & Search Filter */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={zoneSearch}
+                    onChange={(e) => setZoneSearch(e.target.value)}
+                    placeholder="Search zones by name, Bengali name, or area..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 shadow-xs"
+                  />
+                </div>
+
+                <span className="text-xs font-bold text-slate-500 self-center">
+                  Showing {filteredZones.length} of {zones.length} zones
+                </span>
+              </div>
+
+              {filteredZones.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-black text-slate-900">No Delivery Zones Found</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    {zoneSearch ? 'Try a different search query' : 'Create your first delivery zone to assign riders and vendors.'}
+                  </p>
+                  <button
+                    onClick={handleOpenAddZone}
+                    className="px-4 py-2 bg-rose-600 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                  >
+                    + Add First Zone
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredZones.map(zone => {
+                    const zoneRiders = riders.filter(r => (r.zone || '').trim().toLowerCase() === zone.name.trim().toLowerCase());
+                    const onlineRiders = zoneRiders.filter(r => r.is_online && !r.is_paused);
+                    const zoneVendors = vendors.filter(v => (v.zone || '').trim().toLowerCase() === zone.name.trim().toLowerCase());
+                    const isSelected = selectedMapZoneId === zone.id;
+                    const zoneColor = zone.color || '#E11D48';
+
+                    return (
+                      <div
+                        key={zone.id}
+                        className={`bg-white border rounded-3xl p-5 shadow-xs space-y-4 transition hover:shadow-md relative ${
+                          isSelected ? 'border-2 ring-2 ring-rose-400/30' : 'border-slate-200/90'
+                        }`}
+                        style={{ borderLeftColor: zoneColor, borderLeftWidth: '6px' }}
+                      >
+                        {/* Zone Card Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span 
+                                className="w-3 h-3 rounded-full shrink-0 shadow-xs" 
+                                style={{ backgroundColor: zoneColor }}
+                              />
+                              <h4 className="font-black text-slate-900 text-sm">
+                                {zone.name}
+                              </h4>
+                            </div>
+                            {zone.bn_name && (
+                              <p className="text-xs font-bold text-slate-500 mt-0.5 ml-5">
+                                {zone.bn_name}
+                              </p>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleZoneActive(zone.id)}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider cursor-pointer transition ${
+                              zone.is_active !== false
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                            }`}
+                          >
+                            {zone.is_active !== false ? '● Active' : '○ Inactive'}
+                          </button>
+                        </div>
+
+                        {/* Description / Coverage Details */}
+                        {zone.description && (
+                          <p className="text-[11px] text-slate-600 bg-slate-50 border border-slate-100 p-2.5 rounded-2xl line-clamp-2">
+                            {zone.description}
+                          </p>
+                        )}
+
+                        {/* Geographic Center & Coverage Radius */}
+                        <div className="grid grid-cols-2 gap-2 text-xs font-bold bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase block">Coverage Radius</span>
+                            <span className="text-slate-900 font-extrabold">{zone.radius_km || 3.0} KM</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase block">Center Lat/Lng</span>
+                            <span className="font-mono text-[11px] text-slate-700 truncate block">
+                              {(zone.center_latitude || 22.3590).toFixed(4)}, {(zone.center_longitude || 91.8380).toFixed(4)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Assigned Fleet & Vendors Metric */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div className="p-2.5 bg-blue-50/60 border border-blue-100 rounded-2xl">
+                            <div className="flex items-center space-x-1 text-blue-800 text-[10px] uppercase font-black">
+                              <Bike className="w-3.5 h-3.5" />
+                              <span>Zone Riders</span>
+                            </div>
+                            <div className="mt-1 flex items-baseline space-x-1.5">
+                              <span className="text-base font-black text-blue-950">{zoneRiders.length}</span>
+                              <span className="text-[10px] font-bold text-emerald-700">
+                                ({onlineRiders.length} Online)
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 bg-amber-50/60 border border-amber-100 rounded-2xl">
+                            <div className="flex items-center space-x-1 text-amber-800 text-[10px] uppercase font-black">
+                              <Store className="w-3.5 h-3.5" />
+                              <span>Zone Vendors</span>
+                            </div>
+                            <div className="mt-1">
+                              <span className="text-base font-black text-amber-950">{zoneVendors.length}</span>
+                              <span className="text-[10px] font-bold text-slate-500 ml-1">merchants</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedMapZoneId(zone.id)}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center space-x-1 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Locate</span>
+                          </button>
+
+                          <div className="flex items-center space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditZone(zone)}
+                              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition cursor-pointer"
+                              title="Edit Zone"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete zone "${zone.name}"?`)) {
+                                  deleteZone(zone.id);
+                                }
+                              }}
+                              className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition cursor-pointer"
+                              title="Delete Zone"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2349,6 +2464,234 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
 
       {/* 
         ========================================================================
+        MODAL: CREATE / EDIT DELIVERY & RIDER ZONE
+        ========================================================================
+      */}
+      {isAddZoneOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in overflow-y-auto">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl my-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <MapPin className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">
+                  {editingZone ? 'Edit Delivery Zone' : 'Create New Delivery Zone'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsAddZoneOpen(false);
+                  setEditingZone(null);
+                }} 
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveZoneSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                    Zone Name (English) *
+                  </label>
+                  <input
+                    type="text"
+                    value={zName}
+                    onChange={(e) => setZName(e.target.value)}
+                    placeholder="e.g. Chawkbazar Zone"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                    Bangla Name (বাংলা নাম)
+                  </label>
+                  <input
+                    type="text"
+                    value={zBnName}
+                    onChange={(e) => setZBnName(e.target.value)}
+                    placeholder="e.g. চকবাজার জোন"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                  Description & Key Locations Covered
+                </label>
+                <input
+                  type="text"
+                  value={zDescription}
+                  onChange={(e) => setZDescription(e.target.value)}
+                  placeholder="e.g. Parade Square, Chatteshwari, Gani Bakery, DC Hill"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                />
+              </div>
+
+              {/* Geographic Center Point & Radius on Map */}
+              <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-slate-900 text-[11px] uppercase tracking-wider flex items-center space-x-1.5">
+                    <Crosshair className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Zone Center Coordinates & Boundary</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {zLat.toFixed(4)}, {zLng.toFixed(4)}
+                  </span>
+                </div>
+
+                {/* Map Preview for Center Location & Radius */}
+                <div className="rounded-xl overflow-hidden border border-slate-200 h-44 w-full">
+                  <InteractiveMap
+                    center={[zLat, zLng]}
+                    zoom={13}
+                    heightClass="h-44 w-full"
+                    radiusCircle={{
+                      center: [zLat, zLng],
+                      radiusMeters: zRadiusKm * 1000,
+                      color: zColor,
+                      label: `${zName || 'Zone'} (${zRadiusKm} KM)`
+                    }}
+                    onMapClick={(lat, lng) => {
+                      setZLat(lat);
+                      setZLng(lng);
+                    }}
+                    showControls={false}
+                    showFullscreenButton={false}
+                    showRecenterButton={false}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 text-center">
+                  💡 Click anywhere on the mini-map above to set the zone center pin point.
+                </p>
+
+                {/* Coordinates numeric inputs */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block uppercase font-bold">Center Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={zLat}
+                      onChange={(e) => setZLat(parseFloat(e.target.value) || 22.3590)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block uppercase font-bold">Center Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={zLng}
+                      onChange={(e) => setZLng(parseFloat(e.target.value) || 91.8380)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                {/* Radius Slider */}
+                <div className="pt-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <label className="text-[10px] text-slate-700 uppercase font-black">
+                      Coverage Radius (কভারেজ রেডিয়াস)
+                    </label>
+                    <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-md font-black text-xs">
+                      {zRadiusKm} KM ({zRadiusKm * 1000} Meters)
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="15.0"
+                    step="0.5"
+                    value={zRadiusKm}
+                    onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
+                    className="w-full accent-rose-600 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400">
+                    <span>0.5 KM</span>
+                    <span>5.0 KM</span>
+                    <span>10.0 KM</span>
+                    <span>15.0 KM</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Color Theme Selector */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                  Zone Color Code & Map Pin Accent
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { code: '#E11D48', label: 'Rose' },
+                    { code: '#2563EB', label: 'Blue' },
+                    { code: '#059669', label: 'Emerald' },
+                    { code: '#D97706', label: 'Amber' },
+                    { code: '#7C3AED', label: 'Purple' },
+                    { code: '#0D9488', label: 'Teal' },
+                    { code: '#4F46E5', label: 'Indigo' },
+                    { code: '#EA580C', label: 'Orange' },
+                    { code: '#0891B2', label: 'Cyan' },
+                  ].map((c) => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={() => setZColor(c.code)}
+                      className={`w-7 h-7 rounded-full transition flex items-center justify-center cursor-pointer shadow-xs ${
+                        zColor === c.code ? 'ring-2 ring-slate-900 ring-offset-2 scale-110' : 'hover:scale-105 opacity-80'
+                      }`}
+                      style={{ backgroundColor: c.code }}
+                      title={c.label}
+                    >
+                      {zColor === c.code && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active Toggle */}
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="zoneActiveToggle"
+                  checked={zIsActive}
+                  onChange={(e) => setZIsActive(e.target.checked)}
+                  className="w-4 h-4 text-rose-600 rounded-md focus:ring-rose-500 cursor-pointer"
+                />
+                <label htmlFor="zoneActiveToggle" className="font-bold text-slate-800 text-xs cursor-pointer">
+                  Zone is Active and Accepting Order Dispatches
+                </label>
+              </div>
+
+              <div className="pt-3 flex space-x-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddZoneOpen(false);
+                    setEditingZone(null);
+                  }}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-md"
+                >
+                  {editingZone ? 'Save Changes' : 'Create Zone'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
         MODAL: REGISTER VENDOR
         ========================================================================
       */}
@@ -2408,9 +2751,17 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                   onChange={(e) => setVZone(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 >
-                  {DELIVERY_ZONES.map((zone) => (
-                    <option key={zone} value={zone}>{zone}</option>
-                  ))}
+                  {zones && zones.length > 0 ? (
+                    zones.map((zone) => (
+                      <option key={zone.id} value={zone.name}>
+                        {zone.name} {zone.bn_name ? `(${zone.bn_name})` : ''} ({zone.radius_km || 3} KM)
+                      </option>
+                    ))
+                  ) : (
+                    DELIVERY_ZONES.map((zone) => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -2501,9 +2852,17 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                     onChange={(e) => setRZone(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   >
-                    {DELIVERY_ZONES.map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
+                    {zones && zones.length > 0 ? (
+                      zones.map((zone) => (
+                        <option key={zone.id} value={zone.name}>
+                          {zone.name} {zone.bn_name ? `(${zone.bn_name})` : ''} ({zone.radius_km || 3} KM)
+                        </option>
+                      ))
+                    ) : (
+                      DELIVERY_ZONES.map((zone) => (
+                        <option key={zone} value={zone}>{zone}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 

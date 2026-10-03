@@ -8,8 +8,84 @@ import {
   Order,
   CustomerUser,
   UserAccount,
-  FoodCategory
+  FoodCategory,
+  DeliveryZone
 } from '../types/database';
+
+export const INITIAL_ZONES: DeliveryZone[] = [
+  {
+    id: 'zone-001',
+    name: 'Chawkbazar Zone',
+    bn_name: 'চকবাজার জোন',
+    description: 'Chawkbazar, Parade Square, Chatteshwari, Gani Bakery, DC Hill',
+    center_latitude: 22.3590,
+    center_longitude: 91.8380,
+    radius_km: 2.5,
+    color: '#E11D48', // Rose
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'zone-002',
+    name: 'GEC Zone',
+    bn_name: 'জিইসি জোন',
+    description: 'GEC Circle, CDA Avenue, Dampara, Golpahar, Prabartak Circle',
+    center_latitude: 22.3595,
+    center_longitude: 91.8215,
+    radius_km: 2.5,
+    color: '#2563EB', // Blue
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'zone-003',
+    name: 'Khulshi Zone',
+    bn_name: 'খুলশী জোন',
+    description: 'South Khulshi, North Khulshi, Zakir Hossain Road, Wireless Gate',
+    center_latitude: 22.3650,
+    center_longitude: 91.8150,
+    radius_km: 2.5,
+    color: '#7C3AED', // Purple
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'zone-004',
+    name: 'Agrabad Zone',
+    bn_name: 'আগ্রাবাদ জোন',
+    description: 'Commercial Area, Badamtali, Sheikh Mujib Road, Chowmuhani',
+    center_latitude: 22.3275,
+    center_longitude: 91.8120,
+    radius_km: 3.0,
+    color: '#059669', // Emerald
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'zone-005',
+    name: 'Nasirabad Zone',
+    bn_name: 'নাসিরাবাদ জোন',
+    description: 'Nasirabad Housing, Polytechnic, Baizid Bostami, Sholashahar',
+    center_latitude: 22.3780,
+    center_longitude: 91.8250,
+    radius_km: 3.0,
+    color: '#D97706', // Amber
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'zone-006',
+    name: 'Halishahar Zone',
+    bn_name: 'হালিশহর জোন',
+    description: 'Halishahar Housing Estate, Boropool, Rampur, Block A-L',
+    center_latitude: 22.3350,
+    center_longitude: 91.7850,
+    radius_km: 3.5,
+    color: '#0D9488', // Teal
+    is_active: true,
+    created_at: new Date().toISOString()
+  }
+];
 
 export const INITIAL_FOOD_CATEGORIES: FoodCategory[] = [
   { id: 'cat-1', name: 'Pizza', icon: '🍕', is_active: true, order_index: 1 },

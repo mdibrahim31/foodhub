@@ -12,6 +12,16 @@ export interface MapMarkerItem {
   isDraggable?: boolean;
 }
 
+export interface ZoneOverlayItem {
+  id: string;
+  name: string;
+  bn_name?: string;
+  center: [number, number];
+  radiusKm?: number;
+  color?: string;
+  isActive?: boolean;
+}
+
 interface InteractiveMapProps {
   center: [number, number];
   zoom?: number;
@@ -22,6 +32,9 @@ interface InteractiveMapProps {
     color?: string;
     label?: string;
   };
+  zonesOverlay?: ZoneOverlayItem[];
+  selectedZoneId?: string;
+  onZoneClick?: (zoneId: string) => void;
   onMapClick?: (lat: number, lng: number) => void;
   onMarkerDragEnd?: (id: string, lat: number, lng: number) => void;
   heightClass?: string;
@@ -203,6 +216,39 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       if (radiusCircle.label) {
         circle.bindTooltip(radiusCircle.label, { permanent: true, direction: 'top', className: 'bg-emerald-800 text-white text-xs px-2 py-1 rounded shadow' });
       }
+    }
+
+    // 1B. Draw All Configured Delivery/Rider Zones
+    if (zonesOverlay && Array.isArray(zonesOverlay)) {
+      zonesOverlay.forEach((z) => {
+        const isSelected = selectedZoneId === z.id;
+        const color = z.color || '#E11D48';
+        const radiusMeters = (z.radiusKm || 3.0) * 1000;
+
+        const zoneCircle = L.circle(z.center, {
+          color: color,
+          fillColor: color,
+          fillOpacity: isSelected ? 0.25 : z.isActive === false ? 0.04 : 0.12,
+          weight: isSelected ? 3 : 2,
+          dashArray: isSelected ? undefined : '5, 5',
+          radius: radiusMeters,
+        }).addTo(layerGroup);
+
+        const tooltipText = `${z.name} ${z.bn_name ? `(${z.bn_name})` : ''} • ${z.radiusKm || 3} KM`;
+        zoneCircle.bindTooltip(tooltipText, {
+          permanent: isSelected,
+          direction: 'center',
+          className: `font-bold text-xs px-2.5 py-1 rounded-xl shadow-md border ${
+            isSelected 
+              ? 'bg-slate-900 text-white border-white/50' 
+              : 'bg-white/95 text-slate-800 border-slate-300'
+          }`
+        });
+
+        if (onZoneClick) {
+          zoneCircle.on('click', () => onZoneClick(z.id));
+        }
+      });
     }
 
     // 2. Custom Icons

@@ -17,6 +17,7 @@ import {
 } from '../types/database';
 import { 
   DEFAULT_SETTINGS, 
+  INITIAL_ZONES,
   INITIAL_VENDORS, 
   INITIAL_MENU_ITEMS, 
   INITIAL_ADDRESSES, 
@@ -48,6 +49,13 @@ interface DeliveryContextType {
   setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
   registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
   logoutUser: () => void;
+
+  // Delivery & Rider Zones (Admin Configured Boundary & Map)
+  zones: DeliveryZone[];
+  addZone: (zone: Omit<DeliveryZone, 'id' | 'created_at' | 'updated_at'>) => Promise<DeliveryZone>;
+  updateZone: (id: string, updates: Partial<DeliveryZone>) => Promise<void>;
+  deleteZone: (id: string) => Promise<void>;
+  toggleZoneActive: (id: string) => Promise<void>;
 
   // System Settings
   settings: SystemSettings;
@@ -227,6 +235,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
   });
 
+  const [zones, setZones] = useState<DeliveryZone[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}zones`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return INITIAL_ZONES;
+  });
+
   const [vendors, setVendors] = useState<Vendor[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}vendors`);
     return saved ? JSON.parse(saved) : INITIAL_VENDORS;
@@ -395,6 +418,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 1. Try Supabase if configured
       if (isSupabaseConfigured && supabase) {
         try {
+          const { data: zData, error: zError } = await supabase
+            .from('zones')
+            .select('*')
+            .order('name', { ascending: true });
+          if (!zError && zData && Array.isArray(zData) && zData.length > 0 && isSubscribed) {
+            setZones(zData as DeliveryZone[]);
+          }
+
           const { data: vData, error: vError } = await supabase
             .from('vendors')
             .select('*');
@@ -413,7 +444,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
 
-      // 2. Query backend server database /api/riders for cross-browser synchronization
+      // 2. Query backend server database /api/zones and /api/riders for cross-browser synchronization
+      try {
+        const zRes = await fetch('/api/zones');
+        if (zRes.ok) {
+          const zData = await zRes.json();
+          if (Array.isArray(zData) && zData.length > 0 && isSubscribed) {
+            setZones(zData as DeliveryZone[]);
+          }
+        }
+      } catch {
+        // Ignore offline network error
+      }
+
       try {
         const res = await fetch('/api/riders');
         if (res.ok) {
@@ -556,6 +599,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [menuItems]);
 
   useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}zones`, JSON.stringify(zones));
+  }, [zones]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}settings`, JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(vendors));
+  }, [vendors]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(menuItems));
+  }, [menuItems]);
+
+  useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}food_categories`, JSON.stringify(foodCategories));
   }, [foodCategories]);
 
@@ -586,6 +645,108 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(currentUser));
   }, [currentUser]);
+
+  // -------------------------------------------------------------
+  // RIDERS & DELIVERY ZONES (ADMIN MAP BOUNDARY & CONFIG)
+  // -------------------------------------------------------------
+  const addZone = async (zoneData: Omit<DeliveryZone, 'id' | 'created_at' | 'updated_at'>): Promise<DeliveryZone> => {
+    const newId = `zone-${Date.now()}`;
+    const newZone: DeliveryZone = {
+      ...zoneData,
+      id: newId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    setZones(prev => {
+      const updated = [...prev.filter(z => z.id !== newId && z.name.toLowerCase() !== newZone.name.toLowerCase()), newZone];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}zones`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    try {
+      await fetch('/api/zones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newZone)
+      });
+    } catch (err) {
+      console.warn('API add zone error:', err);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('zones').upsert([newZone]);
+      } catch (err) {
+        console.warn('Supabase add zone error:', err);
+      }
+    }
+
+    return newZone;
+  };
+
+  const updateZone = async (id: string, updates: Partial<DeliveryZone>) => {
+    setZones(prev => {
+      const updated = prev.map(z => z.id === id ? { ...z, ...updates, updated_at: new Date().toISOString() } : z);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}zones`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    try {
+      await fetch(`/api/zones/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch (err) {
+      console.warn('API update zone error:', err);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('zones').update(updates).eq('id', id);
+      } catch (err) {
+        console.warn('Supabase update zone error:', err);
+      }
+    }
+  };
+
+  const deleteZone = async (id: string) => {
+    setZones(prev => {
+      const updated = prev.filter(z => z.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}zones`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    try {
+      await fetch(`/api/zones/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.warn('API delete zone error:', err);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('zones').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase delete zone error:', err);
+      }
+    }
+  };
+
+  const toggleZoneActive = async (id: string) => {
+    const target = zones.find(z => z.id === id);
+    if (!target) return;
+    const nextActive = !target.is_active;
+    await updateZone(id, { is_active: nextActive });
+  };
 
   // Derived current customer
   const currentCustomer = currentUser && currentUser.role === 'customer'
@@ -1991,10 +2152,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // -------------------------------------------------------------
   // STEP 4: INTELLIGENT SINGLE-RIDER PROXIMITY & ZONE DISPATCH ENGINE
-  // User Requirement:
-  // "rider zone registration korar shomoy admin set korbe...
-  // order Ta rider er kace tokoni Dukbe jokon vendor and customer ubhoy tar zone er bhitor thaken..
-  // order random j kono ekjon er kace Dukbe..jodi she reject kore tahole onno joner kace jabe"
+  // Strict User Rule:
+  // "j zone er order she zone er riders der kace jabe onno zone er riders der kace jabe na"
   // -------------------------------------------------------------
   const triggerRiderDispatch = (orderId: string): boolean => {
     const order = orders.find(o => o.id === orderId);
@@ -2003,54 +2162,54 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const vendor = vendors.find(v => v.id === order.vendor_id);
     if (!vendor) return false;
 
-    const orderZone = order.zone || vendor.zone;
+    // Strict Target Zone: Order zone or Vendor zone
+    const targetZone = (order.zone || vendor.zone || '').trim().toLowerCase();
     const rejectedRiderIds = order.rejected_rider_ids || [];
 
-    // Find eligible online riders matching:
-    // 1. Is online
-    // 2. Rider zone matches order/vendor zone
-    // 3. Has not already rejected this order
-    // 4. Distance to vendor is <= match radius (e.g. 1.0 km)
-    const eligibleRiders = riders.filter(r => {
+    // STRICT ZONE MATCHING:
+    // Only riders that belong to the EXACT same zone as the order/vendor!
+    // Riders from other zones are NEVER dispatched this order.
+    const zoneRiders = riders.filter(r => {
       if (!r.is_online || r.is_paused) return false;
+      if (r.is_approved === false) return false;
       if (rejectedRiderIds.includes(r.id)) return false;
-      
-      // Zone match check (if zone is set)
-      if (r.zone && orderZone && r.zone.toLowerCase() !== orderZone.toLowerCase()) {
+
+      const riderZone = (r.zone || '').trim().toLowerCase();
+      // If target zone is set, only match riders in this exact zone!
+      if (targetZone && riderZone !== targetZone) {
         return false;
       }
+      return true;
+    });
 
-      // Proximity distance check
-      const distKm = calculateDistanceKm(
+    if (zoneRiders.length === 0) {
+      console.log(`[Dispatch Engine] No online riders available in zone "${order.zone || vendor.zone || 'Default'}". Waiting for zone riders.`);
+      return false;
+    }
+
+    // Proximity distance check within zone
+    const ridersWithDistance = zoneRiders.map(r => {
+      const dist = calculateDistanceKm(
         vendor.latitude,
         vendor.longitude,
         r.current_latitude,
         r.current_longitude
       );
-
-      return distKm <= (settings.rider_match_radius_km || 1.5);
+      return { rider: r, dist };
     });
 
-    if (eligibleRiders.length === 0) {
-      // Fallback: If no rider within 1km in zone, expand to any online unpaused rider in that zone
-      const zoneRiders = riders.filter(r => r.is_online && !r.is_paused && !rejectedRiderIds.includes(r.id) && (r.zone === orderZone || !r.zone));
-      if (zoneRiders.length === 0) return false;
-      
-      const targetRider = zoneRiders[0];
-      setOrders(prev => prev.map(o => o.id === orderId ? {
-        ...o,
-        dispatched_rider_id: targetRider.id,
-        dispatch_sent_at: new Date().toISOString()
-      } : o));
-      return true;
-    }
+    // Match closest within radius, or closest in zone
+    const matchRadius = settings.rider_match_radius_km || 2.5;
+    const withinRadius = ridersWithDistance.filter(item => item.dist <= matchRadius);
 
-    // Pick one candidate rider
-    const selectedCandidate = eligibleRiders[0];
+    const candidate = withinRadius.length > 0
+      ? withinRadius.sort((a, b) => a.dist - b.dist)[0].rider
+      : ridersWithDistance.sort((a, b) => a.dist - b.dist)[0].rider;
 
     setOrders(prev => prev.map(o => o.id === orderId ? {
       ...o,
-      dispatched_rider_id: selectedCandidate.id,
+      zone: order.zone || vendor.zone,
+      dispatched_rider_id: candidate.id,
       dispatch_sent_at: new Date().toISOString()
     } : o));
 
@@ -2179,6 +2338,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setPasswordForUser,
         registerCustomer,
         logoutUser,
+        zones,
+        addZone,
+        updateZone,
+        deleteZone,
+        toggleZoneActive,
         settings,
         updateSettings,
         vendors,
