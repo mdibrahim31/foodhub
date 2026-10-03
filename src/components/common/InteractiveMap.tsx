@@ -221,11 +221,23 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     // 1B. Draw All Configured Delivery/Rider Zones
     if (zonesOverlay && Array.isArray(zonesOverlay)) {
       zonesOverlay.forEach((z) => {
+        if (
+          !z || 
+          !Array.isArray(z.center) || 
+          z.center.length < 2 || 
+          typeof z.center[0] !== 'number' || 
+          typeof z.center[1] !== 'number' || 
+          isNaN(z.center[0]) || 
+          isNaN(z.center[1])
+        ) {
+          return;
+        }
+
         const isSelected = selectedZoneId === z.id;
         const color = z.color || '#E11D48';
         const radiusMeters = (z.radiusKm || 3.0) * 1000;
 
-        const zoneCircle = L.circle(z.center, {
+        const zoneCircle = L.circle(z.center as [number, number], {
           color: color,
           fillColor: color,
           fillOpacity: isSelected ? 0.25 : z.isActive === false ? 0.04 : 0.12,

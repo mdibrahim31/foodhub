@@ -1470,25 +1470,30 @@ export const AdminPortal: React.FC = () => {
                   center={[22.3590, 91.8380]}
                   zoom={13}
                   heightClass="h-96 w-full"
-                  zonesOverlay={zones.map(z => ({
-                    id: z.id,
-                    name: z.name,
-                    bn_name: z.bn_name,
-                    center: [z.center_latitude || 22.3590, z.center_longitude || 91.8380],
-                    radiusKm: z.radius_km || 3.0,
-                    color: z.color || '#E11D48',
-                    isActive: z.is_active !== false
-                  }))}
+                  zonesOverlay={(zones || [])
+                    .filter(z => z && z.id)
+                    .map(z => ({
+                      id: z.id,
+                      name: z.name || 'Delivery Zone',
+                      bn_name: z.bn_name,
+                      center: [
+                        typeof z.center_latitude === 'number' && !isNaN(z.center_latitude) ? z.center_latitude : 22.3590,
+                        typeof z.center_longitude === 'number' && !isNaN(z.center_longitude) ? z.center_longitude : 91.8380
+                      ],
+                      radiusKm: typeof z.radius_km === 'number' && !isNaN(z.radius_km) ? z.radius_km : 3.0,
+                      color: z.color || '#E11D48',
+                      isActive: z.is_active !== false
+                    }))}
                   selectedZoneId={selectedMapZoneId || undefined}
                   onZoneClick={(zid) => setSelectedMapZoneId(zid)}
-                  markers={riders
-                    .filter(r => r.is_online && !r.is_paused)
+                  markers={(riders || [])
+                    .filter(r => r && r.is_online && !r.is_paused && typeof r.current_latitude === 'number' && typeof r.current_longitude === 'number' && !isNaN(r.current_latitude) && !isNaN(r.current_longitude))
                     .map(r => ({
                       id: r.id,
                       latitude: r.current_latitude,
                       longitude: r.current_longitude,
-                      title: `${r.name} (${r.zone || 'Zone Unassigned'})`,
-                      subtitle: `Phone: ${r.phone} • ${r.vehicle_type}`,
+                      title: `${r.name || 'Rider'} (${r.zone || 'Zone Unassigned'})`,
+                      subtitle: `Phone: ${r.phone || 'N/A'} • ${r.vehicle_type || 'Vehicle'}`,
                       type: 'rider'
                     }))}
                   showControls={true}
@@ -1535,10 +1540,12 @@ export const AdminPortal: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredZones.map(zone => {
-                    const zoneRiders = riders.filter(r => (r.zone || '').trim().toLowerCase() === zone.name.trim().toLowerCase());
-                    const onlineRiders = zoneRiders.filter(r => r.is_online && !r.is_paused);
-                    const zoneVendors = vendors.filter(v => (v.zone || '').trim().toLowerCase() === zone.name.trim().toLowerCase());
+                  {(filteredZones || []).map(zone => {
+                    if (!zone || !zone.id) return null;
+                    const zoneNameClean = (zone.name || '').trim().toLowerCase();
+                    const zoneRiders = (riders || []).filter(r => r && (r.zone || '').trim().toLowerCase() === zoneNameClean);
+                    const onlineRiders = zoneRiders.filter(r => r && r.is_online && !r.is_paused);
+                    const zoneVendors = (vendors || []).filter(v => v && (v.zone || '').trim().toLowerCase() === zoneNameClean);
                     const isSelected = selectedMapZoneId === zone.id;
                     const zoneColor = zone.color || '#E11D48';
 
