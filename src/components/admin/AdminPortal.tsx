@@ -743,28 +743,54 @@ export const AdminPortal: React.FC = () => {
         */}
         {activeTab === 'categories' && (
           <div className="space-y-6">
+            <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-2xl w-fit">
+              <button
+                onClick={() => setCatType('food')}
+                className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
+                  catType === 'food' 
+                    ? 'bg-white text-rose-600 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Food Categories ({foodCategories.filter(c => c.category_type === 'food').length})
+              </button>
+              <button
+                onClick={() => setCatType('grocery')}
+                className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
+                  catType === 'grocery' 
+                    ? 'bg-white text-rose-600 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Grocery Categories ({foodCategories.filter(c => c.category_type === 'grocery').length})
+              </button>
+            </div>
+            
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
                   <ChefHat className="w-5 h-5 text-rose-600" />
-                  <span>Food Categories Slider ({foodCategories.length})</span>
+                  <span>{catType === 'food' ? 'Food' : 'Shop'} Categories Slider</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Manage horizontal slider categories shown on top of the customer app home screen.
+                  Manage horizontal slider categories shown on the customer {catType} home screen.
                 </p>
               </div>
 
               <button
-                onClick={() => setIsAddCategoryOpen(true)}
+                onClick={() => {
+                  setCatType(catType);
+                  setIsAddCategoryOpen(true);
+                }}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition flex items-center space-x-1.5 cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Add Food Category</span>
+                <span>Add {catType === 'food' ? 'Food' : 'Shop'} Category</span>
               </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {foodCategories.map((cat) => (
+              {foodCategories.filter(c => c.category_type === catType).map((cat) => (
                 <div
                   key={cat.id}
                   className={`bg-white border rounded-3xl p-4 flex flex-col items-center text-center justify-between space-y-3 transition shadow-xs hover:shadow-md ${

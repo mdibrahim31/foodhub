@@ -902,7 +902,7 @@ export const CustomerPortal: React.FC = () => {
         <section className="space-y-2 pt-1">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
-              <span>🍕 Food Categories</span>
+              <span>🍕 {activeBottomNav === 'food' ? 'Food Categories' : 'Shop Categories'}</span>
             </h3>
             {activeCuisineFilter !== 'All' && (
               <button 
