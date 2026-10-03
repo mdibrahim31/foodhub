@@ -404,15 +404,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .select('*');
           if (!rError && rData && isSubscribed) {
             const pausedIds = getStoredPausedRiderIds();
+            let pausedIdsChanged = false;
+
             const safeRiders: Rider[] = (rData as Rider[]).map(r => {
-              // Never let remote clobber a paused rider back to active
-              const isPaused = pausedIds.has(r.id) ? true : Boolean(r.is_paused);
+              const remotePaused = Boolean(r.is_paused);
+              if (remotePaused) {
+                if (!pausedIds.has(r.id)) {
+                  pausedIds.add(r.id);
+                  pausedIdsChanged = true;
+                }
+              } else {
+                if (pausedIds.has(r.id)) {
+                  pausedIds.delete(r.id);
+                  pausedIdsChanged = true;
+                }
+              }
+
               return {
                 ...r,
-                is_paused: isPaused,
-                is_online: isPaused ? false : Boolean(r.is_online)
+                is_paused: remotePaused,
+                is_online: remotePaused ? false : Boolean(r.is_online)
               };
             });
+
+            if (pausedIdsChanged) {
+              saveStoredPausedRiderIds(pausedIds);
+            }
+
             setRiders(safeRiders);
             // If current rider is in list, sync currentRider state
             setCurrentRider(prev => {
@@ -443,21 +461,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const pausedIds = getStoredPausedRiderIds();
             if (payload.eventType === 'UPDATE' && payload.new) {
               const rNew = payload.new as Rider;
-              const isPaused = pausedIds.has(rNew.id) ? true : Boolean(rNew.is_paused);
+              const remotePaused = Boolean(rNew.is_paused);
+              if (remotePaused) {
+                pausedIds.add(rNew.id);
+              } else {
+                pausedIds.delete(rNew.id);
+              }
+              saveStoredPausedRiderIds(pausedIds);
               const safeNew: Rider = {
                 ...rNew,
-                is_paused: isPaused,
-                is_online: isPaused ? false : Boolean(rNew.is_online)
+                is_paused: remotePaused,
+                is_online: remotePaused ? false : Boolean(rNew.is_online)
               };
               setRiders(prev => prev.map(r => r.id === safeNew.id ? safeNew : r));
               setCurrentRider(prev => (prev && prev.id === safeNew.id ? { ...prev, ...safeNew } : prev));
             } else if (payload.eventType === 'INSERT' && payload.new) {
               const rNew = payload.new as Rider;
-              const isPaused = pausedIds.has(rNew.id) ? true : Boolean(rNew.is_paused);
+              const remotePaused = Boolean(rNew.is_paused);
+              if (remotePaused) {
+                pausedIds.add(rNew.id);
+              } else {
+                pausedIds.delete(rNew.id);
+              }
+              saveStoredPausedRiderIds(pausedIds);
               const safeNew: Rider = {
                 ...rNew,
-                is_paused: isPaused,
-                is_online: isPaused ? false : Boolean(rNew.is_online)
+                is_paused: remotePaused,
+                is_online: remotePaused ? false : Boolean(rNew.is_online)
               };
               setRiders(prev => [safeNew, ...prev.filter(r => r.id !== safeNew.id)]);
             } else if (payload.eventType === 'DELETE' && payload.old) {
