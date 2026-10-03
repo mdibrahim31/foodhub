@@ -2478,229 +2478,247 @@ export const AdminPortal: React.FC = () => {
         MODAL: CREATE / EDIT DELIVERY & RIDER ZONE
         ========================================================================
       */}
+      {/* 
+        ========================================================================
+        FULLSCREEN VIEW: CREATE / EDIT DELIVERY & RIDER ZONE
+        ========================================================================
+      */}
       {isAddZoneOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in overflow-y-auto">
-          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl my-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2 text-rose-600">
-                <MapPin className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">
-                  {editingZone ? 'Edit Delivery Zone' : 'Create New Delivery Zone'}
-                </h3>
-              </div>
+        <div className="fixed inset-0 z-[60] bg-white flex flex-col animate-in slide-in-from-bottom duration-300">
+          {/* Header Bar */}
+          <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-xs">
+            <div className="flex items-center space-x-3 text-rose-600">
               <button 
                 onClick={() => {
                   setIsAddZoneOpen(false);
                   setEditingZone(null);
-                }} 
-                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                }}
+                className="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition"
               >
-                ✕
+                <ArrowLeft className="w-5 h-5" />
               </button>
-            </div>
-
-            <form onSubmit={handleSaveZoneSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                    Zone Name (English) *
-                  </label>
-                  <input
-                    type="text"
-                    value={zName}
-                    onChange={(e) => setZName(e.target.value)}
-                    placeholder="e.g. Chawkbazar Zone"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                    Bangla Name (বাংলা নাম)
-                  </label>
-                  <input
-                    type="text"
-                    value={zBnName}
-                    onChange={(e) => setZBnName(e.target.value)}
-                    placeholder="e.g. চকবাজার জোন"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                  Description & Key Locations Covered
-                </label>
-                <input
-                  type="text"
-                  value={zDescription}
-                  onChange={(e) => setZDescription(e.target.value)}
-                  placeholder="e.g. Parade Square, Chatteshwari, Gani Bakery, DC Hill"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                />
-              </div>
-
-              {/* Geographic Center Point & Radius on Map */}
-              <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-slate-900 text-[11px] uppercase tracking-wider flex items-center space-x-1.5">
-                    <Crosshair className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Zone Center Coordinates & Boundary</span>
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    {zLat.toFixed(4)}, {zLng.toFixed(4)}
-                  </span>
-                </div>
-
-                {/* Map Preview for Center Location & Radius */}
-                <div className="rounded-xl overflow-hidden border border-slate-200 h-44 w-full">
-                  <InteractiveMap
-                    center={[zLat, zLng]}
-                    zoom={13}
-                    heightClass="h-44 w-full"
-                    radiusCircle={{
-                      center: [zLat, zLng],
-                      radiusMeters: zRadiusKm * 1000,
-                      color: zColor,
-                      label: `${zName || 'Zone'} (${zRadiusKm} KM)`
-                    }}
-                    onMapClick={(lat, lng) => {
-                      setZLat(lat);
-                      setZLng(lng);
-                    }}
-                    showControls={false}
-                    showFullscreenButton={false}
-                    showRecenterButton={false}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-500 text-center">
-                  💡 Click anywhere on the mini-map above to set the zone center pin point.
+              <div>
+                <h3 className="font-black text-slate-900 text-base leading-tight">
+                  {editingZone ? 'Edit Delivery Zone' : 'Create New Delivery Zone'}
+                </h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  Rider Dispatch Boundary Configuration
                 </p>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleSaveZoneSubmit}
+              form="zone-form"
+              className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all active:scale-95"
+            >
+              {editingZone ? 'Update Zone' : 'Save Zone'}
+            </button>
+          </header>
 
-                {/* Coordinates numeric inputs */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div>
-                    <label className="text-[10px] text-slate-500 block uppercase font-bold">Center Latitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={zLat}
-                      onChange={(e) => setZLat(parseFloat(e.target.value) || 22.3590)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
-                    />
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="max-w-4xl mx-auto p-4 sm:p-8">
+              <form id="zone-form" onSubmit={handleSaveZoneSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Left Column: Basic Info */}
+                <div className="space-y-6">
+                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-5">
+                    <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
+                      <Layers className="w-4 h-4 text-rose-600" />
+                      <span>Zone Identity & Details</span>
+                    </h4>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                          Zone Name (English) *
+                        </label>
+                        <input
+                          type="text"
+                          value={zName}
+                          onChange={(e) => setZName(e.target.value)}
+                          placeholder="e.g. Chawkbazar Zone"
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 shadow-xs"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                          Bangla Name (বাংলা নাম)
+                        </label>
+                        <input
+                          type="text"
+                          value={zBnName}
+                          onChange={(e) => setZBnName(e.target.value)}
+                          placeholder="e.g. চকবাজার জোন"
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 shadow-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                          Description & Coverage Areas
+                        </label>
+                        <textarea
+                          value={zDescription}
+                          onChange={(e) => setZDescription(e.target.value)}
+                          placeholder="e.g. Parade Square, Chatteshwari, Gani Bakery, DC Hill"
+                          rows={3}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 shadow-xs resize-none"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 block uppercase font-bold">Center Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={zLng}
-                      onChange={(e) => setZLng(parseFloat(e.target.value) || 91.8380)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
-                    />
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-4">
+                    <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
+                      <Sparkles className="w-4 h-4 text-rose-600" />
+                      <span>Visual Identity</span>
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                        Select Zone Map Color Theme
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        {[
+                          { code: '#E11D48', label: 'Rose' },
+                          { code: '#2563EB', label: 'Blue' },
+                          { code: '#059669', label: 'Emerald' },
+                          { code: '#D97706', label: 'Amber' },
+                          { code: '#7C3AED', label: 'Purple' },
+                          { code: '#0D9488', label: 'Teal' },
+                          { code: '#4F46E5', label: 'Indigo' },
+                          { code: '#EA580C', label: 'Orange' },
+                          { code: '#0891B2', label: 'Cyan' },
+                        ].map((c) => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => setZColor(c.code)}
+                            className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${
+                              zColor === c.code ? 'border-slate-900 scale-110 shadow-md' : 'border-transparent hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: c.code }}
+                            title={c.label}
+                          >
+                            {zColor === c.code && <Check className="w-5 h-5 text-white" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Radius Slider */}
-                <div className="pt-2 space-y-1">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <label className="text-[10px] text-slate-700 uppercase font-black">
-                      Coverage Radius (কভারেজ রেডিয়াস)
-                    </label>
-                    <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-md font-black text-xs">
-                      {zRadiusKm} KM ({zRadiusKm * 1000} Meters)
-                    </span>
+                {/* Right Column: Map & Geometry */}
+                <div className="space-y-6">
+                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
+                        <Crosshair className="w-4 h-4 text-rose-600" />
+                        <span>Geographic Boundary</span>
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg font-mono text-[10px] text-slate-600">
+                          {zLat.toFixed(5)}, {zLng.toFixed(5)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Full Map Picker Interaction */}
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 h-[320px] w-full shadow-inner relative group">
+                        <InteractiveMap
+                          center={[zLat, zLng]}
+                          zoom={13}
+                          heightClass="h-full w-full"
+                          radiusCircle={{
+                            center: [zLat, zLng],
+                            radiusMeters: zRadiusKm * 1000,
+                            color: zColor,
+                            label: `${zName || 'Zone'} Boundary (${zRadiusKm} KM)`
+                          }}
+                          onMapClick={(lat, lng) => {
+                            setZLat(lat);
+                            setZLng(lng);
+                          }}
+                          showControls={true}
+                          showFullscreenButton={false}
+                          showRecenterButton={true}
+                        />
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl pointer-events-none z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Click map to set center point
+                        </div>
+                      </div>
+
+                      {/* Controls */}
+                      <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between text-xs font-black">
+                          <label className="text-[10px] text-slate-700 uppercase tracking-widest">
+                            Coverage Radius (কভারেজ রেডিয়াস)
+                          </label>
+                          <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs shadow-xs">
+                            {zRadiusKm} KM
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="20.0"
+                          step="0.5"
+                          value={zRadiusKm}
+                          onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
+                          <span>0.5 KM</span>
+                          <span>10.0 KM</span>
+                          <span>20.0 KM</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 block uppercase font-bold">Latitude</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={zLat}
+                            onChange={(e) => setZLat(parseFloat(e.target.value) || 22.3590)}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 block uppercase font-bold">Longitude</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={zLng}
+                            onChange={(e) => setZLng(parseFloat(e.target.value) || 91.8380)}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="15.0"
-                    step="0.5"
-                    value={zRadiusKm}
-                    onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
-                    className="w-full accent-rose-600 cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>0.5 KM</span>
-                    <span>5.0 KM</span>
-                    <span>10.0 KM</span>
-                    <span>15.0 KM</span>
+
+                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="text-xs font-black text-amber-950 uppercase">Zone Logic Notice</h5>
+                      <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-1">
+                        Orders placed within this boundary will be routed exclusively to riders registered in this specific zone. Ensure coverage area is sufficient for vendor density.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Color Theme Selector */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                  Zone Color Code & Map Pin Accent
-                </label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
-                    { code: '#E11D48', label: 'Rose' },
-                    { code: '#2563EB', label: 'Blue' },
-                    { code: '#059669', label: 'Emerald' },
-                    { code: '#D97706', label: 'Amber' },
-                    { code: '#7C3AED', label: 'Purple' },
-                    { code: '#0D9488', label: 'Teal' },
-                    { code: '#4F46E5', label: 'Indigo' },
-                    { code: '#EA580C', label: 'Orange' },
-                    { code: '#0891B2', label: 'Cyan' },
-                  ].map((c) => (
-                    <button
-                      key={c.code}
-                      type="button"
-                      onClick={() => setZColor(c.code)}
-                      className={`w-7 h-7 rounded-full transition flex items-center justify-center cursor-pointer shadow-xs ${
-                        zColor === c.code ? 'ring-2 ring-slate-900 ring-offset-2 scale-110' : 'hover:scale-105 opacity-80'
-                      }`}
-                      style={{ backgroundColor: c.code }}
-                      title={c.label}
-                    >
-                      {zColor === c.code && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Active Toggle */}
-              <div className="flex items-center space-x-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="zoneActiveToggle"
-                  checked={zIsActive}
-                  onChange={(e) => setZIsActive(e.target.checked)}
-                  className="w-4 h-4 text-rose-600 rounded-md focus:ring-rose-500 cursor-pointer"
-                />
-                <label htmlFor="zoneActiveToggle" className="font-bold text-slate-800 text-xs cursor-pointer">
-                  Zone is Active and Accepting Order Dispatches
-                </label>
-              </div>
-
-              <div className="pt-3 flex space-x-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddZoneOpen(false);
-                    setEditingZone(null);
-                  }}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-md"
-                >
-                  {editingZone ? 'Save Changes' : 'Create Zone'}
-                </button>
-              </div>
-            </form>
-          </div>
+              </form>
+            </div>
+          </main>
         </div>
       )}
-
       {/* 
         ========================================================================
         MODAL: REGISTER VENDOR
