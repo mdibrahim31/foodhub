@@ -121,6 +121,13 @@ export const AdminPortal: React.FC = () => {
   const [adImageUrl, setAdImageUrl] = useState('https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80');
   const [adTargetVendorId, setAdTargetVendorId] = useState('');
   const [targetVendorSearchQuery, setTargetVendorSearchQuery] = useState('');
+  const [adPortalType, setAdPortalType] = useState<'food' | 'grocery'>('food');
+
+  // Vendor Type State
+  const [vType, setVType] = useState<'restaurant' | 'shop'>('restaurant');
+
+  // Category Type State
+  const [catType, setCatType] = useState<'food' | 'grocery'>('food');
 
   // Search Filters
   const [vendorSearch, setVendorSearch] = useState('');
@@ -332,6 +339,7 @@ export const AdminPortal: React.FC = () => {
       zone: vZone,
       latitude: vLat,
       longitude: vLng,
+      vendor_type: vType,
     });
 
     setIsAddVendorOpen(false);
@@ -444,7 +452,8 @@ export const AdminPortal: React.FC = () => {
       name: catName.trim(),
       icon: catIcon.trim() || '🍕',
       image_url: catImageUrl.trim() || undefined,
-      is_active: true
+      is_active: true,
+      category_type: catType
     });
 
     setIsAddCategoryOpen(false);
@@ -1260,11 +1269,18 @@ export const AdminPortal: React.FC = () => {
                       {/* Live Banner Mockup */}
                       <div className="flex items-center justify-between gap-3">
                         <div className="space-y-1 max-w-[220px]">
-                          <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
-                            ad.is_active ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-700'
-                          }`}>
-                            {ad.is_active ? `● LIVE AD (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
+                              ad.is_active ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-700'
+                            }`}>
+                              {ad.is_active ? `● LIVE AD (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
+                            </span>
+                            <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
+                              ad.is_active ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-700'
+                            }`}>
+                              {ad.portal_type || 'food'}
+                            </span>
+                          </div>
                           <h4 className="font-black text-base sm:text-lg leading-tight tracking-tight">
                             {ad.title}
                           </h4>
@@ -3011,7 +3027,8 @@ export const AdminPortal: React.FC = () => {
                   action_text: adActionText.trim() || 'Redeem now',
                   image_url: adImageUrl.trim(),
                   target_vendor_id: adTargetVendorId || undefined,
-                  is_active: true
+                  is_active: true,
+                  portal_type: adPortalType
                 });
                 setIsAddAdOpen(false);
                 setAdTitle('Welcome back! Enjoy 35% off & free delivery');
@@ -3043,15 +3060,28 @@ export const AdminPortal: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-600">Action Button Text</label>
-                <input
-                  type="text"
-                  value={adActionText}
-                  onChange={(e) => setAdActionText(e.target.value)}
-                  placeholder="e.g. Redeem now"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
-                />
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-slate-600">Action Button Text</label>
+                  <input
+                    type="text"
+                    value={adActionText}
+                    onChange={(e) => setAdActionText(e.target.value)}
+                    placeholder="e.g. Redeem now"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-600">Display on Page *</label>
+                  <select
+                    value={adPortalType}
+                    onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  >
+                    <option value="food">Food Page</option>
+                    <option value="grocery">Grocery Page</option>
+                  </select>
+                </div>
               </div>
 
               {/* Target Restaurant Search & ID Selection Box */}

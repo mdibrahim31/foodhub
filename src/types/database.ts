@@ -69,6 +69,7 @@ export interface Vendor {
   featured_position?: number; // 1 to 5 for ranking in top serial
   is_password_set?: boolean;
   password?: string;
+  vendor_type?: 'restaurant' | 'shop'; // Categorize vendor as restaurant or grocery shop
   created_at?: string;
 }
 
@@ -79,6 +80,7 @@ export interface FoodCategory {
   image_url?: string;
   is_active: boolean;
   order_index?: number;
+  category_type?: 'food' | 'grocery'; // Categorize food or grocery category
 }
 
 export interface AdBanner {
@@ -91,6 +93,7 @@ export interface AdBanner {
   target_category?: string;
   is_active: boolean;
   order_index?: number;
+  portal_type?: 'food' | 'grocery'; // Which portal page to show the banner on
   created_at?: string;
 }
 

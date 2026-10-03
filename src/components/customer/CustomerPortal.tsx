@@ -193,7 +193,7 @@ export const CustomerPortal: React.FC = () => {
   // Hero Carousel Slides & Swipe state
   // Dynamically build slides from Admin Ad Banners & Boosted Vendors
   const activeAdBanners = [...(adBanners || [])]
-    .filter(a => a.is_active)
+    .filter(a => a.is_active && (activeBottomNav === 'food' || activeBottomNav === 'grocery' ? (a.portal_type || 'food') === activeBottomNav : true))
     .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
   const boostedVendors = vendors.filter(v => v.is_boosted);
 
@@ -320,7 +320,15 @@ export const CustomerPortal: React.FC = () => {
       v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRating = !isRating4PlusOnly || v.rating >= 4.0;
     const matchesCuisine = activeCuisineFilter === 'All' || v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase());
-    return matchesSearch && matchesRating && matchesCuisine;
+    
+    // Filter by type: Food page shows restaurants, Grocery page shows shops
+    const matchesType = activeBottomNav === 'food' 
+      ? (v.vendor_type === 'restaurant' || !v.vendor_type) 
+      : activeBottomNav === 'grocery' 
+        ? v.vendor_type === 'shop'
+        : true;
+
+    return matchesSearch && matchesRating && matchesCuisine && matchesType;
   }).sort((a, b) => {
     if (selectedSort === 'rating') return b.rating - a.rating;
     if (selectedSort === 'distance') {
@@ -883,74 +891,7 @@ export const CustomerPortal: React.FC = () => {
       */}
       <main className="max-w-md mx-auto px-4 py-4 space-y-6">
 
-        {/* 
-          ======================================================================
-          TOP ROW (RED MARKED SECTION IN SCREENSHOT):
-          POPULAR BRANDS / TOP RESTAURANTS HORIZONTAL SLIDER
-          - Placed directly below hero carousel as requested by user
-          - Admin can assign 1-5 rank serial from Admin Panel
-          - Sorted primarily by Admin position (1-5), secondarily by Customer Rating
-          - Displays Customer Rating ⭐ under name instead of minutes
-          ======================================================================
-        */}
-        <section className="space-y-2 pt-1">
-          <div className="flex items-center justify-between px-1">
-            <div>
-              <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center space-x-1.5">
-                <span>Popular Brands</span>
-              </h3>
-              <p className="text-[10px] text-slate-500 font-medium">Top picks ranked by rating</p>
-            </div>
-            <span className="text-[10px] text-slate-400 font-semibold">Slide to explore &rarr;</span>
-          </div>
-
-          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none select-none">
-            {[...vendors].sort((a, b) => {
-              const posA = a.featured_position && a.featured_position >= 1 && a.featured_position <= 5 ? a.featured_position : 999;
-              const posB = b.featured_position && b.featured_position >= 1 && b.featured_position <= 5 ? b.featured_position : 999;
-              if (posA !== posB) return posA - posB;
-              return (b.rating || 0) - (a.rating || 0);
-            }).map((v) => {
-              const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
-              const isTop5 = v.featured_position && v.featured_position >= 1 && v.featured_position <= 5;
-              return (
-                <div
-                  key={v.id}
-                  onClick={() => setSelectedVendorForMenu(v)}
-                  className="shrink-0 w-32 bg-white rounded-3xl border border-slate-200 p-3 shadow-xs hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group flex flex-col items-center text-center justify-between space-y-2"
-                >
-                  {/* Logo Container */}
-                  <div className="relative w-20 h-16 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-100 shadow-2xs">
-                    <img 
-                      src={v.cover_image || v.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400'} 
-                      alt={v.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {isTop5 && (
-                      <span className="absolute top-1 left-1 px-1.5 py-0.2 bg-rose-600 text-white font-black text-[8px] rounded-md shadow-2xs">
-                        #{v.featured_position} Top
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Name & Customer Rating Underneath (Minutes replaced by Rating) */}
-                  <div className="w-full space-y-1">
-                    <h4 className="font-extrabold text-xs text-slate-900 truncate leading-tight group-hover:text-orange-600 transition-colors">
-                      {v.name}
-                    </h4>
-                    
-                    {/* Customer Rating Show (Instead of prep minutes) */}
-                    <div className="flex items-center justify-center space-x-1 text-xs font-black text-slate-800 bg-amber-50/80 border border-amber-200/80 rounded-lg py-0.5 px-2 w-fit mx-auto">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
-                      <span>{v.rating || 4.8}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">({distanceKm.toFixed(1)}km)</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        {/* POPULAR BRANDS SECTION - REMOVED AS REQUESTED */}
 
         {/* 
           ======================================================================
@@ -974,7 +915,10 @@ export const CustomerPortal: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none select-none">
-            {foodCategories.filter(cat => cat.is_active !== false).map((cat) => {
+            {foodCategories.filter(cat => 
+              cat.is_active !== false && 
+              (activeBottomNav === 'food' ? (cat.category_type === 'food' || !cat.category_type) : cat.category_type === 'grocery')
+            ).map((cat) => {
               const isSelected = activeCuisineFilter.toLowerCase() === cat.name.toLowerCase();
               return (
                 <button
@@ -1014,29 +958,7 @@ export const CustomerPortal: React.FC = () => {
         
         {/* 7. PROMO BANNER - REMOVED AS REQUESTED */}
 
-        {/* 8. SHOP BY CATEGORY SECTION (Matching Screenshot 4) */}
-        <section className="space-y-3">
-          <h2 className="text-lg font-black text-slate-900 tracking-tight">Shop by category</h2>
-          <div className="grid grid-cols-4 gap-2.5 text-center">
-            {[
-              { name: 'Grocery', icon: '🛍️' },
-              { name: 'Convenience', icon: '🏪' },
-              { name: 'Health & Beauty', icon: '🧴' },
-              { name: 'Pet Shop', icon: '🥣' },
-            ].map((cat) => (
-              <div 
-                key={cat.name}
-                onClick={() => setSearchQuery(cat.name)}
-                className="p-3 bg-white rounded-2xl border border-slate-100 shadow-xs hover:border-orange-400 transition cursor-pointer flex flex-col items-center group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  {cat.icon}
-                </div>
-                <span className="text-xs font-bold text-slate-700 mt-2 line-clamp-1">{cat.name}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* 8. SHOP BY CATEGORY SECTION - REMOVED AS REQUESTED */}
 
         {/* 9. STICKY FILTER CHIPS BAR (Matching Screenshot 4 & 5) */}
         <section className="sticky top-0 z-30 bg-white/95 backdrop-blur-md py-2 flex items-center space-x-2 overflow-x-auto scrollbar-none border-b border-slate-100">
@@ -1080,9 +1002,11 @@ export const CustomerPortal: React.FC = () => {
           </button>
         </section>
 
-        {/* 10. EXPLORE RESTAURANTS NEARBY (Matching Screenshot 4 & 5) */}
+        {/* 10. EXPLORE RESTAURANTS/SHOPS NEARBY (Matching Screenshot 4 & 5) */}
         <section className="space-y-4">
-          <h2 className="text-lg font-black text-slate-900 tracking-tight">Explore restaurants nearby</h2>
+          <h2 className="text-lg font-black text-slate-900 tracking-tight">
+            {activeBottomNav === 'food' ? 'Explore restaurants nearby' : 'Explore shops nearby'}
+          </h2>
 
           <div className="space-y-4">
             {filteredVendors.map((vendor) => {
@@ -1175,45 +1099,54 @@ export const CustomerPortal: React.FC = () => {
             className="flex-1 overflow-y-auto scrollbar-none"
           >
             {/* 1. Header Cover Area */}
-            <div className="relative h-64 overflow-hidden bg-slate-900">
+            <div className="relative h-36 overflow-hidden bg-slate-900">
               <motion.img 
-                style={{ opacity: headerScrollOpacity }}
+                initial={false}
+                animate={{ 
+                  scale: 1 + (1 - headerScrollOpacity) * 0.3,
+                  y: (1 - headerScrollOpacity) * 30,
+                  filter: `brightness(${0.6 + headerScrollOpacity * 0.4})`
+                }}
                 src={selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'} 
                 alt={selectedVendorForMenu.name}
                 className="w-full h-full object-cover"
               />
               
+              {/* Overlay for better readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+
               {/* Top Navigation Overlay (Always Fixed relative to modal) */}
               <div className="absolute top-4 inset-x-4 flex items-center justify-between z-40">
                 <button 
                   onClick={() => setSelectedVendorForMenu(null)}
-                  className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800 active:scale-90 transition-transform"
+                  className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform"
                 >
-                  <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+                  <ArrowLeft className="w-5 h-5 stroke-[3]" />
                 </button>
                 
                 <div className="flex items-center space-x-2">
-                  <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800">
+                  <button className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900">
                     <Info className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={(e) => toggleFavorite(selectedVendorForMenu.id, e)}
-                    className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800"
+                    className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900"
                   >
                     <Heart className={`w-5 h-5 ${favorites.includes(selectedVendorForMenu.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
-                  </button>
-                  <button className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg text-slate-800">
-                    <Share2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Floating Logo */}
+              {/* Floating Logo with Scroll Animation */}
               <motion.div 
-                style={{ scale: headerScrollOpacity, opacity: headerScrollOpacity }}
+                animate={{ 
+                  scale: headerScrollOpacity,
+                  opacity: headerScrollOpacity,
+                  y: (1 - headerScrollOpacity) * 20
+                }}
                 className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
               >
-                <div className="w-20 h-20 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
+                <div className="w-16 h-16 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
                   <img 
                     src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image} 
                     alt="Logo"
