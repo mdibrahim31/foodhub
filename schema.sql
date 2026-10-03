@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS public.riders (
     zone VARCHAR(100) NOT NULL DEFAULT 'Chawkbazar Zone',
     vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
     is_online BOOLEAN DEFAULT false,
+    is_paused BOOLEAN NOT NULL DEFAULT false,
     current_latitude DOUBLE PRECISION,
     current_longitude DOUBLE PRECISION,
     last_location_updated_at TIMESTAMP WITH TIME ZONE,
@@ -139,6 +140,10 @@ CREATE TABLE IF NOT EXISTS public.riders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migration commands for existing database tables
+ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ====================================================================
 -- 9. ORDERS TABLE (Full Cash-On-Delivery & Prep Lifecycle)

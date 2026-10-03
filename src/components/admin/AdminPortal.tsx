@@ -1490,6 +1490,7 @@ CREATE TABLE IF NOT EXISTS public.riders (
     zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
     vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
     is_online BOOLEAN DEFAULT false,
+    is_paused BOOLEAN NOT NULL DEFAULT false,
     current_latitude DOUBLE PRECISION DEFAULT 22.3590,
     current_longitude DOUBLE PRECISION DEFAULT 91.8380,
     last_location_updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
@@ -1500,6 +1501,9 @@ CREATE TABLE IF NOT EXISTS public.riders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Migration for existing table:
+ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`;
                     navigator.clipboard.writeText(sql);
                     alert('✅ SQL copied to clipboard! Paste it into Supabase SQL Editor and click RUN.');
@@ -1511,19 +1515,9 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`;
               </div>
 
               <pre className="bg-slate-900 text-slate-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto">
-{`CREATE TABLE IF NOT EXISTS public.riders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    unique_id VARCHAR(50),
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
-    vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
-    is_online BOOLEAN DEFAULT false,
-    is_password_set BOOLEAN DEFAULT false,
-    password TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
+{`-- Add is_paused column to riders table (Run in Supabase SQL Editor)
+ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               </pre>
             </div>

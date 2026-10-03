@@ -385,11 +385,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Fetch vendors and riders from database on mount & continuously poll every 3.5 seconds
+  // Fetch vendors and riders from database on mount & continuously poll every 2 seconds
   useEffect(() => {
     let isSubscribed = true;
 
     const fetchVendorsAndRiders = async () => {
+      let fetchedRiders: Rider[] | null = null;
+
+      // 1. Try Supabase if configured
       if (isSupabaseConfigured && supabase) {
         try {
           const { data: vData, error: vError } = await supabase
@@ -402,42 +405,64 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const { data: rData, error: rError } = await supabase
             .from('riders')
             .select('*');
-          if (!rError && rData && isSubscribed) {
-            const pausedIds = getStoredPausedRiderIds();
-
-            const safeRiders: Rider[] = (rData as Rider[]).map(r => {
-              // Priority: if explicitly paused in local storage or remote is true
-              const isPaused = pausedIds.has(r.id) || (r.is_paused === true);
-              if (isPaused && !pausedIds.has(r.id)) {
-                pausedIds.add(r.id);
-                saveStoredPausedRiderIds(pausedIds);
-              }
-
-              return {
-                ...r,
-                is_paused: isPaused,
-                is_online: isPaused ? false : Boolean(r.is_online)
-              };
-            });
-
-            setRiders(safeRiders);
-            // If current rider is in list, sync currentRider state
-            setCurrentRider(prev => {
-              if (!prev) return null;
-              const matched = safeRiders.find(r => r.id === prev.id);
-              return matched ? { ...prev, ...matched } : prev;
-            });
+          if (!rError && rData && Array.isArray(rData) && rData.length > 0) {
+            fetchedRiders = rData as Rider[];
           }
         } catch (err) {
-          console.error('Failed to load vendors/riders from database:', err);
+          console.error('Failed to load from Supabase:', err);
         }
+      }
+
+      // 2. Query backend server database /api/riders for cross-browser synchronization
+      try {
+        const res = await fetch('/api/riders');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            // If Supabase didn't provide riders or as fallback, use server database
+            if (!fetchedRiders) {
+              fetchedRiders = data as Rider[];
+            } else {
+              // Merge server paused state if present
+              const serverMap = new Map((data as Rider[]).map(r => [r.id, r]));
+              fetchedRiders = fetchedRiders.map(r => {
+                const sRider = serverMap.get(r.id);
+                if (sRider && sRider.is_paused !== undefined && r.is_paused === undefined) {
+                  return { ...r, is_paused: sRider.is_paused };
+                }
+                return r;
+              });
+            }
+          }
+        }
+      } catch {
+        // Ignore offline network error
+      }
+
+      if (fetchedRiders && isSubscribed) {
+        const safeRiders: Rider[] = fetchedRiders.map(r => {
+          const isPaused = Boolean(r.is_paused);
+          return {
+            ...r,
+            is_paused: isPaused,
+            is_online: isPaused ? false : Boolean(r.is_online)
+          };
+        });
+
+        setRiders(safeRiders);
+        // If current rider is in list, sync currentRider state
+        setCurrentRider(prev => {
+          if (!prev) return null;
+          const matched = safeRiders.find(r => r.id === prev.id);
+          return matched ? { ...prev, ...matched } : prev;
+        });
       }
     };
 
     fetchVendorsAndRiders();
 
-    // 3.5s periodic polling ensures live updates between separate devices/sessions
-    const intervalId = setInterval(fetchVendorsAndRiders, 3500);
+    // 2s periodic polling ensures live updates across separate browsers/devices
+    const intervalId = setInterval(fetchVendorsAndRiders, 2000);
 
     // Also connect to Supabase Realtime channel if available
     let realtimeChannelInstance: any = null;
@@ -447,16 +472,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .channel('public:riders_live_channel')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'riders' }, (payload: any) => {
             if (!isSubscribed) return;
-            const pausedIds = getStoredPausedRiderIds();
             if (payload.eventType === 'UPDATE' && payload.new) {
               const rNew = payload.new as Rider;
               const remotePaused = Boolean(rNew.is_paused);
-              if (remotePaused) {
-                pausedIds.add(rNew.id);
-              } else {
-                pausedIds.delete(rNew.id);
-              }
-              saveStoredPausedRiderIds(pausedIds);
               const safeNew: Rider = {
                 ...rNew,
                 is_paused: remotePaused,
@@ -467,12 +485,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             } else if (payload.eventType === 'INSERT' && payload.new) {
               const rNew = payload.new as Rider;
               const remotePaused = Boolean(rNew.is_paused);
-              if (remotePaused) {
-                pausedIds.add(rNew.id);
-              } else {
-                pausedIds.delete(rNew.id);
-              }
-              saveStoredPausedRiderIds(pausedIds);
               const safeNew: Rider = {
                 ...rNew,
                 is_paused: remotePaused,
@@ -1324,7 +1336,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return { success: true, message: 'Rider profile updated successfully!' };
   };
 
-  const toggleRiderPause = (id: string) => {
+  const toggleRiderPause = async (id: string) => {
     const pausedIds = getStoredPausedRiderIds();
     const currentTarget = riders.find(r => r.id === id);
     const nextPaused = currentTarget ? !currentTarget.is_paused : !pausedIds.has(id);
@@ -1336,6 +1348,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     saveStoredPausedRiderIds(pausedIds);
 
+    // 1. Instant local UI update
     setRiders(prev => {
       const updated = prev.map(r => {
         if (r.id !== id) return r;
@@ -1366,7 +1379,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return prev;
     });
 
-    // Broadcast across all open browser tabs
+    // 2. Broadcast across open browser tabs
     foodiplaceRealtimeChannel?.postMessage({
       type: 'RIDER_UPDATE',
       riderId: id,
@@ -1376,7 +1389,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
-    // Fire storage event to notify all tabs/components in current window
+    // 3. Fire local storage event
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new StorageEvent('storage', {
         key: PAUSED_RIDERS_STORAGE_KEY,
@@ -1384,27 +1397,36 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }));
     }
 
-    // Sync to Supabase
+    // 4. Save to backend database server for cross-browser synchronization
+    try {
+      await fetch(`/api/riders/${encodeURIComponent(id)}/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_paused: nextPaused })
+      });
+    } catch (err) {
+      console.warn('Backend API pause sync error:', err);
+    }
+
+    // 5. Sync to Supabase Postgres database column is_paused
     if (isSupabaseConfigured && supabase) {
       try {
-        supabase
+        const { error } = await supabase
           .from('riders')
           .update({ 
             is_paused: nextPaused,
             is_online: nextPaused ? false : Boolean(currentTarget?.is_online)
           })
-          .eq('id', id)
-          .then(res => {
-            if (res.error) {
-              console.warn('Supabase is_paused update status:', res.error.message);
-            }
-          });
+          .eq('id', id);
+        if (error) {
+          console.warn('Supabase is_paused update status:', error.message);
+        }
       } catch (err) {
         console.warn('Supabase update error:', err);
       }
     }
 
-    // If rider is paused by admin, immediately withdraw any pending order dispatched to them so it never reaches them
+    // 6. If rider is paused by admin, immediately withdraw any pending order dispatched to them
     if (nextPaused) {
       setOrders(prevOrders => {
         let changed = false;
@@ -1659,6 +1681,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
+    // Save live location to backend API
+    try {
+      fetch(`/api/riders/${encodeURIComponent(riderId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_latitude: safeLat,
+          current_longitude: safeLng,
+          last_location_updated_at: nowIso
+        })
+      }).catch(() => {});
+    } catch {}
+
     // Save live location to Supabase database
     if (isSupabaseConfigured && supabase) {
       try {
@@ -1689,9 +1724,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const toggleRiderOnline = async (riderId: string, isOnline: boolean): Promise<boolean> => {
     // If rider is paused by admin, they cannot go online
-    const pausedIds = getStoredPausedRiderIds();
     const target = riders.find(r => r.id === riderId);
-    if ((pausedIds.has(riderId) || target?.is_paused) && isOnline) {
+    if (target?.is_paused && isOnline) {
       return false;
     }
 
@@ -1764,6 +1798,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         })
       }
     });
+
+    // Save online status & location to backend server API
+    try {
+      fetch(`/api/riders/${encodeURIComponent(riderId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_online: isOnline,
+          last_location_updated_at: nowIso,
+          ...(newLat !== undefined && newLng !== undefined ? {
+            current_latitude: newLat,
+            current_longitude: newLng
+          } : {})
+        })
+      }).catch(() => {});
+    } catch {}
 
     // Save online status & location to Supabase database
     if (isSupabaseConfigured && supabase) {
