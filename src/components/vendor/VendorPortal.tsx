@@ -66,7 +66,21 @@ export const VendorPortal: React.FC = () => {
   const [authError, setAuthError] = useState('');
 
   // Navigation & View States
-  const [activeBottomNav, setActiveBottomNav] = useState<'overview' | 'menu' | 'ads' | 'more'>('overview');
+  const [activeBottomNav, setActiveBottomNavState] = useState<'overview' | 'menu' | 'ads' | 'more'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('foodiplace_vendor_tab') as 'overview' | 'menu' | 'ads' | 'more';
+      if (['overview', 'menu', 'ads', 'more'].includes(saved)) return saved;
+    }
+    return 'overview';
+  });
+
+  const setActiveBottomNav = (tab: 'overview' | 'menu' | 'ads' | 'more') => {
+    setActiveBottomNavState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('foodiplace_vendor_tab', tab);
+    }
+  };
+
   const [performancePeriod, setPerformancePeriod] = useState<'Today' | 'Yesterday' | 'This Week'>('Today');
   const [isStoreOnline, setIsStoreOnline] = useState(true);
   const [isStoreSelectorOpen, setIsStoreSelectorOpen] = useState(false);
@@ -131,8 +145,8 @@ export const VendorPortal: React.FC = () => {
 
   if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
-        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
           
           <div className="text-center space-y-2">
             <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-md">

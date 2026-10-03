@@ -35,7 +35,8 @@ import {
   Bike,
   Tag,
   Percent,
-  Flame
+  Flame,
+  ArrowLeft
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -60,17 +61,71 @@ export const CustomerPortal: React.FC = () => {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const [activeBottomNav, setActiveBottomNav] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>('food');
+  // Persistent navigation and views so refreshing never resets to home
+  const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('foodiplace_customer_bottom_nav') as 'food' | 'grocery' | 'offers' | 'carts' | 'account';
+      if (['food', 'grocery', 'offers', 'carts', 'account'].includes(saved)) return saved;
+    }
+    return 'food';
+  });
+
+  const setActiveBottomNav = (nav: 'food' | 'grocery' | 'offers' | 'carts' | 'account') => {
+    setActiveBottomNavState(nav);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('foodiplace_customer_bottom_nav', nav);
+    }
+  };
+
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  // Account Page States (Matching Screenshot_20260930_190517.jpg)
-  const [accountSubView, setAccountSubView] = useState<'none' | 'orders' | 'favourites'>('none');
+
+  // Account Page States
+  const [accountSubView, setAccountSubViewState] = useState<'none' | 'orders' | 'favourites'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('foodiplace_customer_account_subview') as 'none' | 'orders' | 'favourites';
+      if (['none', 'orders', 'favourites'].includes(saved)) return saved;
+    }
+    return 'none';
+  });
+
+  const setAccountSubView = (action: React.SetStateAction<'none' | 'orders' | 'favourites'>) => {
+    setAccountSubViewState(prev => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('foodiplace_customer_account_subview', next);
+      }
+      return next;
+    });
+  };
+
   const [userName, setUserName] = useState('MD');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [customerPhone, setCustomerPhone] = useState('+880 1812-345678');
   const [customerEmail, setCustomerEmail] = useState('md.rahim@example.com');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
-  const [selectedVendorForMenu, setSelectedVendorForMenu] = useState<Vendor | null>(null);
+
+  const [selectedVendorForMenu, setSelectedVendorForMenuState] = useState<Vendor | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('foodiplace_customer_selected_vendor_id');
+      if (savedId) {
+        const found = vendors.find(v => v.id === savedId);
+        if (found) return found;
+      }
+    }
+    return null;
+  });
+
+  const setSelectedVendorForMenu = (v: Vendor | null) => {
+    setSelectedVendorForMenuState(v);
+    if (typeof window !== 'undefined') {
+      if (v) {
+        localStorage.setItem('foodiplace_customer_selected_vendor_id', v.id);
+      } else {
+        localStorage.removeItem('foodiplace_customer_selected_vendor_id');
+      }
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'fastest'>('popular');
   const [isRating4PlusOnly, setIsRating4PlusOnly] = useState(false);
@@ -481,10 +536,19 @@ export const CustomerPortal: React.FC = () => {
             {accountSubView === 'orders' && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-900">Your Orders ({orders.length})</h3>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => setAccountSubView('none')}
+                      className="h-7 w-7 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
+                      title="Back"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                    </button>
+                    <h3 className="text-sm font-black text-slate-900">Your Orders ({orders.length})</h3>
+                  </div>
                   <button 
                     onClick={() => setAccountSubView('none')}
-                    className="text-xs text-orange-600 font-bold"
+                    className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
                   >
                     Hide
                   </button>
@@ -525,10 +589,19 @@ export const CustomerPortal: React.FC = () => {
             {accountSubView === 'favourites' && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-900">Favourites ({favorites.length})</h3>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => setAccountSubView('none')}
+                      className="h-7 w-7 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
+                      title="Back"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                    </button>
+                    <h3 className="text-sm font-black text-slate-900">Favourites ({favorites.length})</h3>
+                  </div>
                   <button 
                     onClick={() => setAccountSubView('none')}
-                    className="text-xs text-orange-600 font-bold"
+                    className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
                   >
                     Hide
                   </button>
@@ -1277,18 +1350,29 @@ export const CustomerPortal: React.FC = () => {
       */}
       {selectedVendorForMenu && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
-            <div className="relative h-36 bg-slate-900">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] border border-slate-200">
+            <div className="relative h-36 bg-slate-100">
               <img 
                 src={selectedVendorForMenu.cover_image} 
                 alt={selectedVendorForMenu.name}
-                className="w-full h-full object-cover opacity-80"
+                className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 bg-linear-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+              {/* Sleek, smaller and beautiful back arrow button */}
               <button 
                 onClick={() => setSelectedVendorForMenu(null)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 text-white flex items-center justify-center text-lg font-bold hover:bg-slate-950"
+                className="absolute top-3 left-3 h-7 w-7 rounded-full bg-white/95 backdrop-blur-md text-slate-700 hover:text-orange-600 flex items-center justify-center shadow-md hover:shadow-lg transition-all cursor-pointer group active:scale-90 border border-slate-200/80 hover:border-orange-300"
+                title="Back to Restaurants"
               >
-                &times;
+                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+              </button>
+
+              <button 
+                onClick={() => setSelectedVendorForMenu(null)}
+                className="absolute top-3 right-3 h-7 w-7 rounded-full bg-white/95 backdrop-blur-md hover:bg-white text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all cursor-pointer border border-slate-200/80 shadow-md active:scale-90"
+                title="Close Window"
+              >
+                <X className="w-3.5 h-3.5" />
               </button>
               <div className="absolute bottom-3 left-4 right-4 text-white">
                 <h3 className="text-lg font-black">{selectedVendorForMenu.name}</h3>

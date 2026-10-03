@@ -25,12 +25,12 @@ class RiderErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-16 h-16 bg-rose-500/20 text-rose-500 rounded-3xl flex items-center justify-center mb-4">
+        <div className="min-h-screen bg-gray-50 text-slate-900 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-4 border border-rose-100">
             <Bike className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold mb-2">Rider App Recovered</h2>
-          <p className="text-xs text-slate-400 max-w-sm mb-4">
+          <h2 className="text-xl font-bold mb-2 text-slate-900">Rider App Recovered</h2>
+          <p className="text-xs text-slate-600 max-w-sm mb-4">
             {this.state.error?.message || 'An error occurred during rider session setup.'}
           </p>
           <button

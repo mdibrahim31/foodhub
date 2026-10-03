@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
@@ -73,7 +73,22 @@ export const AdminPortal: React.FC = () => {
     syncAllToSupabase
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database'>('settings');
+  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('foodiplace_admin_active_tab') as any;
+      if (['settings', 'categories', 'vendors', 'riders', 'orders', 'ads', 'database'].includes(saved)) {
+        return saved;
+      }
+    }
+    return 'settings';
+  });
+
+  const setActiveTab = (tab: 'settings' | 'categories' | 'vendors' | 'riders' | 'orders' | 'ads' | 'database') => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('foodiplace_admin_active_tab', tab);
+    }
+  };
 
   // Supabase Connection State
   const [dbUrlInput, setDbUrlInput] = useState(supabaseConfig.url || '');
@@ -96,10 +111,94 @@ export const AdminPortal: React.FC = () => {
   const [vendorSearch, setVendorSearch] = useState('');
   const [riderSearch, setRiderSearch] = useState('');
 
-  // Selected for Full Profile Modals & Order Inspector
-  const [selectedVendorForProfile, setSelectedVendorForProfile] = useState<Vendor | null>(null);
-  const [selectedRiderForProfile, setSelectedRiderForProfile] = useState<Rider | null>(null);
-  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
+  // Selected for Full Profile Modals & Order Inspector (persisted across page refresh)
+  const [selectedVendorForProfile, setSelectedVendorForProfileState] = useState<Vendor | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('foodiplace_admin_selected_vendor_id');
+      if (savedId) {
+        const found = vendors.find(v => v.id === savedId);
+        if (found) return found;
+      }
+    }
+    return null;
+  });
+
+  const setSelectedVendorForProfile = (action: React.SetStateAction<Vendor | null>) => {
+    setSelectedVendorForProfileState(prev => {
+      const next = typeof action === 'function' ? (action as (p: Vendor | null) => Vendor | null)(prev) : action;
+      if (typeof window !== 'undefined') {
+        if (next) localStorage.setItem('foodiplace_admin_selected_vendor_id', next.id);
+        else localStorage.removeItem('foodiplace_admin_selected_vendor_id');
+      }
+      return next;
+    });
+  };
+
+  const [selectedRiderForProfile, setSelectedRiderForProfileState] = useState<Rider | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('foodiplace_admin_selected_rider_id');
+      if (savedId) {
+        const found = riders.find(r => r.id === savedId);
+        if (found) return found;
+      }
+    }
+    return null;
+  });
+
+  const setSelectedRiderForProfile = (action: React.SetStateAction<Rider | null>) => {
+    setSelectedRiderForProfileState(prev => {
+      const next = typeof action === 'function' ? (action as (p: Rider | null) => Rider | null)(prev) : action;
+      if (typeof window !== 'undefined') {
+        if (next) localStorage.setItem('foodiplace_admin_selected_rider_id', next.id);
+        else localStorage.removeItem('foodiplace_admin_selected_rider_id');
+      }
+      return next;
+    });
+  };
+
+  const [selectedOrderForDetails, setSelectedOrderForDetailsState] = useState<Order | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('foodiplace_admin_selected_order_id');
+      if (savedId) {
+        const found = orders.find(o => o.id === savedId);
+        if (found) return found;
+      }
+    }
+    return null;
+  });
+
+  const setSelectedOrderForDetails = (action: React.SetStateAction<Order | null>) => {
+    setSelectedOrderForDetailsState(prev => {
+      const next = typeof action === 'function' ? (action as (p: Order | null) => Order | null)(prev) : action;
+      if (typeof window !== 'undefined') {
+        if (next) localStorage.setItem('foodiplace_admin_selected_order_id', next.id);
+        else localStorage.removeItem('foodiplace_admin_selected_order_id');
+      }
+      return next;
+    });
+  };
+
+  // Keep detail view states synced when collections are loaded/polled
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedRiderId = localStorage.getItem('foodiplace_admin_selected_rider_id');
+      if (savedRiderId && !selectedRiderForProfile && riders.length > 0) {
+        const found = riders.find(r => r.id === savedRiderId);
+        if (found) setSelectedRiderForProfileState(found);
+      }
+      const savedVendorId = localStorage.getItem('foodiplace_admin_selected_vendor_id');
+      if (savedVendorId && !selectedVendorForProfile && vendors.length > 0) {
+        const found = vendors.find(v => v.id === savedVendorId);
+        if (found) setSelectedVendorForProfileState(found);
+      }
+      const savedOrderId = localStorage.getItem('foodiplace_admin_selected_order_id');
+      if (savedOrderId && !selectedOrderForDetails && orders.length > 0) {
+        const found = orders.find(o => o.id === savedOrderId);
+        if (found) setSelectedOrderForDetailsState(found);
+      }
+    }
+  }, [riders, vendors, orders]);
+
   const [orderFilterTab, setOrderFilterTab] = useState<'active' | 'history'>('active');
 
   // Send Message Modal State
@@ -313,9 +412,9 @@ export const AdminPortal: React.FC = () => {
     });
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 pb-12 font-sans selection:bg-rose-500 selection:text-white">
+    <div className="min-h-screen bg-gray-50 text-slate-900 pb-12 font-sans selection:bg-rose-500 selection:text-white">
       {/* Header Bar */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+      <header className="bg-white text-slate-900 border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-rose-600 rounded-2xl shadow-md text-white">
@@ -323,14 +422,14 @@ export const AdminPortal: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-black text-lg tracking-tight bg-linear-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent">
+                <span className="font-black text-lg tracking-tight bg-linear-to-r from-rose-500 to-pink-600 bg-clip-text text-transparent">
                   foodiplace
                 </span>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-md">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-md">
                   Admin Panel
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
                 Master Control &bull; Vendors, Riders, Live Orders & Rates
               </p>
             </div>
@@ -339,7 +438,7 @@ export const AdminPortal: React.FC = () => {
           <div className="flex items-center space-x-2 text-xs font-bold">
             <a
               href="./"
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition flex items-center space-x-1"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition flex items-center space-x-1 border border-slate-200 cursor-pointer"
             >
               <span>Customer App</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -1477,28 +1576,29 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
         const vendorMenuItems = menuItems.filter(m => m.vendor_id === selectedVendorForProfile.id);
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+          <div className="fixed inset-0 z-50 bg-gray-50 text-slate-900 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
             
             {/* Header Bar with Back Arrow & Boost Vendor Toggle */}
-            <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md">
-              <div className="flex items-center space-x-4">
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <button
                   onClick={() => setSelectedVendorForProfile(null)}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer active:scale-95"
+                  className="h-7 px-2 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-[11px] rounded-lg transition-all duration-150 flex items-center space-x-1 border border-slate-200 hover:border-rose-200 cursor-pointer shadow-2xs active:scale-95 group"
+                  title="Back to Vendors List"
                 >
-                  <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
-                  <span>Back to Vendors List</span>
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                  <span>Back</span>
                 </button>
 
-                <div className="hidden sm:block h-6 w-px bg-slate-800" />
+                <div className="hidden sm:block h-6 w-px bg-slate-200" />
 
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-2xl">
+                  <div className="p-2 bg-orange-50 border border-orange-200 text-orange-600 rounded-2xl">
                     <Store className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="font-black text-white text-base tracking-tight leading-none">{selectedVendorForProfile.name}</h2>
-                    <span className="text-[10px] font-mono font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-md mt-1 inline-block">
+                    <h2 className="font-black text-slate-900 text-base tracking-tight leading-none">{selectedVendorForProfile.name}</h2>
+                    <span className="text-[10px] font-mono font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md mt-1 inline-block">
                       ID: {selectedVendorForProfile.unique_id || selectedVendorForProfile.id}
                     </span>
                   </div>
@@ -1517,19 +1617,19 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                     });
                     setSelectedVendorForProfile(prev => prev ? { ...prev, is_boosted: nextBoosted } : null);
                   }}
-                  className={`px-4 py-2 font-black text-xs rounded-2xl transition flex items-center space-x-2 cursor-pointer shadow-lg active:scale-95 ${
+                  className={`px-3 sm:px-4 py-2 font-black text-xs rounded-2xl transition flex items-center space-x-2 cursor-pointer shadow-xs active:scale-95 ${
                     selectedVendorForProfile.is_boosted 
-                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border border-amber-300 animate-pulse' 
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                      ? 'bg-linear-to-r from-orange-500 to-amber-500 text-white border border-amber-300 shadow-amber-500/20' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                   }`}
                 >
                   <Flame className="w-4 h-4 fill-amber-300 text-amber-300" />
-                  <span>{selectedVendorForProfile.is_boosted ? '🔥 Vendor Boosted (Hero Banner Active)' : 'Boost Vendor (Show in Top Banner)'}</span>
+                  <span>{selectedVendorForProfile.is_boosted ? '🔥 Boosted' : 'Boost Vendor'}</span>
                 </button>
 
                 <button
                   onClick={() => setSelectedVendorForProfile(null)}
-                  className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                   title="Close Window"
                 >
                   <X className="w-5 h-5" />
@@ -1542,37 +1642,37 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               
               {/* Vendor Details Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</span>
-                  <span className="font-mono font-bold text-white text-base">{selectedVendorForProfile.phone}</span>
+                  <span className="font-mono font-bold text-slate-900 text-base">{selectedVendorForProfile.phone}</span>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Operating Zone</span>
-                  <span className="font-extrabold text-rose-400 text-base">{selectedVendorForProfile.zone}</span>
+                  <span className="font-extrabold text-rose-600 text-base">{selectedVendorForProfile.zone}</span>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cuisine Specialty</span>
-                  <span className="font-bold text-white text-base">{selectedVendorForProfile.cuisine}</span>
+                  <span className="font-bold text-slate-900 text-base">{selectedVendorForProfile.cuisine}</span>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rating & Prep Time</span>
-                  <span className="font-black text-amber-400 text-base">⭐ {selectedVendorForProfile.rating} &bull; {selectedVendorForProfile.estimated_prep_time_minutes} mins</span>
+                  <span className="font-black text-amber-600 text-base">⭐ {selectedVendorForProfile.rating} &bull; {selectedVendorForProfile.estimated_prep_time_minutes} mins</span>
                 </div>
               </div>
 
               {/* Popular Serial & Address */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Address</span>
-                  <p className="text-white text-xs font-bold">{selectedVendorForProfile.address}</p>
+                  <p className="text-slate-900 text-xs font-bold">{selectedVendorForProfile.address}</p>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl flex items-center justify-between">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider block">Popular Brands Ranking (1-5 Serial)</span>
+                    <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider block">Popular Brands Ranking (1-5 Serial)</span>
                     <p className="text-slate-400 text-[11px]">Controls order in home page Popular Brands slider</p>
                   </div>
                   <select
@@ -1582,7 +1682,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                       updateVendor(selectedVendorForProfile.id, { featured_position: pos > 0 ? pos : undefined });
                       setSelectedVendorForProfile(prev => prev ? { ...prev, featured_position: pos > 0 ? pos : undefined } : null);
                     }}
-                    className="bg-slate-900 border border-orange-500/40 rounded-xl px-3 py-1.5 font-bold text-orange-400 text-xs focus:outline-hidden cursor-pointer"
+                    className="bg-white border border-orange-300 rounded-xl px-3 py-1.5 font-bold text-orange-600 text-xs focus:outline-hidden cursor-pointer"
                   >
                     <option value={0}>Default (Sorted by Rating)</option>
                     <option value={1}>#1 Serial (Top 1)</option>
@@ -1596,15 +1696,15 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
 
               {/* Boost Customization Panel (if boosted) */}
               {selectedVendorForProfile.is_boosted && (
-                <div className="bg-gradient-to-r from-orange-950/60 to-amber-950/60 border border-orange-500/40 p-5 rounded-3xl space-y-3">
-                  <div className="flex items-center space-x-2 text-orange-400">
-                    <Flame className="w-5 h-5 fill-orange-400" />
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 p-5 rounded-2xl shadow-xs space-y-3">
+                  <div className="flex items-center space-x-2 text-orange-600">
+                    <Flame className="w-5 h-5 fill-orange-500" />
                     <h3 className="font-black text-sm uppercase tracking-wider">Top Banner Boost Customization</h3>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div className="space-y-1">
-                      <label className="text-[10px] text-orange-300 font-bold uppercase">Banner Offer Heading Title:</label>
+                      <label className="text-[10px] text-orange-800 font-bold uppercase">Banner Offer Heading Title:</label>
                       <input
                         type="text"
                         value={selectedVendorForProfile.boost_banner_title || ''}
@@ -1614,12 +1714,12 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                           setSelectedVendorForProfile(prev => prev ? { ...prev, boost_banner_title: val } : null);
                         }}
                         placeholder="e.g. Welcome back! Enjoy 35% off & free delivery"
-                        className="w-full bg-slate-900 border border-orange-500/30 rounded-xl px-3 py-2 text-white font-bold focus:outline-hidden focus:border-orange-500"
+                        className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:outline-hidden focus:border-orange-500"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] text-orange-300 font-bold uppercase">Banner Subtitle / Offer Details:</label>
+                      <label className="text-[10px] text-orange-800 font-bold uppercase">Banner Subtitle / Offer Details:</label>
                       <input
                         type="text"
                         value={selectedVendorForProfile.boost_banner_subtitle || ''}
@@ -1629,7 +1729,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                           setSelectedVendorForProfile(prev => prev ? { ...prev, boost_banner_subtitle: val } : null);
                         }}
                         placeholder="e.g. Special discounts on all menu items"
-                        className="w-full bg-slate-900 border border-orange-500/30 rounded-xl px-3 py-2 text-white font-bold focus:outline-hidden focus:border-orange-500"
+                        className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:outline-hidden focus:border-orange-500"
                       />
                     </div>
                   </div>
@@ -1637,16 +1737,16 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               )}
 
               {/* Vendor Food Menu List */}
-              <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black text-white text-base flex items-center space-x-2">
-                    <UtensilsCrossed className="w-5 h-5 text-orange-400" />
+                  <h3 className="font-black text-slate-900 text-base flex items-center space-x-2">
+                    <UtensilsCrossed className="w-5 h-5 text-orange-500" />
                     <span>Restaurant Food Menu ({vendorMenuItems.length} Items)</span>
                   </h3>
                 </div>
 
                 {vendorMenuItems.length === 0 ? (
-                  <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-dashed border-slate-700 text-slate-400 font-bold text-xs">
+                  <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold text-xs">
                     No menu items added for this restaurant yet.
                   </div>
                 ) : (
@@ -1654,24 +1754,24 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                     {vendorMenuItems.map((item) => (
                       <div 
                         key={item.id} 
-                        className="bg-slate-900 border border-slate-700/80 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs"
+                        className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs hover:border-slate-300 transition"
                       >
                         <img 
                           src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'} 
                           alt={item.name}
-                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-800"
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-200"
                         />
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-black text-white text-xs truncate">{item.name}</h4>
-                          <span className="text-[10px] text-slate-400 block">{item.category}</span>
-                          <span className="text-emerald-400 font-mono font-black text-xs block">৳{item.price}</span>
+                          <h4 className="font-black text-slate-900 text-xs truncate">{item.name}</h4>
+                          <span className="text-[10px] text-slate-500 block">{item.category}</span>
+                          <span className="text-emerald-600 font-mono font-black text-xs block">৳{item.price}</span>
                           
                           <button
                             onClick={() => toggleMenuItemAvailability(item.id)}
                             className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold cursor-pointer transition ${
                               item.is_available 
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                : 'bg-red-50 text-red-700 border border-red-200'
                             }`}
                           >
                             {item.is_available ? 'Available' : 'Sold Out'}
@@ -1702,30 +1802,31 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
         const isPaused = Boolean(rider.is_paused);
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+          <div className="fixed inset-0 z-50 bg-gray-50 text-slate-900 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
             
-            {/* Top Fullscreen Header with Back Arrow Button */}
-            <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md">
-              <div className="flex items-center space-x-4">
+            {/* Top Fullscreen Header with Sleek Back Arrow Button */}
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <button
                   onClick={() => setSelectedRiderForProfile(null)}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer shadow-xs active:scale-95"
+                  className="h-7 px-2 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-[11px] rounded-lg transition-all duration-150 flex items-center space-x-1 border border-slate-200 hover:border-rose-200 cursor-pointer shadow-2xs active:scale-95 group"
+                  title="Back to Admin Panel"
                 >
-                  <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
-                  <span>Back to Admin Panel</span>
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                  <span>Back</span>
                 </button>
 
-                <div className="hidden sm:block h-6 w-px bg-slate-800" />
+                <div className="hidden sm:block h-6 w-px bg-slate-200" />
 
                 <div className="flex items-center space-x-3">
                   <img
                     src={rider.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
                     alt={rider.name}
-                    className="w-10 h-10 rounded-2xl object-cover border border-rose-500/40 shadow-xs"
+                    className="w-10 h-10 rounded-2xl object-cover border border-rose-200 shadow-xs"
                   />
                   <div>
-                    <h2 className="font-black text-white text-base tracking-tight leading-none">{rider.name}</h2>
-                    <span className="text-[10px] font-mono font-bold text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-md mt-1 inline-block">
+                    <h2 className="font-black text-slate-900 text-base tracking-tight leading-none">{rider.name}</h2>
+                    <span className="text-[10px] font-mono font-bold text-pink-600 bg-pink-50 border border-pink-200 px-2 py-0.5 rounded-md mt-1 inline-block">
                       ID: {rider.unique_id || rider.id}
                     </span>
                   </div>
@@ -1735,13 +1836,13 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               <div className="flex items-center space-x-3">
                 <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase flex items-center space-x-1.5 ${
                   isPaused 
-                    ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200' 
                     : isOnline 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-xs shadow-emerald-500/20' 
-                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs shadow-emerald-500/20' 
+                    : 'bg-slate-100 text-slate-600 border border-slate-200'
                 }`}>
                   {isOnline && !isPaused && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
                   )}
                   <span>
                     {isPaused ? 'PAUSED BY ADMIN' : isOnline ? 'ONLINE ON DUTY' : 'OFFLINE'}
@@ -1750,7 +1851,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
 
                 <button
                   onClick={() => setSelectedRiderForProfile(null)}
-                  className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                   title="Close Window"
                 >
                   <X className="w-5 h-5" />
@@ -1763,39 +1864,39 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               
               {/* Overview Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</span>
-                  <span className="font-mono font-bold text-white text-base">{rider.phone}</span>
+                  <span className="font-mono font-bold text-slate-900 text-base">{rider.phone}</span>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Primary Zone</span>
-                  <span className="font-extrabold text-pink-400 text-base">{rider.zone}</span>
+                  <span className="font-extrabold text-pink-600 text-base">{rider.zone}</span>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vehicle Type</span>
-                  <span className="font-bold text-white text-base">{rider.vehicle_type}</span>
+                  <span className="font-bold text-slate-900 text-base">{rider.vehicle_type}</span>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Float Cash Held (COD)</span>
-                  <span className="font-mono font-black text-emerald-400 text-lg">৳{Number(rider.cash_in_hand || 0).toFixed(2)}</span>
+                  <span className="font-mono font-black text-emerald-600 text-lg">৳{Number(rider.cash_in_hand || 0).toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Address & Status Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Home Address Base</span>
-                  <p className="font-bold text-white text-sm">{rider.home_address || 'Chittagong'}</p>
+                  <p className="font-bold text-slate-900 text-sm">{rider.home_address || 'Chittagong'}</p>
                 </div>
 
-                <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-1">
+                <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Last GPS Beacon</span>
-                  <p className="font-bold text-white text-sm">
+                  <p className="font-bold text-slate-900 text-sm">
                     {rider.last_location_updated_at ? (
-                      <span className="text-emerald-400">
+                      <span className="text-emerald-600">
                         {new Date(rider.last_location_updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (Updated)
                       </span>
                     ) : (
@@ -1806,21 +1907,21 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               </div>
 
               {/* Live Location Map Section */}
-              <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <div>
-                    <h3 className="font-black text-white text-base flex items-center space-x-2">
+                    <h3 className="font-black text-slate-900 text-base flex items-center space-x-2">
                       <MapPin className="w-5 h-5 text-rose-500 animate-bounce" />
                       <span>Rider Live GPS Tracking Map</span>
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                    <p className="text-xs text-slate-500 mt-0.5 font-mono">
                       Current Coordinates: Lat {lat.toFixed(4)}, Lng {lng.toFixed(4)}
                     </p>
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
-                      isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-300'
+                      isOnline ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
                     }`}>
                       {isOnline ? '● Live Location Active' : '○ Rider Offline'}
                     </span>
@@ -1828,7 +1929,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                 </div>
 
                 {/* Fullscreen & Interactive Map Box */}
-                <div className="rounded-2xl overflow-hidden border border-slate-700 shadow-xl bg-slate-900">
+                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
                   <InteractiveMap
                     center={[lat, lng]}
                     zoom={16}
@@ -1903,29 +2004,30 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
           : [selectedOrderForDetails.delivery_latitude, selectedOrderForDetails.delivery_longitude];
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+          <div className="fixed inset-0 z-50 bg-gray-50 text-slate-900 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
             
-            {/* Top Header */}
-            <header className="bg-black/90 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg backdrop-blur-md">
-              <div className="flex items-center space-x-4">
+            {/* Top Header with Sleek Back Arrow Button */}
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <button
                   onClick={() => setSelectedOrderForDetails(null)}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer active:scale-95"
+                  className="h-7 px-2 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-[11px] rounded-lg transition-all duration-150 flex items-center space-x-1 border border-slate-200 hover:border-rose-200 cursor-pointer shadow-2xs active:scale-95 group"
+                  title="Back to Orders Stream"
                 >
-                  <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
-                  <span>Back to Orders Stream</span>
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                  <span>Back</span>
                 </button>
 
-                <div className="hidden sm:block h-6 w-px bg-slate-800" />
+                <div className="hidden sm:block h-6 w-px bg-slate-200" />
 
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono font-black text-rose-500 text-base">{selectedOrderForDetails.order_code}</span>
+                    <span className="font-mono font-black text-rose-600 text-base">{selectedOrderForDetails.order_code}</span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       {new Date(selectedOrderForDetails.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 font-bold truncate">
+                  <p className="text-xs text-slate-600 font-bold truncate">
                     {ordVendor?.name || 'Restaurant'} &bull; {selectedOrderForDetails.customer_name}
                   </p>
                 </div>
@@ -1933,8 +2035,8 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
 
               <div className="flex items-center space-x-3">
                 {/* Admin Order Status Override Dropdown */}
-                <div className="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded-2xl px-3 py-1 text-xs">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase hidden md:inline">Status:</span>
+                <div className="flex items-center space-x-1 bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase hidden md:inline">Status:</span>
                   <select
                     value={selectedOrderForDetails.status}
                     onChange={(e) => {
@@ -1942,22 +2044,22 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                       updateOrderStatus(selectedOrderForDetails.id, newStatus);
                       setSelectedOrderForDetails(prev => prev ? { ...prev, status: newStatus } : null);
                     }}
-                    className="bg-transparent text-emerald-400 font-black text-xs focus:outline-hidden cursor-pointer"
+                    className="bg-transparent text-slate-900 font-black text-xs focus:outline-hidden cursor-pointer"
                   >
-                    <option value="pending" className="bg-slate-900 text-amber-400">PENDING</option>
-                    <option value="vendor_accepted" className="bg-slate-900 text-blue-400">VENDOR ACCEPTED</option>
-                    <option value="food_preparing" className="bg-slate-900 text-orange-400">KITCHEN PREPARING</option>
-                    <option value="ready_for_pickup" className="bg-slate-900 text-yellow-400">READY FOR PICKUP</option>
-                    <option value="rider_assigned" className="bg-slate-900 text-purple-400">RIDER ASSIGNED</option>
-                    <option value="rider_on_way_to_customer" className="bg-slate-900 text-cyan-400">ON THE WAY</option>
-                    <option value="delivered" className="bg-slate-900 text-emerald-400">DELIVERED</option>
-                    <option value="cancelled" className="bg-slate-900 text-red-400">CANCELLED</option>
+                    <option value="pending" className="bg-white text-amber-600">PENDING</option>
+                    <option value="vendor_accepted" className="bg-white text-blue-600">VENDOR ACCEPTED</option>
+                    <option value="food_preparing" className="bg-white text-orange-600">KITCHEN PREPARING</option>
+                    <option value="ready_for_pickup" className="bg-white text-yellow-600">READY FOR PICKUP</option>
+                    <option value="rider_assigned" className="bg-white text-purple-600">RIDER ASSIGNED</option>
+                    <option value="rider_on_way_to_customer" className="bg-white text-cyan-600">ON THE WAY</option>
+                    <option value="delivered" className="bg-white text-emerald-600">DELIVERED</option>
+                    <option value="cancelled" className="bg-white text-red-600">CANCELLED</option>
                   </select>
                 </div>
 
                 <button
                   onClick={() => setSelectedOrderForDetails(null)}
-                  className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                   title="Close Inspector"
                 >
                   <X className="w-5 h-5" />
@@ -1972,69 +2074,69 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 
                 {/* 1. Customer Details */}
-                <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
-                  <div className="flex items-center space-x-2 text-blue-400 border-b border-slate-800 pb-2.5">
+                <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-3">
+                  <div className="flex items-center space-x-2 text-blue-600 border-b border-slate-100 pb-2.5">
                     <User className="w-4 h-4" />
                     <h3 className="font-extrabold text-sm uppercase tracking-wider">Customer Details</h3>
                   </div>
                   <div className="space-y-1.5 text-xs font-bold">
-                    <p className="text-white text-sm font-black">{selectedOrderForDetails.customer_name}</p>
-                    <div className="flex items-center space-x-2 text-slate-300">
-                      <Phone className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="font-mono text-sm text-emerald-400">{selectedOrderForDetails.customer_phone}</span>
+                    <p className="text-slate-900 text-sm font-black">{selectedOrderForDetails.customer_name}</p>
+                    <div className="flex items-center space-x-2 text-slate-600">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-mono text-sm text-emerald-600">{selectedOrderForDetails.customer_phone}</span>
                     </div>
-                    <div className="flex items-start space-x-2 text-slate-300">
-                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                    <div className="flex items-start space-x-2 text-slate-600">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                       <span>{selectedOrderForDetails.delivery_address}</span>
                     </div>
-                    <span className="inline-block px-2.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md text-[10px] font-mono">
+                    <span className="inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-mono">
                       Zone: {selectedOrderForDetails.zone || 'Chawkbazar Zone'}
                     </span>
                   </div>
                 </div>
 
                 {/* 2. Vendor / Restaurant Details */}
-                <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
-                  <div className="flex items-center space-x-2 text-orange-400 border-b border-slate-800 pb-2.5">
+                <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-3">
+                  <div className="flex items-center space-x-2 text-orange-600 border-b border-slate-100 pb-2.5">
                     <Store className="w-4 h-4" />
                     <h3 className="font-extrabold text-sm uppercase tracking-wider">Vendor Details</h3>
                   </div>
                   <div className="space-y-1.5 text-xs font-bold">
-                    <p className="text-white text-sm font-black">{ordVendor?.name || 'Restaurant'}</p>
-                    <div className="flex items-center space-x-2 text-slate-300">
-                      <Phone className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="font-mono text-sm text-emerald-400">{ordVendor?.phone || 'N/A'}</span>
+                    <p className="text-slate-900 text-sm font-black">{ordVendor?.name || 'Restaurant'}</p>
+                    <div className="flex items-center space-x-2 text-slate-600">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-mono text-sm text-emerald-600">{ordVendor?.phone || 'N/A'}</span>
                     </div>
-                    <p className="text-slate-400 text-[11px]">{ordVendor?.cuisine}</p>
-                    <p className="text-slate-300 text-[11px] truncate">{ordVendor?.address}</p>
+                    <p className="text-slate-500 text-[11px]">{ordVendor?.cuisine}</p>
+                    <p className="text-slate-600 text-[11px] truncate">{ordVendor?.address}</p>
                   </div>
                 </div>
 
                 {/* 3. Assigned Rider Details */}
-                <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
-                  <div className="flex items-center space-x-2 text-pink-400 border-b border-slate-800 pb-2.5">
+                <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-3">
+                  <div className="flex items-center space-x-2 text-pink-600 border-b border-slate-100 pb-2.5">
                     <Bike className="w-4 h-4" />
                     <h3 className="font-extrabold text-sm uppercase tracking-wider">Assigned Rider Details</h3>
                   </div>
                   {ordRider ? (
                     <div className="space-y-1.5 text-xs font-bold">
                       <div className="flex items-center justify-between">
-                        <p className="text-white text-sm font-black">{ordRider.name}</p>
-                        <span className="px-2 py-0.5 bg-pink-500/10 text-pink-400 border border-pink-500/20 text-[10px] font-mono rounded-md">
+                        <p className="text-slate-900 text-sm font-black">{ordRider.name}</p>
+                        <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-mono rounded-md">
                           {ordRider.unique_id || 'RDR-2001'}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2 text-slate-300">
-                        <Phone className="w-3.5 h-3.5 text-slate-500" />
-                        <span className="font-mono text-sm text-emerald-400">{ordRider.phone}</span>
+                      <div className="flex items-center space-x-2 text-slate-600">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-mono text-sm text-emerald-600">{ordRider.phone}</span>
                       </div>
-                      <p className="text-slate-300 text-[11px]">Vehicle: {ordRider.vehicle_type} &bull; Zone: {ordRider.zone}</p>
-                      <p className="text-emerald-400 font-mono text-[11px]">Float Cash Held: ৳{ordRider.cash_in_hand}</p>
+                      <p className="text-slate-600 text-[11px]">Vehicle: {ordRider.vehicle_type} &bull; Zone: {ordRider.zone}</p>
+                      <p className="text-emerald-600 font-mono text-[11px]">Float Cash Held: ৳{ordRider.cash_in_hand}</p>
                     </div>
                   ) : (
-                    <div className="p-3 bg-slate-800/60 rounded-2xl text-slate-400 font-bold text-xs text-center space-y-1">
+                    <div className="p-3 bg-slate-50 rounded-2xl text-slate-500 font-bold text-xs text-center space-y-1 border border-slate-200">
                       <p>No rider assigned yet.</p>
-                      <p className="text-[10px] text-amber-400">Dispatch system searching proximity riders within 1 km radius...</p>
+                      <p className="text-[10px] text-amber-600">Dispatch system searching proximity riders within 1 km radius...</p>
                     </div>
                   )}
                 </div>
@@ -2042,9 +2144,9 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               </div>
 
               {/* Food Items & Pricing Breakup Table */}
-              <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-4">
-                <h3 className="font-black text-white text-base flex items-center space-x-2">
-                  <Banknote className="w-5 h-5 text-emerald-400" />
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-4">
+                <h3 className="font-black text-slate-900 text-base flex items-center space-x-2">
+                  <Banknote className="w-5 h-5 text-emerald-600" />
                   <span>Order Items & Pricing Financial Breakup</span>
                 </h3>
 
@@ -2052,20 +2154,20 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs font-bold">
                     <thead>
-                      <tr className="bg-slate-800 text-slate-400 uppercase text-[10px]">
+                      <tr className="bg-slate-50 text-slate-600 uppercase text-[10px] border-b border-slate-200">
                         <th className="p-3 rounded-l-xl">Food Item Name</th>
                         <th className="p-3">Quantity</th>
                         <th className="p-3">Unit Price</th>
                         <th className="p-3 text-right rounded-r-xl">Subtotal</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800 text-slate-200">
+                    <tbody className="divide-y divide-slate-100 text-slate-800">
                       {(selectedOrderForDetails.items || []).map((itm, idx) => (
-                        <tr key={idx}>
-                          <td className="p-3 font-extrabold text-white">{itm.item_name}</td>
-                          <td className="p-3 font-mono text-rose-400 font-black">x{itm.quantity}</td>
+                        <tr key={idx} className="hover:bg-slate-50/50 transition">
+                          <td className="p-3 font-extrabold text-slate-900">{itm.item_name}</td>
+                          <td className="p-3 font-mono text-rose-600 font-black">x{itm.quantity}</td>
                           <td className="p-3 font-mono">৳{itm.item_price}</td>
-                          <td className="p-3 font-mono text-right text-emerald-400 font-black">৳{itm.subtotal || (itm.item_price * itm.quantity)}</td>
+                          <td className="p-3 font-mono text-right text-emerald-600 font-black">৳{itm.subtotal || (itm.item_price * itm.quantity)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2073,39 +2175,39 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                 </div>
 
                 {/* Price Breakdown Footer */}
-                <div className="bg-black/60 p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-slate-400 uppercase block">Food Items Subtotal</span>
-                    <span className="text-white font-mono text-base font-black">৳{selectedOrderForDetails.food_total}</span>
+                    <span className="text-[10px] text-slate-500 uppercase block">Food Items Subtotal</span>
+                    <span className="text-slate-900 font-mono text-base font-black">৳{selectedOrderForDetails.food_total}</span>
                   </div>
 
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-slate-400 uppercase block">Distance Delivery Fee ({selectedOrderForDetails.delivery_distance_km.toFixed(1)} km)</span>
-                    <span className="text-rose-400 font-mono text-base font-black">৳{selectedOrderForDetails.delivery_fee}</span>
+                    <span className="text-[10px] text-slate-500 uppercase block">Distance Delivery Fee ({selectedOrderForDetails.delivery_distance_km.toFixed(1)} km)</span>
+                    <span className="text-rose-600 font-mono text-base font-black">৳{selectedOrderForDetails.delivery_fee}</span>
                   </div>
 
-                  <div className="space-y-0.5 bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-500/30">
-                    <span className="text-[10px] text-emerald-300 uppercase block">Total Payable Cash (COD)</span>
-                    <span className="text-emerald-400 font-mono text-xl font-black">৳{selectedOrderForDetails.total_cash_payable}</span>
+                  <div className="space-y-0.5 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                    <span className="text-[10px] text-emerald-800 uppercase block">Total Payable Cash (COD)</span>
+                    <span className="text-emerald-700 font-mono text-xl font-black">৳{selectedOrderForDetails.total_cash_payable}</span>
                   </div>
                 </div>
               </div>
 
               {/* Live Location Map (Vendor, Customer, Rider) */}
-              <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl space-y-3">
+              <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs space-y-3">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <div>
-                    <h3 className="font-black text-white text-base flex items-center space-x-2">
+                    <h3 className="font-black text-slate-900 text-base flex items-center space-x-2">
                       <MapPin className="w-5 h-5 text-rose-500 animate-bounce" />
                       <span>Live Order GPS Dispatch Map</span>
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Showing Vendor Pickup 🏪, Customer Address 🏠, and Live Rider 🛵 Pin Point.
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-black">
+                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
                   <InteractiveMap
                     center={initialCenter}
                     zoom={15}

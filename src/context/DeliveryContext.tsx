@@ -166,6 +166,28 @@ interface DeliveryContextType {
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
 const STORAGE_KEY_PREFIX = 'foodvibe_v3_';
+const PAUSED_RIDERS_STORAGE_KEY = `${STORAGE_KEY_PREFIX}paused_rider_ids`;
+
+export const getStoredPausedRiderIds = (): Set<string> => {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(PAUSED_RIDERS_STORAGE_KEY) : null;
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+};
+
+export const saveStoredPausedRiderIds = (ids: Set<string>) => {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(PAUSED_RIDERS_STORAGE_KEY, JSON.stringify(Array.from(ids)));
+    }
+  } catch (e) {
+    console.warn('Failed to save paused rider IDs to storage:', e);
+  }
+};
 
 const foodiplaceRealtimeChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
   ? new BroadcastChannel('foodiplace_realtime_sync')
@@ -173,11 +195,32 @@ const foodiplaceRealtimeChannel = typeof window !== 'undefined' && 'BroadcastCha
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Core State
-  const [role, setRole] = useState<PortalRole>(() => {
-    const hash = window.location.hash.replace('#', '') as PortalRole;
-    if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) return hash;
+  // Persistent Role: checks URL hash, query param, and localStorage so refreshing never resets to home
+  const [role, setRoleState] = useState<PortalRole>(() => {
+    if (typeof window !== 'undefined') {
+      const rawHash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
+      if (['customer', 'vendor', 'rider', 'admin'].includes(rawHash)) return rawHash;
+
+      const params = new URLSearchParams(window.location.search);
+      const portalQuery = params.get('portal') as PortalRole;
+      if (['customer', 'vendor', 'rider', 'admin'].includes(portalQuery)) return portalQuery;
+
+      const saved = localStorage.getItem('foodiplace_active_portal') as PortalRole;
+      if (['customer', 'vendor', 'rider', 'admin'].includes(saved)) return saved;
+    }
     return 'customer';
   });
+
+  const setRole = (newRole: PortalRole) => {
+    setRoleState(newRole);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('foodiplace_active_portal', newRole);
+      const currentHash = window.location.hash.replace('#', '').split('?')[0];
+      if (currentHash !== newRole) {
+        window.location.hash = `#${newRole}`;
+      }
+    }
+  };
 
   const [settings, setSettings] = useState<SystemSettings>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}settings`);
@@ -210,9 +253,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     () => addresses.find(a => a.is_default) || addresses[0] || null
   );
 
+  // Riders state: strictly enforces persistent is_paused so paused riders never auto-resume
   const [riders, setRiders] = useState<Rider[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}riders`);
-    return saved ? JSON.parse(saved) : INITIAL_RIDERS;
+    const list: Rider[] = saved ? JSON.parse(saved) : INITIAL_RIDERS;
+    const pausedIds = getStoredPausedRiderIds();
+    return list.map(r => {
+      const isPaused = pausedIds.has(r.id) ? true : Boolean(r.is_paused);
+      return {
+        ...r,
+        is_paused: isPaused,
+        is_online: isPaused ? false : Boolean(r.is_online)
+      };
+    });
   });
 
   const [currentRider, setCurrentRider] = useState<Rider | null>(() => riders[0] || null);
@@ -269,7 +322,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = e.data;
       if (data?.type === 'RIDER_UPDATE') {
         const { riderId, updates } = data;
-        setRiders(prev => prev.map(r => r.id === riderId ? { ...r, ...updates } : r));
+        const pausedIds = getStoredPausedRiderIds();
+        if (updates.is_paused !== undefined) {
+          if (updates.is_paused) pausedIds.add(riderId);
+          else pausedIds.delete(riderId);
+          saveStoredPausedRiderIds(pausedIds);
+        }
+        setRiders(prev => prev.map(r => {
+          if (r.id !== riderId) return r;
+          const isPaused = updates.is_paused !== undefined 
+            ? updates.is_paused 
+            : (pausedIds.has(r.id) ? true : Boolean(r.is_paused));
+          return {
+            ...r,
+            ...updates,
+            is_paused: isPaused,
+            is_online: isPaused ? false : (updates.is_online !== undefined ? updates.is_online : r.is_online)
+          };
+        }));
         setCurrentRider(prev => (prev && prev.id === riderId ? { ...prev, ...updates } : prev));
       } else if (data?.type === 'ORDER_UPDATE') {
         const { order } = data;
@@ -301,11 +371,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('riders')
             .select('*');
           if (!rError && rData && isSubscribed) {
-            setRiders(rData as Rider[]);
+            const pausedIds = getStoredPausedRiderIds();
+            const safeRiders: Rider[] = (rData as Rider[]).map(r => {
+              // Never let remote clobber a paused rider back to active
+              const isPaused = pausedIds.has(r.id) ? true : Boolean(r.is_paused);
+              return {
+                ...r,
+                is_paused: isPaused,
+                is_online: isPaused ? false : Boolean(r.is_online)
+              };
+            });
+            setRiders(safeRiders);
             // If current rider is in list, sync currentRider state
             setCurrentRider(prev => {
               if (!prev) return null;
-              const matched = (rData as Rider[]).find(r => r.id === prev.id);
+              const matched = safeRiders.find(r => r.id === prev.id);
               return matched ? { ...prev, ...matched } : prev;
             });
           }
@@ -328,11 +408,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .channel('public:riders_live_channel')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'riders' }, (payload: any) => {
             if (!isSubscribed) return;
+            const pausedIds = getStoredPausedRiderIds();
             if (payload.eventType === 'UPDATE' && payload.new) {
-              setRiders(prev => prev.map(r => r.id === payload.new.id ? { ...r, ...payload.new } : r));
-              setCurrentRider(prev => (prev && prev.id === payload.new.id ? { ...prev, ...payload.new } : prev));
+              const rNew = payload.new as Rider;
+              const isPaused = pausedIds.has(rNew.id) ? true : Boolean(rNew.is_paused);
+              const safeNew: Rider = {
+                ...rNew,
+                is_paused: isPaused,
+                is_online: isPaused ? false : Boolean(rNew.is_online)
+              };
+              setRiders(prev => prev.map(r => r.id === safeNew.id ? safeNew : r));
+              setCurrentRider(prev => (prev && prev.id === safeNew.id ? { ...prev, ...safeNew } : prev));
             } else if (payload.eventType === 'INSERT' && payload.new) {
-              setRiders(prev => [payload.new as Rider, ...prev.filter(r => r.id !== payload.new.id)]);
+              const rNew = payload.new as Rider;
+              const isPaused = pausedIds.has(rNew.id) ? true : Boolean(rNew.is_paused);
+              const safeNew: Rider = {
+                ...rNew,
+                is_paused: isPaused,
+                is_online: isPaused ? false : Boolean(rNew.is_online)
+              };
+              setRiders(prev => [safeNew, ...prev.filter(r => r.id !== safeNew.id)]);
             } else if (payload.eventType === 'DELETE' && payload.old) {
               setRiders(prev => prev.filter(r => r.id !== payload.old.id));
             }
@@ -1179,20 +1274,62 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const toggleRiderPause = (id: string) => {
+    const pausedIds = getStoredPausedRiderIds();
     setRiders(prev => {
-      const updated = prev.map(r => r.id === id ? { ...r, is_paused: !r.is_paused } : r);
+      const target = prev.find(r => r.id === id);
+      if (!target) return prev;
+      const nextPaused = !target.is_paused;
+      if (nextPaused) {
+        pausedIds.add(id);
+      } else {
+        pausedIds.delete(id);
+      }
+      saveStoredPausedRiderIds(pausedIds);
+
+      const updated = prev.map(r => r.id === id ? { 
+        ...r, 
+        is_paused: nextPaused,
+        is_online: nextPaused ? false : r.is_online
+      } : r);
+
       const matched = updated.find(x => x.id === id);
       if (matched) {
         foodiplaceRealtimeChannel?.postMessage({
           type: 'RIDER_UPDATE',
           riderId: id,
-          updates: { is_paused: matched.is_paused }
+          updates: { 
+            is_paused: matched.is_paused,
+            is_online: matched.is_online
+          }
         });
         if (isSupabaseConfigured && supabase) {
-          supabase.from('riders').update({ is_paused: matched.is_paused }).eq('id', id).then();
+          supabase
+            .from('riders')
+            .update({ 
+              is_paused: matched.is_paused,
+              is_online: matched.is_online
+            })
+            .eq('id', id)
+            .then(res => {
+              if (res.error) {
+                console.warn('Supabase is_paused update status:', res.error.message);
+              }
+            });
         }
       }
       return updated;
+    });
+
+    setCurrentRider(prev => {
+      if (prev && prev.id === id) {
+        const nextPaused = !prev.is_paused;
+        return {
+          ...prev,
+          is_paused: nextPaused,
+          is_online: nextPaused ? false : prev.is_online
+        };
+      }
+      return prev;
     });
   };
 
@@ -1453,6 +1590,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const toggleRiderOnline = async (riderId: string, isOnline: boolean): Promise<boolean> => {
+    // If rider is paused by admin, they cannot go online
+    const pausedIds = getStoredPausedRiderIds();
+    const target = riders.find(r => r.id === riderId);
+    if ((pausedIds.has(riderId) || target?.is_paused) && isOnline) {
+      return false;
+    }
+
     let newLat: number | undefined;
     let newLng: number | undefined;
 
@@ -1743,7 +1887,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 3. Has not already rejected this order
     // 4. Distance to vendor is <= match radius (e.g. 1.0 km)
     const eligibleRiders = riders.filter(r => {
-      if (!r.is_online) return false;
+      if (!r.is_online || r.is_paused) return false;
       if (rejectedRiderIds.includes(r.id)) return false;
       
       // Zone match check (if zone is set)
@@ -1763,8 +1907,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     if (eligibleRiders.length === 0) {
-      // Fallback: If no rider within 1km in zone, expand to any online rider in that zone
-      const zoneRiders = riders.filter(r => r.is_online && !rejectedRiderIds.includes(r.id) && (r.zone === orderZone || !r.zone));
+      // Fallback: If no rider within 1km in zone, expand to any online unpaused rider in that zone
+      const zoneRiders = riders.filter(r => r.is_online && !r.is_paused && !rejectedRiderIds.includes(r.id) && (r.zone === orderZone || !r.zone));
       if (zoneRiders.length === 0) return false;
       
       const targetRider = zoneRiders[0];

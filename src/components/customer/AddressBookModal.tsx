@@ -390,9 +390,10 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
               <div className="flex items-center space-x-3">
                 <button 
                   onClick={onClose} 
-                  className="p-1 -ml-1 text-slate-800 hover:text-slate-900 rounded-full transition"
+                  className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
+                  title="Back"
                 >
-                  <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                  <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
                 </button>
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Addresses</h2>
               </div>
@@ -618,9 +619,10 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
             <div className="sticky top-0 bg-white border-b border-slate-100 p-3 flex items-center space-x-2 z-10">
               <button
                 onClick={() => setView('map')}
-                className="p-1.5 text-slate-700 hover:text-slate-900 rounded-full"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-2xs"
+                title="Back to Map"
               >
-                <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
               </button>
 
               <div className="flex-1 flex items-center bg-slate-100 rounded-2xl px-3 py-2 space-x-2">
@@ -687,9 +689,10 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
             <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center space-x-3 z-10">
               <button 
                 onClick={() => setView('map')} 
-                className="p-1 -ml-1 text-slate-800 hover:text-slate-900 rounded-full"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-2xs"
+                title="Back to Map"
               >
-                <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
               </button>
               <h2 className="text-base font-black text-slate-900 tracking-tight">
                 {editingAddressId ? 'Edit Address Details' : 'Address details'}

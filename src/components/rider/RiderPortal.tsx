@@ -38,7 +38,8 @@ import {
   Settings,
   Flame,
   HelpCircle,
-  FileText
+  FileText,
+  Pause
 } from 'lucide-react';
 
 export const RiderPortal: React.FC = () => {
@@ -610,8 +611,8 @@ export const RiderPortal: React.FC = () => {
   // Unauthenticated / Logged out state - Display registration and login form
   if (!currentUser || currentUser.role !== 'rider' || !currentRider) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
-        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
           
           <div className="text-center space-y-2">
             <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-md">
@@ -842,15 +843,19 @@ export const RiderPortal: React.FC = () => {
             <div className="flex items-center space-x-1.5 mt-0.5">
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
-                  isCashRestricted
+                  currentRider.is_paused
                     ? 'bg-rose-500'
+                    : isCashRestricted
+                    ? 'bg-amber-500'
                     : currentRider.is_online
                     ? 'bg-emerald-500'
                     : 'bg-slate-400'
                 }`}
               />
               <span className="font-black text-xs text-slate-900 leading-tight">
-                {isCashRestricted
+                {currentRider.is_paused
+                  ? 'Paused by Admin'
+                  : isCashRestricted
                   ? 'Access restricted'
                   : currentRider.is_online
                   ? 'Online'
@@ -861,19 +866,34 @@ export const RiderPortal: React.FC = () => {
 
           {/* Go Online / Go Offline Switch Toggle */}
           <button
-            onClick={handleToggleOnlineSwitch}
-            disabled={isTogglingOnline}
-            className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-              currentRider.is_online ? 'bg-emerald-500' : 'bg-slate-300'
+            onClick={() => {
+              if (currentRider.is_paused) return;
+              handleToggleOnlineSwitch();
+            }}
+            disabled={isTogglingOnline || Boolean(currentRider.is_paused)}
+            className={`relative inline-flex h-7 w-13 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+              currentRider.is_paused
+                ? 'bg-rose-200 cursor-not-allowed'
+                : currentRider.is_online 
+                ? 'bg-emerald-500 cursor-pointer' 
+                : 'bg-slate-300 cursor-pointer'
             }`}
-            title={currentRider.is_online ? 'Tap to Go Offline' : 'Tap to Go Online'}
+            title={
+              currentRider.is_paused 
+                ? 'Account paused by Admin. Contact admin to resume.' 
+                : currentRider.is_online 
+                ? 'Tap to Go Offline' 
+                : 'Tap to Go Online'
+            }
           >
             <span
               className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
-                currentRider.is_online ? 'translate-x-6' : 'translate-x-0'
+                currentRider.is_online && !currentRider.is_paused ? 'translate-x-6' : 'translate-x-0'
               }`}
             >
-              {currentRider.is_online ? (
+              {currentRider.is_paused ? (
+                <Pause className="w-3.5 h-3.5 text-rose-600 stroke-[3]" />
+              ) : currentRider.is_online ? (
                 <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
               ) : (
                 <X className="w-3.5 h-3.5 text-slate-400 stroke-[3]" />
@@ -891,6 +911,14 @@ export const RiderPortal: React.FC = () => {
           <Headphones className="w-6 h-6 stroke-[2]" />
         </button>
       </header>
+
+      {/* Paused by Admin Banner Notification */}
+      {currentRider.is_paused && (
+        <div className="fixed top-20 inset-x-4 z-40 max-w-md mx-auto bg-rose-50 border-2 border-rose-300 text-rose-900 px-4 py-2.5 rounded-2xl shadow-xl flex items-center space-x-2.5 text-xs font-bold animate-in slide-in-from-top-2">
+          <Pause className="w-4 h-4 text-rose-600 fill-rose-600 shrink-0" />
+          <span>Your rider account is paused by the Admin. You cannot receive deliveries or go online until resumed.</span>
+        </div>
+      )}
 
       {/* 
         ========================================================================
