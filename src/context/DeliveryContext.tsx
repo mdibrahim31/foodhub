@@ -347,10 +347,42 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else if (data?.type === 'NEW_ORDER') {
         const { order } = data;
         setOrders(prev => [order, ...prev.filter(o => o.id !== order.id)]);
+      } else if (data?.type === 'ORDERS_SYNC') {
+        if (Array.isArray(data.orders)) {
+          setOrders(data.orders);
+        }
       }
     };
     foodiplaceRealtimeChannel.addEventListener('message', handleBroadcastMsg);
     return () => foodiplaceRealtimeChannel.removeEventListener('message', handleBroadcastMsg);
+  }, []);
+
+  // Listen to window storage event for instant cross-tab sync of paused riders
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === PAUSED_RIDERS_STORAGE_KEY) {
+        const pausedIds = getStoredPausedRiderIds();
+        setRiders(prev => prev.map(r => {
+          const isPaused = pausedIds.has(r.id);
+          return {
+            ...r,
+            is_paused: isPaused,
+            is_online: isPaused ? false : r.is_online
+          };
+        }));
+        setCurrentRider(prev => {
+          if (!prev) return null;
+          const isPaused = pausedIds.has(prev.id);
+          return {
+            ...prev,
+            is_paused: isPaused,
+            is_online: isPaused ? false : prev.is_online
+          };
+        });
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Fetch vendors and riders from database on mount & continuously poll every 3.5 seconds
@@ -1330,6 +1362,30 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       }
       return prev;
+    });
+
+    // If rider is paused by admin, immediately withdraw any pending order dispatched to them so it never reaches them
+    setOrders(prevOrders => {
+      let changed = false;
+      const updatedOrders = prevOrders.map(ord => {
+        if (ord.dispatched_rider_id === id && !ord.rider_id && !['delivered', 'cancelled'].includes(ord.status)) {
+          changed = true;
+          return {
+            ...ord,
+            dispatched_rider_id: undefined,
+            dispatch_sent_at: undefined
+          };
+        }
+        return ord;
+      });
+
+      if (changed) {
+        foodiplaceRealtimeChannel?.postMessage({
+          type: 'ORDERS_SYNC',
+          orders: updatedOrders
+        });
+      }
+      return updatedOrders;
     });
   };
 

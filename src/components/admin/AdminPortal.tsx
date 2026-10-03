@@ -200,6 +200,7 @@ export const AdminPortal: React.FC = () => {
   }, [riders, vendors, orders]);
 
   const [orderFilterTab, setOrderFilterTab] = useState<'active' | 'history'>('active');
+  const [isRiderMapFullscreen, setIsRiderMapFullscreen] = useState(false);
 
   // Send Message Modal State
   const [isSendMessageOpen, setIsSendMessageOpen] = useState(false);
@@ -1920,6 +1921,16 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsRiderMapFullscreen(true)}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border border-slate-200 hover:border-rose-200 cursor-pointer shadow-2xs active:scale-95"
+                      title="Expand Fullscreen GPS Tracking Map"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Fullscreen Map</span>
+                    </button>
+
                     <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
                       isOnline ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
                     }`}>
@@ -1937,6 +1948,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                     showControls={true}
                     showFullscreenButton={true}
                     showRecenterButton={true}
+                    onFullscreenToggle={() => setIsRiderMapFullscreen(true)}
                     markers={[
                       {
                         id: rider.id,
@@ -1952,6 +1964,108 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               </div>
 
             </main>
+          </div>
+        );
+      })()}
+
+      {/* 
+        ========================================================================
+        FULLSCREEN RIDER GPS TRACKING MAP VIEW
+        ========================================================================
+      */}
+      {isRiderMapFullscreen && selectedRiderForProfile && (() => {
+        const rider = riders.find(r => r.id === selectedRiderForProfile.id) || selectedRiderForProfile;
+        const lat = Number.isFinite(Number(rider.current_latitude)) ? Number(rider.current_latitude) : 22.3590;
+        const lng = Number.isFinite(Number(rider.current_longitude)) ? Number(rider.current_longitude) : 91.8380;
+        const isOnline = Boolean(rider.is_online);
+        const isPaused = Boolean(rider.is_paused);
+
+        return (
+          <div className="fixed inset-0 z-[100] bg-white text-slate-900 w-screen h-screen flex flex-col font-sans select-none animate-in fade-in">
+            {/* Top Toolbar */}
+            <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs z-30 shrink-0">
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsRiderMapFullscreen(false)}
+                  className="h-7 px-2.5 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-[11px] rounded-lg transition-all flex items-center space-x-1 border border-slate-200 hover:border-rose-200 cursor-pointer shadow-2xs active:scale-95 group"
+                  title="Exit Fullscreen"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                  <span>Back</span>
+                </button>
+
+                <div className="hidden sm:block h-6 w-px bg-slate-200" />
+
+                <div className="flex items-center space-x-2.5">
+                  <img
+                    src={rider.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
+                    alt={rider.name}
+                    className="w-8 h-8 rounded-xl object-cover border border-rose-200 shadow-2xs"
+                  />
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-black text-slate-900 text-sm leading-tight">{rider.name}</h3>
+                      <span className="text-[10px] font-mono font-bold text-pink-600 bg-pink-50 border border-pink-200 px-1.5 py-0.2 rounded">
+                        {rider.unique_id || rider.id}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-mono">
+                      Zone: {rider.zone} &bull; Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2.5">
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-black uppercase flex items-center space-x-1.5 ${
+                  isPaused 
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+                    : isOnline 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                }`}>
+                  {isOnline && !isPaused && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                  )}
+                  <span>
+                    {isPaused ? 'PAUSED BY ADMIN' : isOnline ? 'ONLINE ON DUTY' : 'OFFLINE'}
+                  </span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setIsRiderMapFullscreen(false)}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                  title="Exit Fullscreen Map"
+                >
+                  <Minimize2 className="w-3.5 h-3.5 text-slate-700" />
+                  <span className="hidden sm:inline">Exit Fullscreen</span>
+                </button>
+              </div>
+            </header>
+
+            {/* Viewport Map (100% full screen) */}
+            <div className="flex-1 w-full h-full relative overflow-hidden bg-slate-50">
+              <InteractiveMap
+                center={[lat, lng]}
+                zoom={16}
+                heightClass="h-full"
+                showControls={true}
+                showFullscreenButton={false}
+                showRecenterButton={true}
+                markers={[
+                  {
+                    id: rider.id,
+                    latitude: lat,
+                    longitude: lng,
+                    title: `${rider.name} (Live GPS Tracking)`,
+                    subtitle: `${rider.zone} • ${rider.vehicle_type} • ${isOnline ? 'Online' : 'Offline'}`,
+                    type: 'rider'
+                  }
+                ]}
+              />
+            </div>
           </div>
         );
       })()}

@@ -45,7 +45,7 @@ import {
 export const RiderPortal: React.FC = () => {
   const { 
     riders, 
-    currentRider, 
+    currentRider: rawCurrentRider, 
     setCurrentRider, 
     toggleRiderOnline, 
     updateRiderLocation,
@@ -65,6 +65,13 @@ export const RiderPortal: React.FC = () => {
     completeRiderRegistration,
     updateRiderProfile
   } = useDelivery();
+
+  // Live reactive rider instance bound to latest riders state
+  const currentRider = (rawCurrentRider
+    ? riders.find(r => r.id === rawCurrentRider.id) || rawCurrentRider
+    : riders[0]) || null;
+  const isRiderPaused = Boolean(currentRider?.is_paused);
+  const isRiderOnline = Boolean(currentRider?.is_online) && !isRiderPaused;
 
   // Rider Auth State
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -202,8 +209,10 @@ export const RiderPortal: React.FC = () => {
     : undefined;
 
   // Incoming Candidate Order based on zone, distance, and dispatched single rider logic
-  const incomingCandidateOrder = currentRider?.is_online && !activeOrder
+  // If rider is paused by admin, NO orders can ever reach or enter this rider ("tar kace ar order Dukbe na")
+  const incomingCandidateOrder = (isRiderOnline && !isRiderPaused && !activeOrder)
     ? orders.find((o) => {
+        if (isRiderPaused) return false;
         if (o.rider_id || ['delivered', 'cancelled'].includes(o.status)) return false;
         if (currentRider && o.rejected_rider_ids?.includes(currentRider.id)) return false;
         if (currentRider && o.dispatched_rider_id === currentRider.id) return true;
@@ -843,21 +852,21 @@ export const RiderPortal: React.FC = () => {
             <div className="flex items-center space-x-1.5 mt-0.5">
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
-                  currentRider.is_paused
+                  isRiderPaused
                     ? 'bg-rose-500'
                     : isCashRestricted
                     ? 'bg-amber-500'
-                    : currentRider.is_online
+                    : isRiderOnline
                     ? 'bg-emerald-500'
                     : 'bg-slate-400'
                 }`}
               />
               <span className="font-black text-xs text-slate-900 leading-tight">
-                {currentRider.is_paused
+                {isRiderPaused
                   ? 'Paused by Admin'
                   : isCashRestricted
                   ? 'Access restricted'
-                  : currentRider.is_online
+                  : isRiderOnline
                   ? 'Online'
                   : 'Offline'}
               </span>
@@ -867,33 +876,33 @@ export const RiderPortal: React.FC = () => {
           {/* Go Online / Go Offline Switch Toggle */}
           <button
             onClick={() => {
-              if (currentRider.is_paused) return;
+              if (isRiderPaused) return;
               handleToggleOnlineSwitch();
             }}
-            disabled={isTogglingOnline || Boolean(currentRider.is_paused)}
+            disabled={isTogglingOnline || isRiderPaused}
             className={`relative inline-flex h-7 w-13 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-              currentRider.is_paused
+              isRiderPaused
                 ? 'bg-rose-200 cursor-not-allowed'
-                : currentRider.is_online 
+                : isRiderOnline 
                 ? 'bg-emerald-500 cursor-pointer' 
                 : 'bg-slate-300 cursor-pointer'
             }`}
             title={
-              currentRider.is_paused 
+              isRiderPaused 
                 ? 'Account paused by Admin. Contact admin to resume.' 
-                : currentRider.is_online 
+                : isRiderOnline 
                 ? 'Tap to Go Offline' 
                 : 'Tap to Go Online'
             }
           >
             <span
               className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
-                currentRider.is_online && !currentRider.is_paused ? 'translate-x-6' : 'translate-x-0'
+                isRiderOnline ? 'translate-x-6' : 'translate-x-0'
               }`}
             >
-              {currentRider.is_paused ? (
+              {isRiderPaused ? (
                 <Pause className="w-3.5 h-3.5 text-rose-600 stroke-[3]" />
-              ) : currentRider.is_online ? (
+              ) : isRiderOnline ? (
                 <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
               ) : (
                 <X className="w-3.5 h-3.5 text-slate-400 stroke-[3]" />
@@ -913,7 +922,7 @@ export const RiderPortal: React.FC = () => {
       </header>
 
       {/* Paused by Admin Banner Notification */}
-      {currentRider.is_paused && (
+      {isRiderPaused && (
         <div className="fixed top-20 inset-x-4 z-40 max-w-md mx-auto bg-rose-50 border-2 border-rose-300 text-rose-900 px-4 py-2.5 rounded-2xl shadow-xl flex items-center space-x-2.5 text-xs font-bold animate-in slide-in-from-top-2">
           <Pause className="w-4 h-4 text-rose-600 fill-rose-600 shrink-0" />
           <span>Your rider account is paused by the Admin. You cannot receive deliveries or go online until resumed.</span>

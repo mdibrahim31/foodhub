@@ -28,6 +28,7 @@ interface InteractiveMapProps {
   showControls?: boolean;
   showFullscreenButton?: boolean;
   showRecenterButton?: boolean;
+  onFullscreenToggle?: () => void;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
@@ -41,12 +42,52 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   showControls = true,
   showFullscreenButton = true,
   showRecenterButton = true,
+  onFullscreenToggle,
 }) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Sync Leaflet map size on fullscreen state changes
+  useEffect(() => {
+    const invalidate = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+    const t1 = setTimeout(invalidate, 60);
+    const t2 = setTimeout(invalidate, 200);
+    const t3 = setTimeout(invalidate, 450);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [isFullscreen]);
+
+  // Handle native HTML5 fullscreen changes
+  useEffect(() => {
+    const handleNativeFsChange = () => {
+      const isDocFs = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement
+      );
+      setIsFullscreen(isDocFs);
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 100);
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 300);
+    };
+
+    document.addEventListener('fullscreenchange', handleNativeFsChange);
+    document.addEventListener('webkitfullscreenchange', handleNativeFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleNativeFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleNativeFsChange);
+    };
+  }, []);
 
   // Initialize Map Once
   useEffect(() => {
@@ -208,15 +249,65 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     });
   }, [markers, radiusCircle, onMarkerDragEnd]);
 
+  const handleToggleFullscreen = async () => {
+    if (onFullscreenToggle) {
+      onFullscreenToggle();
+      return;
+    }
+
+    try {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        if (wrapperRef.current?.requestFullscreen) {
+          await wrapperRef.current.requestFullscreen();
+        } else if ((wrapperRef.current as any)?.webkitRequestFullscreen) {
+          await (wrapperRef.current as any).webkitRequestFullscreen();
+        } else {
+          setIsFullscreen(prev => !prev);
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else {
+          setIsFullscreen(false);
+        }
+      }
+    } catch {
+      // In case iframe blocks requestFullscreen, fallback to full-bleed CSS fixed mode
+      setIsFullscreen(prev => !prev);
+    }
+  };
+
   return (
     <div 
+      ref={wrapperRef}
       className={`relative transition-all duration-300 ${
         isFullscreen 
-          ? 'fixed inset-0 z-50 w-screen h-screen bg-slate-900 rounded-none border-none p-0 overflow-hidden' 
+          ? 'fixed inset-0 z-[99999] w-screen h-screen bg-white text-slate-900 rounded-none border-none p-0 overflow-hidden flex flex-col' 
           : `w-full ${heightClass} rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0`
       }`}
     >
-      <div ref={mapContainerRef} className="w-full h-full z-0 clean-foodpanda-map" />
+      {/* Top Banner when in CSS Fullscreen */}
+      {isFullscreen && (
+        <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shadow-xs z-20 shrink-0">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+            <span className="font-extrabold text-xs text-slate-800">Fullscreen Live Map View</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+            title="Exit Fullscreen"
+          >
+            <Minimize2 className="w-3.5 h-3.5 text-slate-700" />
+            <span>Exit Fullscreen</span>
+          </button>
+        </div>
+      )}
+
+      <div ref={mapContainerRef} className="w-full flex-1 h-full z-0 clean-foodpanda-map" />
 
       {/* Floating Map Overlay Control Buttons */}
       {showControls && (
@@ -238,7 +329,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           {showFullscreenButton && (
             <button
               type="button"
-              onClick={() => setIsFullscreen(prev => !prev)}
+              onClick={handleToggleFullscreen}
               className="bg-white/95 hover:bg-white text-slate-800 p-2.5 rounded-2xl shadow-lg border border-slate-200 backdrop-blur-xs transition active:scale-95 flex items-center space-x-1.5 text-xs font-bold cursor-pointer"
               title={isFullscreen ? 'Exit Fullscreen Map' : 'Expand Fullscreen Map'}
             >
