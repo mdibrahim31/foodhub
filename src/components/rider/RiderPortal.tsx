@@ -330,6 +330,72 @@ export const RiderPortal: React.FC = () => {
     }
   };
 
+  // Continuous GPS location beacon when rider is ONLINE: continuously updates database and broadcasts
+  useEffect(() => {
+    if (!currentRider || !currentRider.is_online) return;
+
+    let watchId: number | null = null;
+    let beaconInterval: NodeJS.Timeout | null = null;
+
+    // 1. Continuous device GPS tracking
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      try {
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+              updateRiderLocation(currentRider.id, latitude, longitude);
+            }
+          },
+          (err) => {
+            console.warn('Rider live GPS watch error:', err.message);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 4000,
+            timeout: 10000,
+          }
+        );
+      } catch (err) {
+        console.warn('Geolocation watchPosition initialization error:', err);
+      }
+    }
+
+    // 2. Periodic GPS heartbeat / check every 4.5 seconds to continuously update database
+    beaconInterval = setInterval(() => {
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+              updateRiderLocation(currentRider.id, latitude, longitude);
+            }
+          },
+          () => {
+            // Keep fresh beacon pulse with current coordinates
+            const lat = Number(currentRider.current_latitude) || 22.3590;
+            const lng = Number(currentRider.current_longitude) || 91.8380;
+            updateRiderLocation(currentRider.id, lat, lng);
+          },
+          { enableHighAccuracy: true, timeout: 4000 }
+        );
+      } else {
+        const lat = Number(currentRider.current_latitude) || 22.3590;
+        const lng = Number(currentRider.current_longitude) || 91.8380;
+        updateRiderLocation(currentRider.id, lat, lng);
+      }
+    }, 4500);
+
+    return () => {
+      if (watchId !== null && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if (beaconInterval) {
+        clearInterval(beaconInterval);
+      }
+    };
+  }, [currentRider?.id, currentRider?.is_online]);
+
   // Initialize Fullscreen Leaflet Map (Runs when currentRider and map container mount)
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'rider' || !currentRider) return;

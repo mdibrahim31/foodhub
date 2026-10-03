@@ -167,6 +167,10 @@ const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined
 
 const STORAGE_KEY_PREFIX = 'foodvibe_v3_';
 
+const foodiplaceRealtimeChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('foodiplace_realtime_sync')
+  : null;
+
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Core State
   const [role, setRole] = useState<PortalRole>(() => {
@@ -258,23 +262,52 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchAdBanners();
   }, []);
 
-  // Fetch vendors and riders from database on mount
+  // Listen for real-time broadcast updates across open browser tabs
   useEffect(() => {
+    if (!foodiplaceRealtimeChannel) return;
+    const handleBroadcastMsg = (e: MessageEvent) => {
+      const data = e.data;
+      if (data?.type === 'RIDER_UPDATE') {
+        const { riderId, updates } = data;
+        setRiders(prev => prev.map(r => r.id === riderId ? { ...r, ...updates } : r));
+        setCurrentRider(prev => (prev && prev.id === riderId ? { ...prev, ...updates } : prev));
+      } else if (data?.type === 'ORDER_UPDATE') {
+        const { order } = data;
+        setOrders(prev => prev.map(o => o.id === order.id ? order : o));
+      } else if (data?.type === 'NEW_ORDER') {
+        const { order } = data;
+        setOrders(prev => [order, ...prev.filter(o => o.id !== order.id)]);
+      }
+    };
+    foodiplaceRealtimeChannel.addEventListener('message', handleBroadcastMsg);
+    return () => foodiplaceRealtimeChannel.removeEventListener('message', handleBroadcastMsg);
+  }, []);
+
+  // Fetch vendors and riders from database on mount & continuously poll every 3.5 seconds
+  useEffect(() => {
+    let isSubscribed = true;
+
     const fetchVendorsAndRiders = async () => {
       if (isSupabaseConfigured && supabase) {
         try {
           const { data: vData, error: vError } = await supabase
             .from('vendors')
             .select('*');
-          if (!vError && vData) {
+          if (!vError && vData && isSubscribed) {
             setVendors(vData as Vendor[]);
           }
 
           const { data: rData, error: rError } = await supabase
             .from('riders')
             .select('*');
-          if (!rError && rData) {
+          if (!rError && rData && isSubscribed) {
             setRiders(rData as Rider[]);
+            // If current rider is in list, sync currentRider state
+            setCurrentRider(prev => {
+              if (!prev) return null;
+              const matched = (rData as Rider[]).find(r => r.id === prev.id);
+              return matched ? { ...prev, ...matched } : prev;
+            });
           }
         } catch (err) {
           console.error('Failed to load vendors/riders from database:', err);
@@ -283,6 +316,40 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     fetchVendorsAndRiders();
+
+    // 3.5s periodic polling ensures live updates between separate devices/sessions
+    const intervalId = setInterval(fetchVendorsAndRiders, 3500);
+
+    // Also connect to Supabase Realtime channel if available
+    let realtimeChannelInstance: any = null;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        realtimeChannelInstance = supabase
+          .channel('public:riders_live_channel')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'riders' }, (payload: any) => {
+            if (!isSubscribed) return;
+            if (payload.eventType === 'UPDATE' && payload.new) {
+              setRiders(prev => prev.map(r => r.id === payload.new.id ? { ...r, ...payload.new } : r));
+              setCurrentRider(prev => (prev && prev.id === payload.new.id ? { ...prev, ...payload.new } : prev));
+            } else if (payload.eventType === 'INSERT' && payload.new) {
+              setRiders(prev => [payload.new as Rider, ...prev.filter(r => r.id !== payload.new.id)]);
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              setRiders(prev => prev.filter(r => r.id !== payload.old.id));
+            }
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime subscription warning:', err);
+      }
+    }
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(intervalId);
+      if (realtimeChannelInstance && supabase) {
+        supabase.removeChannel(realtimeChannelInstance);
+      }
+    };
   }, []);
 
   const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
@@ -1114,9 +1181,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const toggleRiderPause = (id: string) => {
     setRiders(prev => {
       const updated = prev.map(r => r.id === id ? { ...r, is_paused: !r.is_paused } : r);
-      if (isSupabaseConfigured && supabase) {
-        const matched = updated.find(x => x.id === id);
-        if (matched) {
+      const matched = updated.find(x => x.id === id);
+      if (matched) {
+        foodiplaceRealtimeChannel?.postMessage({
+          type: 'RIDER_UPDATE',
+          riderId: id,
+          updates: { is_paused: matched.is_paused }
+        });
+        if (isSupabaseConfigured && supabase) {
           supabase.from('riders').update({ is_paused: matched.is_paused }).eq('id', id).then();
         }
       }
@@ -1126,6 +1198,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteRider = (id: string) => {
     setRiders(prev => prev.filter(r => r.id !== id));
+    foodiplaceRealtimeChannel?.postMessage({
+      type: 'RIDER_DELETE',
+      riderId: id
+    });
     if (isSupabaseConfigured && supabase) {
       supabase.from('riders').delete().eq('id', id).then();
     }
@@ -1312,56 +1388,166 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // RIDER GPS & LOCATION UPDATES
   // -------------------------------------------------------------
-  const updateRiderLocation = (riderId: string, lat: number, lng: number) => {
+  const updateRiderLocation = async (riderId: string, lat: number, lng: number) => {
+    const safeLat = Number(lat);
+    const safeLng = Number(lng);
+    if (!Number.isFinite(safeLat) || !Number.isFinite(safeLng)) return;
+
+    const nowIso = new Date().toISOString();
+
     setRiders(prev => prev.map(r => 
       r.id === riderId ? { 
         ...r, 
-        current_latitude: lat, 
-        current_longitude: lng,
-        last_location_updated_at: new Date().toISOString()
+        current_latitude: safeLat, 
+        current_longitude: safeLng, 
+        last_location_updated_at: nowIso 
       } : r
     ));
+
     if (currentRider && currentRider.id === riderId) {
       setCurrentRider(prev => prev ? { 
         ...prev, 
-        current_latitude: lat, 
-        current_longitude: lng,
-        last_location_updated_at: new Date().toISOString()
+        current_latitude: safeLat, 
+        current_longitude: safeLng, 
+        last_location_updated_at: nowIso 
       } : null);
+    }
+
+    // Broadcast update across open browser tabs immediately
+    foodiplaceRealtimeChannel?.postMessage({
+      type: 'RIDER_UPDATE',
+      riderId,
+      updates: {
+        current_latitude: safeLat,
+        current_longitude: safeLng,
+        last_location_updated_at: nowIso
+      }
+    });
+
+    // Save live location to Supabase database
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('riders')
+          .update({
+            current_latitude: safeLat,
+            current_longitude: safeLng,
+            last_location_updated_at: nowIso
+          })
+          .eq('id', riderId);
+      } catch (err) {
+        console.warn('Error syncing rider GPS location to Supabase:', err);
+      }
     }
   };
 
   const simulateRiderMovement = (stepLat: number, stepLng: number) => {
     if (!currentRider) return;
+    const curLat = Number(currentRider.current_latitude) || 22.3590;
+    const curLng = Number(currentRider.current_longitude) || 91.8380;
     updateRiderLocation(
       currentRider.id,
-      currentRider.current_latitude + stepLat,
-      currentRider.current_longitude + stepLng
+      curLat + stepLat,
+      curLng + stepLng
     );
   };
 
   const toggleRiderOnline = async (riderId: string, isOnline: boolean): Promise<boolean> => {
-    if (isOnline && navigator.geolocation) {
+    let newLat: number | undefined;
+    let newLng: number | undefined;
+
+    if (isOnline && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
       try {
-        await new Promise<GeolocationPosition>((resolve, reject) => {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 6000,
+            timeout: 5000,
             enableHighAccuracy: true
           });
-        }).then((pos) => {
-          updateRiderLocation(riderId, pos.coords.latitude, pos.coords.longitude);
-        }).catch(() => {
-          // Keep current lat/lng
         });
+        if (Number.isFinite(pos.coords.latitude) && Number.isFinite(pos.coords.longitude)) {
+          newLat = pos.coords.latitude;
+          newLng = pos.coords.longitude;
+        }
       } catch {
-        // Ignore
+        // Fallback to existing or default coordinates
       }
     }
 
-    setRiders(prev => prev.map(r => r.id === riderId ? { ...r, is_online: isOnline } : r));
+    const nowIso = new Date().toISOString();
+
+    setRiders(prev => prev.map(r => {
+      if (r.id !== riderId) return r;
+      return {
+        ...r,
+        is_online: isOnline,
+        ...(newLat !== undefined && newLng !== undefined ? {
+          current_latitude: newLat,
+          current_longitude: newLng,
+          last_location_updated_at: nowIso
+        } : {
+          last_location_updated_at: nowIso
+        })
+      };
+    }));
+
     if (currentRider && currentRider.id === riderId) {
-      setCurrentRider(prev => prev ? { ...prev, is_online: isOnline } : null);
+      setCurrentRider(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          is_online: isOnline,
+          ...(newLat !== undefined && newLng !== undefined ? {
+            current_latitude: newLat,
+            current_longitude: newLng,
+            last_location_updated_at: nowIso
+          } : {
+            last_location_updated_at: nowIso
+          })
+        };
+      });
     }
+
+    // Broadcast rider online status across tabs immediately
+    foodiplaceRealtimeChannel?.postMessage({
+      type: 'RIDER_UPDATE',
+      riderId,
+      updates: {
+        is_online: isOnline,
+        ...(newLat !== undefined && newLng !== undefined ? {
+          current_latitude: newLat,
+          current_longitude: newLng,
+          last_location_updated_at: nowIso
+        } : {
+          last_location_updated_at: nowIso
+        })
+      }
+    });
+
+    // Save online status & location to Supabase database
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const updatePayload: Record<string, any> = {
+          is_online: isOnline,
+          last_location_updated_at: nowIso
+        };
+        if (newLat !== undefined && newLng !== undefined) {
+          updatePayload.current_latitude = newLat;
+          updatePayload.current_longitude = newLng;
+        }
+
+        const { error } = await supabase
+          .from('riders')
+          .update(updatePayload)
+          .eq('id', riderId);
+
+        if (error) {
+          console.warn('Supabase rider online update error:', error);
+        }
+      } catch (err) {
+        console.warn('Supabase rider online update exception:', err);
+      }
+    }
+
     return true;
   };
 

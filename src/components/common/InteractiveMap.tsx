@@ -52,21 +52,30 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    const safeCenter: [number, number] = [
+      Number.isFinite(Number(center?.[0])) ? Number(center[0]) : 22.3590,
+      Number.isFinite(Number(center?.[1])) ? Number(center[1]) : 91.8380,
+    ];
+
     if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center,
-        zoom,
-        zoomControl: true,
-      });
+      try {
+        const map = L.map(mapContainerRef.current, {
+          center: safeCenter,
+          zoom: Number.isFinite(zoom) ? zoom : 14,
+          zoomControl: true,
+        });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }).addTo(map);
 
-      const layerGroup = L.layerGroup().addTo(map);
-      layerGroupRef.current = layerGroup;
-      mapInstanceRef.current = map;
+        const layerGroup = L.layerGroup().addTo(map);
+        layerGroupRef.current = layerGroup;
+        mapInstanceRef.current = map;
+      } catch (err) {
+        console.warn('Leaflet map initialization warning:', err);
+      }
     }
 
     return () => {
@@ -171,16 +180,20 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
     // 3. Add each marker
     markers.forEach((m) => {
-      const marker = L.marker([m.latitude, m.longitude], {
+      const lat = Number(m?.latitude);
+      const lng = Number(m?.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      const marker = L.marker([lat, lng], {
         icon: createCustomIcon(m.type),
         draggable: Boolean(m.isDraggable),
       }).addTo(layerGroup);
 
       const popupContent = `
         <div class="p-1 font-sans text-xs">
-          <p class="font-bold text-gray-900">${m.title}</p>
+          <p class="font-bold text-gray-900">${m.title || 'Location'}</p>
           ${m.subtitle ? `<p class="text-gray-600 mt-0.5">${m.subtitle}</p>` : ''}
-          <p class="text-[10px] text-gray-400 mt-1 font-mono">${m.latitude.toFixed(4)}, ${m.longitude.toFixed(4)}</p>
+          <p class="text-[10px] text-gray-400 mt-1 font-mono">${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
         </div>
       `;
       marker.bindPopup(popupContent);

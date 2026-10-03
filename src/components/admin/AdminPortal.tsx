@@ -852,16 +852,19 @@ export const AdminPortal: React.FC = () => {
                           <td className="py-3 px-4 font-extrabold text-slate-900">{r.name}</td>
                           <td className="py-3 px-4">
                             {r.is_paused ? (
-                              <span className="px-2.5 py-0.5 bg-red-100 text-red-800 font-black text-[10px] rounded-full uppercase">
-                                PAUSED
+                              <span className="px-2.5 py-1 bg-red-100 text-red-800 font-black text-[10px] rounded-full uppercase inline-flex items-center gap-1.5 border border-red-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                <span>PAUSED</span>
                               </span>
                             ) : r.is_online ? (
-                              <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full uppercase">
-                                ONLINE
+                              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full uppercase inline-flex items-center gap-1.5 border border-emerald-300 shadow-xs shadow-emerald-500/20">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                                <span>ONLINE ON DUTY</span>
                               </span>
                             ) : (
-                              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-full uppercase">
-                                OFFLINE
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 font-bold text-[10px] rounded-full uppercase inline-flex items-center gap-1.5 border border-slate-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
+                                <span>OFFLINE</span>
                               </span>
                             )}
                           </td>
@@ -1690,130 +1693,167 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
         FULLSCREEN RIDER PROFILE WINDOW
         ========================================================================
       */}
-      {selectedRiderForProfile && (
-        <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
-          
-          {/* Top Fullscreen Header with Back Arrow Button */}
-          <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSelectedRiderForProfile(null)}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer shadow-xs active:scale-95"
-              >
-                <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
-                <span>Back to Admin Panel</span>
-              </button>
+      {selectedRiderForProfile && (() => {
+        // Always bind to the live rider in riders state so updates are reflected in real-time
+        const rider = riders.find(r => r.id === selectedRiderForProfile.id) || selectedRiderForProfile;
+        const lat = Number.isFinite(Number(rider.current_latitude)) ? Number(rider.current_latitude) : 22.3590;
+        const lng = Number.isFinite(Number(rider.current_longitude)) ? Number(rider.current_longitude) : 91.8380;
+        const isOnline = Boolean(rider.is_online);
+        const isPaused = Boolean(rider.is_paused);
 
-              <div className="hidden sm:block h-6 w-px bg-slate-800" />
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 min-h-screen w-full overflow-y-auto font-sans selection:bg-rose-500 selection:text-white animate-in fade-in">
+            
+            {/* Top Fullscreen Header with Back Arrow Button */}
+            <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSelectedRiderForProfile(null)}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-2 border border-slate-700 cursor-pointer shadow-xs active:scale-95"
+                >
+                  <ArrowLeft className="w-4 h-4 stroke-[3] text-rose-400" />
+                  <span>Back to Admin Panel</span>
+                </button>
 
-              <div className="flex items-center space-x-3">
-                <img
-                  src={selectedRiderForProfile.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
-                  alt={selectedRiderForProfile.name}
-                  className="w-10 h-10 rounded-2xl object-cover border border-rose-500/40 shadow-xs"
-                />
-                <div>
-                  <h2 className="font-black text-white text-base tracking-tight leading-none">{selectedRiderForProfile.name}</h2>
-                  <span className="text-[10px] font-mono font-bold text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-md mt-1 inline-block">
-                    ID: {selectedRiderForProfile.unique_id || selectedRiderForProfile.id}
-                  </span>
+                <div className="hidden sm:block h-6 w-px bg-slate-800" />
+
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={rider.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150'}
+                    alt={rider.name}
+                    className="w-10 h-10 rounded-2xl object-cover border border-rose-500/40 shadow-xs"
+                  />
+                  <div>
+                    <h2 className="font-black text-white text-base tracking-tight leading-none">{rider.name}</h2>
+                    <span className="text-[10px] font-mono font-bold text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-md mt-1 inline-block">
+                      ID: {rider.unique_id || rider.id}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase ${
-                selectedRiderForProfile.is_paused 
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                  : selectedRiderForProfile.is_online 
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                  : 'bg-slate-800 text-slate-400 border border-slate-700'
-              }`}>
-                {selectedRiderForProfile.is_paused ? 'PAUSED BY ADMIN' : selectedRiderForProfile.is_online ? 'ONLINE ON DUTY' : 'OFFLINE'}
-              </span>
+              <div className="flex items-center space-x-3">
+                <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase flex items-center space-x-1.5 ${
+                  isPaused 
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                    : isOnline 
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-xs shadow-emerald-500/20' 
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {isOnline && !isPaused && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  )}
+                  <span>
+                    {isPaused ? 'PAUSED BY ADMIN' : isOnline ? 'ONLINE ON DUTY' : 'OFFLINE'}
+                  </span>
+                </span>
 
-              <button
-                onClick={() => setSelectedRiderForProfile(null)}
-                className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
-                title="Close Window"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </header>
+                <button
+                  onClick={() => setSelectedRiderForProfile(null)}
+                  className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  title="Close Window"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </header>
 
-          {/* Body Container */}
-          <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-            
-            {/* Overview Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</span>
-                <span className="font-mono font-bold text-white text-base">{selectedRiderForProfile.phone}</span>
+            {/* Body Container */}
+            <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+              
+              {/* Overview Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</span>
+                  <span className="font-mono font-bold text-white text-base">{rider.phone}</span>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Primary Zone</span>
+                  <span className="font-extrabold text-pink-400 text-base">{rider.zone}</span>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vehicle Type</span>
+                  <span className="font-bold text-white text-base">{rider.vehicle_type}</span>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Float Cash Held (COD)</span>
+                  <span className="font-mono font-black text-emerald-400 text-lg">৳{Number(rider.cash_in_hand || 0).toFixed(2)}</span>
+                </div>
               </div>
 
-              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Primary Zone</span>
-                <span className="font-extrabold text-pink-400 text-base">{selectedRiderForProfile.zone}</span>
-              </div>
+              {/* Address & Status Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Home Address Base</span>
+                  <p className="font-bold text-white text-sm">{rider.home_address || 'Chittagong'}</p>
+                </div>
 
-              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vehicle Type</span>
-                <span className="font-bold text-white text-base">{selectedRiderForProfile.vehicle_type}</span>
-              </div>
-
-              <div className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Float Cash Held (COD)</span>
-                <span className="font-mono font-black text-emerald-400 text-lg">৳{selectedRiderForProfile.cash_in_hand}</span>
-              </div>
-            </div>
-
-            {/* Address Info */}
-            <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Home Address Base</span>
-              <p className="font-bold text-white text-sm">{selectedRiderForProfile.home_address || 'Chittagong'}</p>
-            </div>
-
-            {/* Live Location Map Section */}
-            <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="font-black text-white text-base flex items-center space-x-2">
-                    <MapPin className="w-5 h-5 text-rose-500 animate-bounce" />
-                    <span>Rider Live GPS Tracking Map</span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5 font-mono">
-                    Current Coordinates: Lat {selectedRiderForProfile.current_latitude.toFixed(4)}, Lng {selectedRiderForProfile.current_longitude.toFixed(4)}
+                <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Last GPS Beacon</span>
+                  <p className="font-bold text-white text-sm">
+                    {rider.last_location_updated_at ? (
+                      <span className="text-emerald-400">
+                        {new Date(rider.last_location_updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (Updated)
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">Awaiting first GPS beacon</span>
+                    )}
                   </p>
                 </div>
               </div>
 
-              {/* Fullscreen & Interactive Map Box */}
-              <div className="rounded-2xl overflow-hidden border border-slate-700 shadow-xl bg-slate-900">
-                <InteractiveMap
-                  center={[selectedRiderForProfile.current_latitude, selectedRiderForProfile.current_longitude]}
-                  zoom={16}
-                  heightClass="h-96 md:h-[520px]"
-                  showControls={true}
-                  showFullscreenButton={true}
-                  showRecenterButton={true}
-                  markers={[
-                    {
-                      id: selectedRiderForProfile.id,
-                      latitude: selectedRiderForProfile.current_latitude,
-                      longitude: selectedRiderForProfile.current_longitude,
-                      title: `${selectedRiderForProfile.name} (Live GPS)`,
-                      subtitle: `${selectedRiderForProfile.zone} • ${selectedRiderForProfile.vehicle_type}`,
-                      type: 'rider'
-                    }
-                  ]}
-                />
-              </div>
-            </div>
+              {/* Live Location Map Section */}
+              <div className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-black text-white text-base flex items-center space-x-2">
+                      <MapPin className="w-5 h-5 text-rose-500 animate-bounce" />
+                      <span>Rider Live GPS Tracking Map</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                      Current Coordinates: Lat {lat.toFixed(4)}, Lng {lng.toFixed(4)}
+                    </p>
+                  </div>
 
-          </main>
-        </div>
-      )}
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                      isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-300'
+                    }`}>
+                      {isOnline ? '● Live Location Active' : '○ Rider Offline'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fullscreen & Interactive Map Box */}
+                <div className="rounded-2xl overflow-hidden border border-slate-700 shadow-xl bg-slate-900">
+                  <InteractiveMap
+                    center={[lat, lng]}
+                    zoom={16}
+                    heightClass="h-96 md:h-[520px]"
+                    showControls={true}
+                    showFullscreenButton={true}
+                    showRecenterButton={true}
+                    markers={[
+                      {
+                        id: rider.id,
+                        latitude: lat,
+                        longitude: lng,
+                        title: `${rider.name} (Live GPS)`,
+                        subtitle: `${rider.zone} • ${rider.vehicle_type} • ${isOnline ? 'Online' : 'Offline'}`,
+                        type: 'rider'
+                      }
+                    ]}
+                  />
+                </div>
+              </div>
+
+            </main>
+          </div>
+        );
+      })()}
 
       {/* 
         ========================================================================
