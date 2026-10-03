@@ -207,8 +207,8 @@ export const AdminPortal: React.FC = () => {
         if (found) setSelectedVendorForProfileState(found);
       }
       const savedOrderId = localStorage.getItem('foodiplace_admin_selected_order_id');
-      if (savedOrderId && !selectedOrderForDetails && orders.length > 0) {
-        const found = orders.find(o => o.id === savedOrderId);
+      if (savedOrderId && !selectedOrderForDetails && (orders || []).length > 0) {
+        const found = (orders || []).find(o => o && o.id === savedOrderId);
         if (found) setSelectedOrderForDetailsState(found);
       }
     }
@@ -224,9 +224,9 @@ export const AdminPortal: React.FC = () => {
   const [msgBody, setMsgBody] = useState('');
 
   // Settings form state
-  const [perKmCharge, setPerKmCharge] = useState(settings.per_km_delivery_charge);
-  const [baseCharge, setBaseCharge] = useState(settings.base_delivery_charge);
-  const [riderRadius, setRiderRadius] = useState(settings.rider_match_radius_km);
+  const [perKmCharge, setPerKmCharge] = useState(settings?.per_km_delivery_charge || 15);
+  const [baseCharge, setBaseCharge] = useState(settings?.base_delivery_charge || 30);
+  const [riderRadius, setRiderRadius] = useState(settings?.rider_match_radius_km || 1.0);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   const handleMoveAdBanner = async (adId: string, direction: 'up' | 'down') => {
@@ -454,8 +454,9 @@ export const AdminPortal: React.FC = () => {
     setCatImageUrl('');
   };
 
-  const filteredZones = zones.filter(z => {
-    const q = zoneSearch.toLowerCase().trim();
+  const filteredZones = (zones || []).filter(z => {
+    if (!z) return false;
+    const q = (zoneSearch || '').toLowerCase().trim();
     if (!q) return true;
     return (
       (z.name && z.name.toLowerCase().includes(q)) ||
@@ -464,8 +465,9 @@ export const AdminPortal: React.FC = () => {
     );
   });
 
-  const filteredVendors = vendors.filter(v => {
-    const q = vendorSearch.toLowerCase().trim();
+  const filteredVendors = (vendors || []).filter(v => {
+    if (!v) return false;
+    const q = (vendorSearch || '').toLowerCase().trim();
     if (!q) return true;
     return (
       (v.name && v.name.toLowerCase().includes(q)) ||
@@ -474,17 +476,19 @@ export const AdminPortal: React.FC = () => {
     );
   });
 
-  const filteredRiders = riders
+  const filteredRiders = (riders || [])
     .filter(r => {
-      const q = riderSearch.toLowerCase().trim();
+      if (!r) return false;
+      const q = (riderSearch || '').toLowerCase().trim();
       if (!q) return true;
       return (
-        r.name.toLowerCase().includes(q) ||
-        r.phone.includes(q) ||
-        r.id.toLowerCase().includes(q)
+        (r.name && r.name.toLowerCase().includes(q)) ||
+        (r.phone && r.phone.includes(q)) ||
+        (r.id && r.id.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
+      if (!a || !b) return 0;
       // Working / Online riders placed at the top of the list
       const aWorking = a.is_online && !a.is_paused;
       const bWorking = b.is_online && !b.is_paused;
@@ -497,7 +501,7 @@ export const AdminPortal: React.FC = () => {
       if (!a.is_paused && b.is_paused) return -1;
       if (a.is_paused && !b.is_paused) return 1;
 
-      return a.name.localeCompare(b.name);
+      return (a.name || '').localeCompare(b.name || '');
     });
 
   return (
