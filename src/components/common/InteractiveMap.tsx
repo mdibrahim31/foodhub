@@ -106,10 +106,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           zoomControl: true,
         });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
 
         const layerGroup = L.layerGroup().addTo(map);
         layerGroupRef.current = layerGroup;
@@ -119,7 +119,21 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       }
     }
 
+    // Auto-invalidate size on resize or dimension change
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -133,7 +147,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
       }
-    }, 200);
+    }, 150);
     return () => clearTimeout(timer);
   }, [isFullscreen]);
 

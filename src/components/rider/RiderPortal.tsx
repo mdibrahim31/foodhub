@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AuthModal } from '../common/AuthModal';
@@ -66,10 +66,22 @@ export const RiderPortal: React.FC = () => {
     updateRiderProfile
   } = useDelivery();
 
-  // Live reactive rider instance bound to latest riders state
-  const currentRider = (rawCurrentRider
-    ? riders.find(r => r.id === rawCurrentRider.id) || rawCurrentRider
-    : riders[0]) || null;
+  // Live reactive rider instance bound to authenticated user or active rider selection
+  const currentRider = useMemo(() => {
+    if (currentUser && currentUser.role === 'rider') {
+      const byRef = riders.find(r => r.id === currentUser.reference_id);
+      if (byRef) return byRef;
+      const byPhone = riders.find(r => r.phone === currentUser.phone);
+      if (byPhone) return byPhone;
+    }
+    if (rawCurrentRider) {
+      const byId = riders.find(r => r.id === rawCurrentRider.id);
+      if (byId) return byId;
+      return rawCurrentRider;
+    }
+    return riders[0] || null;
+  }, [currentUser, rawCurrentRider, riders]);
+
   const isRiderPaused = Boolean(currentRider?.is_paused);
   const isRiderOnline = Boolean(currentRider?.is_online) && !isRiderPaused;
 

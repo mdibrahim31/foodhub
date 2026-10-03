@@ -404,32 +404,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .select('*');
           if (!rError && rData && isSubscribed) {
             const pausedIds = getStoredPausedRiderIds();
-            let pausedIdsChanged = false;
 
             const safeRiders: Rider[] = (rData as Rider[]).map(r => {
-              const remotePaused = Boolean(r.is_paused);
-              if (remotePaused) {
-                if (!pausedIds.has(r.id)) {
-                  pausedIds.add(r.id);
-                  pausedIdsChanged = true;
-                }
-              } else {
-                if (pausedIds.has(r.id)) {
-                  pausedIds.delete(r.id);
-                  pausedIdsChanged = true;
-                }
+              // Priority: if explicitly paused in local storage or remote is true
+              const isPaused = pausedIds.has(r.id) || (r.is_paused === true);
+              if (isPaused && !pausedIds.has(r.id)) {
+                pausedIds.add(r.id);
+                saveStoredPausedRiderIds(pausedIds);
               }
 
               return {
                 ...r,
-                is_paused: remotePaused,
-                is_online: remotePaused ? false : Boolean(r.is_online)
+                is_paused: isPaused,
+                is_online: isPaused ? false : Boolean(r.is_online)
               };
             });
-
-            if (pausedIdsChanged) {
-              saveStoredPausedRiderIds(pausedIds);
-            }
 
             setRiders(safeRiders);
             // If current rider is in list, sync currentRider state
@@ -1337,54 +1326,37 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const toggleRiderPause = (id: string) => {
     const pausedIds = getStoredPausedRiderIds();
+    const currentTarget = riders.find(r => r.id === id);
+    const nextPaused = currentTarget ? !currentTarget.is_paused : !pausedIds.has(id);
+
+    if (nextPaused) {
+      pausedIds.add(id);
+    } else {
+      pausedIds.delete(id);
+    }
+    saveStoredPausedRiderIds(pausedIds);
+
     setRiders(prev => {
-      const target = prev.find(r => r.id === id);
-      if (!target) return prev;
-      const nextPaused = !target.is_paused;
-      if (nextPaused) {
-        pausedIds.add(id);
-      } else {
-        pausedIds.delete(id);
-      }
-      saveStoredPausedRiderIds(pausedIds);
+      const updated = prev.map(r => {
+        if (r.id !== id) return r;
+        return { 
+          ...r, 
+          is_paused: nextPaused,
+          is_online: nextPaused ? false : r.is_online
+        };
+      });
 
-      const updated = prev.map(r => r.id === id ? { 
-        ...r, 
-        is_paused: nextPaused,
-        is_online: nextPaused ? false : r.is_online
-      } : r);
-
-      const matched = updated.find(x => x.id === id);
-      if (matched) {
-        foodiplaceRealtimeChannel?.postMessage({
-          type: 'RIDER_UPDATE',
-          riderId: id,
-          updates: { 
-            is_paused: matched.is_paused,
-            is_online: matched.is_online
-          }
-        });
-        if (isSupabaseConfigured && supabase) {
-          supabase
-            .from('riders')
-            .update({ 
-              is_paused: matched.is_paused,
-              is_online: matched.is_online
-            })
-            .eq('id', id)
-            .then(res => {
-              if (res.error) {
-                console.warn('Supabase is_paused update status:', res.error.message);
-              }
-            });
-        }
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}riders`, JSON.stringify(updated));
+      } catch {
+        // Ignore
       }
+
       return updated;
     });
 
     setCurrentRider(prev => {
       if (prev && prev.id === id) {
-        const nextPaused = !prev.is_paused;
         return {
           ...prev,
           is_paused: nextPaused,
@@ -1394,29 +1366,69 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return prev;
     });
 
-    // If rider is paused by admin, immediately withdraw any pending order dispatched to them so it never reaches them
-    setOrders(prevOrders => {
-      let changed = false;
-      const updatedOrders = prevOrders.map(ord => {
-        if (ord.dispatched_rider_id === id && !ord.rider_id && !['delivered', 'cancelled'].includes(ord.status)) {
-          changed = true;
-          return {
-            ...ord,
-            dispatched_rider_id: undefined,
-            dispatch_sent_at: undefined
-          };
-        }
-        return ord;
-      });
-
-      if (changed) {
-        foodiplaceRealtimeChannel?.postMessage({
-          type: 'ORDERS_SYNC',
-          orders: updatedOrders
-        });
+    // Broadcast across all open browser tabs
+    foodiplaceRealtimeChannel?.postMessage({
+      type: 'RIDER_UPDATE',
+      riderId: id,
+      updates: { 
+        is_paused: nextPaused,
+        is_online: nextPaused ? false : (currentTarget?.is_online ?? false)
       }
-      return updatedOrders;
     });
+
+    // Fire storage event to notify all tabs/components in current window
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: PAUSED_RIDERS_STORAGE_KEY,
+        newValue: JSON.stringify(Array.from(pausedIds))
+      }));
+    }
+
+    // Sync to Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        supabase
+          .from('riders')
+          .update({ 
+            is_paused: nextPaused,
+            is_online: nextPaused ? false : Boolean(currentTarget?.is_online)
+          })
+          .eq('id', id)
+          .then(res => {
+            if (res.error) {
+              console.warn('Supabase is_paused update status:', res.error.message);
+            }
+          });
+      } catch (err) {
+        console.warn('Supabase update error:', err);
+      }
+    }
+
+    // If rider is paused by admin, immediately withdraw any pending order dispatched to them so it never reaches them
+    if (nextPaused) {
+      setOrders(prevOrders => {
+        let changed = false;
+        const updatedOrders = prevOrders.map(ord => {
+          if (ord.dispatched_rider_id === id && !ord.rider_id && !['delivered', 'cancelled'].includes(ord.status)) {
+            changed = true;
+            return {
+              ...ord,
+              dispatched_rider_id: undefined,
+              dispatch_sent_at: undefined
+            };
+          }
+          return ord;
+        });
+
+        if (changed) {
+          foodiplaceRealtimeChannel?.postMessage({
+            type: 'ORDERS_SYNC',
+            orders: updatedOrders
+          });
+        }
+        return updatedOrders;
+      });
+    }
   };
 
   const deleteRider = (id: string) => {

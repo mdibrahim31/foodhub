@@ -1835,6 +1835,21 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
               </div>
 
               <div className="flex items-center space-x-3">
+                {/* Pause / Resume Rider Button */}
+                <button
+                  type="button"
+                  onClick={() => toggleRiderPause(rider.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition shadow-2xs ${
+                    isPaused 
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                      : 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300'
+                  }`}
+                  title={isPaused ? 'Resume Rider' : 'Pause Rider'}
+                >
+                  {isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
+                  <span>{isPaused ? 'Resume Rider' : 'Pause Rider'}</span>
+                </button>
+
                 <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase flex items-center space-x-1.5 ${
                   isPaused 
                     ? 'bg-rose-50 text-rose-700 border border-rose-200' 
