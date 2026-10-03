@@ -303,7 +303,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [foodCategories, setFoodCategories] = useState<FoodCategory[]>(() => {
     const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}food_categories`, INITIAL_FOOD_CATEGORIES);
-    return Array.isArray(parsed) ? parsed : INITIAL_FOOD_CATEGORIES;
+    const valid = Array.isArray(parsed) ? parsed.filter(c => c && c.id && !['cat-1','cat-2','cat-3','cat-4','cat-5','cat-6','cat-7','cat-8','cat-9','cat-10','cat-11'].includes(c.id)) : [];
+    return valid;
   });
 
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
@@ -437,6 +438,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .select('*');
           if (!rError && rData && Array.isArray(rData) && rData.length > 0) {
             fetchedRiders = rData as Rider[];
+          }
+
+          const { data: catData, error: catError } = await supabase
+            .from('food_categories')
+            .select('*');
+          if (!catError && catData && isSubscribed && Array.isArray(catData)) {
+            setFoodCategories(catData as FoodCategory[]);
           }
         } catch (err) {
           console.error('Failed to load from Supabase:', err);
