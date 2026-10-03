@@ -167,14 +167,22 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   // Update Center & Zoom
   useEffect(() => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView(center, zoom);
+      const safeCenter: [number, number] = [
+        Number.isFinite(Number(center?.[0])) ? Number(center[0]) : 22.3590,
+        Number.isFinite(Number(center?.[1])) ? Number(center[1]) : 91.8380,
+      ];
+      mapInstanceRef.current.setView(safeCenter, zoom);
     }
-  }, [center[0], center[1], zoom]);
+  }, [center?.[0], center?.[1], zoom]);
 
   // Recenter Map on Target Location
   const handleRecenter = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo(center, 17, {
+      const safeCenter: [number, number] = [
+        Number.isFinite(Number(center?.[0])) ? Number(center[0]) : 22.3590,
+        Number.isFinite(Number(center?.[1])) ? Number(center[1]) : 91.8380,
+      ];
+      mapInstanceRef.current.flyTo(safeCenter, 17, {
         animate: true,
         duration: 1,
       });
