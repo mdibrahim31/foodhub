@@ -84,9 +84,8 @@ CREATE TABLE IF NOT EXISTS menu_items (
 -- 6. RIDERS FLEET TABLE
 CREATE TABLE IF NOT EXISTS riders (
   id VARCHAR(255) PRIMARY KEY,
-  unique_id VARCHAR(50) UNIQUE, -- e.g. RDR-2001
   name VARCHAR(255) NOT NULL,
-  phone VARCHAR(50) NOT NULL,
+  phone VARCHAR(50) NOT NULL UNIQUE,
   photo_url TEXT,
   home_address TEXT,
   zone VARCHAR(100) NOT NULL DEFAULT 'Chawkbazar Zone',

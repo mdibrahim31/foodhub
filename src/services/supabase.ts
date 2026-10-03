@@ -304,7 +304,6 @@ export const INITIAL_CUSTOMERS: CustomerUser[] = [
 export const INITIAL_RIDERS: Rider[] = [
   {
     id: 'r0000001-0000-0000-0000-000000000001',
-    unique_id: 'RDR-2001',
     name: 'Rahim Rider',
     phone: '01755500011',
     photo_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
@@ -323,7 +322,6 @@ export const INITIAL_RIDERS: Rider[] = [
   },
   {
     id: 'r0000002-0000-0000-0000-000000000002',
-    unique_id: 'RDR-2002',
     name: 'Karim Express',
     phone: '01855500022',
     photo_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
@@ -342,7 +340,6 @@ export const INITIAL_RIDERS: Rider[] = [
   },
   {
     id: 'r0000003-0000-0000-0000-000000000003',
-    unique_id: 'RDR-2003',
     name: 'Shaon Delivery',
     phone: '01955500033',
     photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',

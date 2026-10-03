@@ -114,8 +114,7 @@ export interface CustomerUser {
 }
 
 export interface Rider {
-  id: string;
-  unique_id?: string; // e.g. RDR-5001
+  id: string; // Unique Rider ID
   name: string;
   phone: string;
   photo_url?: string;

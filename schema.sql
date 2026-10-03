@@ -121,7 +121,6 @@ CREATE TABLE IF NOT EXISTS public.customer_addresses (
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.riders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    unique_id VARCHAR(50) UNIQUE,
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE NOT NULL,
     photo_url TEXT,

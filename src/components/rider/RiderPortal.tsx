@@ -708,8 +708,8 @@ export const RiderPortal: React.FC = () => {
             </form>
           ) : (
             <form onSubmit={handleRiderRegisterSubmit} className="space-y-3.5 text-xs font-bold">
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[11px] text-rose-900 font-medium">
-                Enter your phone number & set your password to join the fleet! (If pre-registered by Admin, this activates your account).
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-900 font-medium">
+                ⚠️ <strong>বিজ্ঞপ্তি:</strong> শুধুমাত্র এডমিন প্যানেল থেকে আগে যোগ করা ফোন নম্বরে নাম ও পাসওয়ার্ড সেট করে অ্যাকাউন্ট অ্যাক্টিভ করা যাবে।
               </div>
 
               <div className="space-y-1">

@@ -351,7 +351,7 @@ export const AdminPortal: React.FC = () => {
     setRHomeAddress('');
 
     if (res.savedToDatabase) {
-      alert(`✅ Rider phone "${res.rider.phone}" registered & saved to Supabase Database!\nThe rider can now complete registration with their name and password from the Rider App.\nID: ${res.rider.unique_id || res.rider.id}`);
+      alert(`✅ Rider phone "${res.rider.phone}" registered & saved to Database!\nThe rider can now complete registration with their name and password from the Rider App.\nID: ${res.rider.id}`);
     } else {
       alert(`⚠️ Rider registered in Local Storage, BUT NOT in Supabase Database!\n\nReason: ${res.dbMessage}\n\n👉 Solution: Open the "Database" tab in Admin Portal to connect your Supabase Project URL & Anon Key.`);
     }
@@ -393,7 +393,7 @@ export const AdminPortal: React.FC = () => {
       return (
         r.name.toLowerCase().includes(q) ||
         r.phone.includes(q) ||
-        (r.unique_id && r.unique_id.toLowerCase().includes(q))
+        r.id.toLowerCase().includes(q)
       );
     })
     .sort((a, b) => {
@@ -945,7 +945,7 @@ export const AdminPortal: React.FC = () => {
                         <tr key={r.id} className="hover:bg-slate-50/80 transition">
                           <td className="py-3 px-4">
                             <span className="px-2 py-0.5 bg-pink-50 text-pink-700 font-mono font-black text-[10px] rounded-md border border-pink-200">
-                              {r.unique_id || `RDR-${r.id.slice(0, 4).toUpperCase()}`}
+                              {r.id.length > 12 ? `${r.id.slice(0, 8)}...` : r.id}
                             </span>
                           </td>
                           <td className="py-3 px-4 font-mono text-slate-900">{r.phone}</td>
@@ -987,7 +987,7 @@ export const AdminPortal: React.FC = () => {
                               {/* Delete */}
                               <button
                                 onClick={() => {
-                                  if (confirm(`Are you sure you want to delete rider "${r.name}" (${r.unique_id || r.phone})?`)) {
+                                  if (confirm(`Are you sure you want to delete rider "${r.name}" (${r.phone})?`)) {
                                     deleteRider(r.id);
                                   }
                                 }}
@@ -1482,7 +1482,6 @@ export const AdminPortal: React.FC = () => {
 
 CREATE TABLE IF NOT EXISTS public.riders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    unique_id VARCHAR(50),
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE NOT NULL,
     photo_url TEXT,
@@ -1822,7 +1821,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                   <div>
                     <h2 className="font-black text-slate-900 text-base tracking-tight leading-none">{rider.name}</h2>
                     <span className="text-[10px] font-mono font-bold text-pink-600 bg-pink-50 border border-pink-200 px-2 py-0.5 rounded-md mt-1 inline-block">
-                      ID: {rider.unique_id || rider.id}
+                      ID: {rider.id}
                     </span>
                   </div>
                 </div>
@@ -2016,7 +2015,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                     <div className="flex items-center space-x-2">
                       <h3 className="font-black text-slate-900 text-sm leading-tight">{rider.name}</h3>
                       <span className="text-[10px] font-mono font-bold text-pink-600 bg-pink-50 border border-pink-200 px-1.5 py-0.2 rounded">
-                        {rider.unique_id || rider.id}
+                        {rider.id}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-mono">
@@ -2246,7 +2245,7 @@ ALTER TABLE public.riders DISABLE ROW LEVEL SECURITY;`}
                       <div className="flex items-center justify-between">
                         <p className="text-slate-900 text-sm font-black">{ordRider.name}</p>
                         <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-mono rounded-md">
-                          {ordRider.unique_id || 'RDR-2001'}
+                          {ordRider.id.length > 12 ? `${ordRider.id.slice(0, 8)}...` : ordRider.id}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2 text-slate-600">

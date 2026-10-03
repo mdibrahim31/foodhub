@@ -1074,7 +1074,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const cleanName = data.name?.trim() || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
     const newRider: Rider = {
       id: crypto.randomUUID(),
-      unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
       name: cleanName,
       phone: cleanPhone,
       photo_url: data.photo_url || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
@@ -1095,11 +1094,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let savedToDatabase = false;
     let dbMessage = '';
 
+    // Save to backend server API
+    try {
+      await fetch('/api/riders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRider)
+      });
+      savedToDatabase = true;
+    } catch {}
+
     if (isSupabaseConfigured && supabase) {
       try {
         const fullPayload = {
           id: newRider.id,
-          unique_id: newRider.unique_id,
           name: newRider.name,
           phone: newRider.phone,
           photo_url: newRider.photo_url,
@@ -1122,7 +1130,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         if (error) {
           console.warn('Initial rider payload insert failed:', error);
-          // If schema has fewer columns, retry with essential columns
           const fallbackPayload: Record<string, any> = {
             id: newRider.id,
             name: newRider.name,
@@ -1131,20 +1138,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const retryRes = await supabase.from('riders').insert([fallbackPayload]);
           if (!retryRes.error) {
             savedToDatabase = true;
-            dbMessage = 'Saved to Supabase riders table (using essential columns).';
+            dbMessage = 'Saved to Supabase riders table.';
           } else {
-            // Also try inserting with just id and phone if name column has issues
-            const phoneOnlyPayload: Record<string, any> = {
-              id: newRider.id,
-              phone: newRider.phone,
-            };
-            const phoneOnlyRes = await supabase.from('riders').insert([phoneOnlyPayload]);
-            if (!phoneOnlyRes.error) {
-              savedToDatabase = true;
-              dbMessage = 'Saved to Supabase riders table (id and phone).';
-            } else {
-              dbMessage = `Database Error: ${retryRes.error.message || error.message} (${error.hint || ''})`;
-            }
+            dbMessage = `Database Error: ${retryRes.error.message || error.message}`;
           }
         } else {
           savedToDatabase = true;
@@ -1154,10 +1150,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         dbMessage = `Database Exception: ${err?.message || String(err)}`;
       }
     } else {
-      dbMessage = 'Supabase is not connected in this browser session. Saved in Local Storage.';
+      dbMessage = 'Saved to server database and local session.';
     }
 
-    setRiders(prev => [newRider, ...prev]);
+    setRiders(prev => [newRider, ...prev.filter(r => r.phone !== newRider.phone)]);
     return { rider: newRider, savedToDatabase, dbMessage };
   };
 
@@ -1173,117 +1169,98 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const password = (data.password || '').trim();
 
     if (!cleanPhone || !password) {
-      return { success: false, message: 'Please provide phone number and password.' };
+      return { success: false, message: 'ফোন নম্বর এবং পাসওয়ার্ড দিন।' };
     }
 
-    const existingRider = riders.find(r => {
+    // 1. Search in memory riders
+    let existingRider = riders.find(r => {
       if (!r || !r.phone) return false;
       const rDigits = String(r.phone).replace(/\D/g, '');
       const cleanDigits = String(cleanPhone).replace(/\D/g, '');
       return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
     });
 
-    let targetRider: Rider;
-
-    if (existingRider) {
-      // Existing rider added by admin -> activate with new password and info
-      const resolvedName = cleanName || existingRider.name || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
-      targetRider = {
-        ...existingRider,
-        name: resolvedName,
-        password: password,
-        is_password_set: true,
-        vehicle_type: data.vehicle_type || existingRider.vehicle_type || 'Motorcycle',
-        zone: data.zone || existingRider.zone || 'Chawkbazar Zone',
-        is_online: false,
-        is_approved: true,
-      };
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { error } = await supabase.from('riders').update({
-            name: targetRider.name,
-            password: targetRider.password,
-            is_password_set: true,
-            vehicle_type: targetRider.vehicle_type,
-            zone: targetRider.zone
-          }).eq('id', existingRider.id);
-
-          if (error) {
-            console.warn('Supabase rider update warning, trying fallback:', error);
-            await supabase.from('riders').update({
-              name: targetRider.name
-            }).eq('id', existingRider.id);
-          }
-        } catch (err) {
-          console.warn('Supabase rider update exception:', err);
+    // 2. Search in backend server database if not in memory
+    if (!existingRider) {
+      try {
+        const res = await fetch('/api/riders');
+        if (res.ok) {
+          const allRiders: Rider[] = await res.json();
+          existingRider = allRiders.find(r => {
+            const rDigits = String(r.phone).replace(/\D/g, '');
+            const cleanDigits = String(cleanPhone).replace(/\D/g, '');
+            return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
+          });
         }
-      }
-
-      setRiders(prev => prev.map(r => r.id === existingRider.id ? targetRider : r));
-    } else {
-      // Direct registration by rider
-      const resolvedName = cleanName || `Rider ${cleanPhone.slice(-4) || 'Fleet'}`;
-      targetRider = {
-        id: crypto.randomUUID(),
-        unique_id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
-        name: resolvedName,
-        phone: cleanPhone,
-        photo_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-        home_address: 'Chittagong',
-        zone: data.zone || 'Chawkbazar Zone',
-        vehicle_type: data.vehicle_type || 'Motorcycle',
-        is_online: false,
-        is_paused: false,
-        current_latitude: 22.3590,
-        current_longitude: 91.8380,
-        last_location_updated_at: new Date().toISOString(),
-        cash_in_hand: 0,
-        is_approved: true,
-        is_password_set: true,
-        password: password,
-        created_at: new Date().toISOString()
-      };
-
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const fullPayload = {
-            id: targetRider.id,
-            unique_id: targetRider.unique_id,
-            name: targetRider.name,
-            phone: targetRider.phone,
-            photo_url: targetRider.photo_url,
-            home_address: targetRider.home_address,
-            zone: targetRider.zone,
-            vehicle_type: targetRider.vehicle_type,
-            is_online: false,
-            is_paused: false,
-            current_latitude: targetRider.current_latitude,
-            current_longitude: targetRider.current_longitude,
-            last_location_updated_at: targetRider.last_location_updated_at,
-            cash_in_hand: 0,
-            is_approved: true,
-            is_password_set: true,
-            password: targetRider.password,
-            created_at: targetRider.created_at
-          };
-
-          const { error } = await supabase.from('riders').insert([fullPayload]);
-          if (error) {
-            console.warn('Initial self-registered rider insert warning, using fallback:', error);
-            await supabase.from('riders').insert([{
-              id: targetRider.id,
-              name: targetRider.name,
-              phone: targetRider.phone
-            }]);
-          }
-        } catch (err) {
-          console.warn('Supabase rider insert exception:', err);
-        }
-      }
-
-      setRiders(prev => [targetRider, ...prev]);
+      } catch {}
     }
+
+    // 3. Search in Supabase if not found
+    if (!existingRider && isSupabaseConfigured && supabase) {
+      try {
+        const { data: sData } = await supabase.from('riders').select('*').eq('phone', cleanPhone).maybeSingle();
+        if (sData) existingRider = sData as Rider;
+      } catch {}
+    }
+
+    // STRICT ADMIN-ONLY POLICY: If phone is NOT pre-added by Admin, reject registration!
+    if (!existingRider) {
+      return {
+        success: false,
+        message: '❌ এই ফোন নম্বরটি এডমিন প্যানেল থেকে আগে যোগ করা হয়নি। শুধুমাত্র এডমিনের অ্যাড করা নম্বরে রেজিস্ট্রেশন করা সম্ভব। অনুগ্রহ করে এডমিনের সাথে যোগাযোগ করুন।'
+      };
+    }
+
+    // If rider has already set a password:
+    if (existingRider.is_password_set && existingRider.password) {
+      return {
+        success: false,
+        message: '⚠️ আপনার অ্যাকাউন্ট ইতিমধ্যে সক্রিয় করা হয়েছে। অনুগ্রহ করে লগইন ট্যাবে গিয়ে পাসওয়ার্ড দিয়ে লগইন করুন।'
+      };
+    }
+
+    // Update empty columns with details provided by rider
+    const resolvedName = cleanName || existingRider.name || `Rider ${cleanPhone.slice(-4)}`;
+    const targetRider: Rider = {
+      ...existingRider,
+      name: resolvedName,
+      password: password,
+      is_password_set: true,
+      vehicle_type: data.vehicle_type || existingRider.vehicle_type || 'Motorcycle',
+      zone: data.zone || existingRider.zone || 'Chawkbazar Zone',
+      is_online: false,
+      is_approved: true,
+    };
+
+    // Save to backend server API
+    try {
+      await fetch(`/api/riders/${encodeURIComponent(existingRider.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(targetRider)
+      });
+    } catch {}
+
+    // Save to Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('riders').update({
+          name: targetRider.name,
+          password: targetRider.password,
+          is_password_set: true,
+          vehicle_type: targetRider.vehicle_type,
+          zone: targetRider.zone
+        }).eq('id', existingRider.id);
+
+        if (error) {
+          console.warn('Supabase rider update warning:', error);
+        }
+      } catch (err) {
+        console.warn('Supabase rider update exception:', err);
+      }
+    }
+
+    setRiders(prev => prev.map(r => r.id === existingRider!.id ? targetRider : r));
 
     const riderAccount: UserAccount = {
       id: `u-r-${targetRider.id}`,
@@ -1301,7 +1278,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return { 
       success: true, 
-      message: 'Registration completed successfully! Welcome to the Rider App.', 
+      message: '✅ রেজিস্ট্রেশন ও অ্যাকাউন্ট অ্যাক্টিভেশন সফল হয়েছে! রাইডার অ্যাপে স্বাগতম।', 
       rider: targetRider 
     };
   };
