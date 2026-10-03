@@ -1089,7 +1089,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           latitude: v.latitude || 22.3585,
           longitude: v.longitude || 91.8385,
           is_active: v.is_active ?? true,
-          is_paused: v.is_paused ?? false
+          is_paused: v.is_paused ?? false,
+          vendor_type: v.vendor_type || 'restaurant'
         };
         const { error } = await supabase.from('vendors').upsert([payload]);
         if (!error) vCount++;
@@ -1108,9 +1109,49 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    let adCount = 0;
+    for (const ad of adBanners) {
+      try {
+        const payload = {
+          id: ad.id,
+          title: ad.title,
+          subtitle: ad.subtitle || null,
+          action_text: ad.action_text || 'Redeem now',
+          image_url: ad.image_url,
+          target_vendor_id: ad.target_vendor_id || null,
+          is_active: ad.is_active,
+          order_index: ad.order_index || 0,
+          portal_type: ad.portal_type || 'food'
+        };
+        const { error } = await supabase.from('ads_banners').upsert([payload]);
+        if (!error) adCount++;
+      } catch (err) {
+        console.warn('Sync ad error:', err);
+      }
+    }
+
+    let catCount = 0;
+    for (const cat of foodCategories) {
+      try {
+        const payload = {
+          id: cat.id,
+          name: cat.name,
+          icon: cat.icon || '🍽️',
+          image_url: cat.image_url || null,
+          is_active: cat.is_active !== false,
+          order_index: cat.order_index || 0,
+          category_type: cat.category_type || 'food'
+        };
+        const { error } = await supabase.from('food_categories').upsert([payload]);
+        if (!error) catCount++;
+      } catch (err) {
+        console.warn('Sync category error:', err);
+      }
+    }
+
     return { 
       success: true, 
-      message: `Successfully synced ${rCount} riders, ${vCount} vendors, and ${zCount} zones to Supabase database!`, 
+      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, and ${catCount} categories!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };
@@ -1128,6 +1169,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     latitude: number;
     longitude: number;
     description?: string;
+    vendor_type?: 'restaurant' | 'shop';
   }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {
     const newVendor: Vendor = {
       id: crypto.randomUUID(),
@@ -1145,6 +1187,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       rating: 5.0,
       estimated_prep_time_minutes: 20,
       is_password_set: false,
+      vendor_type: data.vendor_type || 'restaurant',
       cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
       logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80',
       created_at: new Date().toISOString()
@@ -1172,6 +1215,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           estimated_prep_time_minutes: newVendor.estimated_prep_time_minutes,
           is_password_set: newVendor.is_password_set,
           password: null,
+          vendor_type: newVendor.vendor_type,
           logo_url: newVendor.logo_url,
           cover_image: newVendor.cover_image,
           created_at: newVendor.created_at
@@ -1641,19 +1685,78 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // FOOD CATEGORIES (Admin Configurable)
   // -------------------------------------------------------------
-  const addFoodCategory = (category: Omit<FoodCategory, 'id'>) => {
+  const addFoodCategory = async (category: Omit<FoodCategory, 'id'>) => {
     const newCat: FoodCategory = {
       ...category,
-      id: `cat-${Date.now()}`
+      id: crypto.randomUUID()
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('food_categories')
+          .insert([
+            {
+              id: newCat.id,
+              name: newCat.name,
+              icon: newCat.icon || '🍽️',
+              image_url: newCat.image_url || null,
+              is_active: newCat.is_active,
+              order_index: newCat.order_index || 0,
+              category_type: newCat.category_type || 'food'
+            }
+          ]);
+        if (error) {
+          console.error('Supabase error inserting category:', error);
+          alert('Database Error: ' + error.message);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to insert category in database:', err);
+      }
+    }
+
     setFoodCategories(prev => [...prev, newCat]);
   };
 
-  const updateFoodCategory = (id: string, updates: Partial<FoodCategory>) => {
+  const updateFoodCategory = async (id: string, updates: Partial<FoodCategory>) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('food_categories')
+          .update({
+            name: updates.name,
+            icon: updates.icon,
+            image_url: updates.image_url,
+            is_active: updates.is_active,
+            order_index: updates.order_index,
+            category_type: updates.category_type
+          })
+          .eq('id', id);
+        if (error) {
+          console.error('Supabase error updating category:', error);
+        }
+      } catch (err) {
+        console.error('Failed to update category in database:', err);
+      }
+    }
     setFoodCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
   };
 
-  const deleteFoodCategory = (id: string) => {
+  const deleteFoodCategory = async (id: string) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('food_categories')
+          .delete()
+          .eq('id', id);
+        if (error) {
+          console.error('Supabase error deleting category:', error);
+        }
+      } catch (err) {
+        console.error('Failed to delete category from database:', err);
+      }
+    }
     setFoodCategories(prev => prev.filter(c => c.id !== id));
   };
 
@@ -1682,6 +1785,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               target_vendor_id: newAd.target_vendor_id || null,
               is_active: newAd.is_active,
               order_index: newAd.order_index || 0,
+              portal_type: newAd.portal_type || 'food',
               created_at: newAd.created_at
             }
           ]);
@@ -1710,7 +1814,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             image_url: updates.image_url,
             target_vendor_id: updates.target_vendor_id || null,
             is_active: updates.is_active,
-            order_index: updates.order_index
+            order_index: updates.order_index,
+            portal_type: updates.portal_type
           })
           .eq('id', id);
         if (error) {

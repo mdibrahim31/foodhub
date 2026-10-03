@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
     longitude DOUBLE PRECISION NOT NULL,
     google_maps_link TEXT,
     is_active BOOLEAN DEFAULT true,
+    is_paused BOOLEAN NOT NULL DEFAULT false,
     is_boosted BOOLEAN DEFAULT false,
     boost_banner_title TEXT,
     boost_banner_subtitle TEXT,
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
     estimated_prep_time_minutes INT DEFAULT 20,
     is_password_set BOOLEAN DEFAULT false,
     password TEXT,
+    vendor_type VARCHAR(20) DEFAULT 'restaurant',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -96,12 +98,28 @@ CREATE TABLE IF NOT EXISTS public.ads_banners (
     target_category VARCHAR(100),
     is_active BOOLEAN NOT NULL DEFAULT true,
     order_index INT DEFAULT 0,
+    portal_type VARCHAR(20) DEFAULT 'food',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- ====================================================================
--- 6. MENU ITEMS TABLE
+-- 6. FOOD CATEGORIES TABLE (Admin Configured)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.food_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    icon VARCHAR(50) DEFAULT '🍕',
+    image_url TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    order_index INT DEFAULT 0,
+    category_type VARCHAR(20) DEFAULT 'food', -- 'food' or 'grocery'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
+-- 7. MENU ITEMS TABLE
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.menu_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -117,7 +135,7 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
 );
 
 -- ====================================================================
--- 7. CUSTOMER ADDRESS BOOK (With Map Pin Points)
+-- 8. CUSTOMER ADDRESS BOOK (With Map Pin Points)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customer_addresses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -135,7 +153,7 @@ CREATE TABLE IF NOT EXISTS public.customer_addresses (
 );
 
 -- ====================================================================
--- 8. RIDERS TABLE (Admin Registered)
+-- 9. RIDERS TABLE (Admin Registered)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.riders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -161,9 +179,12 @@ CREATE TABLE IF NOT EXISTS public.riders (
 -- Migration commands for existing database tables
 ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS vendor_type VARCHAR(20) DEFAULT 'restaurant';
+ALTER TABLE IF EXISTS public.ads_banners ADD COLUMN IF NOT EXISTS portal_type VARCHAR(20) DEFAULT 'food';
+ALTER TABLE IF EXISTS public.food_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(20) DEFAULT 'food';
 
 -- ====================================================================
--- 9. ORDERS TABLE (Full Cash-On-Delivery & Prep Lifecycle)
+-- 10. ORDERS TABLE (Full Cash-On-Delivery & Prep Lifecycle)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -204,7 +225,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 );
 
 -- ====================================================================
--- 10. ORDER ITEMS TABLE
+-- 11. ORDER ITEMS TABLE
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.order_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -217,7 +238,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 );
 
 -- ====================================================================
--- 11. INDEXES FOR HIGH PERFORMANCE REAL-TIME QUERIES
+-- 12. INDEXES FOR HIGH PERFORMANCE REAL-TIME QUERIES
 -- ====================================================================
 CREATE INDEX IF NOT EXISTS idx_zones_active ON public.zones(is_active);
 CREATE INDEX IF NOT EXISTS idx_vendors_zone ON public.vendors(zone);
@@ -230,13 +251,14 @@ CREATE INDEX IF NOT EXISTS idx_orders_customer_phone ON public.orders(customer_p
 CREATE INDEX IF NOT EXISTS idx_ads_active ON public.ads_banners(is_active);
 
 -- ====================================================================
--- 12. ROW LEVEL SECURITY (RLS) POLICIES
+-- 13. ROW LEVEL SECURITY (RLS) POLICIES
 -- ====================================================================
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.zones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ads_banners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.food_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.riders ENABLE ROW LEVEL SECURITY;
@@ -263,6 +285,10 @@ CREATE POLICY "Admin & Vendor manage vendors" ON public.vendors FOR ALL USING (t
 -- Promotional Banner Ads Policies
 CREATE POLICY "Public read active ads" ON public.ads_banners FOR SELECT USING (true);
 CREATE POLICY "Admin manage ads" ON public.ads_banners FOR ALL USING (true);
+
+-- Food Categories Policies
+CREATE POLICY "Public read categories" ON public.food_categories FOR SELECT USING (true);
+CREATE POLICY "Admin manage categories" ON public.food_categories FOR ALL USING (true);
 
 -- Menu Items Policies
 CREATE POLICY "Public read menu items" ON public.menu_items FOR SELECT USING (true);
