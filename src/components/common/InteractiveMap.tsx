@@ -214,8 +214,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     layerGroup.clearLayers();
 
     // 1. Draw Radius Circle if provided
-    if (radiusCircle) {
-      const circle = L.circle(radiusCircle.center, {
+    if (radiusCircle && Array.isArray(radiusCircle.center) && radiusCircle.center.length >= 2 && !isNaN(Number(radiusCircle.center[0])) && !isNaN(Number(radiusCircle.center[1]))) {
+      const circle = L.circle(radiusCircle.center as [number, number], {
         color: radiusCircle.color || '#10b981',
         fillColor: radiusCircle.color || '#10b981',
         fillOpacity: 0.12,

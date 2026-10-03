@@ -649,7 +649,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // RIDERS & DELIVERY ZONES (ADMIN MAP BOUNDARY & CONFIG)
   // -------------------------------------------------------------
   const addZone = async (zoneData: Omit<DeliveryZone, 'id' | 'created_at' | 'updated_at'>): Promise<DeliveryZone> => {
-    const newId = `zone-${Date.now()}`;
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0')}`;
     const newZone: DeliveryZone = {
       ...zoneData,
       id: newId,
@@ -1098,9 +1098,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    let zCount = 0;
+    for (const z of zones) {
+      try {
+        const { error } = await supabase.from('zones').upsert([z]);
+        if (!error) zCount++;
+      } catch (err) {
+        console.warn('Sync zone error:', err);
+      }
+    }
+
     return { 
       success: true, 
-      message: `Successfully synced ${rCount} riders and ${vCount} vendors to Supabase database!`, 
+      message: `Successfully synced ${rCount} riders, ${vCount} vendors, and ${zCount} zones to Supabase database!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };

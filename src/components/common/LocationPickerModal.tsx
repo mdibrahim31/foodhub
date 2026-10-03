@@ -157,11 +157,15 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 onChange={(e) => setPickedZone(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-800 focus:outline-hidden focus:border-rose-500"
               >
-                {DELIVERY_ZONES.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
-                ))}
+                {(zones || []).length > 0 ? (
+                  zones.map((z) => (
+                    <option key={z.id} value={z.name}>
+                      {z.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="Chawkbazar Zone">Chawkbazar Zone (Default)</option>
+                )}
               </select>
             </div>
           </div>

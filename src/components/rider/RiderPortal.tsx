@@ -63,7 +63,8 @@ export const RiderPortal: React.FC = () => {
     loginUser,
     setPasswordForUser,
     completeRiderRegistration,
-    updateRiderProfile
+    updateRiderProfile,
+    zones
   } = useDelivery();
 
   // Live reactive rider instance bound to authenticated user or active rider selection
@@ -755,9 +756,13 @@ export const RiderPortal: React.FC = () => {
                     onChange={(e) => setRegZone(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-rose-500"
                   >
-                    {DELIVERY_ZONES.map((z) => (
-                      <option key={z} value={z}>{z}</option>
-                    ))}
+                    {(zones || []).length > 0 ? (
+                      zones.map((z) => (
+                        <option key={z.id} value={z.name}>{z.name}</option>
+                      ))
+                    ) : (
+                      <option value="Chawkbazar Zone">Chawkbazar Zone (Default)</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1647,9 +1652,13 @@ export const RiderPortal: React.FC = () => {
                     onChange={(e) => setEditZone(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   >
-                    {DELIVERY_ZONES.map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
+                    {(zones || []).length > 0 ? (
+                      zones.map((z) => (
+                        <option key={z.id} value={z.name}>{z.name}</option>
+                      ))
+                    ) : (
+                      <option value="Chawkbazar Zone">Chawkbazar Zone (Default)</option>
+                    )}
                   </select>
                 </div>
               </div>

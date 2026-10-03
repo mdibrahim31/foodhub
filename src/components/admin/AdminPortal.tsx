@@ -1571,11 +1571,6 @@ export const AdminPortal: React.FC = () => {
                                 {zone.name}
                               </h4>
                             </div>
-                            {zone.bn_name && (
-                              <p className="text-xs font-bold text-slate-500 mt-0.5 ml-5">
-                                {zone.bn_name}
-                              </p>
-                            )}
                           </div>
 
                           <button
@@ -2615,7 +2610,7 @@ export const AdminPortal: React.FC = () => {
 
                     <div className="space-y-4">
                       {/* Full Map Picker Interaction */}
-                      <div className="rounded-2xl overflow-hidden border border-slate-200 h-[320px] w-full shadow-inner relative group">
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 h-[500px] w-full shadow-inner relative group">
                         <InteractiveMap
                           center={[zLat, zLng]}
                           zoom={13}
