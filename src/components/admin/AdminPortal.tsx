@@ -408,7 +408,6 @@ export const AdminPortal: React.FC = () => {
     if (editingZone) {
       await updateZone(editingZone.id, {
         name: zName.trim(),
-        bn_name: zBnName.trim() || undefined,
         description: zDescription.trim() || undefined,
         center_latitude: zLat,
         center_longitude: zLng,
@@ -420,7 +419,6 @@ export const AdminPortal: React.FC = () => {
     } else {
       await addZone({
         name: zName.trim(),
-        bn_name: zBnName.trim() || undefined,
         description: zDescription.trim() || undefined,
         center_latitude: zLat,
         center_longitude: zLng,
@@ -2544,18 +2542,6 @@ export const AdminPortal: React.FC = () => {
                         />
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                          Bangla Name (বাংলা নাম)
-                        </label>
-                        <input
-                          type="text"
-                          value={zBnName}
-                          onChange={(e) => setZBnName(e.target.value)}
-                          placeholder="e.g. চকবাজার জোন"
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 shadow-xs"
-                        />
-                      </div>
 
                       <div className="space-y-1">
                         <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
@@ -2775,23 +2761,19 @@ export const AdminPortal: React.FC = () => {
 
               <div className="space-y-1">
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Operating Delivery Zone *</label>
-                <select
-                  value={vZone}
-                  onChange={(e) => setVZone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                >
-                  {zones && zones.length > 0 ? (
-                    zones.map((zone) => (
+                  <select
+                    value={vZone}
+                    onChange={(e) => setVZone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    required
+                  >
+                    <option value="" disabled>Select a Zone</option>
+                    {(zones || []).map((zone) => (
                       <option key={zone.id} value={zone.name}>
-                        {zone.name} {zone.bn_name ? `(${zone.bn_name})` : ''} ({zone.radius_km || 3} KM)
+                        {zone.name} ({zone.radius_km || 3} KM)
                       </option>
-                    ))
-                  ) : (
-                    DELIVERY_ZONES.map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))
-                  )}
-                </select>
+                    ))}
+                  </select>
               </div>
 
               <div className="space-y-1">
@@ -2880,18 +2862,14 @@ export const AdminPortal: React.FC = () => {
                     value={rZone}
                     onChange={(e) => setRZone(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    required
                   >
-                    {zones && zones.length > 0 ? (
-                      zones.map((zone) => (
-                        <option key={zone.id} value={zone.name}>
-                          {zone.name} {zone.bn_name ? `(${zone.bn_name})` : ''} ({zone.radius_km || 3} KM)
-                        </option>
-                      ))
-                    ) : (
-                      DELIVERY_ZONES.map((zone) => (
-                        <option key={zone} value={zone}>{zone}</option>
-                      ))
-                    )}
+                    <option value="" disabled>Select a Zone</option>
+                    {(zones || []).map((zone) => (
+                      <option key={zone.id} value={zone.name}>
+                        {zone.name} ({zone.radius_km || 3} KM)
+                      </option>
+                    ))}
                   </select>
                 </div>
 
