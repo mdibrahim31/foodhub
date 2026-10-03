@@ -101,6 +101,14 @@ export const CustomerPortal: React.FC = () => {
     });
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'fastest'>('popular');
+  const [isRating4PlusOnly, setIsRating4PlusOnly] = useState(false);
+  const [hasOfferOnly, setHasOfferOnly] = useState(false);
+  const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [activeMenuCategory, setActiveMenuCategory] = useState('All');
+
   const [userName, setUserName] = useState('MD');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -180,13 +188,7 @@ export const CustomerPortal: React.FC = () => {
       }
     }
   };
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'fastest'>('popular');
-  const [isRating4PlusOnly, setIsRating4PlusOnly] = useState(false);
-  const [hasOfferOnly, setHasOfferOnly] = useState(false);
-  const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
-  const [menuSearchQuery, setMenuSearchQuery] = useState('');
-  const [activeMenuCategory, setActiveMenuCategory] = useState('All');
+
   
   // Hero Carousel Slides & Swipe state
   // Dynamically build slides from Admin Ad Banners & Boosted Vendors
