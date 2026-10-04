@@ -1252,9 +1252,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           dbMessage = 'Saved to Supabase vendors table successfully.';
         }
 
-        // Create a dedicated folder for this vendor in the 'images' bucket
+        // Create a dedicated folder for this vendor in the 'images' bucket using vendor name
         try {
-          await supabase.storage.from('images').upload(`${newVendor.id}/.keep`, new Blob(['folder created'], { type: 'text/plain' }), { upsert: true });
+          const folderName = newVendor.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          await supabase.storage.from('images').upload(`${folderName}/.keep`, new Blob(['folder created'], { type: 'text/plain' }), { upsert: true });
         } catch (storageErr) {
           console.warn('Storage bucket folder creation note:', storageErr);
         }
@@ -1283,11 +1284,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteVendor = async (id: string) => {
-    if (isSupabaseConfigured && supabase) {
+    const vendorToDelete = vendors.find(v => v.id === id);
+    if (isSupabaseConfigured && supabase && vendorToDelete) {
       try {
-        const { data: fileList } = await supabase.storage.from('images').list(id);
+        const folderName = vendorToDelete.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const { data: fileList } = await supabase.storage.from('images').list(folderName);
         if (fileList && fileList.length > 0) {
-          const paths = fileList.map(f => `${id}/${f.name}`);
+          const paths = fileList.map(f => `${folderName}/${f.name}`);
           await supabase.storage.from('images').remove(paths);
         }
       } catch (err) {
