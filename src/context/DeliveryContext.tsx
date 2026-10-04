@@ -1282,11 +1282,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const deleteVendor = (id: string) => {
-    setVendors(prev => prev.filter(v => v.id !== id));
+  const deleteVendor = async (id: string) => {
     if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: fileList } = await supabase.storage.from('images').list(id);
+        if (fileList && fileList.length > 0) {
+          const paths = fileList.map(f => `${id}/${f.name}`);
+          await supabase.storage.from('images').remove(paths);
+        }
+      } catch (err) {
+        console.warn('Vendor folder storage delete error:', err);
+      }
       supabase.from('vendors').delete().eq('id', id).then();
     }
+    setVendors(prev => prev.filter(v => v.id !== id));
   };
 
   const adminRegisterRider = async (data: {
@@ -1693,7 +1702,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: !m.is_available } : m));
   };
 
-  const deleteMenuItem = (id: string) => {
+  const deleteMenuItem = async (id: string) => {
+    const itemToDelete = menuItems.find(m => m.id === id);
+    if (itemToDelete && itemToDelete.image_url && isSupabaseConfigured && supabase) {
+      try {
+        const url = itemToDelete.image_url;
+        if (url.includes('/storage/v1/object/public/images/')) {
+          const relativePath = url.split('/storage/v1/object/public/images/')[1];
+          if (relativePath) {
+            await supabase.storage.from('images').remove([decodeURIComponent(relativePath)]);
+          }
+        }
+      } catch (err) {
+        console.warn('Menu image storage delete error:', err);
+      }
+    }
     setMenuItems(prev => prev.filter(m => m.id !== id));
   };
 
