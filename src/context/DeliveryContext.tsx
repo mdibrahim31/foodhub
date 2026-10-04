@@ -642,27 +642,49 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCart(localCart);
     setCartVendor(localVendor);
 
-    // Fetch from database server to keep in sync across devices / reloads
+    // 1. Fetch from backend database server (Fast local cache)
     fetch(`/api/cart/${encodeURIComponent(custKey)}`)
       .then(res => res.json())
       .then(data => {
-        if (data?.cart && Array.isArray(data.cart.items)) {
-          if (data.cart.items.length > 0) {
-            setCart(data.cart.items);
-            setCartVendor(data.cart.vendor || null);
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`, JSON.stringify(data.cart.items));
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, JSON.stringify(data.cart.vendor || null));
-          } else if (localCart.length > 0) {
-            fetch(`/api/cart/${encodeURIComponent(custKey)}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: localCart, vendor: localVendor })
-            }).catch(() => {});
-          }
+        if (data?.cart && Array.isArray(data.cart.items) && data.cart.items.length > 0) {
+          setCart(data.cart.items);
+          setCartVendor(data.cart.vendor || null);
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`, JSON.stringify(data.cart.items));
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, JSON.stringify(data.cart.vendor || null));
+        } else if (localCart.length > 0) {
+          // Sync local to server if server is empty
+          fetch(`/api/cart/${encodeURIComponent(custKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: localCart, vendor: localVendor })
+          }).catch(() => {});
         }
       })
       .catch(() => {});
-  }, [currentUser?.reference_id, currentUser?.phone, currentUser?.role, currentUser?.id]);
+
+    // 2. Fetch from Supabase (Persistent remote storage)
+    if (supabaseConfig.isConfigured && supabase) {
+      supabase
+        .from('customer_carts')
+        .select('*')
+        .eq('customer_id', custKey)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const remoteItems = data.cart_items || [];
+            const remoteVendor = data.vendor || null;
+            
+            // Only update if remote is newer or local is empty
+            if (remoteItems.length > 0) {
+              setCart(remoteItems);
+              setCartVendor(remoteVendor);
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`, JSON.stringify(remoteItems));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, JSON.stringify(remoteVendor));
+            }
+          }
+        });
+    }
+  }, [currentUser?.reference_id, currentUser?.phone, currentUser?.role, currentUser?.id, supabaseConfig.isConfigured]);
 
   const persistCustomerCart = (items: CartItem[], vendor: Vendor | null, custKeyOverride?: string) => {
     const custKey = custKeyOverride || getCustomerCartKey(currentUser);
@@ -679,7 +701,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }).catch(err => console.warn('Failed to save cart to server:', err));
 
     // Save to Supabase if configured
-    if (isSupabaseConfigured && supabase) {
+    if (supabaseConfig.isConfigured && supabase) {
       supabase
         .from('customer_carts')
         .upsert([{
@@ -688,8 +710,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           vendor: vendor,
           updated_at: new Date().toISOString()
         }])
-        .then(() => {}, (err) => {
-          console.warn('Supabase cart sync warning:', err);
+        .then(({ error }) => {
+          if (error) {
+            console.error('Supabase cart sync error:', error);
+          }
+        })
+        .catch((err) => {
+          console.warn('Supabase cart sync exception:', err);
         });
     }
   };
