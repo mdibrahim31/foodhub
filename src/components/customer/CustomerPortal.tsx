@@ -70,129 +70,6 @@ export const CustomerPortal: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
 
-  // If user is not logged in, show the Login/Registration page
-  if (!currentUser || currentUser.role !== 'customer') {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-sm rounded-3xl shadow-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-orange-600 p-8 text-white text-center">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-inner">
-              <LogIn className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-black tracking-tight">FoodHub</h1>
-            <p className="text-orange-100 text-sm font-medium mt-1">Welcome back, food lover!</p>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-slate-100">
-            <button 
-              onClick={() => setAuthTab('login')}
-              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'login' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Log In
-            </button>
-            <button 
-              onClick={() => setAuthTab('register')}
-              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'register' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          <div className="p-6">
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const phone = formData.get('phone') as string;
-                const password = formData.get('password') as string;
-                const name = formData.get('name') as string;
-
-                if (!phone || !password) {
-                  alert('Phone and Password are required');
-                  return;
-                }
-
-                if (authTab === 'login') {
-                  const res = loginUser('customer', phone, password);
-                  if (res.success) {
-                    // Success is handled by state change causing re-render
-                  } else {
-                    alert(res.message || 'Login failed');
-                  }
-                } else {
-                  if (!name) {
-                    alert('Name is required for registration');
-                    return;
-                  }
-                  const res = registerCustomer({ name, phone, password });
-                  if (res.success) {
-                    alert('Registration successful!');
-                  } else {
-                    alert(res.message || 'Registration failed');
-                  }
-                }
-              }}
-              className="space-y-4"
-            >
-              {authTab === 'register' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      name="name"
-                      type="text" 
-                      required
-                      placeholder="Enter your name"
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    name="phone"
-                    type="tel" 
-                    required
-                    placeholder="e.g. 01811223344"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Password</label>
-                <div className="relative">
-                  <LogIn className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 opacity-50" />
-                  <input 
-                    name="password"
-                    type="password" 
-                    required
-                    placeholder="Enter password"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit"
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-98 mt-2"
-              >
-                {authTab === 'login' ? 'Log In' : 'Create Account'}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Persistent navigation and views so refreshing never resets to home
   const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>(() => {
     if (typeof window !== 'undefined') {
@@ -511,6 +388,129 @@ export const CustomerPortal: React.FC = () => {
       setIsPlacingOrder(false);
     }
   };
+
+  // If user is not logged in, show the Login/Registration page
+  if (!currentUser || currentUser.role !== 'customer') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-sm rounded-3xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-orange-600 p-8 text-white text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-inner">
+              <LogIn className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-black tracking-tight">FoodHub</h1>
+            <p className="text-orange-100 text-sm font-medium mt-1">Welcome back, food lover!</p>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-slate-100">
+            <button 
+              onClick={() => setAuthTab('login')}
+              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'login' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Log In
+            </button>
+            <button 
+              onClick={() => setAuthTab('register')}
+              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'register' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <div className="p-6">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const phone = formData.get('phone') as string;
+                const password = formData.get('password') as string;
+                const name = formData.get('name') as string;
+
+                if (!phone || !password) {
+                  alert('Phone and Password are required');
+                  return;
+                }
+
+                if (authTab === 'login') {
+                  const res = loginUser('customer', phone, password);
+                  if (res.success) {
+                    // Success is handled by state change causing re-render
+                  } else {
+                    alert(res.message || 'Login failed');
+                  }
+                } else {
+                  if (!name) {
+                    alert('Name is required for registration');
+                    return;
+                  }
+                  const res = registerCustomer({ name, phone, password });
+                  if (res.success) {
+                    alert('Registration successful!');
+                  } else {
+                    alert(res.message || 'Registration failed');
+                  }
+                }
+              }}
+              className="space-y-4"
+            >
+              {authTab === 'register' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input 
+                      name="name"
+                      type="text" 
+                      required
+                      placeholder="Enter your name"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    name="phone"
+                    type="tel" 
+                    required
+                    placeholder="e.g. 01811223344"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Password</label>
+                <div className="relative">
+                  <LogIn className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 opacity-50" />
+                  <input 
+                    name="password"
+                    type="password" 
+                    required
+                    placeholder="Enter password"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-98 mt-2"
+              >
+                {authTab === 'login' ? 'Log In' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Cuisine Bubbles (Matching Image 1)
   const cuisineBubbles = [
