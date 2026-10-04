@@ -51,12 +51,46 @@ export const VendorOrdersTerminal: React.FC = () => {
     logoutUser
   } = useDelivery();
 
+  // 1. Auth Form States
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [authPhone, setAuthPhone] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
+  // 2. Terminal UI States (All hooks at top of component)
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'completed'>('pending');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [autoAccept, setAutoAccept] = useState(false);
+  const [storeStatus, setStoreStatus] = useState<'online' | 'busy' | 'offline'>('online');
+
+  // Modal States
+  const [rejectModalOrder, setRejectModalOrder] = useState<Order | null>(null);
+  const [rejectReason, setRejectReason] = useState('Out of key ingredients');
+  const [printModalOrder, setPrintModalOrder] = useState<Order | null>(null);
+  const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
+  const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
+
+  // Audio Ref tracking previous pending count
+  const prevPendingCountRef = useRef<number>(0);
+
+  // Strictly matched to logged-in vendor user only — SWITCHING TO OTHER STORES IS DISABLED
+  const authenticatedVendor = (currentUser && currentUser.role === 'vendor')
+    ? (vendors.find(v => v.id === currentUser.reference_id || v.phone.replace(/\D/g, '') === currentUser.phone.replace(/\D/g, '')) || currentVendor)
+    : null;
+
+  const isAuthenticated = Boolean(currentUser && currentUser.role === 'vendor' && authenticatedVendor);
+
+  // Filter orders strictly for THIS restaurant only
+  const vendorOrders = authenticatedVendor ? orders.filter((o) => o.vendor_id === authenticatedVendor.id) : [];
+
+  const pendingOrders = vendorOrders.filter((o) => o.status === 'pending');
+  const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
+  const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
+  const completedOrders = vendorOrders.filter((o) => o.status === 'delivered');
+
+  // Auth Handlers
   const handleVendorLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -89,7 +123,107 @@ export const VendorOrdersTerminal: React.FC = () => {
     }
   };
 
-  if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
+  // Sound Synthesizer via Web Audio API
+  const playNewOrderSound = () => {
+    if (!soundEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
+
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      osc1.frequency.setValueAtTime(1320, ctx.currentTime + 0.15);
+
+      osc2.frequency.setValueAtTime(440, ctx.currentTime);
+      osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(ctx.currentTime + 0.65);
+      osc2.stop(ctx.currentTime + 0.65);
+    } catch {
+      // Audio context restricted
+    }
+  };
+
+  // Sound trigger on new pending order
+  useEffect(() => {
+    if (pendingOrders.length > prevPendingCountRef.current) {
+      playNewOrderSound();
+    }
+    prevPendingCountRef.current = pendingOrders.length;
+  }, [pendingOrders.length]);
+
+  // Auto-accept if enabled
+  useEffect(() => {
+    if (autoAccept && pendingOrders.length > 0) {
+      pendingOrders.forEach((o) => {
+        vendorAcceptOrderWithPrepTime(o.id, 15);
+      });
+    }
+  }, [autoAccept, pendingOrders]);
+
+  const handleConfirmHandover = (orderId: string) => {
+    updateOrderStatus(orderId, 'food_picked_up');
+  };
+
+  const handleConfirmReject = () => {
+    if (!rejectModalOrder) return;
+    updateOrderStatus(rejectModalOrder.id, 'cancelled', { cancellation_reason: rejectReason });
+    setRejectModalOrder(null);
+  };
+
+  // Toggle item in kitchen prep checklist
+  const toggleItemCheck = (orderId: string, itemIndex: number) => {
+    setCheckedItems(prev => {
+      const orderChecks = { ...(prev[orderId] || {}) };
+      orderChecks[itemIndex] = !orderChecks[itemIndex];
+      return { ...prev, [orderId]: orderChecks };
+    });
+  };
+
+  // Filtered list based on active tab and search
+  const getFilteredOrders = () => {
+    let list: Order[] = [];
+    if (activeTab === 'pending') list = pendingOrders;
+    else if (activeTab === 'preparing') list = preparingOrders;
+    else if (activeTab === 'ready') list = readyOrders;
+    else if (activeTab === 'completed') list = completedOrders;
+    else list = vendorOrders;
+
+    if (!searchQuery.trim()) return list;
+
+    const q = searchQuery.toLowerCase();
+    return list.filter((o) =>
+      o.id.toLowerCase().includes(q) ||
+      o.order_code.toLowerCase().includes(q) ||
+      o.customer_name.toLowerCase().includes(q) ||
+      o.customer_phone.includes(q) ||
+      o.items?.some((it) => it.item_name.toLowerCase().includes(q))
+    );
+  };
+
+  const displayedOrders = getFilteredOrders();
+
+  // Total earnings today for this restaurant
+  const todayEarnings = completedOrders.reduce((sum, o) => sum + o.food_total, 0);
+
+  // 🔒 STRICT AUTH GATE: Login required to enter the terminal!
+  if (!isAuthenticated || !authenticatedVendor) {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
         <div className="bg-slate-800 text-slate-100 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-700">
@@ -101,8 +235,8 @@ export const VendorOrdersTerminal: React.FC = () => {
             <h2 className="text-2xl font-black tracking-tight text-white">
               foodiplace Orders Terminal
             </h2>
-            <p className="text-xs text-slate-400 font-bold">
-              Vendor Partner Login & Authentication
+            <p className="text-xs text-rose-400 font-bold">
+              🔒 Login Required — Please log in with your vendor account
             </p>
           </div>
 
@@ -217,150 +351,6 @@ export const VendorOrdersTerminal: React.FC = () => {
     );
   }
 
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  // Active Store Selection
-  const [selectedVendorId, setSelectedVendorId] = useState<string>(
-    currentVendor ? currentVendor.id : (vendors[0]?.id || '')
-  );
-
-  // Tab Filter
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'completed'>('pending');
-
-  // Search & Filter
-  const [searchQuery, setSearchQuery] = useState('');
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoAccept, setAutoAccept] = useState(false);
-  const [storeStatus, setStoreStatus] = useState<'online' | 'busy' | 'offline'>('online');
-  const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
-
-  // Modal States
-  const [rejectModalOrder, setRejectModalOrder] = useState<Order | null>(null);
-  const [rejectReason, setRejectReason] = useState('Out of key ingredients');
-  const [printModalOrder, setPrintModalOrder] = useState<Order | null>(null);
-  const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
-  const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
-
-  // Audio Ref tracking previous pending count
-  const prevPendingCountRef = useRef<number>(0);
-
-  // Active Vendor object
-  const activeVendor = vendors.find((v) => v.id === selectedVendorId) || currentVendor || vendors[0];
-
-  // Keep global current vendor in sync if switched
-  const handleSelectVendor = (vendor: Vendor) => {
-    setSelectedVendorId(vendor.id);
-    setCurrentVendor(vendor);
-    setIsStoreDropdownOpen(false);
-  };
-
-  // Filter orders strictly for this restaurant
-  const vendorOrders = orders.filter((o) => o.vendor_id === activeVendor?.id);
-
-  const pendingOrders = vendorOrders.filter((o) => o.status === 'pending');
-  const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
-  const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
-  const completedOrders = vendorOrders.filter((o) => o.status === 'delivered');
-
-  // Sound Synthesizer via Web Audio API
-  const playNewOrderSound = () => {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc1.type = 'triangle';
-      osc2.type = 'sine';
-
-      osc1.frequency.setValueAtTime(880, ctx.currentTime);
-      osc1.frequency.setValueAtTime(1320, ctx.currentTime + 0.15);
-
-      osc2.frequency.setValueAtTime(440, ctx.currentTime);
-      osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
-
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 0.65);
-      osc2.stop(ctx.currentTime + 0.65);
-    } catch {
-      // Audio context restricted
-    }
-  };
-
-  // Sound trigger on new pending order
-  useEffect(() => {
-    if (pendingOrders.length > prevPendingCountRef.current) {
-      playNewOrderSound();
-    }
-    prevPendingCountRef.current = pendingOrders.length;
-  }, [pendingOrders.length]);
-
-  // Auto-accept if enabled
-  useEffect(() => {
-    if (autoAccept && pendingOrders.length > 0) {
-      pendingOrders.forEach((o) => {
-        vendorAcceptOrderWithPrepTime(o.id, 15);
-      });
-    }
-  }, [autoAccept, pendingOrders]);
-
-  const handleConfirmHandover = (orderId: string) => {
-    updateOrderStatus(orderId, 'food_picked_up');
-  };
-
-  const handleConfirmReject = () => {
-    if (!rejectModalOrder) return;
-    updateOrderStatus(rejectModalOrder.id, 'cancelled', { cancellation_reason: rejectReason });
-    setRejectModalOrder(null);
-  };
-
-  // Toggle item in kitchen prep checklist
-  const toggleItemCheck = (orderId: string, itemIndex: number) => {
-    setCheckedItems(prev => {
-      const orderChecks = { ...(prev[orderId] || {}) };
-      orderChecks[itemIndex] = !orderChecks[itemIndex];
-      return { ...prev, [orderId]: orderChecks };
-    });
-  };
-
-  // Filtered list based on active tab and search
-  const getFilteredOrders = () => {
-    let list: Order[] = [];
-    if (activeTab === 'pending') list = pendingOrders;
-    else if (activeTab === 'preparing') list = preparingOrders;
-    else if (activeTab === 'ready') list = readyOrders;
-    else if (activeTab === 'completed') list = completedOrders;
-    else list = vendorOrders;
-
-    if (!searchQuery.trim()) return list;
-
-    const q = searchQuery.toLowerCase();
-    return list.filter((o) =>
-      o.id.toLowerCase().includes(q) ||
-      o.order_code.toLowerCase().includes(q) ||
-      o.customer_name.toLowerCase().includes(q) ||
-      o.customer_phone.includes(q) ||
-      o.items?.some((it) => it.item_name.toLowerCase().includes(q))
-    );
-  };
-
-  const displayedOrders = getFilteredOrders();
-
-  // Total earnings today for this restaurant
-  const todayEarnings = completedOrders.reduce((sum, o) => sum + o.food_total, 0);
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans select-none antialiased">
       {/* 
@@ -371,66 +361,25 @@ export const VendorOrdersTerminal: React.FC = () => {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3 sm:px-6 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           
-          {/* Left: Brand + Store Selector */}
+          {/* Left: Brand + Logged-in Store Name (Strictly Single Profile - No Switching) */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30">
               <ChefHat className="w-6 h-6" />
             </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
-                className="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 text-left px-3.5 py-1.5 rounded-2xl border border-slate-200 transition shadow-xs"
-              >
-                <div>
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant Terminal</span>
-                    <span className={`w-2 h-2 rounded-full ${
-                      storeStatus === 'online' ? 'bg-emerald-500 animate-pulse' :
-                      storeStatus === 'busy' ? 'bg-amber-500' : 'bg-rose-500'
-                    }`} />
-                  </div>
-                  <h1 className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[180px] sm:max-w-xs">
-                    {activeVendor?.name || 'Select Restaurant'}
-                  </h1>
+            <div className="flex items-center space-x-2 bg-slate-50 text-left px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-xs">
+              <div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant Terminal</span>
+                  <span className={`w-2 h-2 rounded-full ${
+                    storeStatus === 'online' ? 'bg-emerald-500 animate-pulse' :
+                    storeStatus === 'busy' ? 'bg-amber-500' : 'bg-rose-500'
+                  }`} />
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {/* Store Switcher Dropdown */}
-              {isStoreDropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in">
-                  <div className="text-[11px] font-bold text-slate-400 px-3 py-1.5 uppercase">
-                    Select Restaurant Branch
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-1">
-                    {vendors.map((v) => {
-                      const vPending = orders.filter(o => o.vendor_id === v.id && o.status === 'pending').length;
-                      return (
-                        <button
-                          key={v.id}
-                          onClick={() => handleSelectVendor(v)}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition ${
-                            v.id === activeVendor?.id
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="truncate pr-2">
-                            <p className="text-xs font-bold text-slate-900 truncate">{v.name}</p>
-                            <p className="text-[10px] text-slate-500">{v.cuisine} • {v.phone}</p>
-                          </div>
-                          {vPending > 0 && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shrink-0 animate-bounce">
-                              {vPending} new
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                <h1 className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[180px] sm:max-w-xs">
+                  {authenticatedVendor.name}
+                </h1>
+              </div>
             </div>
           </div>
 
@@ -1060,9 +1009,9 @@ export const VendorOrdersTerminal: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white text-slate-950 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl font-mono text-xs border border-slate-200">
             <div className="text-center border-b border-dashed border-slate-300 pb-3 space-y-1">
-              <h2 className="text-base font-black uppercase tracking-wider">{activeVendor?.name}</h2>
-              <p className="text-[10px] text-slate-500">{activeVendor?.address}</p>
-              <p className="text-[10px] text-slate-500">Tel: {activeVendor?.phone}</p>
+              <h2 className="text-base font-black uppercase tracking-wider">{authenticatedVendor?.name}</h2>
+              <p className="text-[10px] text-slate-500">{authenticatedVendor?.address}</p>
+              <p className="text-[10px] text-slate-500">Tel: {authenticatedVendor?.phone}</p>
               <div className="font-bold text-sm text-slate-900 pt-1">
                 KITCHEN DOCKET #{printModalOrder.order_code}
               </div>
@@ -1127,15 +1076,6 @@ export const VendorOrdersTerminal: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Auth Modal for Vendor */}
-      {isAuthModalOpen && (
-        <AuthModal
-          targetRole="vendor"
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-        />
       )}
 
     </div>
