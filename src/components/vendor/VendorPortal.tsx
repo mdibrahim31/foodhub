@@ -21,6 +21,7 @@ import {
   History,
   Tag,
   HelpCircle,
+  LogOut,
   LayoutGrid,
   BookOpen,
   Megaphone,
@@ -845,35 +846,60 @@ export const VendorPortal: React.FC = () => {
               </p>
             </div>
 
-            {/* Vendor Login & Registration Buttons Card */}
+            {/* Vendor Login / Registration or Logout Card */}
             <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-3xl shadow-xs space-y-3">
-              <div className="flex items-center space-x-2 text-orange-700">
-                <Store className="w-5 h-5 stroke-[2.5]" />
-                <h4 className="font-black text-sm text-slate-900">Partner Access & Auth</h4>
-              </div>
-              <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Log in to your vendor account or register/set your new password to manage kitchen operations.
-              </p>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    setVendorAuthMode('login');
-                    setIsVendorAuthModalOpen(true);
-                  }}
-                  className="py-3 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
-                >
-                  Vendor Login
-                </button>
-                <button
-                  onClick={() => {
-                    setVendorAuthMode('register');
-                    setIsVendorAuthModalOpen(true);
-                  }}
-                  className="py-3 px-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
-                >
-                  Registration
-                </button>
-              </div>
+              {(!currentUser || currentUser.role !== 'vendor') ? (
+                <>
+                  <div className="flex items-center space-x-2 text-orange-700">
+                    <Store className="w-5 h-5 stroke-[2.5]" />
+                    <h4 className="font-black text-sm text-slate-900">Partner Access & Auth</h4>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Log in to your vendor account or register/set your new password to manage kitchen operations.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        setVendorAuthMode('login');
+                        setIsVendorAuthModalOpen(true);
+                      }}
+                      className="py-3 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
+                    >
+                      Vendor Login
+                    </button>
+                    <button
+                      onClick={() => {
+                        setVendorAuthMode('register');
+                        setIsVendorAuthModalOpen(true);
+                      }}
+                      className="py-3 px-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
+                    >
+                      Registration
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Partner</span>
+                      <h4 className="font-black text-slate-900 text-sm">{currentUser.name} ({currentUser.phone})</h4>
+                    </div>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      logoutUser();
+                      setActiveBottomNav('overview');
+                    }}
+                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 stroke-[2.5]" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
