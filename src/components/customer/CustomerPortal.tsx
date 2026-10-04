@@ -1710,33 +1710,7 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </div>
 
-          {/* 6. Bottom Floating Cart Summary */}
-          {cart.length > 0 && (
-            <div className="absolute bottom-6 left-6 right-6 z-50">
-              <button
-                onClick={() => {
-                  setSelectedVendorForMenu(null);
-                  setActiveBottomNav('carts');
-                }}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-2xl py-3.5 px-5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 px-2 py-0.5 rounded-lg text-sm font-black">
-                    {totalCartCount}
-                  </div>
-                  <div className="text-left leading-tight">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">View your cart</p>
-                    <p className="text-xs font-black truncate max-w-[140px]">{cartVendor?.name}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-black font-mono">
-                    {settings.currency_symbol}{foodTotal}
-                  </p>
-                </div>
-              </button>
-            </div>
-          )}
+          {/* 6. Bottom Floating Cart Summary removed as requested */}
         </motion.div>
       )}
       </AnimatePresence>
