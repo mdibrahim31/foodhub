@@ -1105,7 +1105,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const newCustomer: CustomerUser = {
-      id: `c-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}`,
       name: data.name.trim(),
       phone: cleanPhone,
       password: data.password,
@@ -2423,9 +2423,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const newOrder: Order = {
       id: orderId,
       order_code: orderCode,
-      customer_id: currentCustomer?.id || 'guest',
-      customer_name: selectedAddress.customer_name || currentUser?.name || 'Customer',
-      customer_phone: selectedAddress.customer_phone || currentUser?.phone || '01800000000',
+      customer_id: currentCustomer?.id || currentUser?.id || 'guest',
+      customer_name: currentUser?.name || 'Customer',
+      customer_phone: currentUser?.phone || '01800000000',
       vendor_id: cartVendor.id,
       zone: cartVendor.zone || selectedAddress.zone || 'Chawkbazar Zone',
       delivery_address: `${selectedAddress.address_line}${selectedAddress.details ? ` (${selectedAddress.details})` : ''}`,

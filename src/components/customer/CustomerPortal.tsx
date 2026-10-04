@@ -68,7 +68,130 @@ export const CustomerPortal: React.FC = () => {
   } = useDelivery();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+
+  // If user is not logged in, show the Login/Registration page
+  if (!currentUser || currentUser.role !== 'customer') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-sm rounded-3xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-orange-600 p-8 text-white text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-inner">
+              <LogIn className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-black tracking-tight">FoodHub</h1>
+            <p className="text-orange-100 text-sm font-medium mt-1">Welcome back, food lover!</p>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-slate-100">
+            <button 
+              onClick={() => setAuthTab('login')}
+              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'login' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Log In
+            </button>
+            <button 
+              onClick={() => setAuthTab('register')}
+              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'register' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <div className="p-6">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const phone = formData.get('phone') as string;
+                const password = formData.get('password') as string;
+                const name = formData.get('name') as string;
+
+                if (!phone || !password) {
+                  alert('Phone and Password are required');
+                  return;
+                }
+
+                if (authTab === 'login') {
+                  const res = loginUser('customer', phone, password);
+                  if (res.success) {
+                    // Success is handled by state change causing re-render
+                  } else {
+                    alert(res.message || 'Login failed');
+                  }
+                } else {
+                  if (!name) {
+                    alert('Name is required for registration');
+                    return;
+                  }
+                  const res = registerCustomer({ name, phone, password });
+                  if (res.success) {
+                    alert('Registration successful!');
+                  } else {
+                    alert(res.message || 'Registration failed');
+                  }
+                }
+              }}
+              className="space-y-4"
+            >
+              {authTab === 'register' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input 
+                      name="name"
+                      type="text" 
+                      required
+                      placeholder="Enter your name"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    name="phone"
+                    type="tel" 
+                    required
+                    placeholder="e.g. 01811223344"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Password</label>
+                <div className="relative">
+                  <LogIn className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 opacity-50" />
+                  <input 
+                    name="password"
+                    type="password" 
+                    required
+                    placeholder="Enter password"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-98 mt-2"
+              >
+                {authTab === 'login' ? 'Log In' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Persistent navigation and views so refreshing never resets to home
   const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>(() => {
@@ -87,6 +210,7 @@ export const CustomerPortal: React.FC = () => {
   };
 
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
 
   // Account Page States
   const [accountSubView, setAccountSubViewState] = useState<'none' | 'orders' | 'favourites'>(() => {
@@ -774,35 +898,25 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* Conditional Login Button or Logout Button */}
+            {/* Conditional Logout Button */}
             <div className="pt-2 pb-6">
-              {(!currentUser || currentUser.role !== 'customer') ? (
-                <button
-                  onClick={() => setIsCustomerLoginModalOpen(true)}
-                  className="w-full py-3.5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-md active:scale-[0.98] cursor-pointer"
-                >
-                  <LogIn className="w-4 h-4 stroke-[2.5]" />
-                  <span>Log in / Register</span>
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Account</span>
-                      <h4 className="font-black text-slate-900 text-sm">{currentUser.name} ({currentUser.phone})</h4>
-                    </div>
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="space-y-3">
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Account</span>
+                    <h4 className="font-black text-slate-900 text-sm">{currentUser?.name} ({currentUser?.phone})</h4>
                   </div>
-
-                  <button
-                    onClick={() => setIsLogoutConfirmOpen(true)}
-                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4 stroke-[2.5]" />
-                    <span>Log out</span>
-                  </button>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
-              )}
+
+                <button
+                  onClick={() => setIsLogoutConfirmOpen(true)}
+                  className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 stroke-[2.5]" />
+                  <span>Log out</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -851,24 +965,16 @@ export const CustomerPortal: React.FC = () => {
 
           <main className="max-w-md mx-auto p-4 space-y-4">
             {/* Account Isolation & DB Sync Status Banner */}
-            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-2 truncate pr-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="font-bold text-slate-700 truncate">
-                  {currentUser && currentUser.role === 'customer'
-                    ? `Cart saved for ${currentUser.name} (${currentUser.phone})`
-                    : 'Guest Cart • Log in to sync to your account'}
-                </span>
+            {currentUser && currentUser.role === 'customer' && (
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-2 truncate pr-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="font-bold text-slate-700 truncate">
+                    Cart is synced with your account
+                  </span>
+                </div>
               </div>
-              {(!currentUser || currentUser.role !== 'customer') && (
-                <button
-                  onClick={() => setIsCustomerLoginModalOpen(true)}
-                  className="px-2.5 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider shrink-0 cursor-pointer"
-                >
-                  Log In
-                </button>
-              )}
-            </div>
+            )}
 
             {/* Empty Cart State */}
             {cart.length === 0 ? (
@@ -1634,110 +1740,6 @@ export const CustomerPortal: React.FC = () => {
         </motion.div>
       )}
       </AnimatePresence>
-
-      {/* 
-        ========================================================================
-        CHECKOUT & CASH ON DELIVERY MODAL
-        ========================================================================
-      */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="p-1.5 bg-orange-100 text-orange-800 rounded-lg">
-                  <Banknote className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900 text-base">Cash On Delivery Checkout</h3>
-                  <p className="text-[11px] text-slate-500">Pay cash upon parcel delivery</p>
-                </div>
-              </div>
-              <button onClick={() => setIsCartOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg">
-                &times;
-              </button>
-            </div>
-
-            <div className="p-4 overflow-y-auto space-y-3.5">
-              <div className="p-3 bg-slate-50 rounded-2xl text-xs flex justify-between items-center border border-slate-200">
-                <div>
-                  <span className="font-extrabold text-slate-900">{cartVendor?.name}</span>
-                  <p className="text-slate-500">{cartVendor?.address}</p>
-                </div>
-                <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {cartDistanceKm} km
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Order Items</span>
-                {cart.map((ci) => (
-                  <div key={ci.menuItem.id} className="flex justify-between items-center py-1 text-xs border-b border-slate-100">
-                    <span className="font-medium text-slate-800">{ci.quantity}x {ci.menuItem.name}</span>
-                    <span className="font-mono font-bold text-slate-900">{settings.currency_symbol}{ci.menuItem.price * ci.quantity}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-2xl text-xs space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="font-black text-orange-950 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-orange-600" /> Delivery Address
-                  </span>
-                  <button onClick={() => setIsAddressModalOpen(true)} className="text-orange-700 font-bold hover:underline">
-                    Change Pin
-                  </button>
-                </div>
-                <p className="text-slate-800 font-medium">{selectedAddress?.address_line}</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Delivery Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ring bell, keep exact change ready"
-                  value={orderInstructions}
-                  onChange={(e) => setOrderInstructions(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1 text-xs">
-                <div className="flex justify-between text-slate-700">
-                  <span>Food Total:</span>
-                  <span className="font-mono font-bold">{settings.currency_symbol}{foodTotal}</span>
-                </div>
-                <div className="flex justify-between text-slate-700">
-                  <span>Delivery Charge:</span>
-                  <span className="font-mono font-bold">{settings.currency_symbol}{deliveryFee}</span>
-                </div>
-                <div className="pt-1.5 border-t border-amber-300 flex justify-between font-black text-sm text-slate-900">
-                  <span>Total Cash to Pay:</span>
-                  <span className="font-mono text-orange-600 text-base">{settings.currency_symbol}{totalCashPayable}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-              <button 
-                onClick={() => setIsCartOpen(false)}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700"
-              >
-                Back
-              </button>
-              <button
-                disabled={isPlacingOrder}
-                onClick={handleCheckout}
-                className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-md transition disabled:opacity-50"
-              >
-                {isPlacingOrder ? 'Confirming...' : `Confirm Cash Order (${settings.currency_symbol}${totalCashPayable})`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 
         ========================================================================

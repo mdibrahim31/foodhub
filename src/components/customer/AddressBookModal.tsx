@@ -142,7 +142,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
   const [addressLine, setAddressLine] = useState('');
   const [cityField, setCityField] = useState('Chittagong');
   const [noteToRider, setNoteToRider] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('01609470766');
+  const [customerPhone, setCustomerPhone] = useState('');
 
   // Leaflet references
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -346,15 +346,14 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
       updateAddress(editingAddressId, {
         address_line: addressLine.trim(),
         details: noteToRider.trim() || cityField,
-        customer_phone: customerPhone.trim(),
         label,
         latitude: pinnedLat,
         longitude: pinnedLng,
       });
     } else {
       addAddress({
-        customer_name: 'MD',
-        customer_phone: customerPhone.trim(),
+        customer_name: '',
+        customer_phone: '',
         label,
         address_line: addressLine.trim(),
         details: noteToRider.trim() || cityField,
@@ -775,27 +774,14 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
               {/* Note to Rider */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Note to rider (Phone / Landmarks / Apartment)
+                  Note to rider (Landmarks / Apartment / Suite)
                 </label>
                 <input
                   type="text"
                   value={noteToRider}
                   onChange={(e) => setNoteToRider(e.target.value)}
-                  placeholder="e.g. 01609470766 or asian housing society"
+                  placeholder="e.g. Near the big mosque or 3rd floor"
                   className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              {/* Contact Phone */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Contact Phone</label>
-                <input
-                  type="tel"
-                  required
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="01609470766"
-                  className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono"
                 />
               </div>
 
