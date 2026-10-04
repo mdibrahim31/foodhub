@@ -46,8 +46,176 @@ export const VendorOrdersTerminal: React.FC = () => {
     vendorMarkFoodReady,
     riders,
     currentUser,
+    loginUser,
+    setPasswordForUser,
     logoutUser
   } = useDelivery();
+
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [authPhone, setAuthPhone] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  const handleVendorLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    const res = loginUser('vendor', authPhone, authPassword);
+    if (!res.success) {
+      if (res.requiresPasswordSetup) {
+        setAuthTab('register');
+        setAuthError('First-time login detected. Please set your new password below.');
+      } else {
+        setAuthError(res.message || 'Login failed. Please check phone and password.');
+      }
+    }
+  };
+
+  const handleVendorRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!authPhone.trim() || !authPassword.trim()) {
+      setAuthError('Please enter phone number and password.');
+      return;
+    }
+    if (authPassword !== authConfirmPassword) {
+      setAuthError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    const ok = setPasswordForUser('vendor', authPhone, authPassword);
+    if (!ok) {
+      setAuthError('This phone number is not registered as a Vendor by Admin. Please contact Admin.');
+    }
+  };
+
+  if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+        <div className="bg-slate-800 text-slate-100 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-700">
+          
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 bg-rose-600/20 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-md">
+              <Store className="w-7 h-7 stroke-[2.5]" />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight text-white">
+              foodiplace Orders Terminal
+            </h2>
+            <p className="text-xs text-slate-400 font-bold">
+              Vendor Partner Login & Authentication
+            </p>
+          </div>
+
+          {/* Auth Tab Switcher */}
+          <div className="bg-slate-900 p-1 rounded-2xl flex text-xs font-black">
+            <button
+              onClick={() => { setAuthTab('login'); setAuthError(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
+                authTab === 'login' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Partner Login
+            </button>
+            <button
+              onClick={() => { setAuthTab('register'); setAuthError(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
+                authTab === 'register' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Set New Password
+            </button>
+          </div>
+
+          {authError && (
+            <div className="p-3.5 bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-bold rounded-2xl animate-in fade-in">
+              {authError}
+            </div>
+          )}
+
+          {authTab === 'login' ? (
+            <form onSubmit={handleVendorLoginSubmit} className="space-y-4 text-xs font-bold">
+              <div className="space-y-1">
+                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Registered Phone Number</label>
+                <input
+                  type="tel"
+                  value={authPhone}
+                  onChange={(e) => setAuthPhone(e.target.value)}
+                  placeholder="e.g. 01711122233"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl font-mono text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Password</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+              >
+                Login to Orders Terminal
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVendorRegisterSubmit} className="space-y-4 text-xs font-bold">
+              <div className="space-y-1">
+                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Admin Registered Phone Number *</label>
+                <input
+                  type="tel"
+                  value={authPhone}
+                  onChange={(e) => setAuthPhone(e.target.value)}
+                  placeholder="e.g. 01711122233"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl font-mono text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Set New Password *</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Create password"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Confirm Password *</label>
+                <input
+                  type="password"
+                  value={authConfirmPassword}
+                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+              >
+                Set Password & Login
+              </button>
+            </form>
+          )}
+
+        </div>
+      </div>
+    );
+  }
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -381,6 +549,15 @@ export const VendorOrdersTerminal: React.FC = () => {
                 Pause
               </button>
             </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={logoutUser}
+              className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+              title="Logout Partner"
+            >
+              <LogOut className="w-4 h-4 stroke-[2.5]" />
+            </button>
           </div>
 
         </div>

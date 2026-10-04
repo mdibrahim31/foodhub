@@ -424,49 +424,14 @@ export const VendorPortal: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               {/* Store Pill */}
               <div className="relative flex-1">
-                <button
-                  onClick={() => setIsStoreSelectorOpen(prev => !prev)}
-                  className="w-full flex items-center justify-between px-3.5 py-2 rounded-full border border-slate-300 bg-white text-slate-800 hover:border-slate-400 transition text-left shadow-2xs"
-                >
+                <div className="w-full flex items-center justify-between px-3.5 py-2 rounded-full border border-slate-300 bg-white text-slate-800 text-left shadow-2xs">
                   <div className="flex items-center space-x-2 truncate">
                     <Store className="w-4 h-4 shrink-0 text-slate-700" />
                     <span className="font-bold text-xs sm:text-sm truncate">
                       {currentVendor.name}
                     </span>
                   </div>
-                  <ChevronDown className="w-4 h-4 shrink-0 text-slate-400 ml-1" />
-                </button>
-
-                {/* Store Switcher Dropdown */}
-                {isStoreSelectorOpen && (
-                  <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 p-2 space-y-1 text-slate-900">
-                    <p className="text-[11px] font-bold text-slate-400 px-3 py-1 uppercase tracking-wider">
-                      Select Your Kitchen
-                    </p>
-                    {vendors.map((v) => (
-                      <button
-                        key={v.id}
-                        onClick={() => {
-                          setCurrentVendor(v);
-                          setIsStoreSelectorOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition text-left ${
-                          v.id === currentVendor.id 
-                            ? 'bg-orange-50 text-orange-600' 
-                            : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2 truncate">
-                          <Store className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{v.name}</span>
-                        </div>
-                        {v.id === currentVendor.id && (
-                          <CheckCircle2 className="w-4 h-4 text-orange-600 shrink-0" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                </div>
               </div>
 
               {/* Round (X) button on top right */}
@@ -914,69 +879,18 @@ export const VendorPortal: React.FC = () => {
           {/* TOP BRAND HEADER */}
           <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-4 pb-6 px-4 rounded-b-[2.2rem] shadow-md">
             <div className="max-w-md mx-auto space-y-4">
-              {/* Top Row: Store Selector Pill + Close/Power Button */}
+              {/* Top Row: Store Name Pill */}
               <div className="flex items-center justify-between gap-3">
                 <div className="relative flex-1">
-                  <button
-                    onClick={() => setIsStoreSelectorOpen(prev => !prev)}
-                    className="w-full flex items-center justify-between px-3.5 py-2 rounded-full border border-white/40 bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition text-left"
-                  >
+                  <div className="w-full flex items-center justify-between px-3.5 py-2 rounded-full border border-white/40 bg-white/15 backdrop-blur-md text-white text-left">
                     <div className="flex items-center space-x-2 truncate">
                       <Store className="w-4 h-4 shrink-0 text-white" />
                       <span className="font-bold text-xs sm:text-sm truncate">
                         {currentVendor.name}
                       </span>
                     </div>
-                    <ChevronDown className="w-4 h-4 shrink-0 text-white/80 ml-1" />
-                  </button>
-
-                  {/* Store Switcher Dropdown */}
-                  {isStoreSelectorOpen && (
-                    <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 p-2 space-y-1 text-slate-900">
-                      <p className="text-[11px] font-bold text-slate-400 px-3 py-1 uppercase tracking-wider">
-                        Select Your Kitchen
-                      </p>
-                      {vendors.map((v) => (
-                        <button
-                          key={v.id}
-                          onClick={() => {
-                            setCurrentVendor(v);
-                            setIsStoreSelectorOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition text-left ${
-                            v.id === currentVendor.id 
-                              ? 'bg-orange-50 text-orange-600' 
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2 truncate">
-                            <Store className="w-4 h-4 shrink-0" />
-                            <span className="truncate">{v.name}</span>
-                          </div>
-                          {v.id === currentVendor.id && (
-                            <CheckCircle2 className="w-4 h-4 text-orange-600 shrink-0" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  </div>
                 </div>
-
-                <button
-                  onClick={() => setIsStoreOnline(prev => !prev)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition shadow-xs shrink-0 ${
-                    isStoreOnline 
-                      ? 'bg-white/20 text-white hover:bg-white/30' 
-                      : 'bg-red-500 text-white'
-                  }`}
-                  title={isStoreOnline ? 'Kitchen Online (Tap to pause)' : 'Kitchen Paused (Tap to go online)'}
-                >
-                  {isStoreOnline ? (
-                    <Power className="w-4 h-4" />
-                  ) : (
-                    <X className="w-5 h-5" />
-                  )}
-                </button>
               </div>
 
               {/* Performance Row */}
@@ -1064,34 +978,7 @@ export const VendorPortal: React.FC = () => {
               </button>
             </div>
 
-            {/* Direct Link to Dedicated orders.html */}
-            <a
-              href="./orders.html"
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 text-white rounded-2xl border border-slate-700 shadow-lg hover:from-black hover:to-slate-900 transition group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-lg">
-                  <ChefHat className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">orders.html</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white leading-tight">
-                    Dedicated Live Order Receiving Hub
-                  </h4>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                {pendingOrders.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-black bg-rose-500 text-white animate-bounce">
-                    {pendingOrders.length} New
-                  </span>
-                )}
-                <span className="text-xs font-bold text-slate-400 group-hover:text-white">Open Terminal ↗</span>
-              </div>
-            </a>
+
 
             {/* Live Kitchen Queue */}
             <section className="space-y-3">
