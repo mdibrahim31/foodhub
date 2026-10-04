@@ -1566,7 +1566,8 @@ export const VendorPortal: React.FC = () => {
                     // 2. Upload to Supabase Storage bucket 'images' in vendor folder
                     if (isSupabaseConfigured && supabase && currentVendor) {
                       try {
-                        const filePath = `${currentVendor.id}/dish_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                        const folderName = currentVendor.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                        const filePath = `${folderName}/dish_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
                         const { error } = await supabase.storage.from('images').upload(filePath, file, { upsert: true });
                         if (!error) {
                           const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
