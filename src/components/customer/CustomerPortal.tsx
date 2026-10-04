@@ -995,12 +995,12 @@ export const CustomerPortal: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  /* Single Vendor Cart Card (Matches Screenshot exactly) */
-                  <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-5">
+                  /* Single Vendor Cart Card (Matches Screenshot exactly, made more compact and thinner as requested) */
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3.5">
                     {/* Vendor Info Row */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
                           <img 
                             src={cartVendor?.cover_image || cartVendor?.logo_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150'} 
                             alt={cartVendor?.name} 
@@ -1008,8 +1008,8 @@ export const CustomerPortal: React.FC = () => {
                           />
                         </div>
                         <div className="truncate">
-                          <h3 className="font-black text-base text-slate-900 truncate leading-tight">{cartVendor?.name || 'Restaurant'}</h3>
-                          <div className="flex items-center text-[11px] font-bold text-slate-500 space-x-1.5 mt-0.5">
+                          <h3 className="font-black text-sm text-slate-900 truncate leading-tight">{cartVendor?.name || 'Restaurant'}</h3>
+                          <div className="flex items-center text-[10px] font-bold text-slate-500 space-x-1.5 mt-0.5">
                             <span>15-30 mins</span>
                             <span>•</span>
                             <div className="flex items-center text-pink-600">
@@ -1029,30 +1029,30 @@ export const CustomerPortal: React.FC = () => {
                     </div>
 
                     {/* Items Row with Plus Button */}
-                    <div className="flex items-center space-x-3 overflow-x-auto pb-1 scrollbar-hide">
+                    <div className="flex items-center space-x-2.5 overflow-x-auto pb-1 scrollbar-hide">
                       {cart.slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="w-14 h-14 rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-50">
+                        <div key={idx} className="w-11 h-11 rounded-lg border border-slate-100 overflow-hidden shrink-0 bg-slate-50">
                           <img src={item.menuItem.image_url} alt="" className="w-full h-full object-cover" />
                         </div>
                       ))}
                       <button 
                         onClick={() => cartVendor && setSelectedVendorForMenu(cartVendor)}
-                        className="w-10 h-10 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors shrink-0"
+                        className="w-8 h-8 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors shrink-0"
                       >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
 
                     {/* Subtotal Row */}
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="text-xs font-black text-slate-800">Subtotal</span>
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="text-xs font-bold text-slate-800">Subtotal</span>
                       <span className="text-sm font-black text-slate-900">Tk{foodTotal}</span>
                     </div>
 
-                    {/* View Cart CTA */}
+                    {/* View Cart CTA - Thinner "View your cart" button as requested */}
                     <button
                       onClick={() => setIsViewingCartDetail(true)}
-                      className="w-full py-3.5 bg-white border-2 border-slate-900 hover:bg-slate-50 text-slate-900 font-black text-sm rounded-2xl transition shadow-xs active:scale-[0.98]"
+                      className="w-full py-2.5 bg-white border-2 border-slate-900 hover:bg-slate-50 text-slate-900 font-black text-sm rounded-xl transition shadow-2xs active:scale-[0.98]"
                     >
                       View your cart
                     </button>

@@ -634,6 +634,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, null);
   });
 
+  const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
+
   // Switch and load cart dynamically and strictly per customer account
   useEffect(() => {
     const custKey = getCustomerCartKey(currentUser);
@@ -714,8 +716,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (error) {
             console.error('Supabase cart sync error:', error);
           }
-        })
-        .catch((err) => {
+        }, (err: any) => {
           console.warn('Supabase cart sync exception:', err);
         });
     }
@@ -1187,8 +1188,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCart([]);
     setCartVendor(null);
   };
-
-  const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
 
   const connectSupabase = async (url: string, anonKey: string): Promise<{ success: boolean; message: string }> => {
     try {
@@ -2802,7 +2801,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         riderMessages,
         sendAdminMessage,
         markRiderMessageAsRead,
-        isSupabaseConfigured,
+        isSupabaseConfigured: supabaseConfig.isConfigured,
         supabaseConfig,
         connectSupabase,
         syncAllToSupabase

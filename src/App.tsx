@@ -1,15 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
-import { CustomerPortal } from './components/customer/CustomerPortal';
-import { VendorPortal } from './components/vendor/VendorPortal';
-import { RiderPortal } from './components/rider/RiderPortal';
-import { AdminPortal } from './components/admin/AdminPortal';
 import { PortalRole } from './types/database';
 import { LayoutGrid, User, Store, Bike, ShieldCheck, X, ChevronRight } from 'lucide-react';
 
-const CustomerSiteLayout: React.FC = () => {
+const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal').then(m => ({ default: m.CustomerPortal })));
+const VendorPortal = lazy(() => import('./components/vendor/VendorPortal').then(m => ({ default: m.VendorPortal })));
+const RiderPortal = lazy(() => import('./components/rider/RiderPortal').then(m => ({ default: m.RiderPortal })));
+const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then(m => ({ default: m.AdminPortal })));
+
+function PortalIcon({ id, className }: { id: PortalRole, className?: string }) {
+  switch (id) {
+    case 'customer': return <User className={className} />;
+    case 'vendor': return <Store className={className} />;
+    case 'rider': return <Bike className={className} />;
+    case 'admin': return <ShieldCheck className={className} />;
+    default: return <User className={className} />;
+  }
+}
+
+function CustomerSiteLayout() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
   const { 
@@ -28,7 +39,7 @@ const CustomerSiteLayout: React.FC = () => {
   const isPreview = typeof window !== 'undefined' && 
     !window.location.hostname.includes('github.io');
 
-  const handleConnect = async (e: React.FormEvent) => {
+  async function handleConnect(e: React.FormEvent) {
     e.preventDefault();
     setIsConnecting(true);
     const res = await connectSupabase(dbUrl, dbKey);
@@ -39,7 +50,7 @@ const CustomerSiteLayout: React.FC = () => {
     } else {
       alert('❌ ' + res.message);
     }
-  };
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -79,10 +90,10 @@ const CustomerSiteLayout: React.FC = () => {
             {/* Main Sidebar Content */}
             <div className="flex flex-col bg-white/95 backdrop-blur-md rounded-r-2xl shadow-2xl border-y border-r border-slate-200/60 p-2 gap-2 pointer-events-auto w-[52px]">
               {[
-                { id: 'customer' as PortalRole, label: 'Customer', icon: User, activeBg: 'bg-orange-600 text-white', inactiveText: 'text-slate-500' },
-                { id: 'vendor' as PortalRole, label: 'Vendor', icon: Store, activeBg: 'bg-emerald-600 text-white', inactiveText: 'text-slate-500' },
-                { id: 'rider' as PortalRole, label: 'Rider', icon: Bike, activeBg: 'bg-amber-500 text-white', inactiveText: 'text-slate-500' },
-                { id: 'admin' as PortalRole, label: 'Admin', icon: ShieldCheck, activeBg: 'bg-rose-600 text-white', inactiveText: 'text-slate-500' },
+                { id: 'customer' as PortalRole, label: 'Customer', activeBg: 'bg-orange-600 text-white', inactiveText: 'text-slate-500' },
+                { id: 'vendor' as PortalRole, label: 'Vendor', activeBg: 'bg-emerald-600 text-white', inactiveText: 'text-slate-500' },
+                { id: 'rider' as PortalRole, label: 'Rider', activeBg: 'bg-amber-500 text-white', inactiveText: 'text-slate-500' },
+                { id: 'admin' as PortalRole, label: 'Admin', activeBg: 'bg-rose-600 text-white', inactiveText: 'text-slate-500' },
               ].map((site) => (
                 <button
                   key={site.id}
@@ -93,7 +104,7 @@ const CustomerSiteLayout: React.FC = () => {
                       : `hover:bg-slate-100 ${site.inactiveText}`
                   }`}
                 >
-                  <site.icon className="w-5 h-5" />
+                  <PortalIcon id={site.id} className="w-5 h-5" />
                   {/* Tooltip */}
                   <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-black rounded-lg opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all translate-x-[-10px] group-hover/btn:translate-x-0 whitespace-nowrap z-[10000] shadow-xl">
                     {site.label} Portal
@@ -224,14 +235,20 @@ const CustomerSiteLayout: React.FC = () => {
       )}
 
       <main className="flex-1">
-        {role === 'customer' && <CustomerPortal />}
-        {role === 'vendor' && <VendorPortal />}
-        {role === 'rider' && <RiderPortal />}
-        {role === 'admin' && <AdminPortal />}
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="w-10 h-10 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          {role === 'customer' && <CustomerPortal />}
+          {role === 'vendor' && <VendorPortal />}
+          {role === 'rider' && <RiderPortal />}
+          {role === 'admin' && <AdminPortal />}
+        </Suspense>
       </main>
     </div>
   );
-};
+}
 
 export default function App() {
   return (
