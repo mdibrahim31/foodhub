@@ -446,6 +446,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!catError && catData && isSubscribed && Array.isArray(catData)) {
             setFoodCategories(catData as FoodCategory[]);
           }
+
+          const { data: menuData, error: menuError } = await supabase
+            .from('menu_items')
+            .select('*');
+          if (!menuError && menuData && isSubscribed && Array.isArray(menuData)) {
+            setMenuItems(menuData as MenuItem[]);
+          }
         } catch (err) {
           console.error('Failed to load from Supabase:', err);
         }
@@ -1696,13 +1703,49 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // MENU ITEMS
   // -------------------------------------------------------------
-  const addMenuItem = (item: Omit<MenuItem, 'id'>) => {
-    const newItem: MenuItem = { ...item, id: `m-${Date.now()}` };
+  const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
+    const newItem: MenuItem = { 
+      ...item, 
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}` 
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('menu_items').insert([{
+          id: newItem.id,
+          vendor_id: newItem.vendor_id,
+          name: newItem.name,
+          description: newItem.description || null,
+          price: newItem.price,
+          image_url: newItem.image_url || null,
+          category: newItem.category || 'Main Course',
+          is_available: newItem.is_available ?? true
+        }]);
+        if (error) {
+          console.error('Supabase error inserting menu item:', error);
+        }
+      } catch (err) {
+        console.error('Failed to insert menu item in database:', err);
+      }
+    }
+
     setMenuItems(prev => [newItem, ...prev]);
   };
 
-  const toggleMenuItemAvailability = (id: string) => {
-    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: !m.is_available } : m));
+  const toggleMenuItemAvailability = async (id: string) => {
+    const target = menuItems.find(m => m.id === id);
+    if (!target) return;
+    const nextAvail = !target.is_available;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('menu_items').update({ is_available: nextAvail }).eq('id', id);
+      } catch (err) {
+        console.warn('Supabase toggle menu availability error:', err);
+      }
+    }
+
+    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: nextAvail } : m));
   };
 
   const deleteMenuItem = async (id: string) => {
@@ -1720,6 +1763,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Menu image storage delete error:', err);
       }
     }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('menu_items').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase delete menu item error:', err);
+      }
+    }
+
     setMenuItems(prev => prev.filter(m => m.id !== id));
   };
 
