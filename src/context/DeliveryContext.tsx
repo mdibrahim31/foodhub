@@ -1251,6 +1251,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           savedToDatabase = true;
           dbMessage = 'Saved to Supabase vendors table successfully.';
         }
+
+        // Create a dedicated folder for this vendor in the 'images' bucket
+        try {
+          await supabase.storage.from('images').upload(`${newVendor.id}/.keep`, new Blob(['folder created'], { type: 'text/plain' }), { upsert: true });
+        } catch (storageErr) {
+          console.warn('Storage bucket folder creation note:', storageErr);
+        }
       } catch (err: any) {
         dbMessage = `Database Exception: ${err?.message || String(err)}`;
       }
@@ -2151,6 +2158,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const placeOrder = async (instructions?: string): Promise<Order | null> => {
+    if (!currentUser || currentUser.role !== 'customer') {
+      alert('Please log in first from your Account profile page with your Name, Phone, and Password before placing an order.');
+      return null;
+    }
     if (cart.length === 0 || !cartVendor || !selectedAddress) return null;
 
     const foodTotal = cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0);

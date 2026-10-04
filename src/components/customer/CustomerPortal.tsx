@@ -29,6 +29,7 @@ import {
   HelpCircle,
   FileText,
   LogOut,
+  LogIn,
   Clock,
   Check,
   X,
@@ -59,10 +60,13 @@ export const CustomerPortal: React.FC = () => {
     currentUser,
     currentCustomer,
     customerRespondToPrepTime,
-    logoutUser
+    logoutUser,
+    loginUser,
+    registerCustomer
   } = useDelivery();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
 
   // Persistent navigation and views so refreshing never resets to home
   const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>(() => {
@@ -528,6 +532,34 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </div>
         </div>
+      ) : activeBottomNav === 'carts' ? (
+        <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28 animate-in fade-in">
+          {/* Top Bar: Back arrow on left + Title in middle */}
+          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
+            <button 
+              onClick={() => setActiveBottomNav('food')}
+              className="p-2 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 transition flex items-center justify-center cursor-pointer shadow-2xs"
+              title="Back"
+            >
+              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+            </button>
+            <h1 className="text-lg font-black text-slate-900 tracking-tight">Cart</h1>
+            <div className="w-8" />
+          </div>
+
+          <div className="flex flex-col items-center justify-center p-8 pt-36 text-center space-y-4">
+            <div className="w-20 h-20 rounded-3xl bg-orange-50 text-orange-600 flex items-center justify-center shadow-md border border-orange-100">
+              <ShoppingBag className="w-10 h-10 stroke-[2]" />
+            </div>
+            
+            <div className="space-y-1.5 max-w-xs">
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">Your Cart is Empty</h2>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                You have no items in your cart. Choose your favorite food or grocery items to start an order.
+              </p>
+            </div>
+          </div>
+        </div>
       ) : activeBottomNav === 'account' ? (
         /* 
           ========================================================================
@@ -754,15 +786,35 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* Log out button in the marked area */}
+            {/* Conditional Login Button or Logout Button */}
             <div className="pt-2 pb-6">
-              <button
-                onClick={() => setIsLogoutConfirmOpen(true)}
-                className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 stroke-[2.5]" />
-                <span>Log out</span>
-              </button>
+              {(!currentUser || currentUser.role !== 'customer') ? (
+                <button
+                  onClick={() => setIsCustomerLoginModalOpen(true)}
+                  className="w-full py-3.5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-md active:scale-[0.98] cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4 stroke-[2.5]" />
+                  <span>Log in / Register</span>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Account</span>
+                      <h4 className="font-black text-slate-900 text-sm">{currentUser.name} ({currentUser.phone})</h4>
+                    </div>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+
+                  <button
+                    onClick={() => setIsLogoutConfirmOpen(true)}
+                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 stroke-[2.5]" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1587,6 +1639,103 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
+      {/* CUSTOMER LOGIN / REGISTER POPUP MODAL */}
+      {isCustomerLoginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4 relative">
+            <button 
+              onClick={() => setIsCustomerLoginModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                <User className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Customer Login / Register</h3>
+                <p className="text-xs text-slate-500">Enter Name, Phone & Password</p>
+              </div>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const nameInput = (e.currentTarget.elements.namedItem('loginName') as HTMLInputElement)?.value || '';
+                const phoneInput = (e.currentTarget.elements.namedItem('loginPhone') as HTMLInputElement)?.value || '';
+                const passInput = (e.currentTarget.elements.namedItem('loginPass') as HTMLInputElement)?.value || '';
+
+                if (!phoneInput || !passInput) {
+                  alert('Please enter phone number and password.');
+                  return;
+                }
+
+                // Try login first
+                const res = loginUser('customer', phoneInput, passInput);
+                if (res.success) {
+                  alert('✅ Login successful!');
+                  setIsCustomerLoginModalOpen(false);
+                  return;
+                }
+
+                // If not found, register new customer
+                const regRes = registerCustomer({
+                  name: nameInput.trim() || 'Customer',
+                  phone: phoneInput.trim(),
+                  password: passInput
+                });
+                if (regRes.success) {
+                  alert('✅ Account registered & logged in successfully!');
+                  setIsCustomerLoginModalOpen(false);
+                } else {
+                  alert(regRes.message || res.message || 'Login failed');
+                }
+              }}
+              className="space-y-3 pt-2 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
+                <input 
+                  name="loginName"
+                  type="text" 
+                  placeholder="e.g. Rahim Ahmed"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Phone Number *</label>
+                <input 
+                  name="loginPhone"
+                  type="text" 
+                  required
+                  placeholder="e.g. 01811223344"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Password *</label>
+                <input 
+                  name="loginPass"
+                  type="password" 
+                  required
+                  placeholder="••••••••"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer active:scale-95"
+              >
+                Log in / Register
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 
         ========================================================================
         CUSTOMER PERMISSION WINDOW (POPUP MODAL)
@@ -1707,7 +1856,6 @@ export const CustomerPortal: React.FC = () => {
           <button
             onClick={() => {
               setActiveBottomNav('carts');
-              setIsCartOpen(true);
             }}
             className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
               activeBottomNav === 'carts' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'

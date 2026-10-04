@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { MenuItem, Order, OrderStatus, Vendor } from '../../types/database';
 import { 
   Store, 
@@ -1485,14 +1486,47 @@ export const VendorPortal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Image URL (Optional)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Upload Food Image</label>
                 <input
-                  type="url"
-                  value={dishImageUrl}
-                  onChange={(e) => setDishImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    // 1. Base64 Preview & Data URL fallback
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const dataUrl = event.target?.result as string;
+                      if (dataUrl) {
+                        setDishImageUrl(dataUrl);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+
+                    // 2. Upload to Supabase Storage bucket 'images' in vendor folder
+                    if (isSupabaseConfigured && supabase && currentVendor) {
+                      try {
+                        const filePath = `${currentVendor.id}/dish_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                        const { error } = await supabase.storage.from('images').upload(filePath, file, { upsert: true });
+                        if (!error) {
+                          const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+                          if (publicUrlData?.publicUrl) {
+                            setDishImageUrl(publicUrlData.publicUrl);
+                          }
+                        }
+                      } catch (err) {
+                        console.warn('Storage upload notice:', err);
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-slate-50 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
                 />
+                {dishImageUrl && (
+                  <div className="mt-2.5 relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-xs">
+                    <img src={dishImageUrl} alt="Uploaded Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
