@@ -47,15 +47,12 @@ export const VendorOrdersTerminal: React.FC = () => {
     riders,
     currentUser,
     loginUser,
-    setPasswordForUser,
     logoutUser
   } = useDelivery();
 
-  // 1. Auth Form States
-  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  // 1. Auth Form States (Only Login)
   const [authPhone, setAuthPhone] = useState('');
   const [authPassword, setAuthPassword] = useState('');
-  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
   // 2. Terminal UI States (All hooks at top of component)
@@ -90,36 +87,17 @@ export const VendorOrdersTerminal: React.FC = () => {
   const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
   const completedOrders = vendorOrders.filter((o) => o.status === 'delivered');
 
-  // Auth Handlers
+  // Auth Handler (Login Only)
   const handleVendorLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     const res = loginUser('vendor', authPhone, authPassword);
     if (!res.success) {
       if (res.requiresPasswordSetup) {
-        setAuthTab('register');
-        setAuthError('First-time login detected. Please set your new password below.');
+        setAuthError('First-time login detected. Please set your password on the Vendor Portal first.');
       } else {
         setAuthError(res.message || 'Login failed. Please check phone and password.');
       }
-    }
-  };
-
-  const handleVendorRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-    if (!authPhone.trim() || !authPassword.trim()) {
-      setAuthError('Please enter phone number and password.');
-      return;
-    }
-    if (authPassword !== authConfirmPassword) {
-      setAuthError('Passwords do not match. Please re-enter.');
-      return;
-    }
-
-    const ok = setPasswordForUser('vendor', authPhone, authPassword);
-    if (!ok) {
-      setAuthError('This phone number is not registered as a Vendor by Admin. Please contact Admin.');
     }
   };
 
@@ -235,29 +213,9 @@ export const VendorOrdersTerminal: React.FC = () => {
             <h2 className="text-2xl font-black tracking-tight text-white">
               foodiplace Orders Terminal
             </h2>
-            <p className="text-xs text-rose-400 font-bold">
-              🔒 Login Required — Please log in with your vendor account
+            <p className="text-xs text-slate-400 font-bold">
+              Vendor Partner Login
             </p>
-          </div>
-
-          {/* Auth Tab Switcher */}
-          <div className="bg-slate-900 p-1 rounded-2xl flex text-xs font-black">
-            <button
-              onClick={() => { setAuthTab('login'); setAuthError(''); }}
-              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
-                authTab === 'login' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Partner Login
-            </button>
-            <button
-              onClick={() => { setAuthTab('register'); setAuthError(''); }}
-              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
-                authTab === 'register' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Set New Password
-            </button>
           </div>
 
           {authError && (
@@ -266,85 +224,38 @@ export const VendorOrdersTerminal: React.FC = () => {
             </div>
           )}
 
-          {authTab === 'login' ? (
-            <form onSubmit={handleVendorLoginSubmit} className="space-y-4 text-xs font-bold">
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Registered Phone Number</label>
-                <input
-                  type="tel"
-                  value={authPhone}
-                  onChange={(e) => setAuthPhone(e.target.value)}
-                  placeholder="e.g. 01711122233"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl font-mono text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
-                />
-              </div>
+          <form onSubmit={handleVendorLoginSubmit} className="space-y-4 text-xs font-bold">
+            <div className="space-y-1">
+              <label className="text-slate-400 uppercase tracking-wider text-[10px]">Registered Phone Number</label>
+              <input
+                type="tel"
+                value={authPhone}
+                onChange={(e) => setAuthPhone(e.target.value)}
+                placeholder="e.g. 01711122233"
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl font-mono text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                required
+              />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Password</label>
-                <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-slate-400 uppercase tracking-wider text-[10px]">Password</label>
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
+                required
+              />
+            </div>
 
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
-              >
-                Login to Orders Terminal
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVendorRegisterSubmit} className="space-y-4 text-xs font-bold">
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Admin Registered Phone Number *</label>
-                <input
-                  type="tel"
-                  value={authPhone}
-                  onChange={(e) => setAuthPhone(e.target.value)}
-                  placeholder="e.g. 01711122233"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl font-mono text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Set New Password *</label>
-                <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Create password"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase tracking-wider text-[10px]">Confirm Password *</label>
-                <input
-                  type="password"
-                  value={authConfirmPassword}
-                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
-              >
-                Set Password & Login
-              </button>
-            </form>
-          )}
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+            >
+              Login to Orders Terminal
+            </button>
+          </form>
 
         </div>
       </div>
