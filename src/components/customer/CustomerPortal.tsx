@@ -40,7 +40,8 @@ import {
   Flame,
   ArrowLeft,
   Info,
-  Share2
+  Share2,
+  Trash2
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -55,6 +56,7 @@ export const CustomerPortal: React.FC = () => {
     cartVendor, 
     addToCart, 
     updateCartQuantity, 
+    clearCart,
     placeOrder,
     orders,
     currentUser,
@@ -113,12 +115,22 @@ export const CustomerPortal: React.FC = () => {
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [activeMenuCategory, setActiveMenuCategory] = useState('All');
 
-  const [userName, setUserName] = useState('MD');
+  const [userName, setUserName] = useState(() => currentUser?.name || 'Customer');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [customerPhone, setCustomerPhone] = useState('+880 1812-345678');
-  const [customerEmail, setCustomerEmail] = useState('md.rahim@example.com');
+  const [customerPhone, setCustomerPhone] = useState(() => currentUser?.phone || '');
+  const [customerEmail, setCustomerEmail] = useState('customer@example.com');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'customer') {
+      setUserName(currentUser.name || 'Customer');
+      setCustomerPhone(currentUser.phone || '');
+    } else {
+      setUserName('Guest User');
+      setCustomerPhone('');
+    }
+  }, [currentUser]);
 
   const [selectedVendorForMenu, setSelectedVendorForMenuState] = useState<Vendor | null>(() => {
     if (typeof window !== 'undefined') {
@@ -356,6 +368,10 @@ export const CustomerPortal: React.FC = () => {
   const totalCartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   const handleCheckout = async () => {
+    if (!currentUser || currentUser.role !== 'customer') {
+      setIsCustomerLoginModalOpen(true);
+      return;
+    }
     if (!selectedAddress) {
       setIsAddressModalOpen(true);
       return;
@@ -529,34 +545,6 @@ export const CustomerPortal: React.FC = () => {
                   );
                 })}
               </div>
-            </div>
-          </div>
-        </div>
-      ) : activeBottomNav === 'carts' ? (
-        <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28 animate-in fade-in">
-          {/* Top Bar: Back arrow on left + Title in middle */}
-          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
-            <button 
-              onClick={() => setActiveBottomNav('food')}
-              className="p-2 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 transition flex items-center justify-center cursor-pointer shadow-2xs"
-              title="Back"
-            >
-              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-            </button>
-            <h1 className="text-lg font-black text-slate-900 tracking-tight">Cart</h1>
-            <div className="w-8" />
-          </div>
-
-          <div className="flex flex-col items-center justify-center p-8 pt-36 text-center space-y-4">
-            <div className="w-20 h-20 rounded-3xl bg-orange-50 text-orange-600 flex items-center justify-center shadow-md border border-orange-100">
-              <ShoppingBag className="w-10 h-10 stroke-[2]" />
-            </div>
-            
-            <div className="space-y-1.5 max-w-xs">
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">Your Cart is Empty</h2>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                You have no items in your cart. Choose your favorite food or grocery items to start an order.
-              </p>
             </div>
           </div>
         </div>
@@ -817,6 +805,234 @@ export const CustomerPortal: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+      ) : activeBottomNav === 'carts' ? (
+        // ========================================================================
+        // DEDICATED CARTS PAGE VIEW (User Cart Tied to Customer Account & DB)
+        // ========================================================================
+        <div className="min-h-screen bg-slate-50 pb-28 select-none">
+          {/* Cart Header */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3.5 shadow-2xs">
+            <div className="max-w-md mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <button 
+                  onClick={() => setActiveBottomNav('food')}
+                  className="p-2 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 transition flex items-center justify-center cursor-pointer shadow-2xs mr-1"
+                  title="Back to Food"
+                >
+                  <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                </button>
+                <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-200 shadow-2xs">
+                  <ShoppingBag className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h1 className="text-base font-black text-slate-900 leading-tight">My Cart</h1>
+                  <p className="text-[11px] font-bold text-slate-500">
+                    {totalCartCount > 0 ? `${totalCartCount} item${totalCartCount > 1 ? 's' : ''} in cart` : 'No items added'}
+                  </p>
+                </div>
+              </div>
+
+              {cart.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear your cart?')) {
+                      clearCart();
+                    }
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
+          </header>
+
+          <main className="max-w-md mx-auto p-4 space-y-4">
+            {/* Account Isolation & DB Sync Status Banner */}
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-2 truncate pr-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="font-bold text-slate-700 truncate">
+                  {currentUser && currentUser.role === 'customer'
+                    ? `Cart saved for ${currentUser.name} (${currentUser.phone})`
+                    : 'Guest Cart • Log in to sync to your account'}
+                </span>
+              </div>
+              {(!currentUser || currentUser.role !== 'customer') && (
+                <button
+                  onClick={() => setIsCustomerLoginModalOpen(true)}
+                  className="px-2.5 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider shrink-0 cursor-pointer"
+                >
+                  Log In
+                </button>
+              )}
+            </div>
+
+            {/* Empty Cart State */}
+            {cart.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-200/90 p-8 text-center space-y-4 shadow-xs my-4">
+                <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-orange-100">
+                  <ShoppingBag className="w-10 h-10 stroke-[2]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-slate-900">Your cart is empty</h3>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                    Explore delicious food from local restaurants and shops to add them to your cart.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveBottomNav('food')}
+                  className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-md shadow-orange-600/20 active:scale-95 cursor-pointer inline-flex items-center space-x-2"
+                >
+                  <UtensilsCrossed className="w-4 h-4" />
+                  <span>Explore Restaurants</span>
+                </button>
+              </div>
+            ) : (
+              /* Active Cart Items & Checkout Breakdown */
+              <div className="space-y-4">
+                {/* Restaurant Header Card */}
+                {cartVendor && (
+                  <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+                    <div className="flex items-center space-x-3 truncate">
+                      <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+                        <img 
+                          src={cartVendor.cover_image || cartVendor.logo_url} 
+                          alt={cartVendor.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                      <div className="truncate">
+                        <h3 className="font-extrabold text-sm text-slate-900 truncate">{cartVendor.name}</h3>
+                        <p className="text-[11px] text-slate-500 truncate">{cartVendor.cuisine} • {cartVendor.address}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedVendorForMenu(cartVendor)}
+                      className="text-xs font-black text-orange-600 hover:text-orange-700 shrink-0 px-2 py-1 bg-orange-50 rounded-xl"
+                    >
+                      + Add More
+                    </button>
+                  </div>
+                )}
+
+                {/* Items List */}
+                <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                  <div className="p-3.5 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
+                    <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">Selected Items ({cart.length})</h4>
+                    <span className="text-[11px] font-bold text-orange-600">{totalCartCount} items</span>
+                  </div>
+                  {cart.map((item) => (
+                    <div key={item.menuItem.id} className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        {item.menuItem.image_url && (
+                          <img
+                            src={item.menuItem.image_url}
+                            alt={item.menuItem.name}
+                            className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-100"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <h5 className="font-extrabold text-xs text-slate-900 truncate">{item.menuItem.name}</h5>
+                          <p className="text-[11px] font-bold text-orange-600">{settings.currency_symbol}{item.menuItem.price} each</p>
+                        </div>
+                      </div>
+
+                      {/* Quantity Selector */}
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+                          <button
+                            onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1)}
+                            className="w-6 h-6 rounded-lg bg-white text-slate-700 hover:text-rose-600 flex items-center justify-center shadow-2xs cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-xs font-black text-slate-900">{item.quantity}</span>
+                          <button
+                            onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1)}
+                            className="w-6 h-6 rounded-lg bg-white text-slate-700 hover:text-orange-600 flex items-center justify-center shadow-2xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <span className="font-mono font-black text-xs text-slate-900 w-14 text-right">
+                          {settings.currency_symbol}{item.menuItem.price * item.quantity}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Delivery Address Card */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-orange-600" />
+                      <span>Delivery Address</span>
+                    </span>
+                    <button
+                      onClick={() => setIsAddressModalOpen(true)}
+                      className="text-xs font-bold text-orange-600 hover:underline cursor-pointer"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                    <p className="font-extrabold text-slate-900">{selectedAddress?.label || 'Current Location'}</p>
+                    <p className="text-slate-500 mt-0.5">{selectedAddress?.address_line || 'Chittagong City'}</p>
+                    {cartVendor && (
+                      <p className="text-[11px] text-emerald-700 font-bold mt-1">
+                        Distance: {cartDistanceKm.toFixed(1)} km &bull; Approx. 25-35 mins delivery
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Delivery Instructions */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-1.5">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-600">
+                    Order / Delivery Instructions
+                  </label>
+                  <input
+                    type="text"
+                    value={orderInstructions}
+                    onChange={(e) => setOrderInstructions(e.target.value)}
+                    placeholder="e.g. Ring bell, keep exact change ready, less spicy"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-900 focus:outline-hidden focus:border-orange-500"
+                  />
+                </div>
+
+                {/* Bill Breakdown Card */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-2 text-xs">
+                  <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">Bill Details</h4>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Food Subtotal ({totalCartCount} items)</span>
+                    <span className="font-mono font-bold">{settings.currency_symbol}{foodTotal}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Delivery Fee ({cartDistanceKm.toFixed(1)} km)</span>
+                    <span className="font-mono font-bold">{settings.currency_symbol}{deliveryFee}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 flex justify-between font-black text-sm text-slate-900">
+                    <span>Total Cash Payable</span>
+                    <span className="font-mono text-orange-600 text-base">{settings.currency_symbol}{totalCashPayable}</span>
+                  </div>
+                </div>
+
+                {/* Checkout CTA Button */}
+                <button
+                  disabled={isPlacingOrder}
+                  onClick={handleCheckout}
+                  className="w-full py-4 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-600/30 transition flex items-center justify-center space-x-2 active:scale-[0.98] cursor-pointer"
+                >
+                  <Banknote className="w-5 h-5" />
+                  <span>{isPlacingOrder ? 'Confirming Order...' : `Confirm Cash on Delivery (${settings.currency_symbol}${totalCashPayable})`}</span>
+                </button>
+              </div>
+            )}
+          </main>
         </div>
       ) : (
         <>
@@ -1394,9 +1610,9 @@ export const CustomerPortal: React.FC = () => {
               <button
                 onClick={() => {
                   setSelectedVendorForMenu(null);
-                  setIsCartOpen(true);
+                  setActiveBottomNav('carts');
                 }}
-                className="w-full bg-rose-600 text-white rounded-2xl py-3.5 px-5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-transform"
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-2xl py-3.5 px-5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="bg-white/20 px-2 py-0.5 rounded-lg text-sm font-black">
@@ -1794,6 +2010,30 @@ export const CustomerPortal: React.FC = () => {
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
         />
+      )}
+
+      {/* Floating Bottom Cart Bar (Sticky above bottom dock) */}
+      {cart.length > 0 && activeBottomNav !== 'carts' && !selectedVendorForMenu && (
+        <div className="fixed bottom-16 inset-x-4 max-w-md mx-auto z-40 animate-in fade-in slide-in-from-bottom-2">
+          <button
+            onClick={() => setActiveBottomNav('carts')}
+            className="w-full bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-2xl py-3 px-4 flex items-center justify-between shadow-2xl shadow-orange-600/30 active:scale-[0.98] transition cursor-pointer border border-white/20"
+          >
+            <div className="flex items-center space-x-2.5 truncate">
+              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black shrink-0">
+                {totalCartCount}
+              </span>
+              <div className="text-left truncate">
+                <p className="text-[10px] font-black uppercase tracking-wider text-orange-100">View Cart</p>
+                <p className="text-xs font-bold truncate max-w-[160px]">{cartVendor?.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <span className="font-mono font-black text-sm">{settings.currency_symbol}{foodTotal}</span>
+              <ArrowRight className="w-4 h-4 stroke-[3]" />
+            </div>
+          </button>
+        </div>
       )}
 
       {/* 

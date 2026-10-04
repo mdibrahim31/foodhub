@@ -248,6 +248,16 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 );
 
 -- ====================================================================
+-- 11B. CUSTOMER CARTS TABLE (Persistent shopping carts)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.customer_carts (
+    customer_id VARCHAR(255) PRIMARY KEY, -- Can be 'guest' or 'cust_<id>'
+    cart_items JSONB NOT NULL DEFAULT '[]'::JSONB,
+    vendor JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
 -- 12. INDEXES FOR HIGH PERFORMANCE REAL-TIME QUERIES
 -- ====================================================================
 CREATE INDEX IF NOT EXISTS idx_zones_active ON public.zones(is_active);
@@ -274,6 +284,7 @@ ALTER TABLE public.customer_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.riders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_carts ENABLE ROW LEVEL SECURITY;
 
 -- Global System Settings Policies
 CREATE POLICY "Public read system settings" ON public.system_settings FOR SELECT USING (true);
@@ -314,3 +325,6 @@ CREATE POLICY "Admin & Rider update riders" ON public.riders FOR ALL USING (true
 -- Orders & Order Items Policies
 CREATE POLICY "Public create and read orders" ON public.orders FOR ALL USING (true);
 CREATE POLICY "Public manage order items" ON public.order_items FOR ALL USING (true);
+
+-- Customer Cart Policies
+CREATE POLICY "Public manage customer carts" ON public.customer_carts FOR ALL USING (true);

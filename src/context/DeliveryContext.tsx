@@ -496,6 +496,25 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Ignore offline network error
       }
 
+      // 3. Query backend server database /api/customers for cross-browser synchronization
+      try {
+        const cRes = await fetch('/api/customers');
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          if (Array.isArray(cData) && cData.length > 0 && isSubscribed) {
+            setCustomers(prev => {
+              const map = new Map(prev.map(c => [c.id, c]));
+              cData.forEach((c: CustomerUser) => {
+                if (c && c.id) map.set(c.id, { ...map.get(c.id), ...c });
+              });
+              return Array.from(map.values());
+            });
+          }
+        }
+      } catch {
+        // Ignore offline network error
+      }
+
       if (fetchedRiders && isSubscribed) {
         const safeRiders: Rider[] = fetchedRiders.map(r => {
           const isPaused = Boolean(r.is_paused);
@@ -596,8 +615,84 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
   });
 
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartVendor, setCartVendor] = useState<Vendor | null>(null);
+  const getCustomerCartKey = (user: UserAccount | null): string => {
+    if (user && user.role === 'customer') {
+      const cleanPhone = user.phone ? user.phone.replace(/\D/g, '') : '';
+      const id = cleanPhone || user.reference_id || user.id;
+      return `cust_${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    }
+    return 'guest';
+  };
+
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    const custKey = getCustomerCartKey(safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null));
+    return safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${custKey}`, []);
+  });
+
+  const [cartVendor, setCartVendor] = useState<Vendor | null>(() => {
+    const custKey = getCustomerCartKey(safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null));
+    return safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, null);
+  });
+
+  // Switch and load cart dynamically and strictly per customer account
+  useEffect(() => {
+    const custKey = getCustomerCartKey(currentUser);
+    const localCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${custKey}`, []);
+    const localVendor = safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, null);
+    setCart(localCart);
+    setCartVendor(localVendor);
+
+    // Fetch from database server to keep in sync across devices / reloads
+    fetch(`/api/cart/${encodeURIComponent(custKey)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.cart && Array.isArray(data.cart.items)) {
+          if (data.cart.items.length > 0) {
+            setCart(data.cart.items);
+            setCartVendor(data.cart.vendor || null);
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`, JSON.stringify(data.cart.items));
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, JSON.stringify(data.cart.vendor || null));
+          } else if (localCart.length > 0) {
+            fetch(`/api/cart/${encodeURIComponent(custKey)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: localCart, vendor: localVendor })
+            }).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
+  }, [currentUser?.reference_id, currentUser?.phone, currentUser?.role, currentUser?.id]);
+
+  const persistCustomerCart = (items: CartItem[], vendor: Vendor | null, custKeyOverride?: string) => {
+    const custKey = custKeyOverride || getCustomerCartKey(currentUser);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`, JSON.stringify(items));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, JSON.stringify(vendor));
+    } catch {}
+
+    // Save to Database server
+    fetch(`/api/cart/${encodeURIComponent(custKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, vendor })
+    }).catch(err => console.warn('Failed to save cart to server:', err));
+
+    // Save to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      supabase
+        .from('customer_carts')
+        .upsert([{
+          customer_id: custKey,
+          cart_items: items,
+          vendor: vendor,
+          updated_at: new Date().toISOString()
+        }])
+        .then(() => {}, (err) => {
+          console.warn('Supabase cart sync warning:', err);
+        });
+    }
+  };
 
   // Sync to local storage
   useEffect(() => {
@@ -905,6 +1000,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         is_password_set: true,
         reference_id: customer.id
       };
+
+      // If guest had cart items and logging-in customer has no cart, migrate guest cart
+      const guestKey = 'guest';
+      const guestCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${guestKey}`, []);
+      const guestVendor = safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${guestKey}`, null);
+      const userKey = getCustomerCartKey(customerAccount);
+      const userCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${userKey}`, []);
+      if (userCart.length === 0 && guestCart.length > 0) {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${userKey}`, JSON.stringify(guestCart));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${userKey}`, JSON.stringify(guestVendor));
+        fetch(`/api/cart/${encodeURIComponent(userKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: guestCart, vendor: guestVendor })
+        }).catch(() => {});
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_${guestKey}`);
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${guestKey}`);
+        fetch(`/api/cart/${encodeURIComponent(guestKey)}`, { method: 'DELETE' }).catch(() => {});
+      }
+
       setCurrentUser(customerAccount);
       return { success: true };
     }
@@ -1010,12 +1125,40 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       is_password_set: true,
       reference_id: newCustomer.id
     };
+
+    // Save customer account to database server
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer)
+    }).catch(() => {});
+
+    // Migrate any guest cart items to new customer account
+    const guestKey = 'guest';
+    const guestCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${guestKey}`, []);
+    const guestVendor = safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${guestKey}`, null);
+    const userKey = getCustomerCartKey(customerAccount);
+    if (guestCart.length > 0) {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${userKey}`, JSON.stringify(guestCart));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${userKey}`, JSON.stringify(guestVendor));
+      fetch(`/api/cart/${encodeURIComponent(userKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: guestCart, vendor: guestVendor })
+      }).catch(() => {});
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_${guestKey}`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${guestKey}`);
+      fetch(`/api/cart/${encodeURIComponent(guestKey)}`, { method: 'DELETE' }).catch(() => {});
+    }
+
     setCurrentUser(customerAccount);
     return { success: true };
   };
 
   const logoutUser = () => {
     setCurrentUser(null);
+    setCart([]);
+    setCartVendor(null);
   };
 
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
@@ -2197,27 +2340,35 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         `Your cart contains items from ${cartVendor.name}. Clear cart and add from ${vendor.name}?`
       );
       if (!confirmReset) return;
-      setCart([{ menuItem: item, quantity: 1 }]);
+      const newItems = [{ menuItem: item, quantity: 1 }];
+      setCart(newItems);
       setCartVendor(vendor);
+      persistCustomerCart(newItems, vendor);
       return;
     }
 
     setCartVendor(vendor);
     setCart(prev => {
       const existing = prev.find(ci => ci.menuItem.id === item.id);
+      let updated: CartItem[];
       if (existing) {
-        return prev.map(ci => 
+        updated = prev.map(ci => 
           ci.menuItem.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
         );
+      } else {
+        updated = [...prev, { menuItem: item, quantity: 1 }];
       }
-      return [...prev, { menuItem: item, quantity: 1 }];
+      persistCustomerCart(updated, vendor);
+      return updated;
     });
   };
 
   const removeFromCart = (menuItemId: string) => {
     setCart(prev => {
       const filtered = prev.filter(ci => ci.menuItem.id !== menuItemId);
+      const nextVendor = filtered.length === 0 ? null : cartVendor;
       if (filtered.length === 0) setCartVendor(null);
+      persistCustomerCart(filtered, nextVendor);
       return filtered;
     });
   };
@@ -2227,12 +2378,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       removeFromCart(menuItemId);
       return;
     }
-    setCart(prev => prev.map(ci => ci.menuItem.id === menuItemId ? { ...ci, quantity: qty } : ci));
+    setCart(prev => {
+      const updated = prev.map(ci => ci.menuItem.id === menuItemId ? { ...ci, quantity: qty } : ci);
+      persistCustomerCart(updated, cartVendor);
+      return updated;
+    });
   };
 
   const clearCart = () => {
+    const custKey = getCustomerCartKey(currentUser);
     setCart([]);
     setCartVendor(null);
+    try {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`);
+    } catch {}
+    fetch(`/api/cart/${encodeURIComponent(custKey)}`, { method: 'DELETE' }).catch(() => {});
   };
 
   const placeOrder = async (instructions?: string): Promise<Order | null> => {

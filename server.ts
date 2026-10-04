@@ -30,6 +30,8 @@ interface ServerState {
   menuItems: any[];
   foodCategories: any[];
   adBanners: any[];
+  customers: any[];
+  customerCarts: Record<string, { items: any[]; vendor: any; updatedAt: string }>;
   updatedAt: string;
 }
 
@@ -40,6 +42,8 @@ const INITIAL_SERVER_STATE: ServerState = {
   },
   pausedRiderIds: [],
   pausedVendorIds: [],
+  customers: [],
+  customerCarts: {},
   zones: [
     {
       id: 'zone-001',
@@ -437,6 +441,57 @@ app.post('/api/vendors/:id/pause', (req, res) => {
   }
   saveState(serverState);
   res.json({ success: true, vendor: target });
+});
+
+// 7. Customer Cart API (Saved to database per individual customer account)
+app.get('/api/cart/:customerId', (req, res) => {
+  const { customerId } = req.params;
+  if (!serverState.customerCarts) serverState.customerCarts = {};
+  const userCart = serverState.customerCarts[customerId] || { items: [], vendor: null, updatedAt: new Date().toISOString() };
+  res.json({ success: true, cart: userCart });
+});
+
+app.post('/api/cart/:customerId', (req, res) => {
+  const { customerId } = req.params;
+  const { items, vendor } = req.body;
+  if (!serverState.customerCarts) serverState.customerCarts = {};
+  serverState.customerCarts[customerId] = {
+    items: Array.isArray(items) ? items : [],
+    vendor: vendor || null,
+    updatedAt: new Date().toISOString()
+  };
+  saveState(serverState);
+  res.json({ success: true, cart: serverState.customerCarts[customerId] });
+});
+
+app.delete('/api/cart/:customerId', (req, res) => {
+  const { customerId } = req.params;
+  if (!serverState.customerCarts) serverState.customerCarts = {};
+  delete serverState.customerCarts[customerId];
+  saveState(serverState);
+  res.json({ success: true });
+});
+
+// 8. Customers API (Customer Accounts Database)
+app.get('/api/customers', (_req, res) => {
+  if (!serverState.customers) serverState.customers = [];
+  res.json(serverState.customers);
+});
+
+app.post('/api/customers', (req, res) => {
+  const newCustomer = req.body;
+  if (!serverState.customers) serverState.customers = [];
+  const existingIdx = serverState.customers.findIndex(c => 
+    c.id === newCustomer.id || 
+    (c.phone && newCustomer.phone && c.phone.replace(/\D/g, '') === newCustomer.phone.replace(/\D/g, ''))
+  );
+  if (existingIdx >= 0) {
+    serverState.customers[existingIdx] = { ...serverState.customers[existingIdx], ...newCustomer };
+  } else {
+    serverState.customers.push(newCustomer);
+  }
+  saveState(serverState);
+  res.json({ success: true, customer: newCustomer });
 });
 
 // -------------------------------------------------------------

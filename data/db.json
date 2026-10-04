@@ -7,6 +7,82 @@
     "r0000001-0000-0000-0000-000000000001"
   ],
   "pausedVendorIds": [],
+  "customers": [],
+  "customerCarts": {},
+  "zones": [
+    {
+      "id": "zone-001",
+      "name": "Chawkbazar Zone",
+      "bn_name": "চকবাজার জোন",
+      "description": "Chawkbazar, Parade Square, Chatteshwari, Gani Bakery, DC Hill",
+      "center_latitude": 22.359,
+      "center_longitude": 91.838,
+      "radius_km": 2.5,
+      "color": "#E11D48",
+      "is_active": true,
+      "created_at": "2026-10-04T18:11:41.952Z"
+    },
+    {
+      "id": "zone-002",
+      "name": "GEC Zone",
+      "bn_name": "জিইসি জোন",
+      "description": "GEC Circle, CDA Avenue, Dampara, Golpahar, Prabartak Circle",
+      "center_latitude": 22.3595,
+      "center_longitude": 91.8215,
+      "radius_km": 2.5,
+      "color": "#2563EB",
+      "is_active": true,
+      "created_at": "2026-10-04T18:11:41.952Z"
+    },
+    {
+      "id": "zone-003",
+      "name": "Khulshi Zone",
+      "bn_name": "খুলশী জোন",
+      "description": "South Khulshi, North Khulshi, Zakir Hossain Road, Wireless Gate",
+      "center_latitude": 22.365,
+      "center_longitude": 91.815,
+      "radius_km": 2.5,
+      "color": "#7C3AED",
+      "is_active": true,
+      "created_at": "2026-10-04T18:11:41.952Z"
+    },
+    {
+      "id": "zone-004",
+      "name": "Agrabad Zone",
+      "bn_name": "আগ্রাবাদ জোন",
+      "description": "Commercial Area, Badamtali, Sheikh Mujib Road, Chowmuhani",
+      "center_latitude": 22.3275,
+      "center_longitude": 91.812,
+      "radius_km": 3,
+      "color": "#059669",
+      "is_active": true,
+      "created_at": "2026-10-04T18:11:41.952Z"
+    },
+    {
+      "id": "zone-005",
+      "name": "Nasirabad Zone",
+      "bn_name": "নাসিরাবাদ জোন",
+      "description": "Nasirabad Housing, Polytechnic, Baizid Bostami, Sholashahar",
+      "center_latitude": 22.378,
+      "center_longitude": 91.825,
+      "radius_km": 3,
+      "color": "#D97706",
+      "is_active": true,
+      "created_at": "2026-10-04T18:11:41.952Z"
+    },
+    {
+      "id": "zone-006",
+      "name": "Halishahar Zone",
+      "bn_name": "হালিশহর জোন",
+      "description": "Halishahar Housing Estate, Boropool, Rampur, Block A-L",
+      "center_latitude": 22.335,
+      "center_longitude": 91.785,
+      "radius_km": 3.5,
+      "color": "#0D9488",
+      "is_active": true,
+      "created_at": "2026-10-04T18:11:41.952Z"
+    }
+  ],
   "riders": [
     {
       "id": "r0000001-0000-0000-0000-000000000001",
@@ -75,5 +151,5 @@
   "menuItems": [],
   "foodCategories": [],
   "adBanners": [],
-  "updatedAt": "2026-10-03T10:19:57.733Z"
+  "updatedAt": "2026-10-04T18:11:54.237Z"
 }
