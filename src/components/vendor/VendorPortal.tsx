@@ -103,6 +103,8 @@ export const VendorPortal: React.FC = () => {
   const [isPromotionsOpen, setIsPromotionsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
+  const [isVendorAuthModalOpen, setIsVendorAuthModalOpen] = useState(false);
+  const [vendorAuthMode, setVendorAuthMode] = useState<'login' | 'register'>('login');
 
   // New Dish Form
   const [dishName, setDishName] = useState('');
@@ -841,6 +843,37 @@ export const VendorPortal: React.FC = () => {
               <p className="text-slate-400 font-mono text-[11px]">
                 Lat: {currentVendor.latitude.toFixed(4)}, Lng: {currentVendor.longitude.toFixed(4)}
               </p>
+            </div>
+
+            {/* Vendor Login & Registration Buttons Card */}
+            <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-3xl shadow-xs space-y-3">
+              <div className="flex items-center space-x-2 text-orange-700">
+                <Store className="w-5 h-5 stroke-[2.5]" />
+                <h4 className="font-black text-sm text-slate-900">Partner Access & Auth</h4>
+              </div>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                Log in to your vendor account or register/set your new password to manage kitchen operations.
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    setVendorAuthMode('login');
+                    setIsVendorAuthModalOpen(true);
+                  }}
+                  className="py-3 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
+                >
+                  Vendor Login
+                </button>
+                <button
+                  onClick={() => {
+                    setVendorAuthMode('register');
+                    setIsVendorAuthModalOpen(true);
+                  }}
+                  className="py-3 px-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
+                >
+                  Registration
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1669,6 +1702,142 @@ export const VendorPortal: React.FC = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* VENDOR AUTHENTICATION POPUP MODAL */}
+      {isVendorAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4 relative">
+            <button 
+              onClick={() => setIsVendorAuthModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                <Store className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Vendor Authentication</h3>
+                <p className="text-xs text-slate-500">Partner Login & Registration</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-100 p-1 rounded-2xl flex text-xs font-black">
+              <button
+                type="button"
+                onClick={() => setVendorAuthMode('login')}
+                className={`flex-1 py-2 rounded-xl transition cursor-pointer ${
+                  vendorAuthMode === 'login' ? 'bg-white text-orange-600 shadow-xs' : 'text-slate-500'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => setVendorAuthMode('register')}
+                className={`flex-1 py-2 rounded-xl transition cursor-pointer ${
+                  vendorAuthMode === 'register' ? 'bg-white text-orange-600 shadow-xs' : 'text-slate-500'
+                }`}
+              >
+                Registration / Password
+              </button>
+            </div>
+
+            {vendorAuthMode === 'login' ? (
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const phoneInput = (e.currentTarget.elements.namedItem('vLoginPhone') as HTMLInputElement)?.value || '';
+                  const passInput = (e.currentTarget.elements.namedItem('vLoginPass') as HTMLInputElement)?.value || '';
+                  const res = loginUser('vendor', phoneInput, passInput);
+                  if (res.success) {
+                    alert('✅ Vendor login successful!');
+                    setIsVendorAuthModalOpen(false);
+                  } else if (res.requiresPasswordSetup) {
+                    setVendorAuthMode('register');
+                    alert('First-time login detected. Please set your password.');
+                  } else {
+                    alert(res.message || 'Login failed');
+                  }
+                }}
+                className="space-y-3 pt-2 text-xs font-bold"
+              >
+                <div>
+                  <label className="text-slate-700 block mb-1">Phone Number *</label>
+                  <input 
+                    name="vLoginPhone"
+                    type="tel"
+                    required
+                    placeholder="e.g. 01711122233"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-hidden focus:border-orange-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-700 block mb-1">Password *</label>
+                  <input 
+                    name="vLoginPass"
+                    type="password"
+                    required
+                    placeholder="Enter password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-hidden focus:border-orange-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer active:scale-95"
+                >
+                  Login to Partner Portal
+                </button>
+              </form>
+            ) : (
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const phoneInput = (e.currentTarget.elements.namedItem('vRegPhone') as HTMLInputElement)?.value || '';
+                  const passInput = (e.currentTarget.elements.namedItem('vRegPass') as HTMLInputElement)?.value || '';
+                  const ok = setPasswordForUser('vendor', phoneInput, passInput);
+                  if (ok) {
+                    alert('✅ Vendor password registered & logged in successfully!');
+                    setIsVendorAuthModalOpen(false);
+                  } else {
+                    alert('This phone number is not registered as a Vendor by Admin.');
+                  }
+                }}
+                className="space-y-3 pt-2 text-xs font-bold"
+              >
+                <div>
+                  <label className="text-slate-700 block mb-1">Admin Registered Phone *</label>
+                  <input 
+                    name="vRegPhone"
+                    type="tel"
+                    required
+                    placeholder="e.g. 01711122233"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-hidden focus:border-orange-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-700 block mb-1">Set New Password *</label>
+                  <input 
+                    name="vRegPass"
+                    type="password"
+                    required
+                    placeholder="Create password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-hidden focus:border-orange-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer active:scale-95"
+                >
+                  Complete Registration
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
