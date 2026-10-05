@@ -32,6 +32,7 @@ interface ServerState {
   foodCategories: any[];
   adBanners: any[];
   customers: any[];
+  addresses: any[];
   customerCarts: Record<string, { items: any[]; vendor: any; updatedAt: string }>;
   updatedAt: string;
 }
@@ -44,6 +45,7 @@ const INITIAL_SERVER_STATE: ServerState = {
   pausedRiderIds: [],
   pausedVendorIds: [],
   customers: [],
+  addresses: [],
   customerCarts: {},
   zones: [
     {
@@ -493,6 +495,53 @@ app.post('/api/customers', (req, res) => {
   }
   saveState(serverState);
   res.json({ success: true, customer: newCustomer });
+});
+
+// 9. Customer Addresses API (Strictly isolated by customer phone/ID)
+app.get('/api/addresses/:customerIdentifier', (req, res) => {
+  const { customerIdentifier } = req.params;
+  const cleanId = (customerIdentifier || '').replace(/\D/g, '');
+  if (!serverState.addresses) serverState.addresses = [];
+  
+  const userAddresses = serverState.addresses.filter(a => {
+    const aPhoneClean = (a.customer_phone || '').replace(/\D/g, '');
+    return (aPhoneClean && cleanId && aPhoneClean === cleanId) || 
+           a.customer_id === customerIdentifier ||
+           a.customer_phone === customerIdentifier;
+  });
+  
+  res.json({ success: true, addresses: userAddresses });
+});
+
+app.post('/api/addresses/:customerIdentifier', (req, res) => {
+  const { customerIdentifier } = req.params;
+  const newAddress = req.body;
+  if (!serverState.addresses) serverState.addresses = [];
+
+  if (!newAddress.id) {
+    newAddress.id = `addr-${Date.now()}`;
+  }
+  if (!newAddress.customer_phone && customerIdentifier) {
+    newAddress.customer_phone = customerIdentifier;
+  }
+
+  const existingIdx = serverState.addresses.findIndex(a => a.id === newAddress.id);
+  if (existingIdx >= 0) {
+    serverState.addresses[existingIdx] = { ...serverState.addresses[existingIdx], ...newAddress };
+  } else {
+    serverState.addresses.unshift(newAddress);
+  }
+
+  saveState(serverState);
+  res.json({ success: true, address: newAddress });
+});
+
+app.delete('/api/addresses/:customerIdentifier/:addressId', (req, res) => {
+  const { addressId } = req.params;
+  if (!serverState.addresses) serverState.addresses = [];
+  serverState.addresses = serverState.addresses.filter(a => a.id !== addressId);
+  saveState(serverState);
+  res.json({ success: true });
 });
 
 // -------------------------------------------------------------

@@ -30,7 +30,7 @@ import {
   updateSupabaseCredentials,
   getSupabaseConfig
 } from '../services/supabase';
-import { calculateDistanceKm, calculateDeliveryFee } from '../utils/geo';
+import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../utils/geo';
 import { FoodCategory } from '../types/database';
 
 export interface CartItem {
@@ -45,9 +45,11 @@ interface DeliveryContextType {
   // Auth & Multi-User Privacy State
   currentUser: UserAccount | null;
   currentCustomer: CustomerUser | null;
+  customers: CustomerUser[];
   loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; message?: string };
   setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
   registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
+  deleteCustomer?: (id: string) => void;
   logoutUser: () => void;
 
   // Delivery & Rider Zones (Admin Configured Boundary & Map)
@@ -246,6 +248,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    return safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
+  });
+
   const [settings, setSettings] = useState<SystemSettings>(() => {
     return safeJsonParse(`${STORAGE_KEY_PREFIX}settings`, DEFAULT_SETTINGS);
   });
@@ -272,14 +278,71 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return Array.isArray(parsed) ? parsed : INITIAL_CUSTOMERS;
   });
 
-  const [addresses, setAddresses] = useState<CustomerAddress[]>(() => {
+  const [allAddresses, setAllAddresses] = useState<CustomerAddress[]>(() => {
     const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}addresses`, INITIAL_ADDRESSES);
     return Array.isArray(parsed) ? parsed : INITIAL_ADDRESSES;
   });
 
-  const [selectedAddress, setSelectedAddress] = useState<CustomerAddress | null>(
-    () => (Array.isArray(addresses) ? addresses.find(a => a?.is_default) || addresses[0] : null) || null
-  );
+  // Strict user-isolated addresses list (Only shows the logged-in customer's own addresses)
+  const addresses = React.useMemo(() => {
+    if (!currentUser || currentUser.role !== 'customer') {
+      return allAddresses.filter(a => !a.customer_phone || a.customer_phone === 'guest');
+    }
+    const cleanPhone = (currentUser.phone || '').replace(/\D/g, '');
+    return allAddresses.filter(a => {
+      const aClean = (a.customer_phone || '').replace(/\D/g, '');
+      return (cleanPhone && aClean && aClean === cleanPhone) || 
+             (a.customer_id && currentUser.id && a.customer_id === currentUser.id) ||
+             (a.customer_phone && currentUser.phone && a.customer_phone === currentUser.phone);
+    });
+  }, [allAddresses, currentUser]);
+
+  const [selectedAddress, setSelectedAddress] = useState<CustomerAddress | null>(() => {
+    return addresses.find(a => a?.is_default) || addresses[0] || null;
+  });
+
+  // Sync addresses to localStorage whenever allAddresses changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(allAddresses));
+    } catch {}
+  }, [allAddresses]);
+
+  // Load addresses strictly for active customer from server database
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'customer') {
+      const guestAddrs = allAddresses.filter(a => !a.customer_phone || a.customer_phone === 'guest');
+      setSelectedAddress(guestAddrs[0] || null);
+      return;
+    }
+
+    const cleanIdentifier = (currentUser.phone || '').replace(/\D/g, '') || currentUser.id;
+    fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.addresses && Array.isArray(data.addresses) && data.addresses.length > 0) {
+          setAllAddresses(prev => {
+            const others = prev.filter(a => {
+              const aClean = (a.customer_phone || '').replace(/\D/g, '');
+              return aClean !== cleanIdentifier && a.customer_id !== currentUser.id;
+            });
+            return [...data.addresses, ...others];
+          });
+          const def = data.addresses.find((a: CustomerAddress) => a.is_default) || data.addresses[0] || null;
+          setSelectedAddress(def);
+        } else {
+          // If no remote addresses, check local user addresses
+          const userLocal = allAddresses.filter(a => {
+            const aClean = (a.customer_phone || '').replace(/\D/g, '');
+            return (cleanIdentifier && aClean && aClean === cleanIdentifier) || 
+                   (a.customer_id && currentUser.id && a.customer_id === currentUser.id);
+          });
+          const def = userLocal.find(a => a.is_default) || userLocal[0] || null;
+          setSelectedAddress(def);
+        }
+      })
+      .catch(() => {});
+  }, [currentUser?.id, currentUser?.phone, currentUser?.role]);
 
   // Riders state: strictly enforces persistent is_paused so paused riders never auto-resume
   const [riders, setRiders] = useState<Rider[]>(() => {
@@ -455,6 +518,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .select('*');
           if (!menuError && menuData && isSubscribed && Array.isArray(menuData)) {
             setMenuItems(menuData as MenuItem[]);
+          }
+
+          // Fetch customers from Supabase customers table
+          const { data: custData, error: custError } = await supabase
+            .from('customers')
+            .select('*');
+          if (!custError && custData && isSubscribed && Array.isArray(custData) && custData.length > 0) {
+            setCustomers(prev => {
+              const map = new Map(prev.map(c => [c.id, c]));
+              custData.forEach((c: any) => {
+                map.set(c.id, { ...map.get(c.id), ...c, addresses: c.addresses || map.get(c.id)?.addresses || [] });
+              });
+              return Array.from(map.values());
+            });
           }
 
           // Fetch orders from Supabase with relational items
@@ -642,10 +719,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return Array.isArray(parsed) ? parsed : defaultMsgs;
   });
 
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    return safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
-  });
-
   const getCustomerCartKey = (user: UserAccount | null): string => {
     if (user && user.role === 'customer') {
       const cleanPhone = user.phone ? user.phone.replace(/\D/g, '') : '';
@@ -721,6 +794,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const persistCustomerCart = (items: CartItem[], vendor: Vendor | null, custKeyOverride?: string) => {
     const custKey = custKeyOverride || getCustomerCartKey(currentUser);
+    
+    if (items.length === 0) {
+      try {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`);
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`);
+      } catch {}
+      fetch(`/api/cart/${encodeURIComponent(custKey)}`, { method: 'DELETE' }).catch(() => {});
+      if (supabaseConfig.isConfigured && supabase) {
+        supabase.from('customer_carts').delete().eq('customer_id', custKey).then(() => {}, () => {});
+      }
+      return;
+    }
+
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${custKey}`, JSON.stringify(items));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`, JSON.stringify(vendor));
@@ -1192,6 +1278,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       body: JSON.stringify(newCustomer)
     }).catch(() => {});
 
+    // Save directly to Supabase `customers` table
+    if (isSupabaseConfigured && supabase) {
+      const supaCustPayload = {
+        id: newCustomer.id,
+        name: newCustomer.name,
+        phone: newCustomer.phone,
+        password: newCustomer.password || '',
+        email: newCustomer.email || null,
+        avatar_url: newCustomer.avatar_url || null,
+        created_at: newCustomer.created_at
+      };
+      supabase.from('customers').upsert([supaCustPayload]).then(({ error }) => {
+        if (error) console.warn('Supabase customer upsert warning:', error);
+      });
+    }
+
     // Migrate any guest cart items to new customer account
     const guestKey = 'guest';
     const guestCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${guestKey}`, []);
@@ -1364,12 +1466,38 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    let custCount = 0;
+    for (const c of customers) {
+      try {
+        const payload = {
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          password: c.password || '',
+          email: c.email || null,
+          avatar_url: c.avatar_url || null,
+          created_at: c.created_at
+        };
+        const { error } = await supabase.from('customers').upsert([payload]);
+        if (!error) custCount++;
+      } catch (err) {
+        console.warn('Sync customer error:', err);
+      }
+    }
+
     return { 
       success: true, 
-      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, and ${catCount} categories!`, 
+      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, and ${custCount} customers!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };
+  };
+
+  const deleteCustomer = (id: string) => {
+    setCustomers(prev => prev.filter(c => c.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('customers').delete().eq('id', id).then();
+    }
   };
 
   // -------------------------------------------------------------
@@ -2169,27 +2297,83 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // -------------------------------------------------------------
-  // CUSTOMER ADDRESSES
+  // CUSTOMER ADDRESSES (Strictly isolated by logged-in customer account & database synced)
   // -------------------------------------------------------------
   const addAddress = (addr: Omit<CustomerAddress, 'id'>) => {
-    const newAddr: CustomerAddress = { ...addr, id: `addr-${Date.now()}` };
-    setAddresses(prev => [newAddr, ...prev]);
+    const custPhone = currentUser?.phone || 'guest';
+    const custId = currentUser?.id || '';
+    const custName = currentUser?.name || addr.customer_name || 'Customer';
+
+    // Auto-detect zone if not specified
+    const detectedZone = addr.zone || findZoneForPoint(addr.latitude, addr.longitude, zones)?.name || '';
+
+    const newAddr: CustomerAddress = { 
+      ...addr, 
+      id: `addr-${Date.now()}`,
+      customer_phone: custPhone,
+      customer_id: custId,
+      customer_name: custName,
+      zone: detectedZone
+    };
+
+    setAllAddresses(prev => [newAddr, ...prev]);
     setSelectedAddress(newAddr);
+
+    // Save to Database server
+    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
+    fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAddr)
+    }).catch(() => {});
+
     return newAddr;
   };
 
   const updateAddress = (id: string, updates: Partial<CustomerAddress>) => {
-    setAddresses(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    setAllAddresses(prev => prev.map(a => {
+      if (a.id !== id) return a;
+      const updated = { ...a, ...updates };
+      if (!updates.zone && (updates.latitude || updates.longitude)) {
+        const detected = findZoneForPoint(updated.latitude, updated.longitude, zones);
+        if (detected) updated.zone = detected.name;
+      }
+      return updated;
+    }));
+
     if (selectedAddress && selectedAddress.id === id) {
-      setSelectedAddress(prev => prev ? { ...prev, ...updates } : null);
+      setSelectedAddress(prev => {
+        if (!prev) return null;
+        const updated = { ...prev, ...updates };
+        if (!updates.zone && (updates.latitude || updates.longitude)) {
+          const detected = findZoneForPoint(updated.latitude, updated.longitude, zones);
+          if (detected) updated.zone = detected.name;
+        }
+        return updated;
+      });
+    }
+
+    const cleanIdentifier = (currentUser?.phone || '').replace(/\D/g, '') || currentUser?.id || 'guest';
+    const targetAddr = allAddresses.find(a => a.id === id);
+    if (targetAddr) {
+      fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...targetAddr, ...updates })
+      }).catch(() => {});
     }
   };
 
   const deleteAddress = (id: string) => {
-    setAddresses(prev => prev.filter(a => a.id !== id));
+    setAllAddresses(prev => prev.filter(a => a.id !== id));
     if (selectedAddress && selectedAddress.id === id) {
-      setSelectedAddress(addresses.find(a => a.id !== id) || null);
+      const remaining = addresses.filter(a => a.id !== id);
+      setSelectedAddress(remaining[0] || null);
     }
+    const cleanIdentifier = (currentUser?.phone || '').replace(/\D/g, '') || currentUser?.id || 'guest';
+    fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }).catch(() => {});
   };
 
   // -------------------------------------------------------------
@@ -2429,7 +2613,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCart(prev => {
       const filtered = prev.filter(ci => ci.menuItem.id !== menuItemId);
       const nextVendor = filtered.length === 0 ? null : cartVendor;
-      if (filtered.length === 0) setCartVendor(null);
+      if (filtered.length === 0) {
+        setCartVendor(null);
+        clearCart();
+        return [];
+      }
       persistCustomerCart(filtered, nextVendor);
       return filtered;
     });
@@ -2456,6 +2644,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${custKey}`);
     } catch {}
     fetch(`/api/cart/${encodeURIComponent(custKey)}`, { method: 'DELETE' }).catch(() => {});
+    if (supabaseConfig.isConfigured && supabase) {
+      supabase.from('customer_carts').delete().eq('customer_id', custKey).then(() => {}, () => {});
+    }
   };
 
   const placeOrder = async (instructions?: string): Promise<Order | null> => {
@@ -2962,9 +3153,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setRole,
         currentUser,
         currentCustomer,
+        customers,
         loginUser,
         setPasswordForUser,
         registerCustomer,
+        deleteCustomer,
         logoutUser,
         zones,
         addZone,

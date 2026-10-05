@@ -111,6 +111,7 @@ export interface MenuItem {
 
 export interface CustomerAddress {
   id: string;
+  customer_id?: string;
   customer_phone: string;
   customer_name: string;
   label: 'Home' | 'Office' | 'Other' | string;

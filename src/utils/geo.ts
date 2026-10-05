@@ -1,3 +1,5 @@
+import { DeliveryZone } from '../types/database';
+
 /**
  * Haversine formula to calculate great-circle distance between two points in kilometers
  */
@@ -32,6 +34,83 @@ function toRad(degrees: number): number {
 }
 
 /**
+ * Standard Ray-casting algorithm to test if a point (lat, lng) is inside a polygon
+ */
+export function isPointInsidePolygon(lat: number, lng: number, polygon: [number, number][]): boolean {
+  if (!polygon || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    
+    const intersect = ((yi > lng) !== (yj > lng))
+        && (lat < ((xj - xi) * (lng - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Check if a location (lat, lng) falls within a DeliveryZone (polygon boundary or radius circle)
+ */
+export function isPointInZone(lat: number, lng: number, zone: DeliveryZone): boolean {
+  if (!zone || zone.is_active === false) return false;
+
+  // 1. If polygon boundary coordinates exist with >= 3 points, check polygon
+  if (zone.boundary_coordinates && zone.boundary_coordinates.length >= 3) {
+    if (isPointInsidePolygon(lat, lng, zone.boundary_coordinates)) {
+      return true;
+    }
+  }
+
+  // 2. Center & Radius check
+  if (zone.center_latitude && zone.center_longitude) {
+    const dist = calculateDistanceKm(lat, lng, zone.center_latitude, zone.center_longitude);
+    const radius = zone.radius_km || 3.0;
+    if (dist <= radius) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Find the matching zone for a given point.
+ */
+export function findZoneForPoint(lat: number, lng: number, zones: DeliveryZone[]): DeliveryZone | null {
+  if (!zones || zones.length === 0) return null;
+  
+  const activeZones = zones.filter(z => z.is_active !== false);
+  if (activeZones.length === 0) return null;
+
+  const matchingZones = activeZones.filter(z => isPointInZone(lat, lng, z));
+
+  if (matchingZones.length === 1) return matchingZones[0];
+  if (matchingZones.length > 1) {
+    // Pick the one with closest center
+    matchingZones.sort((a, b) => {
+      const distA = calculateDistanceKm(lat, lng, a.center_latitude, a.center_longitude);
+      const distB = calculateDistanceKm(lat, lng, b.center_latitude, b.center_longitude);
+      return distA - distB;
+    });
+    return matchingZones[0];
+  }
+
+  // Fallback: if outside all configured zones, return the closest zone
+  let closestZone: DeliveryZone | null = null;
+  let minDistance = Infinity;
+  for (const z of activeZones) {
+    const dist = calculateDistanceKm(lat, lng, z.center_latitude, z.center_longitude);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestZone = z;
+    }
+  }
+  return closestZone;
+}
+
+/**
  * Calculate dynamic Cash-on-Delivery Delivery Fee based on distance and admin rates
  */
 export function calculateDeliveryFee(
@@ -46,11 +125,6 @@ export function calculateDeliveryFee(
 
 /**
  * Parses Google Maps URL or string to extract lat and lng
- * Supported formats:
- * - "23.7937, 90.4049"
- * - "https://maps.google.com/?q=23.7937,90.4049"
- * - "https://www.google.com/maps/@23.7937,90.4049,15z"
- * - "https://www.google.com/maps/place/.../@23.7937,90.4049,17z/..."
  */
 export function parseGoogleMapsLinkOrCoords(input: string): { lat: number; lng: number } | null {
   if (!input) return null;

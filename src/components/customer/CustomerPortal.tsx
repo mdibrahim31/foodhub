@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
-import { calculateDistanceKm, calculateDeliveryFee } from '../../utils/geo';
+import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../../utils/geo';
 import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
   MapPin, 
@@ -64,7 +64,8 @@ export const CustomerPortal: React.FC = () => {
     customerRespondToPrepTime,
     logoutUser,
     loginUser,
-    registerCustomer
+    registerCustomer,
+    zones
   } = useDelivery();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -418,8 +419,17 @@ export const CustomerPortal: React.FC = () => {
   const [orderInstructions, setOrderInstructions] = useState('');
 
   // Customer Coordinates
-  const customerLat = selectedAddress?.latitude || 23.7915;
-  const customerLng = selectedAddress?.longitude || 90.4072;
+  const customerLat = selectedAddress?.latitude || 22.3590;
+  const customerLng = selectedAddress?.longitude || 91.8380;
+
+  // Active Customer Zone based on address or pin location
+  const activeCustomerZone = React.useMemo(() => {
+    if (selectedAddress?.zone) {
+      const match = zones.find(z => z.name.toLowerCase() === selectedAddress.zone?.toLowerCase() || z.id === selectedAddress.zone);
+      if (match) return match;
+    }
+    return findZoneForPoint(customerLat, customerLng, zones);
+  }, [selectedAddress?.zone, customerLat, customerLng, zones]);
 
   const toggleFavorite = (vendorId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -428,8 +438,16 @@ export const CustomerPortal: React.FC = () => {
     );
   };
 
-  // Filtered and Sorted Vendors
+  // Filtered and Sorted Vendors (Strictly filtered by Customer Zone Boundary)
   const filteredVendors = vendors.filter((v) => {
+    // 1. Filter strictly by Customer Zone: Only vendors inside the customer's active zone are shown
+    const matchesZone = activeCustomerZone
+      ? (
+          (v.zone && (v.zone.toLowerCase() === activeCustomerZone.name.toLowerCase() || v.zone === activeCustomerZone.id)) ||
+          isPointInZone(v.latitude, v.longitude, activeCustomerZone)
+        )
+      : true;
+
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRating = !isRating4PlusOnly || v.rating >= 4.0;
@@ -456,7 +474,7 @@ export const CustomerPortal: React.FC = () => {
     // Filter by New Vendors (within last 30 days)
     const matchesNew = (!isNewOnly && selectedSort !== 'new') || isVendorNew(v);
 
-    return matchesSearch && matchesRating && matchesCuisine && matchesType && matchesRestType && matchesNew;
+    return matchesZone && matchesSearch && matchesRating && matchesCuisine && matchesType && matchesRestType && matchesNew;
   }).sort((a, b) => {
     if (selectedSort === 'rating') return b.rating - a.rating;
     if (selectedSort === 'distance') {
@@ -1557,8 +1575,8 @@ export const CustomerPortal: React.FC = () => {
                     Current Location
                   </h1>
                 </div>
-                <p className="text-xs text-orange-100 font-medium">
-                  {selectedAddress ? selectedAddress.address_line : 'Chittagong'}
+                <p className="text-xs text-orange-100 font-medium truncate max-w-[250px]">
+                  {selectedAddress ? `${selectedAddress.address_line}${activeCustomerZone?.name ? ` • ${activeCustomerZone.name}` : ''}` : (activeCustomerZone?.name || 'Chittagong')}
                 </p>
               </div>
             </div>
@@ -1906,8 +1924,30 @@ export const CustomerPortal: React.FC = () => {
             {activeBottomNav === 'food' ? 'Explore restaurants nearby' : 'Explore shops nearby'}
           </h2>
 
-          <div className="space-y-4">
-            {filteredVendors.map((vendor) => {
+          {filteredVendors.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/90 shadow-xs space-y-3.5 my-2">
+              <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center mx-auto border border-orange-100 shadow-inner">
+                <MapPin className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-slate-900 text-sm">
+                  No {activeBottomNav === 'food' ? 'restaurants' : 'shops'} available in {activeCustomerZone?.name || 'this zone'}
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                  Only vendors within your active delivery zone boundary are displayed. Please change your delivery address or map pin to browse vendors in other zones.
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsAddressModalOpen(true)}
+                className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-orange-600/20 cursor-pointer transition inline-flex items-center gap-1.5"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Change Delivery Address / Zone</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredVendors.map((vendor) => {
               const distanceKm = calculateDistanceKm(vendor.latitude, vendor.longitude, customerLat, customerLng);
               const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
@@ -1982,6 +2022,7 @@ export const CustomerPortal: React.FC = () => {
               );
             })}
           </div>
+          )}
         </section>
       </main>
         </>

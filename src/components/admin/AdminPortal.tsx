@@ -40,7 +40,8 @@ import {
   Edit2,
   Layers,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Users
 } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
@@ -63,6 +64,8 @@ export const AdminPortal: React.FC = () => {
     adminRegisterRider,
     toggleRiderPause,
     deleteRider,
+    customers,
+    deleteCustomer,
     orders,
     foodCategories,
     addFoodCategory,
@@ -183,6 +186,7 @@ export const AdminPortal: React.FC = () => {
   // Search Filters
   const [vendorSearch, setVendorSearch] = useState('');
   const [riderSearch, setRiderSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
 
   // Selected for Full Profile Modals & Order Inspector (persisted across page refresh)
   const [selectedVendorForProfile, setSelectedVendorForProfileState] = useState<Vendor | null>(() => {
@@ -1942,7 +1946,20 @@ export const AdminPortal: React.FC = () => {
 
                 <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Operating Zone</span>
-                  <span className="font-extrabold text-rose-600 text-base">{selectedVendorForProfile.zone}</span>
+                  <select
+                    value={selectedVendorForProfile.zone || ''}
+                    onChange={(e) => {
+                      const newZone = e.target.value;
+                      updateVendor(selectedVendorForProfile.id, { zone: newZone });
+                      setSelectedVendorForProfile(prev => prev ? { ...prev, zone: newZone } : null);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 font-extrabold text-rose-600 text-xs focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="" disabled>Select Zone</option>
+                    {(zones || []).map(z => (
+                      <option key={z.id} value={z.name}>{z.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">
