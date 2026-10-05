@@ -406,6 +406,9 @@ export const AdminPortal: React.FC = () => {
       latitude: vLat,
       longitude: vLng,
       vendor_type: vVendorType,
+      restaurant_type: vVendorType === 'restaurant' 
+        ? (vRestaurantCategory === 'cloud kitchen' ? 'cloud_kitchen' : vRestaurantCategory === 'home kitchen' ? 'home_kitchen' : 'restaurant')
+        : undefined,
       google_maps_link: vGoogleMapsLink.trim()
     });
 

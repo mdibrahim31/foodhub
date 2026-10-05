@@ -75,6 +75,7 @@ interface DeliveryContextType {
     longitude: number;
     description?: string;
     vendor_type?: 'restaurant' | 'shop';
+    restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen';
     google_maps_link?: string;
   }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
@@ -1384,6 +1385,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     longitude: number;
     description?: string;
     vendor_type?: 'restaurant' | 'shop';
+    restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen';
     google_maps_link?: string;
   }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {
     const newVendor: Vendor = {
@@ -1404,6 +1406,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       estimated_prep_time_minutes: 20,
       is_password_set: false,
       vendor_type: data.vendor_type || 'restaurant',
+      restaurant_type: data.restaurant_type || 'restaurant',
       cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
       logo_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80',
       created_at: new Date().toISOString()

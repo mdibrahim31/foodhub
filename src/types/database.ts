@@ -70,6 +70,7 @@ export interface Vendor {
   is_password_set?: boolean;
   password?: string;
   vendor_type?: 'restaurant' | 'shop'; // Categorize vendor as restaurant or grocery shop
+  restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen'; // Sub-type for restaurant (Restaurant, Cloud Kitchen, Home Kitchen)
   created_at?: string;
 }
 

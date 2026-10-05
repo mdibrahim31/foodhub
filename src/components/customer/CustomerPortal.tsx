@@ -112,10 +112,22 @@ export const CustomerPortal: React.FC = () => {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'fastest'>('popular');
+  const [selectedSort, setSelectedSort] = useState<'popular' | 'rating' | 'distance' | 'new'>('popular');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [isFilterSettingsOpen, setIsFilterSettingsOpen] = useState(false);
   const [isRating4PlusOnly, setIsRating4PlusOnly] = useState(false);
   const [hasOfferOnly, setHasOfferOnly] = useState(false);
+  const [isNewOnly, setIsNewOnly] = useState(false);
   const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
+
+  const isVendorNew = (v: Vendor) => {
+    if (!v.created_at) return true; // Sample vendors count as new if created_at is omitted
+    const createdTime = new Date(v.created_at).getTime();
+    if (isNaN(createdTime)) return true;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+    return (Date.now() - createdTime) <= thirtyDaysMs;
+  };
+  const [activeRestaurantTypeFilter, setActiveRestaurantTypeFilter] = useState('All');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [activeMenuCategory, setActiveMenuCategory] = useState('All');
 
@@ -430,7 +442,21 @@ export const CustomerPortal: React.FC = () => {
         ? v.vendor_type === 'shop'
         : true;
 
-    return matchesSearch && matchesRating && matchesCuisine && matchesType;
+    // Filter by Restaurant Sub-Type (Restaurant, Cloud Kitchen, Home Kitchen)
+    const matchesRestType = (activeBottomNav !== 'food' || activeRestaurantTypeFilter === 'All')
+      ? true
+      : activeRestaurantTypeFilter === 'restaurant'
+        ? (v.restaurant_type === 'restaurant' || !v.restaurant_type || v.cuisine.toLowerCase() === 'restaurant')
+        : activeRestaurantTypeFilter === 'cloud_kitchen'
+          ? (v.restaurant_type === 'cloud_kitchen' || v.cuisine.toLowerCase().includes('cloud') || v.name.toLowerCase().includes('cloud'))
+          : activeRestaurantTypeFilter === 'home_kitchen'
+            ? (v.restaurant_type === 'home_kitchen' || v.cuisine.toLowerCase().includes('home') || v.name.toLowerCase().includes('home'))
+            : true;
+
+    // Filter by New Vendors (within last 30 days)
+    const matchesNew = (!isNewOnly && selectedSort !== 'new') || isVendorNew(v);
+
+    return matchesSearch && matchesRating && matchesCuisine && matchesType && matchesRestType && matchesNew;
   }).sort((a, b) => {
     if (selectedSort === 'rating') return b.rating - a.rating;
     if (selectedSort === 'distance') {
@@ -438,7 +464,14 @@ export const CustomerPortal: React.FC = () => {
       const distB = calculateDistanceKm(b.latitude, b.longitude, customerLat, customerLng);
       return distA - distB;
     }
-    if (selectedSort === 'fastest') return a.estimated_prep_time_minutes - b.estimated_prep_time_minutes;
+    if (selectedSort === 'new') {
+      const isNewA = isVendorNew(a) ? 1 : 0;
+      const isNewB = isVendorNew(b) ? 1 : 0;
+      if (isNewA !== isNewB) return isNewB - isNewA;
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return timeB - timeA;
+    }
     return 0;
   });
 
@@ -975,48 +1008,10 @@ export const CustomerPortal: React.FC = () => {
                 {/* Restaurants cards or empty state */}
                 {vendors.filter(v => favorites.includes(v.id) && (v.vendor_type === 'restaurant' || !v.vendor_type)).length === 0 ? (
                   <div className="py-12 px-6 text-center space-y-6 flex flex-col items-center">
-                    {/* Adorable Pink/White Panda hugging a Heart vector SVG */}
-                    <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      {/* Big Pink Heart behind/under Panda */}
-                      <path d="M100 160C100 160 30 110 30 70C30 42.5 52.5 20 80 20C92.5 20 100 28.5 100 28.5C100 28.5 107.5 20 120 20C147.5 20 170 42.5 170 70C170 110 100 160 100 160Z" fill="#FFAEC9" />
-                      <path d="M100 150C100 150 40 105 40 70C40 48 58 30 80 30C92 30 100 38 100 38C100 38 108 30 120 30C142 30 160 48 160 70C160 105 100 150 100 150Z" fill="#DB2777" />
-                      
-                      {/* Panda Head */}
-                      <circle cx="100" cy="80" r="40" fill="#FFFFFF" stroke="#F0F0F0" strokeWidth="2" />
-                      
-                      {/* Panda Ears */}
-                      <circle cx="65" cy="50" r="12" fill="#DB2777" />
-                      <circle cx="135" cy="50" r="12" fill="#DB2777" />
-                      <circle cx="65" cy="50" r="6" fill="#FFFFFF" />
-                      <circle cx="135" cy="50" r="6" fill="#FFFFFF" />
-                      
-                      {/* Panda Eye Patches */}
-                      <ellipse cx="85" cy="78" rx="10" ry="14" transform="rotate(-15 85 78)" fill="#DB2777" />
-                      <ellipse cx="115" cy="78" rx="10" ry="14" transform="rotate(15 115 78)" fill="#DB2777" />
-                      
-                      {/* Panda Eyes */}
-                      <circle cx="85" cy="78" r="4" fill="#FFFFFF" />
-                      <circle cx="115" cy="78" r="4" fill="#FFFFFF" />
-                      <circle cx="86" cy="76" r="1.5" fill="#333" />
-                      <circle cx="116" cy="76" r="1.5" fill="#333" />
-                      
-                      {/* Pink Blush */}
-                      <circle cx="73" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
-                      <circle cx="127" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
-                      
-                      {/* Panda Nose */}
-                      <ellipse cx="100" cy="85" rx="5" ry="3" fill="#333333" />
-                      
-                      {/* Panda Happy Smile */}
-                      <path d="M95 90C95 92 105 92 105 90" stroke="#333333" strokeWidth="2.5" strokeLinecap="round" />
-                      
-                      {/* Panda Paws hugging the heart */}
-                      <ellipse cx="75" cy="115" rx="14" ry="10" transform="rotate(25 75 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
-                      <circle cx="75" cy="115" r="7" fill="#DB2777" opacity="0.8" />
-                      
-                      <ellipse cx="125" cy="115" rx="14" ry="10" transform="rotate(-25 125 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
-                      <circle cx="125" cy="115" r="7" fill="#DB2777" opacity="0.8" />
-                    </svg>
+                    {/* Clean Heart Icon Badge */}
+                    <div className="w-20 h-20 rounded-full bg-pink-50 border border-pink-100 flex items-center justify-center shadow-xs mx-auto my-2">
+                      <Heart className="w-10 h-10 fill-[#DB2777]/20 text-[#DB2777]" />
+                    </div>
 
                     <div className="space-y-2">
                       <h2 className="text-xl font-black text-slate-900 tracking-tight">No favourites saved</h2>
@@ -1120,48 +1115,10 @@ export const CustomerPortal: React.FC = () => {
                 {/* Shops cards or empty state */}
                 {vendors.filter(v => favorites.includes(v.id) && v.vendor_type === 'shop').length === 0 ? (
                   <div className="py-12 px-6 text-center space-y-6 flex flex-col items-center">
-                    {/* Adorable Pink/White Panda hugging a Heart vector SVG */}
-                    <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      {/* Big Pink Heart behind/under Panda */}
-                      <path d="M100 160C100 160 30 110 30 70C30 42.5 52.5 20 80 20C92.5 20 100 28.5 100 28.5C100 28.5 107.5 20 120 20C147.5 20 170 42.5 170 70C170 110 100 160 100 160Z" fill="#FFAEC9" />
-                      <path d="M100 150C100 150 40 105 40 70C40 48 58 30 80 30C92 30 100 38 100 38C100 38 108 30 120 30C142 30 160 48 160 70C160 105 100 150 100 150Z" fill="#DB2777" />
-                      
-                      {/* Panda Head */}
-                      <circle cx="100" cy="80" r="40" fill="#FFFFFF" stroke="#F0F0F0" strokeWidth="2" />
-                      
-                      {/* Panda Ears */}
-                      <circle cx="65" cy="50" r="12" fill="#DB2777" />
-                      <circle cx="135" cy="50" r="12" fill="#DB2777" />
-                      <circle cx="65" cy="50" r="6" fill="#FFFFFF" />
-                      <circle cx="135" cy="50" r="6" fill="#FFFFFF" />
-                      
-                      {/* Panda Eye Patches */}
-                      <ellipse cx="85" cy="78" rx="10" ry="14" transform="rotate(-15 85 78)" fill="#DB2777" />
-                      <ellipse cx="115" cy="78" rx="10" ry="14" transform="rotate(15 115 78)" fill="#DB2777" />
-                      
-                      {/* Panda Eyes */}
-                      <circle cx="85" cy="78" r="4" fill="#FFFFFF" />
-                      <circle cx="115" cy="78" r="4" fill="#FFFFFF" />
-                      <circle cx="86" cy="76" r="1.5" fill="#333" />
-                      <circle cx="116" cy="76" r="1.5" fill="#333" />
-                      
-                      {/* Pink Blush */}
-                      <circle cx="73" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
-                      <circle cx="127" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
-                      
-                      {/* Panda Nose */}
-                      <ellipse cx="100" cy="85" rx="5" ry="3" fill="#333333" />
-                      
-                      {/* Panda Happy Smile */}
-                      <path d="M95 90C95 92 105 92 105 90" stroke="#333333" strokeWidth="2.5" strokeLinecap="round" />
-                      
-                      {/* Panda Paws hugging the heart */}
-                      <ellipse cx="75" cy="115" rx="14" ry="10" transform="rotate(25 75 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
-                      <circle cx="75" cy="115" r="7" fill="#DB2777" opacity="0.8" />
-                      
-                      <ellipse cx="125" cy="115" rx="14" ry="10" transform="rotate(-25 125 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
-                      <circle cx="125" cy="115" r="7" fill="#DB2777" opacity="0.8" />
-                    </svg>
+                    {/* Clean Heart Icon Badge */}
+                    <div className="w-20 h-20 rounded-full bg-pink-50 border border-pink-100 flex items-center justify-center shadow-xs mx-auto my-2">
+                      <Heart className="w-10 h-10 fill-[#DB2777]/20 text-[#DB2777]" />
+                    </div>
 
                     <div className="space-y-2">
                       <h2 className="text-xl font-black text-slate-900 tracking-tight">No favourites saved</h2>
@@ -1502,12 +1459,18 @@ export const CustomerPortal: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <button className="text-slate-400 p-1">
-                        <div className="flex space-x-0.5">
-                          <div className="w-1 h-1 bg-slate-400 rounded-full" />
-                          <div className="w-1 h-1 bg-slate-400 rounded-full" />
-                          <div className="w-1 h-1 bg-slate-400 rounded-full" />
-                        </div>
+                      {/* Remove Cart Option Button */}
+                      <button 
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to remove this cart? (কার্ট রিমুভ করতে চান?)')) {
+                            clearCart();
+                          }
+                        }}
+                        className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition cursor-pointer text-xs font-bold active:scale-95 shrink-0"
+                        title="Remove Cart"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Remove</span>
                       </button>
                     </div>
 
@@ -1561,7 +1524,22 @@ export const CustomerPortal: React.FC = () => {
                 <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
                   <div className="p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
                     <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">Selected Items</h4>
-                    <span className="text-[11px] font-bold text-orange-600">{totalCartCount} items</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] font-bold text-orange-600">{totalCartCount} items</span>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to remove all items from cart? (কার্ট রিমুভ করতে চান?)')) {
+                            clearCart();
+                            setIsViewingCartDetail(false);
+                          }
+                        }}
+                        className="flex items-center space-x-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer"
+                        title="Remove Cart"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Remove Cart</span>
+                      </button>
+                    </div>
                   </div>
                   {cart.map((item) => (
                     <div key={item.menuItem.id} className="p-4 flex items-center justify-between gap-3">
@@ -1583,18 +1561,26 @@ export const CustomerPortal: React.FC = () => {
                         <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
                           <button
                             onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1)}
-                            className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs"
+                            className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="w-6 text-center text-xs font-black text-slate-900">{item.quantity}</span>
                           <button
                             onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1)}
-                            className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs"
+                            className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
+                        {/* Remove item button */}
+                        <button
+                          onClick={() => updateCartQuantity(item.menuItem.id, 0)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1774,6 +1760,55 @@ export const CustomerPortal: React.FC = () => {
 
         {/* 
           ======================================================================
+          FIRST ROW: RESTAURANT TYPES LIST (Restaurant, Cloud Kitchen, Home Kitchen)
+          ======================================================================
+        */}
+        {activeBottomNav === 'food' && (
+          <section className="space-y-2 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+                <span>🏪 Restaurant Types</span>
+              </h3>
+              {activeRestaurantTypeFilter !== 'All' && (
+                <button 
+                  onClick={() => setActiveRestaurantTypeFilter('All')} 
+                  className="text-[11px] font-bold text-orange-600 hover:underline cursor-pointer"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+
+            {/* Restaurant Type Filter Cards Grid */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'All', name: 'All', icon: '🍽️' },
+                { id: 'restaurant', name: 'Restaurant', icon: '🏬' },
+                { id: 'cloud_kitchen', name: 'Cloud Kitchen', icon: '🍳' },
+                { id: 'home_kitchen', name: 'Home Kitchen', icon: '🏠' },
+              ].map((type) => {
+                const isSelected = activeRestaurantTypeFilter === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => setActiveRestaurantTypeFilter(isSelected ? 'All' : type.id)}
+                    className={`flex flex-col items-center justify-center py-3 px-1 rounded-2xl border transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 scale-102 font-black'
+                        : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
+                    }`}
+                  >
+                    <span className="text-xl mb-1">{type.icon}</span>
+                    <span className="text-[10px] leading-tight text-center font-bold">{type.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 
+          ======================================================================
           SECOND ROW: FOOD CATEGORIES HORIZONTAL SLIDER
           (Pizza, Burgers, Chicken & Grill, Shawarma, Biryani, Kabab, Fast Food, etc. - dynamically managed by Admin)
           ======================================================================
@@ -1839,47 +1874,222 @@ export const CustomerPortal: React.FC = () => {
 
         {/* 8. SHOP BY CATEGORY SECTION - REMOVED AS REQUESTED */}
 
-        {/* 9. STICKY FILTER CHIPS BAR (Matching Screenshot 4 & 5) */}
-        <section className="sticky top-0 z-30 bg-white/95 backdrop-blur-md py-2 flex items-center space-x-2 overflow-x-auto scrollbar-none border-b border-slate-100">
+        {/* 9. STICKY FILTER CHIPS BAR (Fitting 100% on single row without horizontal sliding) */}
+        <section className="sticky top-0 z-30 bg-white/95 backdrop-blur-md py-2 flex items-center justify-between gap-1 border-b border-slate-100 w-full max-w-full px-0.5">
+          {/* 3-Dot / Filter Settings Button */}
           <button 
             onClick={() => {
-              setSelectedSort(prev => prev === 'popular' ? 'rating' : prev === 'rating' ? 'distance' : 'popular');
+              setIsFilterSettingsOpen(true);
+              setIsSortMenuOpen(false);
             }}
-            className="p-2 bg-white rounded-full border border-slate-200 text-slate-700 shadow-xs hover:bg-slate-100 shrink-0"
+            className={`p-1.5 rounded-full border text-slate-700 shadow-2xs hover:bg-slate-100 shrink-0 cursor-pointer relative transition ${
+              isRating4PlusOnly || hasOfferOnly ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-white border-slate-200'
+            }`}
+            title="All Filters"
           >
             <SlidersHorizontal className="w-4 h-4" />
+            {(isRating4PlusOnly || hasOfferOnly) && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-600 ring-1 ring-white" />
+            )}
           </button>
 
+          {/* Sort Button */}
           <button
-            onClick={() => setSelectedSort(prev => prev === 'popular' ? 'distance' : 'popular')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
-              selectedSort !== 'popular' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200'
+            onClick={() => {
+              setIsSortMenuOpen(true);
+              setIsFilterSettingsOpen(false);
+            }}
+            className={`px-2.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
+              selectedSort !== 'popular' ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
           >
             <span>Sort</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
 
+          {/* Offers Chip */}
           <button
             onClick={() => setHasOfferOnly(prev => !prev)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
-              hasOfferOnly ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200'
+            className={`px-2.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
+              hasOfferOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
           >
             <span>Offers</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
 
+          {/* Ratings 4.0+ Chip */}
           <button
             onClick={() => setIsRating4PlusOnly(prev => !prev)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 ${
-              isRating4PlusOnly ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200'
+            className={`px-2.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
+              isRating4PlusOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
           >
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
             <span>Ratings 4.0+</span>
           </button>
         </section>
+
+        {/* 3-Dot Filter Settings Modal (Fixed Overlay to Prevent Overflow Clipping & Click Through) */}
+        <AnimatePresence>
+          {isFilterSettingsOpen && (
+            <div 
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in" 
+              onClick={() => setIsFilterSettingsOpen(false)}
+            >
+              <motion.div 
+                initial={{ y: 100, opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                exit={{ y: 100, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()} 
+                className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center space-x-2">
+                    <SlidersHorizontal className="w-5 h-5 text-orange-600" />
+                    <h3 className="font-extrabold text-base text-slate-900">All Filters</h3>
+                  </div>
+                  <button 
+                    onClick={() => setIsFilterSettingsOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Ratings 4.0+ Option */}
+                  <button
+                    onClick={() => setIsRating4PlusOnly(prev => !prev)}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      isRating4PlusOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>Ratings 4.0+</span>
+                    </div>
+                    {isRating4PlusOnly && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+
+                  {/* Offers Only Option */}
+                  <button
+                    onClick={() => setHasOfferOnly(prev => !prev)}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      hasOfferOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Percent className="w-4 h-4 text-orange-600" />
+                      <span>Offers Only</span>
+                    </div>
+                    {hasOfferOnly && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+
+                  {/* Nearest Distance Option */}
+                  <button
+                    onClick={() => setSelectedSort(prev => prev === 'distance' ? 'popular' : 'distance')}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      selectedSort === 'distance' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-orange-600" />
+                      <span>Nearest Distance</span>
+                    </div>
+                    {selectedSort === 'distance' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setIsFilterSettingsOpen(false)}
+                  className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-slate-800 transition cursor-pointer shadow-md"
+                >
+                  Apply Filters
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Sort Options Modal (Fixed Overlay to Prevent Overflow Clipping & Click Through) */}
+        <AnimatePresence>
+          {isSortMenuOpen && (
+            <div 
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in" 
+              onClick={() => setIsSortMenuOpen(false)}
+            >
+              <motion.div 
+                initial={{ y: 100, opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                exit={{ y: 100, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()} 
+                className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-extrabold text-base text-slate-900">Sort Vendors By</h3>
+                  <button 
+                    onClick={() => setIsSortMenuOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  <button
+                    onClick={() => { setSelectedSort('popular'); setIsNewOnly(false); setIsSortMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      selectedSort === 'popular' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <span>Popular</span>
+                    {selectedSort === 'popular' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+
+                  <button
+                    onClick={() => { setSelectedSort('new'); setIsNewOnly(true); setIsSortMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      selectedSort === 'new' || isNewOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+                      <span>New Vendors</span>
+                    </div>
+                    {(selectedSort === 'new' || isNewOnly) && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+
+                  <button
+                    onClick={() => { setSelectedSort('rating'); setIsSortMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      selectedSort === 'rating' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>Highest Rating</span>
+                    </div>
+                    {selectedSort === 'rating' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+
+                  <button
+                    onClick={() => { setSelectedSort('distance'); setIsSortMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                      selectedSort === 'distance' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <MapPin className="w-4 h-4 text-orange-600" />
+                      <span>Nearest Distance</span>
+                    </div>
+                    {selectedSort === 'distance' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* 10. EXPLORE RESTAURANTS/SHOPS NEARBY (Matching Screenshot 4 & 5) */}
         <section className="space-y-4">
@@ -1892,6 +2102,7 @@ export const CustomerPortal: React.FC = () => {
               const distanceKm = calculateDistanceKm(vendor.latitude, vendor.longitude, customerLat, customerLng);
               const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
+              const isNew = isVendorNew(vendor);
 
               return (
                 <div
@@ -1905,6 +2116,14 @@ export const CustomerPortal: React.FC = () => {
                       alt={vendor.name} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
+
+                    {/* NEW Badge for Vendors added within last 30 days */}
+                    {isNew && (
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center space-x-1 border border-emerald-400/40 z-10">
+                        <Sparkles className="w-3 h-3 fill-amber-300 text-amber-300" />
+                        <span>NEW</span>
+                      </span>
+                    )}
                     <button 
                       onClick={(e) => toggleFavorite(vendor.id, e)}
                       className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-700 hover:text-rose-500 transition"
@@ -2495,10 +2714,10 @@ export const CustomerPortal: React.FC = () => {
 
       {/* Floating Bottom Cart Bar (Sticky above bottom dock) */}
       {cart.length > 0 && activeBottomNav !== 'carts' && !selectedVendorForMenu && (
-        <div className="fixed bottom-16 inset-x-4 max-w-md mx-auto z-40 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-16 inset-x-4 max-w-md mx-auto z-40 animate-in fade-in slide-in-from-bottom-2 flex items-center space-x-2">
           <button
             onClick={() => setActiveBottomNav('carts')}
-            className="w-full bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-2xl py-3 px-4 flex items-center justify-between shadow-2xl shadow-orange-600/30 active:scale-[0.98] transition cursor-pointer border border-white/20"
+            className="flex-1 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-2xl py-3 px-4 flex items-center justify-between shadow-2xl shadow-orange-600/30 active:scale-[0.98] transition cursor-pointer border border-white/20"
           >
             <div className="flex items-center space-x-2.5 truncate">
               <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black shrink-0">
@@ -2513,6 +2732,19 @@ export const CustomerPortal: React.FC = () => {
               <span className="font-mono font-black text-sm">{settings.currency_symbol}{foodTotal}</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </div>
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('Are you sure you want to remove this cart? (কার্ট রিমুভ করতে চান?)')) {
+                clearCart();
+              }
+            }}
+            className="w-12 h-12 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition shrink-0 cursor-pointer"
+            title="Remove Cart"
+          >
+            <Trash2 className="w-5 h-5 text-rose-600" />
           </button>
         </div>
       )}
