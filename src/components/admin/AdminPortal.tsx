@@ -297,6 +297,10 @@ export const AdminPortal: React.FC = () => {
   const [vLat, setVLat] = useState(22.3585);
   const [vLng, setVLng] = useState(91.8385);
   const [isVendorMapPickerOpen, setIsVendorMapPickerOpen] = useState(false);
+  const [vGoogleMapsLink, setVGoogleMapsLink] = useState('');
+  const [vVendorType, setVVendorType] = useState<'restaurant' | 'shop'>('restaurant');
+  const [vRestaurantCategory, setVRestaurantCategory] = useState<'restaurant' | 'cloud kitchen' | 'home kitchen'>('restaurant');
+  const [vShopCategory, setVShopCategory] = useState('');
 
   // New Rider Form
   const [isAddRiderOpen, setIsAddRiderOpen] = useState(false);
@@ -352,20 +356,30 @@ export const AdminPortal: React.FC = () => {
       return;
     }
 
+    const finalCuisine = vVendorType === 'restaurant' 
+      ? vRestaurantCategory 
+      : (vShopCategory || 'Grocery');
+
     const res = await adminRegisterVendor({
       name: vName.trim(),
       phone: vPhone.trim(),
       address: vAddress.trim(),
-      cuisine: vCuisine.trim(),
+      cuisine: finalCuisine,
       zone: vZone,
       latitude: vLat,
       longitude: vLng,
+      vendor_type: vVendorType,
+      google_maps_link: vGoogleMapsLink.trim()
     });
 
     setIsAddVendorOpen(false);
     setVName('');
     setVPhone('');
     setVAddress('');
+    setVGoogleMapsLink('');
+    setVVendorType('restaurant');
+    setVRestaurantCategory('restaurant');
+    setVShopCategory('');
     
     if (res.savedToDatabase) {
       alert(`✅ Vendor "${res.vendor.name}" registered & saved to Database!\nID: ${res.vendor.unique_id || res.vendor.id}\nPhone: ${res.vendor.phone}\nZone: ${res.vendor.zone}`);
@@ -2823,17 +2837,6 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Cuisine Specialties</label>
-                <input
-                  type="text"
-                  value={vCuisine}
-                  onChange={(e) => setVCuisine(e.target.value)}
-                  placeholder="e.g. Biryani, Fast Food, Bakery"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                />
-              </div>
-
-              <div className="space-y-1">
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Login Phone Number *</label>
                 <input
                   type="tel"
@@ -2862,6 +2865,67 @@ export const AdminPortal: React.FC = () => {
                   </select>
               </div>
 
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Vendor Partner Type *</label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setVVendorType('restaurant')}
+                    className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border ${
+                      vVendorType === 'restaurant'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-600/25'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    🍔 Restaurant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVVendorType('shop')}
+                    className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border ${
+                      vVendorType === 'shop'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-600/25'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    🛒 Shop / Grocery
+                  </button>
+                </div>
+              </div>
+
+              {vVendorType === 'restaurant' ? (
+                <div className="space-y-1 animate-in slide-in-from-top-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Restaurant Category *</label>
+                  <select
+                    value={vRestaurantCategory}
+                    onChange={(e) => setVRestaurantCategory(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    required
+                  >
+                    <option value="restaurant">Restaurant (রেস্টুরেন্ট)</option>
+                    <option value="cloud kitchen">Cloud Kitchen (ক্লাউড কিচেন)</option>
+                    <option value="home kitchen">Home Kitchen (হোম কিচেন)</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-1 animate-in slide-in-from-top-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Shop Category *</label>
+                  <select
+                    value={vShopCategory}
+                    onChange={(e) => setVShopCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    required
+                  >
+                    <option value="" disabled>Select Shop Category</option>
+                    {(foodCategories || []).map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name} {cat.category_type === 'grocery' ? '(Grocery)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Physical Street Address *</label>
                 <input
@@ -2871,6 +2935,17 @@ export const AdminPortal: React.FC = () => {
                   placeholder="Street / Market / Area"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Google Maps Location URL</label>
+                <input
+                  type="url"
+                  value={vGoogleMapsLink}
+                  onChange={(e) => setVGoogleMapsLink(e.target.value)}
+                  placeholder="e.g. https://maps.app.goo.gl/..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
                 />
               </div>
 

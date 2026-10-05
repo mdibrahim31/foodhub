@@ -74,6 +74,8 @@ interface DeliveryContextType {
     latitude: number;
     longitude: number;
     description?: string;
+    vendor_type?: 'restaurant' | 'shop';
+    google_maps_link?: string;
   }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
   toggleVendorPause: (id: string) => void;
@@ -1382,6 +1384,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     longitude: number;
     description?: string;
     vendor_type?: 'restaurant' | 'shop';
+    google_maps_link?: string;
   }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {
     const newVendor: Vendor = {
       id: crypto.randomUUID(),
@@ -1393,6 +1396,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       zone: data.zone || 'Chawkbazar Zone',
       latitude: data.latitude,
       longitude: data.longitude,
+      google_maps_link: data.google_maps_link || '',
       description: data.description || 'Quality food prepared with fresh ingredients',
       is_active: true,
       is_paused: false,
@@ -1420,6 +1424,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           zone: newVendor.zone,
           latitude: newVendor.latitude,
           longitude: newVendor.longitude,
+          google_maps_link: newVendor.google_maps_link,
           description: newVendor.description,
           is_active: newVendor.is_active,
           is_paused: newVendor.is_paused,
