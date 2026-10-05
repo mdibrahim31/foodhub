@@ -98,6 +98,7 @@ export const CustomerPortal: React.FC = () => {
     }
     return 'none';
   });
+  const [favTab, setFavTab] = useState<'restaurants' | 'shops'>('restaurants');
 
   const setAccountSubView = (action: React.SetStateAction<'none' | 'orders' | 'favourites'>) => {
     setAccountSubViewState(prev => {
@@ -880,6 +881,273 @@ export const CustomerPortal: React.FC = () => {
               )}
             </div>
           </div>
+        ) : accountSubView === 'favourites' ? (
+          /* 
+            ========================================================================
+            DEDICATED FULL SCREEN FAVOURITES VIEW (100% Matching Screenshot_20261005_153503.jpg & ..._153506.jpg)
+            ========================================================================
+          */
+          <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28 select-none">
+            {/* Header: Back Close, Favourites Title, Shopping Cart Icon with Badge */}
+            <div className="sticky top-0 bg-white border-b border-slate-100 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+              <button 
+                onClick={() => setAccountSubView('none')}
+                className="p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-6 h-6 stroke-[2]" />
+              </button>
+              <h1 className="text-base font-black text-slate-900">Favourites</h1>
+              <button 
+                onClick={() => {
+                  setAccountSubView('none');
+                  setActiveBottomNav('carts');
+                }}
+                className="relative p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
+                aria-label="Cart"
+              >
+                <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+                {totalCartCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 w-4.5 h-4.5 bg-[#DB2777] text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                    {totalCartCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Favourites Tabs: Restaurants & shops */}
+            <div className="flex border-b border-slate-100 px-4 text-sm font-black text-slate-500">
+              <button
+                onClick={() => setFavTab('restaurants')}
+                className={`flex-1 py-4 text-center transition-all border-b-3 relative ${
+                  favTab === 'restaurants' ? 'text-slate-900 border-black' : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <span>Restaurants</span>
+              </button>
+              <button
+                onClick={() => setFavTab('shops')}
+                className={`flex-1 py-4 text-center transition-all border-b-3 relative ${
+                  favTab === 'shops' ? 'text-slate-900 border-black' : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <span>shops</span>
+              </button>
+            </div>
+
+            {/* Display list based on tab */}
+            {favTab === 'restaurants' ? (
+              <div className="p-4 space-y-5">
+                {/* Delivery & Pick-Up pills */}
+                <div className="flex items-center space-x-2.5">
+                  <button className="px-4 py-2 bg-[#2D2D2D] text-white text-xs font-black rounded-full shadow-sm">
+                    Delivery
+                  </button>
+                  <button className="px-4 py-2 bg-white text-[#2D2D2D] border border-slate-200/80 text-xs font-black rounded-full hover:bg-slate-50">
+                    Pick-Up
+                  </button>
+                </div>
+
+                {/* Restaurants cards or empty state */}
+                {favorites.length === 0 ? (
+                  <div className="py-12 px-6 text-center space-y-6 flex flex-col items-center">
+                    {/* Adorable Pink/White Panda hugging a Heart vector SVG */}
+                    <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Big Pink Heart behind/under Panda */}
+                      <path d="M100 160C100 160 30 110 30 70C30 42.5 52.5 20 80 20C92.5 20 100 28.5 100 28.5C100 28.5 107.5 20 120 20C147.5 20 170 42.5 170 70C170 110 100 160 100 160Z" fill="#FFAEC9" />
+                      <path d="M100 150C100 150 40 105 40 70C40 48 58 30 80 30C92 30 100 38 100 38C100 38 108 30 120 30C142 30 160 48 160 70C160 105 100 150 100 150Z" fill="#DB2777" />
+                      
+                      {/* Panda Head */}
+                      <circle cx="100" cy="80" r="40" fill="#FFFFFF" stroke="#F0F0F0" strokeWidth="2" />
+                      
+                      {/* Panda Ears */}
+                      <circle cx="65" cy="50" r="12" fill="#DB2777" />
+                      <circle cx="135" cy="50" r="12" fill="#DB2777" />
+                      <circle cx="65" cy="50" r="6" fill="#FFFFFF" />
+                      <circle cx="135" cy="50" r="6" fill="#FFFFFF" />
+                      
+                      {/* Panda Eye Patches */}
+                      <ellipse cx="85" cy="78" rx="10" ry="14" transform="rotate(-15 85 78)" fill="#DB2777" />
+                      <ellipse cx="115" cy="78" rx="10" ry="14" transform="rotate(15 115 78)" fill="#DB2777" />
+                      
+                      {/* Panda Eyes */}
+                      <circle cx="85" cy="78" r="4" fill="#FFFFFF" />
+                      <circle cx="115" cy="78" r="4" fill="#FFFFFF" />
+                      <circle cx="86" cy="76" r="1.5" fill="#333" />
+                      <circle cx="116" cy="76" r="1.5" fill="#333" />
+                      
+                      {/* Pink Blush */}
+                      <circle cx="73" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
+                      <circle cx="127" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
+                      
+                      {/* Panda Nose */}
+                      <ellipse cx="100" cy="85" rx="5" ry="3" fill="#333333" />
+                      
+                      {/* Panda Happy Smile */}
+                      <path d="M95 90C95 92 105 92 105 90" stroke="#333333" strokeWidth="2.5" strokeLinecap="round" />
+                      
+                      {/* Panda Paws hugging the heart */}
+                      <ellipse cx="75" cy="115" rx="14" ry="10" transform="rotate(25 75 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
+                      <circle cx="75" cy="115" r="7" fill="#DB2777" opacity="0.8" />
+                      
+                      <ellipse cx="125" cy="115" rx="14" ry="10" transform="rotate(-25 125 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
+                      <circle cx="125" cy="115" r="7" fill="#DB2777" opacity="0.8" />
+                    </svg>
+
+                    <div className="space-y-2">
+                      <h2 className="text-xl font-black text-slate-900 tracking-tight">No favourites saved</h2>
+                      <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                        To make ordering even faster, you'll find all your faves here. Just look for the heart icon!
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setAccountSubView('none');
+                        setActiveBottomNav('food');
+                      }}
+                      className="px-8 py-3 bg-[#DB2777] hover:bg-[#C2185B] text-white font-extrabold text-xs tracking-wider rounded-2xl shadow-md shadow-pink-600/20 transition cursor-pointer active:scale-95"
+                    >
+                      Let's find some favourites
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {vendors.filter(v => favorites.includes(v.id)).map((v) => {
+                      const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
+                      
+                      return (
+                        <div 
+                          key={v.id}
+                          className="group bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-2xs hover:shadow-xs transition duration-200"
+                        >
+                          {/* Restaurant Image Area */}
+                          <div className="relative h-48 bg-slate-100 overflow-hidden cursor-pointer" onClick={() => setSelectedVendorForMenu(v)}>
+                            <img src={v.cover_image} alt={v.name} className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300" />
+                            {/* Favorite floating pink heart */}
+                            <button 
+                              onClick={(e) => toggleFavorite(v.id, e)}
+                              className="absolute top-3.5 right-3.5 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
+                              aria-label="Remove Favorite"
+                              style={{ width: '34px', height: '34px' }}
+                            >
+                              <Heart className="w-4.5 h-4.5 fill-[#DB2777] text-[#DB2777]" />
+                            </button>
+                          </div>
+
+                          {/* Restaurant Info Area */}
+                          <div className="p-4 space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 
+                                onClick={() => setSelectedVendorForMenu(v)}
+                                className="font-black text-slate-900 text-[15px] hover:text-orange-600 transition cursor-pointer truncate flex-1 leading-snug"
+                              >
+                                {v.name}
+                              </h3>
+                              <div className="flex items-center space-x-1 font-extrabold text-xs text-slate-800 shrink-0 mt-0.5">
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <span>{v.rating || 4.7}</span>
+                                <span className="text-slate-400 font-bold">({v.rating ? '2k+' : '50+'})</span>
+                              </div>
+                            </div>
+
+                            <p className="text-[11px] text-slate-500 font-bold leading-none flex items-center flex-wrap gap-1.5">
+                              <span>{v.estimated_prep_time_minutes || 20}-{ (v.estimated_prep_time_minutes || 20) + 20 } min</span>
+                              <span>&bull;</span>
+                              <span>৳৳</span>
+                              <span>&bull;</span>
+                              <span className="truncate">{v.cuisine}</span>
+                              <span>&bull;</span>
+                              <span>Price Match</span>
+                            </p>
+
+                            <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
+                              <Bike className="w-3.5 h-3.5 text-slate-400" />
+                              <span className="line-through text-slate-400">Tk107</span>
+                              <span className="text-[#DB2777] font-extrabold">Free</span>
+                            </div>
+
+                            {/* 35% discount badge */}
+                            <div className="pt-0.5">
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-pink-50 text-[#DB2777] border border-pink-100 rounded-lg text-[10px] font-black">
+                                <Ticket className="w-3 h-3 text-[#DB2777]" />
+                                <span>35% off Tk. 299: back4more</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* shops Tab - empty state */
+              <div className="p-4">
+                <div className="py-12 px-6 text-center space-y-6 flex flex-col items-center">
+                  {/* Adorable Pink/White Panda hugging a Heart vector SVG */}
+                  <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Big Pink Heart behind/under Panda */}
+                    <path d="M100 160C100 160 30 110 30 70C30 42.5 52.5 20 80 20C92.5 20 100 28.5 100 28.5C100 28.5 107.5 20 120 20C147.5 20 170 42.5 170 70C170 110 100 160 100 160Z" fill="#FFAEC9" />
+                    <path d="M100 150C100 150 40 105 40 70C40 48 58 30 80 30C92 30 100 38 100 38C100 38 108 30 120 30C142 30 160 48 160 70C160 105 100 150 100 150Z" fill="#DB2777" />
+                    
+                    {/* Panda Head */}
+                    <circle cx="100" cy="80" r="40" fill="#FFFFFF" stroke="#F0F0F0" strokeWidth="2" />
+                    
+                    {/* Panda Ears */}
+                    <circle cx="65" cy="50" r="12" fill="#DB2777" />
+                    <circle cx="135" cy="50" r="12" fill="#DB2777" />
+                    <circle cx="65" cy="50" r="6" fill="#FFFFFF" />
+                    <circle cx="135" cy="50" r="6" fill="#FFFFFF" />
+                    
+                    {/* Panda Eye Patches */}
+                    <ellipse cx="85" cy="78" rx="10" ry="14" transform="rotate(-15 85 78)" fill="#DB2777" />
+                    <ellipse cx="115" cy="78" rx="10" ry="14" transform="rotate(15 115 78)" fill="#DB2777" />
+                    
+                    {/* Panda Eyes */}
+                    <circle cx="85" cy="78" r="4" fill="#FFFFFF" />
+                    <circle cx="115" cy="78" r="4" fill="#FFFFFF" />
+                    <circle cx="86" cy="76" r="1.5" fill="#333" />
+                    <circle cx="116" cy="76" r="1.5" fill="#333" />
+                    
+                    {/* Pink Blush */}
+                    <circle cx="73" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
+                    <circle cx="127" cy="90" r="5" fill="#FF7FA5" opacity="0.6" />
+                    
+                    {/* Panda Nose */}
+                    <ellipse cx="100" cy="85" rx="5" ry="3" fill="#333333" />
+                    
+                    {/* Panda Happy Smile */}
+                    <path d="M95 90C95 92 105 92 105 90" stroke="#333333" strokeWidth="2.5" strokeLinecap="round" />
+                    
+                    {/* Panda Paws hugging the heart */}
+                    <ellipse cx="75" cy="115" rx="14" ry="10" transform="rotate(25 75 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
+                    <circle cx="75" cy="115" r="7" fill="#DB2777" opacity="0.8" />
+                    
+                    <ellipse cx="125" cy="115" rx="14" ry="10" transform="rotate(-25 125 115)" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1.5" />
+                    <circle cx="125" cy="115" r="7" fill="#DB2777" opacity="0.8" />
+                  </svg>
+
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">No favourites saved</h2>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                      To make ordering even faster, you'll find all your faves here. Just look for the heart icon!
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setAccountSubView('none');
+                      setActiveBottomNav('food');
+                    }}
+                    className="px-8 py-3 bg-[#DB2777] hover:bg-[#C2185B] text-white font-extrabold text-xs tracking-wider rounded-2xl shadow-md shadow-pink-600/20 transition cursor-pointer active:scale-95"
+                  >
+                    Let's find some favourites
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           /* 
             ========================================================================
@@ -930,7 +1198,7 @@ export const CustomerPortal: React.FC = () => {
                 <button 
                   onClick={() => setAccountSubView(prev => prev === 'favourites' ? 'none' : 'favourites')}
                   className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-                    accountSubView === 'favourites' 
+                    (accountSubView as string) === 'favourites' 
                       ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
                       : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
                   }`}
@@ -949,50 +1217,7 @@ export const CustomerPortal: React.FC = () => {
                 </button>
               </div>
 
-              {/* If Favourites View is opened */}
-              {accountSubView === 'favourites' && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => setAccountSubView('none')}
-                        className="h-7 w-7 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
-                        title="Back"
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
-                      </button>
-                      <h3 className="text-sm font-black text-slate-900">Favourites ({favorites.length})</h3>
-                    </div>
-                    <button 
-                      onClick={() => setAccountSubView('none')}
-                      className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
-                    >
-                      Hide
-                    </button>
-                  </div>
 
-                  {favorites.length === 0 ? (
-                    <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
-                      No favourites saved yet. Tap the heart on any restaurant to add here!
-                    </div>
-                  ) : (
-                    vendors.filter(v => favorites.includes(v.id)).map((v) => (
-                      <div 
-                        key={v.id} 
-                        onClick={() => setSelectedVendorForMenu(v)}
-                        className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-2xl shadow-xs cursor-pointer hover:border-orange-300 transition"
-                      >
-                        <img src={v.cover_image} alt={v.name} className="w-14 h-14 rounded-xl object-cover" />
-                        <div className="flex-1">
-                          <h4 className="font-extrabold text-sm text-slate-900">{v.name}</h4>
-                          <p className="text-xs text-slate-500">{v.cuisine} &bull; {v.rating} ⭐</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
 
               {/* Bottom Menu List Items (Matching the list at bottom of Screenshot) */}
               <div className="divide-y divide-slate-100 border-t border-slate-100 pt-1">
