@@ -2652,498 +2652,394 @@ export const AdminPortal: React.FC = () => {
             </button>
           </header>
 
-          {/* Main Content Area */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto p-4 sm:p-8">
-              <form id="zone-form" onSubmit={handleSaveZoneSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Main Content Area: FULLSCREEN SPLIT VIEW */}
+          <main className="flex-1 overflow-hidden">
+            <form id="zone-form" onSubmit={handleSaveZoneSubmit} className="h-full flex flex-col lg:flex-row overflow-hidden min-h-0 bg-slate-100">
+              {/* Left Column: Info & Calibration Sidebar */}
+              <div className="w-full lg:w-[380px] bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 overflow-y-auto shrink-0 flex flex-col space-y-5 shadow-xs z-10">
                 
-                {/* Left Column: Basic Info */}
-                <div className="space-y-6">
-                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-5">
-                    <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
-                      <Layers className="w-4 h-4 text-rose-600" />
-                      <span>Zone Identity & Details</span>
-                    </h4>
+                {/* Zone Identity & Details */}
+                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4">
+                  <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
+                    <Layers className="w-4 h-4 text-rose-600" />
+                    <span>Zone Identity & Details</span>
+                  </h4>
 
-                    <div className="space-y-4">
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                          Zone Name (English) *
-                        </label>
-                        <input
-                          type="text"
-                          value={zName}
-                          onChange={(e) => setZName(e.target.value)}
-                          placeholder="e.g. Chawkbazar Zone"
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 shadow-xs"
-                          required
-                        />
-                      </div>
-
-
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                          Description & Coverage Areas
-                        </label>
-                        <textarea
-                          value={zDescription}
-                          onChange={(e) => setZDescription(e.target.value)}
-                          placeholder="e.g. Parade Square, Chatteshwari, Gani Bakery, DC Hill"
-                          rows={3}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 shadow-xs resize-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-4">
-                    <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
-                      <Sparkles className="w-4 h-4 text-rose-600" />
-                      <span>Visual Identity</span>
-                    </h4>
-                    
-                    <div className="space-y-3">
+                  <div className="space-y-4">
+                    <div className="space-y-1">
                       <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                        Select Zone Map Color Theme
+                        Zone Name (English) *
                       </label>
-                      <div className="flex flex-wrap items-center gap-3">
-                        {[
-                          { code: '#E11D48', label: 'Rose' },
-                          { code: '#2563EB', label: 'Blue' },
-                          { code: '#059669', label: 'Emerald' },
-                          { code: '#D97706', label: 'Amber' },
-                          { code: '#7C3AED', label: 'Purple' },
-                          { code: '#0D9488', label: 'Teal' },
-                          { code: '#4F46E5', label: 'Indigo' },
-                          { code: '#EA580C', label: 'Orange' },
-                          { code: '#0891B2', label: 'Cyan' },
-                        ].map((c) => (
-                          <button
-                            key={c.code}
-                            type="button"
-                            onClick={() => setZColor(c.code)}
-                            className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${
-                              zColor === c.code ? 'border-slate-900 scale-110 shadow-md' : 'border-transparent hover:scale-105'
-                            }`}
-                            style={{ backgroundColor: c.code }}
-                            title={c.label}
-                          >
-                            {zColor === c.code && <Check className="w-5 h-5 text-white" />}
-                          </button>
-                        ))}
-                      </div>
+                      <input
+                        type="text"
+                        value={zName}
+                        onChange={(e) => setZName(e.target.value)}
+                        placeholder="e.g. Chawkbazar Zone"
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 shadow-xs text-xs"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                        Description & Coverage Areas
+                      </label>
+                      <textarea
+                        value={zDescription}
+                        onChange={(e) => setZDescription(e.target.value)}
+                        placeholder="e.g. Parade Square, Chatteshwari, Gani Bakery, DC Hill"
+                        rows={2}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-900 shadow-xs resize-none text-xs"
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Right Column: Map & Geometry */}
-                <div className="space-y-6">
-                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-5">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-slate-900 text-sm flex items-center space-x-2">
-                        <Crosshair className="w-4 h-4 text-rose-600" />
-                        <span>Geographic Boundary</span>
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg font-mono text-[10px] text-slate-600">
-                          {zLat.toFixed(5)}, {zLng.toFixed(5)}
-                        </span>
-                      </div>
+                {/* Visual Theme Color */}
+                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-3">
+                  <h4 className="font-black text-slate-900 text-xs flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-rose-600" />
+                    <span>Visual Identity (কালার থিম)</span>
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { code: '#E11D48', label: 'Rose' },
+                      { code: '#2563EB', label: 'Blue' },
+                      { code: '#059669', label: 'Emerald' },
+                      { code: '#D97706', label: 'Amber' },
+                      { code: '#7C3AED', label: 'Purple' },
+                      { code: '#0D9488', label: 'Teal' },
+                    ].map((c) => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => setZColor(c.code)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${
+                          zColor === c.code ? 'border-slate-900 scale-110 shadow-md' : 'border-transparent hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c.code }}
+                        title={c.label}
+                      >
+                        {zColor === c.code && <Check className="w-4 h-4 text-white" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Geographic Boundary Configuration */}
+                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-slate-900 text-xs flex items-center space-x-1.5">
+                      <Crosshair className="w-4 h-4 text-rose-600" />
+                      <span>Boundary Shape</span>
+                    </h4>
+                    <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg font-mono text-[9px] text-slate-600">
+                      {zLat.toFixed(4)}, {zLng.toFixed(4)}
+                    </span>
+                  </div>
+
+                  {/* Boundary Mode Selector */}
+                  <div className="bg-white border border-slate-200 p-3.5 rounded-2xl space-y-3">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setZBoundaryMode('circle')}
+                        className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] uppercase tracking-wider transition-all border flex items-center justify-center space-x-1.5 ${
+                          zBoundaryMode === 'circle'
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full border-2 border-current" />
+                        <span>Circular</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setZBoundaryMode('polygon');
+                          if (zBoundaryCoords.length === 0) {
+                            setZBoundaryCoords([[zLat, zLng]]);
+                          }
+                        }}
+                        className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] uppercase tracking-wider transition-all border flex items-center justify-center space-x-1.5 ${
+                          zBoundaryMode === 'polygon'
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <polygon points="12,2 22,9 17,20 7,20 2,9" />
+                        </svg>
+                        <span>Custom Shape</span>
+                      </button>
                     </div>
 
-                    {/* Boundary Shape Mode Selector */}
-                    <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                          Zone Boundary Shape (সীমানা আকৃতি)
-                        </label>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${zBoundaryMode === 'polygon' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
-                          {zBoundaryMode === 'polygon' ? 'Polygon Mode' : 'Circle Mode'}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setZBoundaryMode('circle');
-                          }}
-                          className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border flex items-center justify-center space-x-2 ${
-                            zBoundaryMode === 'circle'
-                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          <span className="w-3.5 h-3.5 rounded-full border-2 border-current" />
-                          <span>Circular (গোলাকার)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setZBoundaryMode('polygon');
-                            if (zBoundaryCoords.length === 0) {
-                              setZBoundaryCoords([[zLat, zLng]]);
-                            }
-                          }}
-                          className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border flex items-center justify-center space-x-2 ${
-                            zBoundaryMode === 'polygon'
-                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <polygon points="12,2 22,9 17,20 7,20 2,9" />
-                          </svg>
-                          <span>Custom Shape (বহুভুজ)</span>
-                        </button>
-                      </div>
-
-                      {zBoundaryMode === 'polygon' && (
-                        <div className="pt-1.5 animate-in slide-in-from-top-1 space-y-2">
-                          <div className="p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
-                            <p className="text-[11px] text-rose-800 font-bold leading-relaxed">
-                              👉 <b>সীমানা তৈরি করুন:</b> ম্যাপের যেকোনো জায়গায় ক্লিক করে পয়েন্ট যোগ করুন। কমপক্ষে ৩টি পয়েন্ট যোগ করে নিজের ইচ্ছামত এলাকার নিখুঁত সীমানা এঁকে নিন।
-                            </p>
-                          </div>
-                          
-                          <div className="flex items-center justify-between text-[11px] font-black">
-                            <span className="text-slate-600">Points Added: <span className="text-rose-600 font-bold font-mono">{zBoundaryCoords.length}</span></span>
-                            <div className="flex space-x-2">
-                              <button
-                                type="button"
-                                disabled={zBoundaryCoords.length <= 1}
-                                onClick={() => {
-                                  setZBoundaryCoords(prev => {
-                                    const next = prev.slice(0, -1);
-                                    if (next.length > 0) {
-                                      const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
-                                      const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
-                                      setZLat(avgLat);
-                                      setZLng(avgLng);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[10px]"
-                              >
-                                Undo Last
-                              </button>
-                              <button
-                                type="button"
-                                disabled={zBoundaryCoords.length === 0}
-                                onClick={() => setZBoundaryCoords([])}
-                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[10px]"
-                              >
-                                Clear All
-                              </button>
-                            </div>
+                    {zBoundaryMode === 'polygon' && (
+                      <div className="pt-1 space-y-2 animate-in slide-in-from-top-1">
+                        <p className="text-[10px] text-rose-800 font-bold leading-relaxed">
+                          👉 ম্যাপের যেকোনো জায়গায় ক্লিক করে পয়েন্ট যোগ করে নিখুঁত সীমানা এঁকে নিন।
+                        </p>
+                        
+                        <div className="flex items-center justify-between text-[10px] font-black">
+                          <span className="text-slate-600">Points: <span className="text-rose-600 font-mono font-bold">{zBoundaryCoords.length}</span></span>
+                          <div className="flex space-x-1.5">
+                            <button
+                              type="button"
+                              disabled={zBoundaryCoords.length <= 1}
+                              onClick={() => {
+                                setZBoundaryCoords(prev => {
+                                  const next = prev.slice(0, -1);
+                                  if (next.length > 0) {
+                                    const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
+                                    const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
+                                    setZLat(avgLat);
+                                    setZLng(avgLng);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[9px]"
+                            >
+                              Undo
+                            </button>
+                            <button
+                              type="button"
+                              disabled={zBoundaryCoords.length === 0}
+                              onClick={() => setZBoundaryCoords([])}
+                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[9px]"
+                            >
+                              Clear
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
-                    <div className="space-y-4">
-                      {/* Full Map Picker Interaction */}
-                      <div className="rounded-2xl overflow-hidden border border-slate-200 w-full shadow-inner relative group animate-in fade-in" style={{ height: `${mapHeight}px` }}>
-                        <InteractiveMap
-                          center={[zLat, zLng]}
-                          zoom={zZoom}
-                          heightClass="h-full w-full"
-                          radiusCircle={{
-                            center: [zLat, zLng],
-                            radiusMeters: zRadiusKm * 1000,
-                            color: zColor,
-                            label: `${zName || 'Zone'} Boundary (${zRadiusKm} KM)`
-                          }}
-                          polygonCoordinates={zBoundaryMode === 'polygon' ? zBoundaryCoords : []}
-                          disableDragging={!isHandDragEnabled}
-                          hideFill={!isShapeConfirmed}
-                          onMapClick={(lat, lng) => {
-                            if (isShapeConfirmed) {
-                              // If shape is confirmed, clicking map shouldn't add points. Give option to redraw first.
-                              return;
-                            }
-                            if (zBoundaryMode === 'polygon') {
-                              setZBoundaryCoords(prev => {
-                                const next = [...prev, [lat, lng] as [number, number]];
-                                if (next.length > 0) {
-                                  const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
-                                  const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
-                                  setZLat(avgLat);
-                                  setZLng(avgLng);
-                                }
-                                return next;
-                              });
-                            } else {
-                              setZLat(lat);
-                              setZLng(lng);
-                            }
-                          }}
-                          showControls={true}
-                          showFullscreenButton={false}
-                          showRecenterButton={true}
-                        />
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl pointer-events-none z-10 transition-opacity flex items-center space-x-1.5 border border-white/20">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                          <span>
-                            {isShapeConfirmed 
-                              ? '🔒 Shape Locked & Confirmed' 
-                              : zBoundaryMode === 'polygon' 
-                                ? 'Click map to add custom coordinates' 
-                                : 'Click map to set center point'
-                            }
+                    {zBoundaryMode === 'circle' && (
+                      <div className="space-y-2 pt-1 animate-in fade-in">
+                        <div className="flex items-center justify-between text-[11px] font-black">
+                          <label className="text-slate-600 uppercase tracking-widest text-[9px]">
+                            Radius
+                          </label>
+                          <span className="px-2 py-0.5 bg-rose-600 text-white rounded-md text-[10px] shadow-xs">
+                            {zRadiusKm} KM
                           </span>
                         </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="20.0"
+                          step="0.5"
+                          value={zRadiusKm}
+                          onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                        />
                       </div>
+                    )}
+                  </div>
 
-                      {/* Map Controls Panel (BELOW THE MAP) */}
-                      <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs">
-                        <div className="flex flex-col sm:flex-row items-center justify-between border-b border-slate-100 pb-3 gap-3">
-                          <div>
-                            <h5 className="font-extrabold text-slate-900 text-xs flex items-center space-x-2">
-                              <Compass className="w-4 h-4 text-rose-500 animate-spin" style={{ animationDuration: '6s' }} />
-                              <span>Map Calibration Controls (ম্যাপ কন্ট্রোলস)</span>
-                            </h5>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Adjust Viewport, Navigation, and Shape confirmation</p>
-                          </div>
-
-                          {/* OK / Confirm Shape Button */}
-                          <div className="flex items-center space-x-2 w-full sm:w-auto shrink-0">
-                            {isShapeConfirmed ? (
-                              <button
-                                type="button"
-                                onClick={() => setIsShapeConfirmed(false)}
-                                className="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer font-bold"
-                              >
-                                <span>✏️ Redraw Shape (পুনরায় আঁকুন)</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (zBoundaryMode === 'polygon' && zBoundaryCoords.length < 3) {
-                                    alert('সীমানা নিশ্চিত করতে কমপক্ষে ৩টি পয়েন্ট ম্যাপে ক্লিক করে যোগ করুন।');
-                                    return;
-                                  }
-                                  setIsShapeConfirmed(true);
-                                }}
-                                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer border-2 border-white font-bold"
-                              >
-                                <span>✅ Confirm Shape (আকৃতি নিশ্চিত করুন - ওকে বাটন)</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {/* Col 1: Map Size & Zoom */}
-                          <div className="space-y-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
-                            <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                              Map Zoom & Size (জুম ও সাইজ)
-                            </label>
-                            <div className="space-y-2">
-                              {/* Zoom In/Out Buttons */}
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setZZoom(z => Math.max(8, z - 1))}
-                                  className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 rounded-lg font-black text-xs transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
-                                  title="Zoom Out"
-                                >
-                                  <span>🔍➖ Zoom Out</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setZZoom(z => Math.min(20, z + 1))}
-                                  className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 rounded-lg font-black text-xs transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
-                                  title="Zoom In"
-                                >
-                                  <span>🔍➕ Zoom In</span>
-                                </button>
-                              </div>
-
-                              {/* Height Controls */}
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setMapHeight(h => Math.max(300, h - 50))}
-                                  className="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-bold text-[11px] transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
-                                >
-                                  <span>➖ Smaller Map</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setMapHeight(h => Math.min(800, h + 50))}
-                                  className="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-bold text-[11px] transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
-                                >
-                                  <span>➕ Larger Map</span>
-                                </button>
-                              </div>
-                            </div>
-                            <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1 mt-1">
-                              <span>Zoom: <strong className="text-slate-700 font-mono">{zZoom}x</strong></span>
-                              <span>Height: <strong className="text-slate-700 font-mono">{mapHeight}px</strong></span>
-                            </div>
-                          </div>
-
-                          {/* Col 2: Arrow Movement Pad */}
-                          <div className="space-y-2 flex flex-col items-center bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
-                            <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px] text-center w-full">
-                              Move Map Camera (ম্যাপ ক্যামেরা সরান)
-                            </label>
-                            <div className="relative w-28 h-20 flex items-center justify-center bg-white border border-slate-200 rounded-2xl shadow-2xs pt-1">
-                              {/* North ⬆️ */}
-                              <button
-                                type="button"
-                                onClick={() => panMap('up')}
-                                className="absolute top-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                                title="Pan North"
-                              >
-                                ⬆️
-                              </button>
-                              {/* West ⬅️ */}
-                              <button
-                                type="button"
-                                onClick={() => panMap('left')}
-                                className="absolute left-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                                title="Pan West"
-                              >
-                                ⬅️
-                              </button>
-                              {/* East ➡️ */}
-                              <button
-                                type="button"
-                                onClick={() => panMap('right')}
-                                className="absolute right-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                                title="Pan East"
-                              >
-                                ➡️
-                              </button>
-                              {/* South ⬇️ */}
-                              <button
-                                type="button"
-                                onClick={() => panMap('down')}
-                                className="absolute bottom-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                                title="Pan South"
-                              >
-                                ⬇️
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Col 3: Hand Drag & Instruction Status */}
-                          <div className="space-y-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 flex flex-col justify-between">
-                            <div className="space-y-1.5">
-                              <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                                Hand dragging Lock (হাত দিয়ে ম্যাপ সরানো লক)
-                              </label>
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setIsHandDragEnabled(!isHandDragEnabled)}
-                                  className={`flex-1 py-2 px-3 rounded-xl font-extrabold text-[10px] uppercase tracking-wider transition-all border flex items-center justify-center space-x-1.5 cursor-pointer ${
-                                    isHandDragEnabled
-                                      ? 'bg-amber-100 text-amber-800 border-amber-300 shadow-2xs'
-                                      : 'bg-slate-900 text-white border-slate-950 shadow-2xs'
-                                  }`}
-                                >
-                                  <span>{isHandDragEnabled ? '🔓 Hand Drag ON' : '🔒 Hand Drag LOCKED'}</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="text-[10px] font-bold leading-tight">
-                              {isHandDragEnabled ? (
-                                <p className="text-amber-800">⚠️ হাত দিয়ে নাড়ালে আঁকা নষ্ট হতে পারে। কাজ শেষ হলে পুনরায় লক করুন।</p>
-                              ) : (
-                                <p className="text-emerald-700">✅ লক সক্রিয়! ম্যাপের ওপর স্পর্শ করলে আঁকা নিখুঁত হবে, ম্যাপ নড়বে না।</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Status notification based on isShapeConfirmed */}
-                        <div className={`p-3 rounded-xl border font-bold text-xs flex items-center space-x-2.5 transition-all ${
-                          isShapeConfirmed 
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                            : 'bg-rose-50 border-rose-200 text-rose-800'
-                        }`}>
-                          <span className="text-sm">{isShapeConfirmed ? '⭐' : '👉'}</span>
-                          <p className="leading-tight">
-                            {isShapeConfirmed 
-                              ? 'আপনার জোন বাউন্ডারি নিখুঁতভাবে নিশ্চিত করা হয়েছে এবং ম্যাপে শো করছে। এখন ডানদিকের বা উপরের "Save Zone" বাটনে ক্লিক করে সেভ করুন।'
-                              : zBoundaryMode === 'polygon'
-                                ? `পয়েন্ট যোগ করেছেন: ${zBoundaryCoords.length} টি। সীমানা অঙ্কন শেষ করে অবশ্যই "Confirm Shape (ওকে বাটন)" ক্লিক করুন।`
-                                : 'বৃত্তাকার জোনের সীমানা নিশ্চিত করতে অবশ্যই "Confirm Shape (ওকে বাটন)" ক্লিক করুন।'
-                            }
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Controls - Only show Circle radius slider in Circle Mode */}
-                      {zBoundaryMode === 'circle' && (
-                        <div className="space-y-4 pt-2 animate-in fade-in bg-white border border-slate-200 p-4 rounded-2xl">
-                          <div className="flex items-center justify-between text-xs font-black">
-                            <label className="text-[10px] text-slate-700 uppercase tracking-widest">
-                              Coverage Radius (কভারেজ রেডিয়াস)
-                            </label>
-                            <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs shadow-xs">
-                              {zRadiusKm} KM
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.5"
-                            max="20.0"
-                            step="0.5"
-                            value={zRadiusKm}
-                            onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
-                          />
-                          <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
-                            <span>0.5 KM</span>
-                            <span>10.0 KM</span>
-                            <span>20.0 KM</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 block uppercase font-bold">Latitude</label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={zLat}
-                            onChange={(e) => setZLat(parseFloat(e.target.value) || 22.3590)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 block uppercase font-bold">Longitude</label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={zLng}
-                            onChange={(e) => setZLng(parseFloat(e.target.value) || 91.8380)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
-                          />
-                        </div>
-                      </div>
+                  {/* Manual Coordinates */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-slate-500 block uppercase font-bold">Latitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={zLat}
+                        onChange={(e) => setZLat(parseFloat(e.target.value) || 22.3590)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-slate-500 block uppercase font-bold">Longitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={zLng}
+                        onChange={(e) => setZLng(parseFloat(e.target.value) || 91.8380)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900"
+                      />
                     </div>
                   </div>
 
-                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start space-x-3">
-                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <h5 className="text-xs font-black text-amber-950 uppercase">Zone Logic Notice</h5>
-                      <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-1">
-                        Orders placed within this boundary will be routed exclusively to riders registered in this specific zone. Ensure coverage area is sufficient for vendor density.
-                      </p>
-                    </div>
+                  {/* Confirm / Redraw Button */}
+                  <div className="border-t border-slate-200/60 pt-3">
+                    {isShapeConfirmed ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsShapeConfirmed(false)}
+                        className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 flex items-center justify-center space-x-1 cursor-pointer font-bold"
+                      >
+                        <span>✏️ Redraw Shape (পুনরায় আঁকুন)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (zBoundaryMode === 'polygon' && zBoundaryCoords.length < 3) {
+                            alert('সীমানা নিশ্চিত করতে কমপক্ষে ৩টি পয়েন্ট ম্যাপে ক্লিক করে যোগ করুন।');
+                            return;
+                          }
+                          setIsShapeConfirmed(true);
+                        }}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer border-2 border-white font-bold"
+                      >
+                        <span>✅ Confirm Shape (ওকে বাটন)</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              </form>
-            </div>
+
+                {/* Zone Notice */}
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start space-x-2 text-[10px] text-amber-800 leading-relaxed font-medium shadow-2xs shrink-0">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p>
+                    Rider dispatch routing runs inside this shape. Verify polygon points cleanly match dispatch requirements.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Column: FULLSCREEN MAP VIEWPORT WITH OVERLAYS */}
+              <div className="flex-1 h-full min-h-[400px] lg:min-h-0 relative bg-slate-200">
+                <InteractiveMap
+                  center={[zLat, zLng]}
+                  zoom={zZoom}
+                  heightClass="h-full w-full"
+                  radiusCircle={{
+                    center: [zLat, zLng],
+                    radiusMeters: zRadiusKm * 1000,
+                    color: zColor,
+                    label: `${zName || 'Zone'} Boundary (${zRadiusKm} KM)`
+                  }}
+                  polygonCoordinates={zBoundaryMode === 'polygon' ? zBoundaryCoords : []}
+                  disableDragging={!isHandDragEnabled}
+                  hideFill={!isShapeConfirmed}
+                  onMapClick={(lat, lng) => {
+                    if (isShapeConfirmed) return;
+                    if (zBoundaryMode === 'polygon') {
+                      setZBoundaryCoords(prev => {
+                        const next = [...prev, [lat, lng] as [number, number]];
+                        if (next.length > 0) {
+                          const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
+                          const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
+                          setZLat(avgLat);
+                          setZLng(avgLng);
+                        }
+                        return next;
+                      });
+                    } else {
+                      setZLat(lat);
+                      setZLng(lng);
+                    }
+                  }}
+                  showControls={true}
+                  showFullscreenButton={false}
+                  showRecenterButton={true}
+                />
+
+                {/* FLOATING Arrow Movement Controls Panel directly on top of the map */}
+                <div className="absolute bottom-6 right-6 z-[500] bg-white/95 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-slate-200/95 flex flex-col items-center space-y-3 min-w-[130px]">
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center space-x-1">
+                    <span>🧭</span>
+                    <span>Pan Map Camera</span>
+                  </span>
+                  
+                  {/* Arrow Pad Container */}
+                  <div className="relative w-28 h-20 flex items-center justify-center bg-slate-100 rounded-2xl pt-1 shadow-inner">
+                    {/* North ⬆️ */}
+                    <button
+                      type="button"
+                      onClick={() => panMap('up')}
+                      className="absolute top-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                      title="Move Camera North"
+                    >
+                      ⬆️
+                    </button>
+                    {/* West ⬅️ */}
+                    <button
+                      type="button"
+                      onClick={() => panMap('left')}
+                      className="absolute left-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                      title="Move Camera West"
+                    >
+                      ⬅️
+                    </button>
+                    {/* East ➡️ */}
+                    <button
+                      type="button"
+                      onClick={() => panMap('right')}
+                      className="absolute right-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                      title="Move Camera East"
+                    >
+                      ➡️
+                    </button>
+                    {/* South ⬇️ */}
+                    <button
+                      type="button"
+                      onClick={() => panMap('down')}
+                      className="absolute bottom-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                      title="Move Camera South"
+                    >
+                      ⬇️
+                    </button>
+                  </div>
+                </div>
+
+                {/* FLOATING Zoom levels & Hand Drag Lock widgets directly on top of the map */}
+                <div className="absolute bottom-6 left-6 z-[500] bg-white/95 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-slate-200/95 flex flex-col space-y-3 min-w-[125px]">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">🔍 Zoom Level</span>
+                    <div className="flex space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setZZoom(z => Math.max(8, z - 1))}
+                        className="flex-1 py-1.5 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 border border-slate-200 text-slate-800 rounded-xl font-black text-xs transition flex items-center justify-center shadow-xs cursor-pointer"
+                        title="Zoom Out"
+                      >
+                        ➖
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setZZoom(z => Math.min(20, z + 1))}
+                        className="flex-1 py-1.5 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 border border-slate-200 text-slate-800 rounded-xl font-black text-xs transition flex items-center justify-center shadow-xs cursor-pointer"
+                        title="Zoom In"
+                      >
+                        ➕
+                      </button>
+                    </div>
+                    <div className="text-[9px] font-bold text-slate-400 text-center font-mono mt-0.5">Zoom Level: {zZoom}x</div>
+                  </div>
+
+                  <div className="border-t border-slate-200/60 pt-3.5 space-y-1.5">
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">🔒 Drag Mode</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsHandDragEnabled(!isHandDragEnabled)}
+                      className={`w-full py-1.5 px-2 rounded-xl font-black text-[9px] uppercase tracking-wider transition border flex items-center justify-center cursor-pointer ${
+                        isHandDragEnabled
+                          ? 'bg-amber-100 text-amber-800 border-amber-300 shadow-2xs'
+                          : 'bg-slate-900 text-white border-slate-950 shadow-2xs'
+                      }`}
+                    >
+                      <span>{isHandDragEnabled ? '🔓 Hand Drag' : '🔒 Locked'}</span>
+                    </button>
+                    <span className="text-[8px] block text-slate-400 font-bold leading-tight">
+                      {isHandDragEnabled ? 'Accidental drag possible' : 'Safe to click & draw'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Floating Confirmed State Banner Overlay */}
+                <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[500] px-4 py-2 rounded-full border shadow-lg font-bold text-[11px] uppercase tracking-wider flex items-center space-x-2 bg-white ${
+                  isShapeConfirmed 
+                    ? 'border-emerald-300 text-emerald-800 shadow-emerald-200/30' 
+                    : 'border-rose-300 text-rose-800 shadow-rose-200/30'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${isShapeConfirmed ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500 animate-ping'}`} />
+                  <span>{isShapeConfirmed ? '⭐ Shape Confirmed & Visible' : '📝 Drawing / Marking Shape'}</span>
+                </div>
+              </div>
+            </form>
           </main>
         </div>
       )}
