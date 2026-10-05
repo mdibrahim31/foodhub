@@ -252,45 +252,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
   }
 ];
 
-export const INITIAL_ADDRESSES: CustomerAddress[] = [
-  {
-    id: 'addr-001',
-    customer_phone: '01882208531',
-    customer_name: 'MD Tanvir',
-    label: 'Home',
-    address_line: 'Sah amanot haowsing M. A.',
-    details: 'Chittagong',
-    zone: 'Chawkbazar Zone',
-    latitude: 22.3595,
-    longitude: 91.8360,
-    is_default: true
-  },
-  {
-    id: 'addr-002',
-    customer_phone: '01882208531',
-    customer_name: 'MD Tanvir',
-    label: 'Office',
-    address_line: 'CDA Avenue, GEC',
-    details: 'Asian Housing Society, Flat 4B',
-    zone: 'GEC Zone',
-    latitude: 22.3610,
-    longitude: 91.8220,
-    is_default: false
-  }
-];
+export const INITIAL_ADDRESSES: CustomerAddress[] = [];
 
-export const INITIAL_CUSTOMERS: CustomerUser[] = [
-  {
-    id: 'c-001',
-    name: 'MD Tanvir',
-    phone: '01882208531',
-    password: '123',
-    email: 'tanvir@gmail.com',
-    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    addresses: INITIAL_ADDRESSES,
-    created_at: new Date().toISOString()
-  }
-];
+export const INITIAL_CUSTOMERS: CustomerUser[] = [];
 
 export const INITIAL_RIDERS: Rider[] = [
   {

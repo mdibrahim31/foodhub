@@ -274,13 +274,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}customers`, INITIAL_CUSTOMERS);
-    return Array.isArray(parsed) ? parsed : INITIAL_CUSTOMERS;
+    const parsed = safeJsonParse<CustomerUser[]>(`${STORAGE_KEY_PREFIX}customers`, []);
+    const list = Array.isArray(parsed) ? parsed : [];
+    return list.filter(c => c.id !== 'c-001' && c.phone !== '01882208531');
   });
 
   const [allAddresses, setAllAddresses] = useState<CustomerAddress[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}addresses`, INITIAL_ADDRESSES);
-    return Array.isArray(parsed) ? parsed : INITIAL_ADDRESSES;
+    const parsed = safeJsonParse<CustomerAddress[]>(`${STORAGE_KEY_PREFIX}addresses`, []);
+    const list = Array.isArray(parsed) ? parsed : [];
+    return list.filter(a => a.customer_phone !== '01882208531');
   });
 
   // Strict user-isolated addresses list (Only shows the logged-in customer's own addresses)
@@ -524,14 +526,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const { data: custData, error: custError } = await supabase
             .from('customers')
             .select('*');
-          if (!custError && custData && isSubscribed && Array.isArray(custData) && custData.length > 0) {
-            setCustomers(prev => {
-              const map = new Map(prev.map(c => [c.id, c]));
-              custData.forEach((c: any) => {
-                map.set(c.id, { ...map.get(c.id), ...c, addresses: c.addresses || map.get(c.id)?.addresses || [] });
-              });
-              return Array.from(map.values());
-            });
+          if (!custError && custData && isSubscribed && Array.isArray(custData)) {
+            setCustomers(custData.map((c: any) => ({
+              ...c,
+              addresses: c.addresses || []
+            })));
           }
 
           // Fetch orders from Supabase with relational items
@@ -1245,12 +1244,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const registerCustomer = (data: { name: string; phone: string; password: string; email?: string }) => {
     const cleanPhone = data.phone.trim();
-    if (customers.some(c => c.phone === cleanPhone)) {
+    const cleanPhoneDigits = cleanPhone.replace(/\D/g, '');
+    if (customers.some(c => (c.phone || '').replace(/\D/g, '') === cleanPhoneDigits)) {
       return { success: false, message: 'This phone number is already registered. Please login.' };
     }
 
+    const newId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+
     const newCustomer: CustomerUser = {
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}`,
+      id: newId,
       name: data.name.trim(),
       phone: cleanPhone,
       password: data.password,
