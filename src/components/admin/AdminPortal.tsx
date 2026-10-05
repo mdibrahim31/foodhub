@@ -118,11 +118,36 @@ export const AdminPortal: React.FC = () => {
   const [isShapeConfirmed, setIsShapeConfirmed] = useState(false);
   const [zZoom, setZZoom] = useState(13);
   const [isHandDragEnabled, setIsHandDragEnabled] = useState(false);
+  const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
 
   const panMap = (direction: 'up' | 'down' | 'left' | 'right') => {
+    // If a pin is selected, move THAT pin!
+    if (selectedVertexIndex !== null && zBoundaryCoords[selectedVertexIndex]) {
+      const step = 0.001; // step size for point movement
+      const latDelta = direction === 'up' ? step : direction === 'down' ? -step : 0;
+      const lngDelta = direction === 'left' ? -step : direction === 'right' ? step : 0;
+      movePoint(selectedVertexIndex, latDelta, lngDelta);
+      return;
+    }
+
+    // Otherwise, move map camera!
     const step = 0.0025; // panning step in lat/lng degrees (approx 250m)
     setZLat(prev => direction === 'up' ? prev + step : direction === 'down' ? prev - step : prev);
     setZLng(prev => direction === 'left' ? prev - step : direction === 'right' ? prev + step : prev);
+  };
+
+  const movePoint = (idx: number, latDelta: number, lngDelta: number) => {
+    setZBoundaryCoords(prev => {
+      const next = [...prev];
+      if (next[idx]) {
+        next[idx] = [next[idx][0] + latDelta, next[idx][1] + lngDelta];
+      }
+      return next;
+    });
+  };
+
+  const deletePoint = (idx: number) => {
+    setZBoundaryCoords(prev => prev.filter((_, i) => i !== idx));
   };
 
   // Ad Banner Form State
@@ -441,6 +466,7 @@ export const AdminPortal: React.FC = () => {
     setIsShapeConfirmed(false);
     setZZoom(13);
     setIsHandDragEnabled(false);
+    setSelectedVertexIndex(null);
     setIsAddZoneOpen(true);
   };
 
@@ -459,6 +485,7 @@ export const AdminPortal: React.FC = () => {
     setIsShapeConfirmed(zone.boundary_coordinates && zone.boundary_coordinates.length >= 3 ? true : false);
     setZZoom(13);
     setIsHandDragEnabled(false);
+    setSelectedVertexIndex(null);
     setIsAddZoneOpen(true);
   };
 
@@ -482,12 +509,19 @@ export const AdminPortal: React.FC = () => {
     const hasBoundary = zBoundaryMode === 'polygon' && zBoundaryCoords.length >= 3;
     const boundaryPayload = hasBoundary ? zBoundaryCoords : undefined;
 
+    let finalLat = zLat;
+    let finalLng = zLng;
+    if (hasBoundary && zBoundaryCoords.length > 0) {
+      finalLat = zBoundaryCoords.reduce((sum, pt) => sum + pt[0], 0) / zBoundaryCoords.length;
+      finalLng = zBoundaryCoords.reduce((sum, pt) => sum + pt[1], 0) / zBoundaryCoords.length;
+    }
+
     if (editingZone) {
       await updateZone(editingZone.id, {
         name: zName.trim(),
         description: zDescription.trim() || undefined,
-        center_latitude: zLat,
-        center_longitude: zLng,
+        center_latitude: finalLat,
+        center_longitude: finalLng,
         radius_km: zRadiusKm,
         color: zColor,
         is_active: zIsActive,
@@ -498,8 +532,8 @@ export const AdminPortal: React.FC = () => {
       await addZone({
         name: zName.trim(),
         description: zDescription.trim() || undefined,
-        center_latitude: zLat,
-        center_longitude: zLng,
+        center_latitude: finalLat,
+        center_longitude: finalLng,
         radius_km: zRadiusKm,
         color: zColor,
         is_active: zIsActive,
@@ -2653,10 +2687,10 @@ export const AdminPortal: React.FC = () => {
           </header>
 
           {/* Main Content Area: FULLSCREEN SPLIT VIEW */}
-          <main className="flex-1 overflow-hidden">
-            <form id="zone-form" onSubmit={handleSaveZoneSubmit} className="h-full flex flex-col lg:flex-row overflow-hidden min-h-0 bg-slate-100">
+          <main className="flex-1 overflow-y-auto lg:overflow-hidden">
+            <form id="zone-form" onSubmit={handleSaveZoneSubmit} className="min-h-full flex flex-col lg:flex-row lg:overflow-hidden bg-slate-100">
               {/* Left Column: Info & Calibration Sidebar */}
-              <div className="w-full lg:w-[380px] bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 overflow-y-auto shrink-0 flex flex-col space-y-5 shadow-xs z-10">
+              <div className="w-full lg:w-[380px] bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 lg:overflow-y-auto shrink-0 flex flex-col space-y-5 shadow-xs z-10">
                 
                 {/* Zone Identity & Details */}
                 <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4">
@@ -2777,7 +2811,7 @@ export const AdminPortal: React.FC = () => {
                     {zBoundaryMode === 'polygon' && (
                       <div className="pt-1 space-y-2 animate-in slide-in-from-top-1">
                         <p className="text-[10px] text-rose-800 font-bold leading-relaxed">
-                          👉 ম্যাপের যেকোনো জায়গায় ক্লিক করে পয়েন্ট যোগ করে নিখুঁত সীমানা এঁকে নিন।
+                          👉 ম্যাপের পয়েন্ট যোগ করতে যেকোনো জায়গায় এক মুহূর্ত <b>টাচ করে ধরে রাখুন (Touch & Hold)</b>। এতে ভুল ট্যাপে পিন পড়বে না।
                         </p>
                         
                         <div className="flex items-center justify-between text-[10px] font-black">
@@ -2812,6 +2846,67 @@ export const AdminPortal: React.FC = () => {
                             </button>
                           </div>
                         </div>
+
+                        {/* Interactive Point Fine-Tuner List */}
+                        {zBoundaryCoords.length > 0 && (
+                          <div className="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                            {zBoundaryCoords.map((pt, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px]">
+                                <span className="font-bold text-slate-700 flex items-center space-x-1">
+                                  <span className="w-4 h-4 bg-rose-600 text-white rounded-full text-[8px] flex items-center justify-center font-black">{idx + 1}</span>
+                                  <span className="font-mono text-[9px] text-slate-500">{pt[0].toFixed(3)}, {pt[1].toFixed(3)}</span>
+                                </span>
+                                
+                                <div className="flex items-center space-x-1">
+                                  {/* Micro Adjust Arrows */}
+                                  <div className="flex bg-white border border-slate-200 rounded-lg overflow-hidden shadow-2xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => movePoint(idx, 0.0008, 0)}
+                                      className="p-1 hover:bg-slate-100 text-slate-700 font-bold text-[8px]"
+                                      title="Move Up"
+                                    >
+                                      ▲
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => movePoint(idx, -0.0008, 0)}
+                                      className="p-1 hover:bg-slate-100 text-slate-700 font-bold text-[8px]"
+                                      title="Move Down"
+                                    >
+                                      ▼
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => movePoint(idx, 0, -0.0008)}
+                                      className="p-1 hover:bg-slate-100 text-slate-700 font-bold text-[8px]"
+                                      title="Move Left"
+                                    >
+                                      ◀
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => movePoint(idx, 0, 0.0008)}
+                                      className="p-1 hover:bg-slate-100 text-slate-700 font-bold text-[8px]"
+                                      title="Move Right"
+                                    >
+                                      ▶
+                                    </button>
+                                  </div>
+                                  {/* Delete point */}
+                                  <button
+                                    type="button"
+                                    onClick={() => deletePoint(idx)}
+                                    className="px-1.5 py-0.5 hover:bg-red-100 text-red-600 rounded-md transition font-bold text-[10px]"
+                                    title="Delete Point"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2900,7 +2995,7 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               {/* Right Column: FULLSCREEN MAP VIEWPORT WITH OVERLAYS */}
-              <div className="flex-1 h-full min-h-[400px] lg:min-h-0 relative bg-slate-200">
+              <div className="w-full lg:flex-1 h-[480px] lg:h-full relative bg-slate-200 shrink-0">
                 <InteractiveMap
                   center={[zLat, zLng]}
                   zoom={zZoom}
@@ -2914,19 +3009,19 @@ export const AdminPortal: React.FC = () => {
                   polygonCoordinates={zBoundaryMode === 'polygon' ? zBoundaryCoords : []}
                   disableDragging={!isHandDragEnabled}
                   hideFill={!isShapeConfirmed}
+                  selectedVertexIndex={selectedVertexIndex}
+                  onVertexClick={(idx) => setSelectedVertexIndex(prev => prev === idx ? null : idx)}
+                  onVertexDragEnd={(idx, lat, lng) => {
+                    setZBoundaryCoords(prev => {
+                      const next = [...prev];
+                      next[idx] = [lat, lng];
+                      return next;
+                    });
+                  }}
                   onMapClick={(lat, lng) => {
                     if (isShapeConfirmed) return;
                     if (zBoundaryMode === 'polygon') {
-                      setZBoundaryCoords(prev => {
-                        const next = [...prev, [lat, lng] as [number, number]];
-                        if (next.length > 0) {
-                          const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
-                          const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
-                          setZLat(avgLat);
-                          setZLng(avgLng);
-                        }
-                        return next;
-                      });
+                      setZBoundaryCoords(prev => [...prev, [lat, lng] as [number, number]]);
                     } else {
                       setZLat(lat);
                       setZLng(lng);
@@ -2937,106 +3032,101 @@ export const AdminPortal: React.FC = () => {
                   showRecenterButton={true}
                 />
 
-                {/* FLOATING Arrow Movement Controls Panel directly on top of the map */}
-                <div className="absolute bottom-6 right-6 z-[500] bg-white/95 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-slate-200/95 flex flex-col items-center space-y-3 min-w-[130px]">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center space-x-1">
-                    <span>🧭</span>
-                    <span>Pan Map Camera</span>
-                  </span>
-                  
-                  {/* Arrow Pad Container */}
-                  <div className="relative w-28 h-20 flex items-center justify-center bg-slate-100 rounded-2xl pt-1 shadow-inner">
+                {/* Floating Banner when a pin is selected */}
+                {selectedVertexIndex !== null && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] px-3.5 py-1.5 rounded-full border shadow-xl font-bold text-[10px] uppercase tracking-wider flex items-center space-x-2 bg-amber-500 text-white border-amber-400">
+                    <span className="animate-pulse">🎯 Selected: Point {selectedVertexIndex + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVertexIndex(null)}
+                      className="ml-1 px-2 py-0.5 bg-slate-900/40 hover:bg-slate-900/60 rounded-full text-[9px] font-black cursor-pointer"
+                    >
+                      ✕ Unselect
+                    </button>
+                  </div>
+                )}
+
+                {/* SLEEK FLOATING ARROW MOVEMENT KEYPAD (Bottom-Right) */}
+                <div className={`absolute bottom-4 right-4 z-[500] bg-white/95 backdrop-blur-xs p-1.5 rounded-2xl shadow-xl border transition-all ${
+                  selectedVertexIndex !== null 
+                    ? 'border-amber-400 ring-2 ring-amber-300' 
+                    : 'border-slate-200/80'
+                }`}>
+                  <div className="relative w-20 h-16 flex items-center justify-center bg-slate-50/50 rounded-lg">
                     {/* North ⬆️ */}
                     <button
                       type="button"
                       onClick={() => panMap('up')}
-                      className="absolute top-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                      title="Move Camera North"
+                      className="absolute top-0.5 bg-white hover:bg-slate-100 text-slate-700 w-6 h-6 rounded-md shadow-xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-bold"
+                      title="Move North"
                     >
-                      ⬆️
+                      ▲
                     </button>
                     {/* West ⬅️ */}
                     <button
                       type="button"
                       onClick={() => panMap('left')}
-                      className="absolute left-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                      title="Move Camera West"
+                      className="absolute left-0.5 bg-white hover:bg-slate-100 text-slate-700 w-6 h-6 rounded-md shadow-xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-bold"
+                      title="Move West"
                     >
-                      ⬅️
+                      ◀
                     </button>
                     {/* East ➡️ */}
                     <button
                       type="button"
                       onClick={() => panMap('right')}
-                      className="absolute right-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                      title="Move Camera East"
+                      className="absolute right-0.5 bg-white hover:bg-slate-100 text-slate-700 w-6 h-6 rounded-md shadow-xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-bold"
+                      title="Move East"
                     >
-                      ➡️
+                      ▶
                     </button>
                     {/* South ⬇️ */}
                     <button
                       type="button"
                       onClick={() => panMap('down')}
-                      className="absolute bottom-0.5 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 hover:text-rose-700 w-8 h-8 rounded-lg shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
-                      title="Move Camera South"
+                      className="absolute bottom-0.5 bg-white hover:bg-slate-100 text-slate-700 w-6 h-6 rounded-md shadow-xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-bold"
+                      title="Move South"
                     >
-                      ⬇️
+                      ▼
                     </button>
                   </div>
                 </div>
 
-                {/* FLOATING Zoom levels & Hand Drag Lock widgets directly on top of the map */}
-                <div className="absolute bottom-6 left-6 z-[500] bg-white/95 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-slate-200/95 flex flex-col space-y-3 min-w-[125px]">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">🔍 Zoom Level</span>
-                    <div className="flex space-x-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setZZoom(z => Math.max(8, z - 1))}
-                        className="flex-1 py-1.5 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 border border-slate-200 text-slate-800 rounded-xl font-black text-xs transition flex items-center justify-center shadow-xs cursor-pointer"
-                        title="Zoom Out"
-                      >
-                        ➖
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setZZoom(z => Math.min(20, z + 1))}
-                        className="flex-1 py-1.5 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 border border-slate-200 text-slate-800 rounded-xl font-black text-xs transition flex items-center justify-center shadow-xs cursor-pointer"
-                        title="Zoom In"
-                      >
-                        ➕
-                      </button>
-                    </div>
-                    <div className="text-[9px] font-bold text-slate-400 text-center font-mono mt-0.5">Zoom Level: {zZoom}x</div>
-                  </div>
+                {/* SLEEK FLOATING ZOOM & DRAG toggler panel (Bottom-Left) */}
+                <div className="absolute bottom-4 left-4 z-[500] flex flex-col space-y-1.5">
+                  {/* Lock/Drag Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsHandDragEnabled(!isHandDragEnabled)}
+                    className={`w-9 h-9 backdrop-blur-xs rounded-xl shadow-lg border transition flex items-center justify-center cursor-pointer ${
+                      isHandDragEnabled
+                        ? 'bg-amber-500/90 text-white border-amber-400'
+                        : 'bg-slate-900/90 text-white border-slate-950'
+                    }`}
+                    title={isHandDragEnabled ? 'Hand Dragging ON (Click to lock)' : 'Hand Dragging LOCKED (Click to unlock)'}
+                  >
+                    <span className="text-sm">{isHandDragEnabled ? '🔓' : '🔒'}</span>
+                  </button>
 
-                  <div className="border-t border-slate-200/60 pt-3.5 space-y-1.5">
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">🔒 Drag Mode</span>
+                  {/* Sleek Zoom In / Zoom Out buttons */}
+                  <div className="bg-white/90 backdrop-blur-xs p-1 rounded-xl shadow-lg border border-slate-200/80 flex flex-col space-y-1">
                     <button
                       type="button"
-                      onClick={() => setIsHandDragEnabled(!isHandDragEnabled)}
-                      className={`w-full py-1.5 px-2 rounded-xl font-black text-[9px] uppercase tracking-wider transition border flex items-center justify-center cursor-pointer ${
-                        isHandDragEnabled
-                          ? 'bg-amber-100 text-amber-800 border-amber-300 shadow-2xs'
-                          : 'bg-slate-900 text-white border-slate-950 shadow-2xs'
-                      }`}
+                      onClick={() => setZZoom(z => Math.min(20, z + 1))}
+                      className="w-7 h-7 bg-white hover:bg-slate-50 text-slate-800 rounded-lg flex items-center justify-center font-bold text-xs shadow-2xs border border-slate-100 transition active:scale-95 cursor-pointer"
+                      title="Zoom In"
                     >
-                      <span>{isHandDragEnabled ? '🔓 Hand Drag' : '🔒 Locked'}</span>
+                      ＋
                     </button>
-                    <span className="text-[8px] block text-slate-400 font-bold leading-tight">
-                      {isHandDragEnabled ? 'Accidental drag possible' : 'Safe to click & draw'}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setZZoom(z => Math.max(8, z - 1))}
+                      className="w-7 h-7 bg-white hover:bg-slate-50 text-slate-800 rounded-lg flex items-center justify-center font-bold text-xs shadow-2xs border border-slate-100 transition active:scale-95 cursor-pointer"
+                      title="Zoom Out"
+                    >
+                      －
+                    </button>
                   </div>
-                </div>
-
-                {/* Floating Confirmed State Banner Overlay */}
-                <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[500] px-4 py-2 rounded-full border shadow-lg font-bold text-[11px] uppercase tracking-wider flex items-center space-x-2 bg-white ${
-                  isShapeConfirmed 
-                    ? 'border-emerald-300 text-emerald-800 shadow-emerald-200/30' 
-                    : 'border-rose-300 text-rose-800 shadow-rose-200/30'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${isShapeConfirmed ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500 animate-ping'}`} />
-                  <span>{isShapeConfirmed ? '⭐ Shape Confirmed & Visible' : '📝 Drawing / Marking Shape'}</span>
                 </div>
               </div>
             </form>

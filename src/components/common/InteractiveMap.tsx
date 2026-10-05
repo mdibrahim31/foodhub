@@ -46,6 +46,9 @@ interface InteractiveMapProps {
   polygonCoordinates?: [number, number][];
   disableDragging?: boolean;
   hideFill?: boolean;
+  onVertexDragEnd?: (index: number, lat: number, lng: number) => void;
+  selectedVertexIndex?: number | null;
+  onVertexClick?: (index: number) => void;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
@@ -66,6 +69,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   polygonCoordinates = [],
   disableDragging = false,
   hideFill = false,
+  onVertexDragEnd,
+  selectedVertexIndex = null,
+  onVertexClick,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -126,7 +132,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         const map = L.map(mapContainerRef.current, {
           center: safeCenter,
           zoom: Number.isFinite(zoom) ? zoom : 14,
-          zoomControl: true,
+          zoomControl: false,
         });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -174,7 +180,14 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     return () => clearTimeout(timer);
   }, [isFullscreen]);
 
-  // Update Center & Zoom
+  // Update Zoom smoothly on current viewport without resetting position
+  useEffect(() => {
+    if (mapInstanceRef.current && mapInstanceRef.current.getZoom() !== zoom) {
+      mapInstanceRef.current.setZoom(zoom);
+    }
+  }, [zoom]);
+
+  // Update Center only when camera center prop is explicitly shifted (e.g. pan map controls)
   useEffect(() => {
     if (mapInstanceRef.current) {
       const map = mapInstanceRef.current;
@@ -182,16 +195,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       const latDiff = Math.abs(currentCenter.lat - center[0]);
       const lngDiff = Math.abs(currentCenter.lng - center[1]);
       
-      // Only setView if the difference is significant (e.g. > 0.005) or zoom changes
-      if (latDiff > 0.005 || lngDiff > 0.005 || map.getZoom() !== zoom) {
+      // Only setView if the difference is very significant (e.g. > 0.01) from explicit panning
+      if (latDiff > 0.01 || lngDiff > 0.01) {
         const safeCenter: [number, number] = [
           Number.isFinite(Number(center?.[0])) ? Number(center[0]) : 22.3590,
           Number.isFinite(Number(center?.[1])) ? Number(center[1]) : 91.8380,
         ];
-        map.setView(safeCenter, zoom);
+        map.panTo(safeCenter, { animate: true, duration: 0.25 });
       }
     }
-  }, [center?.[0], center?.[1], zoom]);
+  }, [center?.[0], center?.[1]]);
 
   // Dynamic dragging and manual movement controls to prevent accidental shifts when drawing
   useEffect(() => {
@@ -227,17 +240,134 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
   };
 
-  // Click handler
+  // Long-Press / Touch & Hold Handler for placing pins (prevents accidental pin drops on quick touch or pan)
   useEffect(() => {
     if (!mapInstanceRef.current || !onMapClick) return;
 
-    const clickHandler = (e: L.LeafletMouseEvent) => {
+    const map = mapInstanceRef.current;
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    let longPressTimer: NodeJS.Timeout | null = null;
+    let startX = 0;
+    let startY = 0;
+    let pendingLatLng: L.LatLng | null = null;
+
+    const clearTimer = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      pendingLatLng = null;
+    };
+
+    const triggerLongPress = (latlng: L.LatLng) => {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate(40); } catch (_) {}
+      }
+      onMapClick(latlng.lat, latlng.lng);
+    };
+
+    // --- 1. TOUCH SCREEN LONG PRESS (MOBILE) ---
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!e.touches[0] || e.touches.length > 1) return; // ignore multi-touch pinch zoom
+      clearTimer();
+
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+
+      const rect = container.getBoundingClientRect();
+      const containerX = touch.clientX - rect.left;
+      const containerY = touch.clientY - rect.top;
+
+      pendingLatLng = map.containerPointToLatLng([containerX, containerY]);
+
+      longPressTimer = setTimeout(() => {
+        if (pendingLatLng) {
+          triggerLongPress(pendingLatLng);
+        }
+        clearTimer();
+      }, 400); // 400ms Touch & Hold duration
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!longPressTimer || !e.touches[0]) return;
+      const touch = e.touches[0];
+      const moveDist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
+      if (moveDist > 8) { // finger moved > 8px (panning/swiping map), cancel hold timer
+        clearTimer();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      clearTimer();
+    };
+
+    // --- 2. MOUSE LONG PRESS & CONTEXTMENU (DESKTOP) ---
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // left click hold only
+      clearTimer();
+
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const rect = container.getBoundingClientRect();
+      const containerX = e.clientX - rect.left;
+      const containerY = e.clientY - rect.top;
+
+      pendingLatLng = map.containerPointToLatLng([containerX, containerY]);
+
+      longPressTimer = setTimeout(() => {
+        if (pendingLatLng) {
+          triggerLongPress(pendingLatLng);
+        }
+        clearTimer();
+      }, 400);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!longPressTimer) return;
+      const moveDist = Math.hypot(e.clientX - startX, e.clientY - startY);
+      if (moveDist > 8) {
+        clearTimer();
+      }
+    };
+
+    const handleMouseUp = () => {
+      clearTimer();
+    };
+
+    const handleContextMenu = (e: L.LeafletMouseEvent) => {
+      if (e.originalEvent) {
+        L.DomEvent.preventDefault(e.originalEvent);
+      }
       onMapClick(e.latlng.lat, e.latlng.lng);
     };
 
-    mapInstanceRef.current.on('click', clickHandler);
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    container.addEventListener('mousedown', handleMouseDown);
+    container.addEventListener('mousemove', handleMouseMove);
+    container.addEventListener('mouseup', handleMouseUp);
+
+    map.on('contextmenu', handleContextMenu);
+
     return () => {
-      mapInstanceRef.current?.off('click', clickHandler);
+      clearTimer();
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchEnd);
+
+      container.removeEventListener('mousedown', handleMouseDown);
+      container.removeEventListener('mousemove', handleMouseMove);
+      container.removeEventListener('mouseup', handleMouseUp);
+
+      map.off('contextmenu', handleContextMenu);
     };
   }, [onMapClick]);
 
@@ -266,16 +396,148 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         }).addTo(layerGroup);
       }
 
-      // Draw vertex circles for visual feedback
+      // Draw vertex markers with click-to-select capability
       polygonCoordinates.forEach((pt, idx) => {
-        L.circleMarker(pt, {
-          radius: 5.5,
-          color: '#ffffff',
-          fillColor: radiusCircle?.color || '#E11D48',
-          fillOpacity: 1,
-          weight: 2,
-        }).addTo(layerGroup)
-          .bindTooltip(`Point ${idx + 1}`, { permanent: false, direction: 'top' });
+        const isSelected = selectedVertexIndex === idx;
+
+        const vertexIcon = L.divIcon({
+          className: 'custom-vertex-marker-icon',
+          html: `
+            <div class="vertex-pin-btn w-8 h-8 ${
+              isSelected 
+                ? 'bg-amber-500 ring-4 ring-amber-300 scale-125 z-[9999]' 
+                : 'bg-rose-600 hover:bg-rose-700'
+            } border-2 border-white rounded-full shadow-xl flex items-center justify-center cursor-pointer transform transition-all touch-none select-none">
+              <span class="text-[11px] text-white font-black select-none pointer-events-none">${idx + 1}</span>
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+
+        const isDraggable = !hideFill; // Draggable when draft/unconfirmed
+
+        const marker = L.marker(pt, {
+          icon: vertexIcon,
+          draggable: false,
+        }).addTo(layerGroup);
+
+        marker.bindTooltip(`Point ${idx + 1} ${isSelected ? '(SELECTED)' : '(Tap to select)'}`, { permanent: false, direction: 'top' });
+
+        // Handle pin click to select/unselect for movement pad
+        marker.on('click', (e) => {
+          if ((e as any).originalEvent) {
+            L.DomEvent.stopPropagation((e as any).originalEvent);
+          }
+          if (onVertexClick) {
+            onVertexClick(idx);
+          }
+        });
+
+        marker.on('add', () => {
+          const el = marker.getElement();
+          if (!el) return;
+
+          L.DomEvent.disableClickPropagation(el);
+          L.DomEvent.disableScrollPropagation(el);
+
+          if (!isDraggable) return;
+
+          const innerPin = el.querySelector('.vertex-pin-btn');
+
+          // --- 1. TOUCH SCREEN DRAG (MOBILE) ---
+          const handleTouchStart = (e: TouchEvent) => {
+            if (hideFill) return;
+            e.stopPropagation();
+
+            let isDragging = true;
+            if (innerPin) {
+              innerPin.classList.add('ring-4', 'ring-amber-400', 'bg-amber-500', 'scale-125', 'z-[9999]');
+            }
+
+            const handleTouchMove = (moveEvt: TouchEvent) => {
+              if (!isDragging || !mapInstanceRef.current || !moveEvt.touches[0]) return;
+              if (moveEvt.cancelable) moveEvt.preventDefault();
+              moveEvt.stopPropagation();
+
+              const touch = moveEvt.touches[0];
+              const rect = mapContainerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+
+              const containerX = touch.clientX - rect.left;
+              const containerY = touch.clientY - rect.top;
+
+              // Compute LatLng from touch pixels
+              const latLng = mapInstanceRef.current.containerPointToLatLng([containerX, containerY]);
+              marker.setLatLng(latLng);
+
+              if (onVertexDragEnd) {
+                onVertexDragEnd(idx, latLng.lat, latLng.lng);
+              }
+            };
+
+            const handleTouchEnd = (endEvt: TouchEvent) => {
+              isDragging = false;
+              if (innerPin) {
+                innerPin.classList.remove('ring-4', 'ring-amber-400', 'bg-amber-500', 'scale-125', 'z-[9999]');
+              }
+              window.removeEventListener('touchmove', handleTouchMove);
+              window.removeEventListener('touchend', handleTouchEnd);
+              window.removeEventListener('touchcancel', handleTouchEnd);
+            };
+
+            window.addEventListener('touchmove', handleTouchMove, { passive: false });
+            window.addEventListener('touchend', handleTouchEnd, { passive: false });
+            window.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+          };
+
+          el.addEventListener('touchstart', handleTouchStart, { passive: false });
+
+          // --- 2. MOUSE DRAG (DESKTOP) ---
+          const handleMouseDown = (e: MouseEvent) => {
+            if (hideFill) return;
+            e.stopPropagation();
+            e.preventDefault();
+
+            let isDragging = true;
+            if (innerPin) {
+              innerPin.classList.add('ring-4', 'ring-amber-400', 'bg-amber-500', 'scale-125', 'z-[9999]');
+            }
+
+            const handleMouseMove = (moveEvt: MouseEvent) => {
+              if (!isDragging || !mapInstanceRef.current) return;
+              moveEvt.preventDefault();
+              moveEvt.stopPropagation();
+
+              const rect = mapContainerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+
+              const containerX = moveEvt.clientX - rect.left;
+              const containerY = moveEvt.clientY - rect.top;
+
+              const latLng = mapInstanceRef.current.containerPointToLatLng([containerX, containerY]);
+              marker.setLatLng(latLng);
+
+              if (onVertexDragEnd) {
+                onVertexDragEnd(idx, latLng.lat, latLng.lng);
+              }
+            };
+
+            const handleMouseUp = (endEvt: MouseEvent) => {
+              isDragging = false;
+              if (innerPin) {
+                innerPin.classList.remove('ring-4', 'ring-amber-400', 'bg-amber-500', 'scale-125', 'z-[9999]');
+              }
+              window.removeEventListener('mousemove', handleMouseMove);
+              window.removeEventListener('mouseup', handleMouseUp);
+            };
+
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+          };
+
+          el.addEventListener('mousedown', handleMouseDown);
+        });
       });
     }
 
