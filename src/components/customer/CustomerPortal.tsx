@@ -145,6 +145,65 @@ export const CustomerPortal: React.FC = () => {
     return null;
   });
 
+  // Phone Physical Back Button & Browser History State Synchronization (Safe placement after initialization)
+  const openCount = (selectedVendorForMenu ? 1 : 0) + (isViewingCartDetail ? 1 : 0) + (accountSubView !== 'none' ? 1 : 0) + (isAddressModalOpen ? 1 : 0) + (isCustomerLoginModalOpen ? 1 : 0);
+  const prevOpenCountRef = useRef(0);
+  const isPoppingRef = useRef(false);
+  const isProgrammaticBackRef = useRef(0);
+
+  useEffect(() => {
+    if (isPoppingRef.current) {
+      isPoppingRef.current = false;
+      prevOpenCountRef.current = openCount;
+      return;
+    }
+
+    const diff = openCount - prevOpenCountRef.current;
+    if (diff > 0) {
+      for (let i = 0; i < diff; i++) {
+        window.history.pushState({ isModal: true }, '');
+      }
+    } else if (diff < 0) {
+      for (let i = 0; i < Math.abs(diff); i++) {
+        isProgrammaticBackRef.current++;
+        window.history.back();
+      }
+    }
+    prevOpenCountRef.current = openCount;
+  }, [openCount, selectedVendorForMenu, isViewingCartDetail, accountSubView, isAddressModalOpen, isCustomerLoginModalOpen]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isProgrammaticBackRef.current > 0) {
+        isProgrammaticBackRef.current--;
+        isPoppingRef.current = true;
+        return;
+      }
+
+      isPoppingRef.current = true;
+      
+      // Close topmost modal/view sequentially when back button is pressed on phone
+      if (isAddressModalOpen) {
+        setIsAddressModalOpen(false);
+      } else if (isCustomerLoginModalOpen) {
+        setIsCustomerLoginModalOpen(false);
+      } else if (isViewingCartDetail) {
+        setIsViewingCartDetail(false);
+      } else if (selectedVendorForMenu) {
+        setSelectedVendorForMenu(null);
+      } else if (accountSubView !== 'none') {
+        setAccountSubView('none');
+      } else {
+        isPoppingRef.current = false;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isAddressModalOpen, isCustomerLoginModalOpen, isViewingCartDetail, selectedVendorForMenu, accountSubView]);
+
   // Refs for scroll sync and sticky header
   const menuScrollContainerRef = useRef<HTMLDivElement>(null);
   const categorySectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
