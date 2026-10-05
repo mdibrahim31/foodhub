@@ -20,6 +20,7 @@ export interface ZoneOverlayItem {
   radiusKm?: number;
   color?: string;
   isActive?: boolean;
+  boundary_coordinates?: [number, number][];
 }
 
 interface InteractiveMapProps {
@@ -42,6 +43,7 @@ interface InteractiveMapProps {
   showFullscreenButton?: boolean;
   showRecenterButton?: boolean;
   onFullscreenToggle?: () => void;
+  polygonCoordinates?: [number, number][];
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
@@ -59,6 +61,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   showFullscreenButton = true,
   showRecenterButton = true,
   onFullscreenToggle,
+  polygonCoordinates = [],
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -170,11 +173,19 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   // Update Center & Zoom
   useEffect(() => {
     if (mapInstanceRef.current) {
-      const safeCenter: [number, number] = [
-        Number.isFinite(Number(center?.[0])) ? Number(center[0]) : 22.3590,
-        Number.isFinite(Number(center?.[1])) ? Number(center[1]) : 91.8380,
-      ];
-      mapInstanceRef.current.setView(safeCenter, zoom);
+      const map = mapInstanceRef.current;
+      const currentCenter = map.getCenter();
+      const latDiff = Math.abs(currentCenter.lat - center[0]);
+      const lngDiff = Math.abs(currentCenter.lng - center[1]);
+      
+      // Only setView if the difference is significant (e.g. > 0.005) or zoom changes
+      if (latDiff > 0.005 || lngDiff > 0.005 || map.getZoom() !== zoom) {
+        const safeCenter: [number, number] = [
+          Number.isFinite(Number(center?.[0])) ? Number(center[0]) : 22.3590,
+          Number.isFinite(Number(center?.[1])) ? Number(center[1]) : 91.8380,
+        ];
+        map.setView(safeCenter, zoom);
+      }
     }
   }, [center?.[0], center?.[1], zoom]);
 
@@ -213,8 +224,38 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const layerGroup = layerGroupRef.current;
     layerGroup.clearLayers();
 
-    // 1. Draw Radius Circle if provided
-    if (radiusCircle && Array.isArray(radiusCircle.center) && radiusCircle.center.length >= 2 && !isNaN(Number(radiusCircle.center[0])) && !isNaN(Number(radiusCircle.center[1]))) {
+    // 1. Draw Active Drawing Polygon if provided
+    if (polygonCoordinates && Array.isArray(polygonCoordinates) && polygonCoordinates.length > 0) {
+      if (polygonCoordinates.length >= 3) {
+        L.polygon(polygonCoordinates, {
+          color: radiusCircle?.color || '#E11D48',
+          fillColor: radiusCircle?.color || '#E11D48',
+          fillOpacity: 0.18,
+          weight: 3,
+        }).addTo(layerGroup);
+      } else if (polygonCoordinates.length === 2) {
+        L.polyline(polygonCoordinates, {
+          color: radiusCircle?.color || '#E11D48',
+          weight: 3,
+        }).addTo(layerGroup);
+      }
+
+      // Draw vertex circles for visual feedback
+      polygonCoordinates.forEach((pt, idx) => {
+        L.circleMarker(pt, {
+          radius: 5.5,
+          color: '#ffffff',
+          fillColor: radiusCircle?.color || '#E11D48',
+          fillOpacity: 1,
+          weight: 2,
+        }).addTo(layerGroup)
+          .bindTooltip(`Point ${idx + 1}`, { permanent: false, direction: 'top' });
+      });
+    }
+
+    // 1B. Draw Radius Circle if provided (only when polygon is not drawn)
+    const hasActivePolygon = polygonCoordinates && polygonCoordinates.length > 0;
+    if (!hasActivePolygon && radiusCircle && Array.isArray(radiusCircle.center) && radiusCircle.center.length >= 2 && !isNaN(Number(radiusCircle.center[0])) && !isNaN(Number(radiusCircle.center[1]))) {
       const circle = L.circle(radiusCircle.center as [number, number], {
         color: radiusCircle.color || '#10b981',
         fillColor: radiusCircle.color || '#10b981',
@@ -229,36 +270,50 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       }
     }
 
-    // 1B. Draw All Configured Delivery/Rider Zones
+    // 1C. Draw All Configured Delivery/Rider Zones
     if (zonesOverlay && Array.isArray(zonesOverlay)) {
       zonesOverlay.forEach((z) => {
-        if (
-          !z || 
-          !Array.isArray(z.center) || 
-          z.center.length < 2 || 
-          typeof z.center[0] !== 'number' || 
-          typeof z.center[1] !== 'number' || 
-          isNaN(z.center[0]) || 
-          isNaN(z.center[1])
-        ) {
-          return;
-        }
+        if (!z) return;
 
         const isSelected = selectedZoneId === z.id;
         const color = z.color || '#E11D48';
         const radiusMeters = (z.radiusKm || 3.0) * 1000;
 
-        const zoneCircle = L.circle(z.center as [number, number], {
-          color: color,
-          fillColor: color,
-          fillOpacity: isSelected ? 0.25 : z.isActive === false ? 0.04 : 0.12,
-          weight: isSelected ? 3 : 2,
-          dashArray: isSelected ? undefined : '5, 5',
-          radius: radiusMeters,
-        }).addTo(layerGroup);
+        let zoneOverlayShape;
 
-        const tooltipText = `${z.name} ${z.bn_name ? `(${z.bn_name})` : ''} • ${z.radiusKm || 3} KM`;
-        zoneCircle.bindTooltip(tooltipText, {
+        // Draw custom polygon boundary if it has valid custom coordinates
+        if (z.boundary_coordinates && Array.isArray(z.boundary_coordinates) && z.boundary_coordinates.length >= 3) {
+          zoneOverlayShape = L.polygon(z.boundary_coordinates, {
+            color: color,
+            fillColor: color,
+            fillOpacity: isSelected ? 0.25 : z.isActive === false ? 0.04 : 0.12,
+            weight: isSelected ? 3 : 2,
+          }).addTo(layerGroup);
+        } else {
+          // Fallback to circular boundary
+          if (
+            !Array.isArray(z.center) || 
+            z.center.length < 2 || 
+            typeof z.center[0] !== 'number' || 
+            typeof z.center[1] !== 'number' || 
+            isNaN(z.center[0]) || 
+            isNaN(z.center[1])
+          ) {
+            return;
+          }
+
+          zoneOverlayShape = L.circle(z.center as [number, number], {
+            color: color,
+            fillColor: color,
+            fillOpacity: isSelected ? 0.25 : z.isActive === false ? 0.04 : 0.12,
+            weight: isSelected ? 3 : 2,
+            dashArray: isSelected ? undefined : '5, 5',
+            radius: radiusMeters,
+          }).addTo(layerGroup);
+        }
+
+        const tooltipText = `${z.name} ${z.bn_name ? `(${z.bn_name})` : ''} • ${z.boundary_coordinates && z.boundary_coordinates.length >= 3 ? 'Polygon Shape' : `${z.radiusKm || 3} KM`}`;
+        zoneOverlayShape.bindTooltip(tooltipText, {
           permanent: isSelected,
           direction: 'center',
           className: `font-bold text-xs px-2.5 py-1 rounded-xl shadow-md border ${
@@ -269,7 +324,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         });
 
         if (onZoneClick) {
-          zoneCircle.on('click', () => onZoneClick(z.id));
+          zoneOverlayShape.on('click', () => onZoneClick(z.id));
         }
       });
     }
@@ -330,7 +385,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         });
       }
     });
-  }, [markers, radiusCircle, onMarkerDragEnd]);
+  }, [markers, radiusCircle, onMarkerDragEnd, zonesOverlay, selectedZoneId, polygonCoordinates]);
 
   const handleToggleFullscreen = async () => {
     if (onFullscreenToggle) {

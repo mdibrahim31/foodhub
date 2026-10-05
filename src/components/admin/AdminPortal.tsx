@@ -112,6 +112,8 @@ export const AdminPortal: React.FC = () => {
   const [selectedMapZoneId, setSelectedMapZoneId] = useState<string | null>(null);
   const [zoneSearch, setZoneSearch] = useState('');
   const [isZoneMapPickerOpen, setIsZoneMapPickerOpen] = useState(false);
+  const [zBoundaryMode, setZBoundaryMode] = useState<'circle' | 'polygon'>('circle');
+  const [zBoundaryCoords, setZBoundaryCoords] = useState<[number, number][]>([]);
 
   // Ad Banner Form State
   const [isAddAdOpen, setIsAddAdOpen] = useState(false);
@@ -424,6 +426,8 @@ export const AdminPortal: React.FC = () => {
     setZRadiusKm(3.0);
     setZColor('#E11D48');
     setZIsActive(true);
+    setZBoundaryMode('circle');
+    setZBoundaryCoords([]);
     setIsAddZoneOpen(true);
   };
 
@@ -437,6 +441,8 @@ export const AdminPortal: React.FC = () => {
     setZRadiusKm(zone.radius_km || 3.0);
     setZColor(zone.color || '#E11D48');
     setZIsActive(zone.is_active !== false);
+    setZBoundaryCoords(zone.boundary_coordinates || []);
+    setZBoundaryMode(zone.boundary_coordinates && zone.boundary_coordinates.length >= 3 ? 'polygon' : 'circle');
     setIsAddZoneOpen(true);
   };
 
@@ -447,6 +453,14 @@ export const AdminPortal: React.FC = () => {
       return;
     }
 
+    if (zBoundaryMode === 'polygon' && zBoundaryCoords.length < 3) {
+      alert('Please add at least 3 points on the map to draw a custom shape, or choose Circular (গোলাকার) mode.');
+      return;
+    }
+
+    const hasBoundary = zBoundaryMode === 'polygon' && zBoundaryCoords.length >= 3;
+    const boundaryPayload = hasBoundary ? zBoundaryCoords : undefined;
+
     if (editingZone) {
       await updateZone(editingZone.id, {
         name: zName.trim(),
@@ -455,7 +469,8 @@ export const AdminPortal: React.FC = () => {
         center_longitude: zLng,
         radius_km: zRadiusKm,
         color: zColor,
-        is_active: zIsActive
+        is_active: zIsActive,
+        boundary_coordinates: boundaryPayload
       });
       alert(`✅ Zone "${zName.trim()}" updated successfully!`);
     } else {
@@ -466,7 +481,8 @@ export const AdminPortal: React.FC = () => {
         center_longitude: zLng,
         radius_km: zRadiusKm,
         color: zColor,
-        is_active: zIsActive
+        is_active: zIsActive,
+        boundary_coordinates: boundaryPayload
       });
       alert(`✅ New Zone "${zName.trim()}" created successfully!`);
     }
@@ -1589,7 +1605,8 @@ export const AdminPortal: React.FC = () => {
                       ],
                       radiusKm: typeof z.radius_km === 'number' && !isNaN(z.radius_km) ? z.radius_km : 3.0,
                       color: z.color || '#E11D48',
-                      isActive: z.is_active !== false
+                      isActive: z.is_active !== false,
+                      boundary_coordinates: z.boundary_coordinates
                     }))}
                   selectedZoneId={selectedMapZoneId || undefined}
                   onZoneClick={(zid) => setSelectedMapZoneId(zid)}
@@ -2713,6 +2730,96 @@ export const AdminPortal: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Boundary Shape Mode Selector */}
+                    <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                          Zone Boundary Shape (সীমানা আকৃতি)
+                        </label>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${zBoundaryMode === 'polygon' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
+                          {zBoundaryMode === 'polygon' ? 'Polygon Mode' : 'Circle Mode'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setZBoundaryMode('circle');
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border flex items-center justify-center space-x-2 ${
+                            zBoundaryMode === 'circle'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="w-3.5 h-3.5 rounded-full border-2 border-current" />
+                          <span>Circular (গোলাকার)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setZBoundaryMode('polygon');
+                            if (zBoundaryCoords.length === 0) {
+                              setZBoundaryCoords([[zLat, zLng]]);
+                            }
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border flex items-center justify-center space-x-2 ${
+                            zBoundaryMode === 'polygon'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <polygon points="12,2 22,9 17,20 7,20 2,9" />
+                          </svg>
+                          <span>Custom Shape (বহুভুজ)</span>
+                        </button>
+                      </div>
+
+                      {zBoundaryMode === 'polygon' && (
+                        <div className="pt-1.5 animate-in slide-in-from-top-1 space-y-2">
+                          <div className="p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
+                            <p className="text-[11px] text-rose-800 font-bold leading-relaxed">
+                              👉 <b>সীমানা তৈরি করুন:</b> ম্যাপের যেকোনো জায়গায় ক্লিক করে পয়েন্ট যোগ করুন। কমপক্ষে ৩টি পয়েন্ট যোগ করে নিজের ইচ্ছামত এলাকার নিখুঁত সীমানা এঁকে নিন।
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-[11px] font-black">
+                            <span className="text-slate-600">Points Added: <span className="text-rose-600 font-bold font-mono">{zBoundaryCoords.length}</span></span>
+                            <div className="flex space-x-2">
+                              <button
+                                type="button"
+                                disabled={zBoundaryCoords.length <= 1}
+                                onClick={() => {
+                                  setZBoundaryCoords(prev => {
+                                    const next = prev.slice(0, -1);
+                                    if (next.length > 0) {
+                                      const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
+                                      const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
+                                      setZLat(avgLat);
+                                      setZLng(avgLng);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[10px]"
+                              >
+                                Undo Last
+                              </button>
+                              <button
+                                type="button"
+                                disabled={zBoundaryCoords.length === 0}
+                                onClick={() => setZBoundaryCoords([])}
+                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[10px]"
+                              >
+                                Clear All
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="space-y-4">
                       {/* Full Map Picker Interaction */}
                       <div className="rounded-2xl overflow-hidden border border-slate-200 h-[500px] w-full shadow-inner relative group">
@@ -2726,44 +2833,60 @@ export const AdminPortal: React.FC = () => {
                             color: zColor,
                             label: `${zName || 'Zone'} Boundary (${zRadiusKm} KM)`
                           }}
+                          polygonCoordinates={zBoundaryMode === 'polygon' ? zBoundaryCoords : []}
                           onMapClick={(lat, lng) => {
-                            setZLat(lat);
-                            setZLng(lng);
+                            if (zBoundaryMode === 'polygon') {
+                              setZBoundaryCoords(prev => {
+                                const next = [...prev, [lat, lng] as [number, number]];
+                                if (next.length > 0) {
+                                  const avgLat = next.reduce((sum, pt) => sum + pt[0], 0) / next.length;
+                                  const avgLng = next.reduce((sum, pt) => sum + pt[1], 0) / next.length;
+                                  setZLat(avgLat);
+                                  setZLng(avgLng);
+                                }
+                                return next;
+                              });
+                            } else {
+                              setZLat(lat);
+                              setZLng(lng);
+                            }
                           }}
                           showControls={true}
                           showFullscreenButton={false}
                           showRecenterButton={true}
                         />
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl pointer-events-none z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                          Click map to set center point
+                          {zBoundaryMode === 'polygon' ? 'Click map to add custom boundary coordinates' : 'Click map to set center point'}
                         </div>
                       </div>
 
-                      {/* Controls */}
-                      <div className="space-y-4 pt-2">
-                        <div className="flex items-center justify-between text-xs font-black">
-                          <label className="text-[10px] text-slate-700 uppercase tracking-widest">
-                            Coverage Radius (কভারেজ রেডিয়াস)
-                          </label>
-                          <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs shadow-xs">
-                            {zRadiusKm} KM
-                          </span>
+                      {/* Controls - Only show Circle radius slider in Circle Mode */}
+                      {zBoundaryMode === 'circle' && (
+                        <div className="space-y-4 pt-2 animate-in fade-in">
+                          <div className="flex items-center justify-between text-xs font-black">
+                            <label className="text-[10px] text-slate-700 uppercase tracking-widest">
+                              Coverage Radius (কভারেজ রেডিয়াস)
+                            </label>
+                            <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs shadow-xs">
+                              {zRadiusKm} KM
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="20.0"
+                            step="0.5"
+                            value={zRadiusKm}
+                            onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                          />
+                          <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
+                            <span>0.5 KM</span>
+                            <span>10.0 KM</span>
+                            <span>20.0 KM</span>
+                          </div>
                         </div>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="20.0"
-                          step="0.5"
-                          value={zRadiusKm}
-                          onChange={(e) => setZRadiusKm(parseFloat(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
-                        />
-                        <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
-                          <span>0.5 KM</span>
-                          <span>10.0 KM</span>
-                          <span>20.0 KM</span>
-                        </div>
-                      </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
