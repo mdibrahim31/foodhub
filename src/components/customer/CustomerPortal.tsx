@@ -4,7 +4,7 @@ import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
 import { calculateDistanceKm, calculateDeliveryFee } from '../../utils/geo';
-import { Vendor, Order } from '../../types/database';
+import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
   MapPin, 
   Search, 
@@ -383,7 +383,10 @@ export const CustomerPortal: React.FC = () => {
       const placed = await placeOrder(orderInstructions);
       if (placed) {
         setIsCartOpen(false);
+        setIsViewingCartDetail(false);
         setActiveBottomNav('account');
+        setAccountSubView('orders');
+        alert(`✅ Order Placed Successfully!\n\nOrder Code: ${placed.order_code}\nTotal payable (COD): Tk${placed.total_cash_payable}\n\nYour order has been sent to the vendor for confirmation. We have opened your live Order history page so you can track it in real time!`);
       }
     } finally {
       setIsPlacingOrder(false);
@@ -674,253 +677,345 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </div>
       ) : activeBottomNav === 'account' ? (
-        /* 
-          ========================================================================
-          ACCOUNT PAGE (100% Matching Screenshot_20260930_190517.jpg)
-          With pandapro banner and Wallet/Perks sections EXCLUDED as marked with red 'X'
-          ========================================================================
-        */
-        <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28">
-          {/* Top Bar: Account Title on Left + Settings Gear Icon on Right */}
-          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Account</h1>
-            <button 
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="p-1 text-slate-800 hover:text-orange-600 transition"
-              aria-label="Settings"
-            >
-              <Settings className="w-6 h-6 stroke-[2]" />
-            </button>
-          </div>
-
-          <div className="px-5 py-5 space-y-6">
-            {/* User Name & View Profile */}
-            <div>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight">{userName}</h2>
+        accountSubView === 'orders' ? (
+          /* 
+            ========================================================================
+            DEDICATED FULL SCREEN ORDERS VIEW (100% Matching Screenshot_20261005_032143.jpg)
+            ========================================================================
+          */
+          <div className="max-w-md mx-auto min-h-screen bg-slate-50/50 text-slate-900 pb-28 select-none">
+            {/* Header: X Close, Orders Title, Shopping Cart Icon with Badge */}
+            <div className="sticky top-0 bg-white border-b border-slate-100 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
               <button 
-                onClick={() => setIsEditProfileOpen(true)}
-                className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block"
+                onClick={() => setAccountSubView('none')}
+                className="p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
+                aria-label="Close"
               >
-                View profile
+                <X className="w-6 h-6 stroke-[2]" />
+              </button>
+              <h1 className="text-base font-black text-slate-900">Orders</h1>
+              <button 
+                onClick={() => setActiveBottomNav('carts')}
+                className="relative p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
+                aria-label="Cart"
+              >
+                <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+                {totalCartCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 w-4.5 h-4.5 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                    {totalCartCount}
+                  </span>
+                )}
               </button>
             </div>
 
-            {/* 3 Action Cards (Orders, Favourites, Addresses) */}
-            <div className="grid grid-cols-3 gap-3">
-              {/* Orders Card */}
-              <button 
-                onClick={() => setAccountSubView(prev => prev === 'orders' ? 'none' : 'orders')}
-                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-                  accountSubView === 'orders' 
-                    ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
-                    : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
-                }`}
-              >
-                <Receipt className="w-6 h-6 text-slate-800 stroke-[1.8]" />
-                <span className="text-xs font-bold text-slate-800 mt-2">Orders</span>
-              </button>
+            {/* Scrollable Content */}
+            <div className="p-5 space-y-5">
+              <h2 className="text-xl font-black text-slate-900 tracking-tight pl-0.5">Past orders</h2>
 
-              {/* Favourites Card */}
-              <button 
-                onClick={() => setAccountSubView(prev => prev === 'favourites' ? 'none' : 'favourites')}
-                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-                  accountSubView === 'favourites' 
-                    ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
-                    : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
-                }`}
-              >
-                <Heart className={`w-6 h-6 stroke-[1.8] ${favorites.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-slate-800'}`} />
-                <span className="text-xs font-bold text-slate-800 mt-2">Favourites</span>
-              </button>
-
-              {/* Addresses Card */}
-              <button 
-                onClick={() => setIsAddressModalOpen(true)}
-                className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-xs transition-all"
-              >
-                <MapPin className="w-6 h-6 text-slate-800 stroke-[1.8]" />
-                <span className="text-xs font-bold text-slate-800 mt-2">Addresses</span>
-              </button>
-            </div>
-
-            {/* If Orders View is opened */}
-            {accountSubView === 'orders' && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => setAccountSubView('none')}
-                      className="h-7 w-7 rounded-full bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
-                      title="Back"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
-                    </button>
-                    <h3 className="text-sm font-black text-slate-900">Your Orders ({orders.length})</h3>
+              {orders.length === 0 ? (
+                <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
+                  <div className="w-16 h-16 rounded-3xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto border border-slate-100">
+                    <Receipt className="w-7 h-7 stroke-[1.5]" />
                   </div>
-                  <button 
-                    onClick={() => setAccountSubView('none')}
-                    className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
+                  <div className="space-y-1">
+                    <h3 className="text-base font-black text-slate-800">No past orders found</h3>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                      Your order history will appear here once you place some delicious cash-on-delivery orders.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAccountSubView('none');
+                      setActiveBottomNav('food');
+                    }}
+                    className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition"
                   >
-                    Hide
+                    Order delicious food
                   </button>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((ord) => {
+                    const vendorImage = ord.vendor?.cover_image || ord.vendor?.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150';
+                    
+                    // Format delivery date nicely matching screenshot
+                    const formattedDate = new Date(ord.created_at).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    }) + ' ' + new Date(ord.created_at).toLocaleTimeString('en-GB', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
 
-                {orders.length === 0 ? (
-                  <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
-                    No orders placed yet. Choose delicious food and place an order with 100% Cash On Delivery!
-                  </div>
-                ) : (
-                  orders.map((ord) => (
-                    <div key={ord.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-extrabold text-sm text-slate-900">
-                            {ord.vendor?.name || vendors.find(v => v.id === ord.vendor_id)?.name || 'Restaurant'}
-                          </span>
-                          <p className="text-[11px] text-slate-500">{new Date(ord.created_at).toLocaleTimeString()}</p>
+                    const isDelivered = ord.status === 'delivered';
+                    const isCancelled = ord.status === 'cancelled';
+                    
+                    const statusText = isDelivered 
+                      ? `Delivered on ${formattedDate}` 
+                      : isCancelled
+                      ? `Cancelled on ${formattedDate}`
+                      : `Status: ${ord.status.replace(/_/g, ' ').toUpperCase()}`;
+
+                    const itemsSummary = (ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ');
+
+                    return (
+                      <div key={ord.id} className="bg-white rounded-2xl p-4.5 border border-slate-200/90 shadow-2xs space-y-4">
+                        {/* Upper Content Row */}
+                        <div className="flex items-start gap-4">
+                          {/* Left Side: Square Vendor Cover image */}
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0">
+                            <img src={vendorImage} alt={ord.vendor?.name} className="w-full h-full object-cover" />
+                          </div>
+
+                          {/* Center & Right Details */}
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-black text-sm text-slate-900 truncate leading-snug">
+                                {ord.vendor?.name || 'Restaurant'}
+                              </h3>
+                              <span className="font-black text-sm text-slate-900 shrink-0">
+                                Tk {ord.total_cash_payable}
+                              </span>
+                            </div>
+                            <p className="text-[11px] font-bold text-slate-500 leading-tight">
+                              {statusText}
+                            </p>
+                            <p className="text-xs text-slate-400 font-semibold truncate leading-tight pt-0.5">
+                              {itemsSummary}
+                            </p>
+                          </div>
                         </div>
-                        <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full font-bold text-[10px] uppercase">
-                          {ord.status.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-700">
-                        {(ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ')}
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
-                        <span className="text-slate-500">COD Total:</span>
-                        <span className="font-mono font-black text-orange-600">{settings.currency_symbol}{ord.total_cash_payable}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
 
-            {/* If Favourites View is opened */}
-            {accountSubView === 'favourites' && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => setAccountSubView('none')}
-                      className="h-7 w-7 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
-                      title="Back"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
-                    </button>
-                    <h3 className="text-sm font-black text-slate-900">Favourites ({favorites.length})</h3>
-                  </div>
-                  <button 
-                    onClick={() => setAccountSubView('none')}
-                    className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
-                  >
-                    Hide
-                  </button>
+                        {/* Reorder Button matching screenshot perfectly (vibrant orange instead of pink, matching theme!) */}
+                        <button
+                          onClick={() => {
+                            if (ord.vendor && ord.items && ord.items.length > 0) {
+                              clearCart();
+                              ord.items.forEach(it => {
+                                const foundMenuItem = menuItems.find(mi => mi.id === it.menu_item_id) || {
+                                  id: it.menu_item_id || `m-${Date.now()}`,
+                                  vendor_id: ord.vendor_id,
+                                  name: it.item_name,
+                                  price: it.item_price,
+                                  is_available: true,
+                                  category: 'Main Course',
+                                  image_url: vendorImage
+                                };
+                                for (let i = 0; i < it.quantity; i++) {
+                                  addToCart(foundMenuItem as MenuItem, ord.vendor!);
+                                }
+                              });
+                              setActiveBottomNav('carts');
+                              alert(`🛒 Reordered items from "${ord.vendor.name}"!\nAll items have been added to your cart.`);
+                            }
+                          }}
+                          className="w-full py-3 bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-2xs cursor-pointer flex items-center justify-center"
+                        >
+                          Select items to reorder
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                {favorites.length === 0 ? (
-                  <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
-                    No favourites saved yet. Tap the heart on any restaurant to add here!
-                  </div>
-                ) : (
-                  vendors.filter(v => favorites.includes(v.id)).map((v) => (
-                    <div 
-                      key={v.id} 
-                      onClick={() => setSelectedVendorForMenu(v)}
-                      className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-2xl shadow-xs cursor-pointer hover:border-orange-300 transition"
-                    >
-                      <img src={v.cover_image} alt={v.name} className="w-14 h-14 rounded-xl object-cover" />
-                      <div className="flex-1">
-                        <h4 className="font-extrabold text-sm text-slate-900">{v.name}</h4>
-                        <p className="text-xs text-slate-500">{v.cuisine} &bull; {v.rating} ⭐</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* Bottom Menu List Items (Matching the list at bottom of Screenshot) */}
-            <div className="divide-y divide-slate-100 border-t border-slate-100 pt-1">
-              {/* Invite Friends */}
-              <div 
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({ title: 'FoodHub', url: window.location.href });
-                  } else {
-                    navigator.clipboard.writeText(window.location.href);
-                    alert('FoodHub link copied to clipboard!');
-                  }
-                }}
-                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <Gift className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
-                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Invite friends</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
-              </div>
-
-              {/* Help Center */}
-              <div 
-                onClick={() => alert('Customer Support: Call 16212 or email support@foodhub.com')}
-                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <HelpCircle className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
-                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Help center</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
-              </div>
-
-              {/* Settings */}
-              <div 
+              )}
+            </div>
+          </div>
+        ) : (
+          /* 
+            ========================================================================
+            STANDARD ACCOUNT PAGE (100% Matching Screenshot_20260930_190517.jpg)
+            ========================================================================
+          */
+          <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28">
+            {/* Top Bar: Account Title on Left + Settings Gear Icon on Right */}
+            <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Account</h1>
+              <button 
                 onClick={() => setIsSettingsModalOpen(true)}
-                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+                className="p-1 text-slate-800 hover:text-orange-600 transition"
+                aria-label="Settings"
               >
-                <div className="flex items-center space-x-3.5">
-                  <Settings className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
-                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Settings</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
-              </div>
-
-              {/* Terms & Policies */}
-              <div 
-                onClick={() => alert('Terms & Policies: 100% Cash On Delivery. Base Rate ৳30 + ৳15/km.')}
-                className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <FileText className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
-                  <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Terms & policies</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
-              </div>
+                <Settings className="w-6 h-6 stroke-[2]" />
+              </button>
             </div>
 
-            {/* Conditional Logout Button */}
-            <div className="pt-2 pb-6">
-              <div className="space-y-3">
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Account</span>
-                    <h4 className="font-black text-slate-900 text-sm">{currentUser?.name} ({currentUser?.phone})</h4>
-                  </div>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-
-                <button
-                  onClick={() => setIsLogoutConfirmOpen(true)}
-                  className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+            <div className="px-5 py-5 space-y-6">
+              {/* User Name & View Profile */}
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">{userName}</h2>
+                <button 
+                  onClick={() => setIsEditProfileOpen(true)}
+                  className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block"
                 >
-                  <LogOut className="w-4 h-4 stroke-[2.5]" />
-                  <span>Log out</span>
+                  View profile
                 </button>
               </div>
+
+              {/* 3 Action Cards (Orders, Favourites, Addresses) */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* Orders Card */}
+                <button 
+                  onClick={() => setAccountSubView(prev => prev === 'orders' ? 'none' : 'orders')}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                    (accountSubView as string) === 'orders' 
+                      ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
+                      : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
+                  }`}
+                >
+                  <Receipt className="w-6 h-6 text-slate-800 stroke-[1.8]" />
+                  <span className="text-xs font-bold text-slate-800 mt-2">Orders</span>
+                </button>
+
+                {/* Favourites Card */}
+                <button 
+                  onClick={() => setAccountSubView(prev => prev === 'favourites' ? 'none' : 'favourites')}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                    accountSubView === 'favourites' 
+                      ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
+                      : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
+                  }`}
+                >
+                  <Heart className={`w-6 h-6 stroke-[1.8] ${favorites.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-slate-800'}`} />
+                  <span className="text-xs font-bold text-slate-800 mt-2">Favourites</span>
+                </button>
+
+                {/* Addresses Card */}
+                <button 
+                  onClick={() => setIsAddressModalOpen(true)}
+                  className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-xs transition-all"
+                >
+                  <MapPin className="w-6 h-6 text-slate-800 stroke-[1.8]" />
+                  <span className="text-xs font-bold text-slate-800 mt-2">Addresses</span>
+                </button>
+              </div>
+
+              {/* If Favourites View is opened */}
+              {accountSubView === 'favourites' && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={() => setAccountSubView('none')}
+                        className="h-7 w-7 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 flex items-center justify-center transition border border-slate-200/80 cursor-pointer active:scale-95 group shadow-xs"
+                        title="Back"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform stroke-[2.5]" />
+                      </button>
+                      <h3 className="text-sm font-black text-slate-900">Favourites ({favorites.length})</h3>
+                    </div>
+                    <button 
+                      onClick={() => setAccountSubView('none')}
+                      className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
+                    >
+                      Hide
+                    </button>
+                  </div>
+
+                  {favorites.length === 0 ? (
+                    <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                      No favourites saved yet. Tap the heart on any restaurant to add here!
+                    </div>
+                  ) : (
+                    vendors.filter(v => favorites.includes(v.id)).map((v) => (
+                      <div 
+                        key={v.id} 
+                        onClick={() => setSelectedVendorForMenu(v)}
+                        className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-2xl shadow-xs cursor-pointer hover:border-orange-300 transition"
+                      >
+                        <img src={v.cover_image} alt={v.name} className="w-14 h-14 rounded-xl object-cover" />
+                        <div className="flex-1">
+                          <h4 className="font-extrabold text-sm text-slate-900">{v.name}</h4>
+                          <p className="text-xs text-slate-500">{v.cuisine} &bull; {v.rating} ⭐</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Bottom Menu List Items (Matching the list at bottom of Screenshot) */}
+              <div className="divide-y divide-slate-100 border-t border-slate-100 pt-1">
+                {/* Invite Friends */}
+                <div 
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: 'FoodHub', url: window.location.href });
+                    } else {
+                      navigator.clipboard.writeText(window.location.href);
+                      alert('FoodHub link copied to clipboard!');
+                    }
+                  }}
+                  className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Gift className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                    <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Invite friends</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+                </div>
+
+                {/* Help Center */}
+                <div 
+                  onClick={() => alert('Customer Support: Call 16212 or email support@foodhub.com')}
+                  className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <HelpCircle className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                    <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Help center</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+                </div>
+
+                {/* Settings */}
+                <div 
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Settings className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                    <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Settings</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+                </div>
+
+                {/* Terms & Policies */}
+                <div 
+                  onClick={() => alert('Terms & Policies: 100% Cash On Delivery. Base Rate ৳30 + ৳15/km.')}
+                  className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <FileText className="w-5 h-5 text-slate-700 group-hover:text-orange-600" />
+                    <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600">Terms & policies</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-orange-600" />
+                </div>
+              </div>
+
+              {/* Conditional Logout Button */}
+              <div className="pt-2 pb-6">
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Account</span>
+                      <h4 className="font-black text-slate-900 text-sm">{currentUser?.name} ({currentUser?.phone})</h4>
+                    </div>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+
+                  <button
+                    onClick={() => setIsLogoutConfirmOpen(true)}
+                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 stroke-[2.5]" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )
       ) : activeBottomNav === 'carts' ? (
         // ========================================================================
         // DEDICATED CARTS PAGE VIEW (User Cart Tied to Customer Account & DB)

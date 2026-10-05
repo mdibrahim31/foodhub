@@ -453,12 +453,40 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!menuError && menuData && isSubscribed && Array.isArray(menuData)) {
             setMenuItems(menuData as MenuItem[]);
           }
+
+          // Fetch orders from Supabase with relational items
+          const { data: oSupadata, error: oSupaerror } = await supabase
+            .from('orders')
+            .select('*');
+          if (!oSupaerror && oSupadata && isSubscribed && Array.isArray(oSupadata) && oSupadata.length > 0) {
+            const { data: itemsData } = await supabase.from('order_items').select('*');
+            const resolvedOrders = oSupadata.map(o => {
+              const oItems = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id) : [];
+              return {
+                ...o,
+                items: oItems,
+                vendor: vendors.find(v => v.id === o.vendor_id) || null
+              };
+            });
+            resolvedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setOrders(resolvedOrders);
+          }
         } catch (err) {
           console.error('Failed to load from Supabase:', err);
         }
       }
 
       // 2. Query backend server database /api/zones and /api/riders for cross-browser synchronization
+      try {
+        const oRes = await fetch('/api/orders');
+        if (oRes.ok) {
+          const oData = await oRes.json();
+          if (Array.isArray(oData) && isSubscribed) {
+            setOrders(oData);
+          }
+        }
+      } catch {}
+
       try {
         const zRes = await fetch('/api/zones');
         if (zRes.ok) {
@@ -2427,7 +2455,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       alert('Please log in first from your Account profile page with your Name, Phone, and Password before placing an order.');
       return null;
     }
-    if (cart.length === 0 || !cartVendor || !selectedAddress) return null;
+    if (cart.length === 0) {
+      alert('Your shopping cart is empty. Please add some food items first!');
+      return null;
+    }
+    if (!cartVendor) {
+      alert('No restaurant is selected for this cart. Please select items from a restaurant.');
+      return null;
+    }
+    if (!selectedAddress) {
+      alert('Please add or select a delivery address before placing your order.');
+      return null;
+    }
 
     const foodTotal = cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0);
     const distanceKm = calculateDistanceKm(
@@ -2443,7 +2482,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
     const totalCashPayable = foodTotal + deliveryFee;
 
-    const orderId = `ord-${Date.now()}`;
+    // Use a clean valid UUID for orderId so it never fails Supabase UUID constraints
+    const orderId = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0')}`;
+      
     const orderCode = `FV-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const newOrder: Order = {
@@ -2467,20 +2510,99 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       special_instructions: instructions || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      items: cart.map((ci, index) => ({
-        id: `oi-${Date.now()}-${index}`,
-        order_id: orderId,
-        menu_item_id: ci.menuItem.id,
-        item_name: ci.menuItem.name,
-        item_price: ci.menuItem.price,
-        quantity: ci.quantity,
-        subtotal: ci.menuItem.price * ci.quantity
-      })),
+      items: cart.map((ci, index) => {
+        // Use a clean valid UUID for each order item id to satisfy database constraints
+        const itemId = typeof crypto !== 'undefined' && crypto.randomUUID 
+          ? crypto.randomUUID() 
+          : `00000000-0000-4000-9000-${(Date.now() + index).toString(16).padStart(12, '0')}`;
+          
+        return {
+          id: itemId,
+          order_id: orderId,
+          menu_item_id: ci.menuItem.id,
+          item_name: ci.menuItem.name,
+          item_price: ci.menuItem.price,
+          quantity: ci.quantity,
+          subtotal: ci.menuItem.price * ci.quantity
+        };
+      }),
       vendor: cartVendor
     };
 
     setOrders(prev => [newOrder, ...prev]);
-    clearCart();
+
+    // Save to Database server
+    try {
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrder)
+      });
+    } catch (err) {
+      console.warn('Failed to persist order to local server API:', err);
+    }
+
+    // Save to Supabase if configured with strict UUID format validations
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isUuid = (str: string) => uuidRegex.test(str);
+
+        // Sanitize customer_id to ensure it's a valid UUID, otherwise set to null
+        let cleanCustId = newOrder.customer_id;
+        if (cleanCustId?.startsWith('u-c-')) {
+          cleanCustId = cleanCustId.slice(4);
+        }
+        const sCustomerId = cleanCustId && isUuid(cleanCustId) ? cleanCustId : null;
+
+        // Sanitize vendor_id to ensure it's a valid UUID
+        const sVendorId = newOrder.vendor_id && isUuid(newOrder.vendor_id) ? newOrder.vendor_id : null;
+
+        if (sVendorId) {
+          const supabaseOrderPayload = {
+            id: newOrder.id,
+            order_code: newOrder.order_code,
+            customer_id: sCustomerId,
+            customer_name: newOrder.customer_name,
+            customer_phone: newOrder.customer_phone,
+            vendor_id: sVendorId,
+            zone: newOrder.zone,
+            delivery_address: newOrder.delivery_address,
+            delivery_latitude: newOrder.delivery_latitude,
+            delivery_longitude: newOrder.delivery_longitude,
+            food_total: newOrder.food_total,
+            delivery_distance_km: newOrder.delivery_distance_km,
+            delivery_fee: newOrder.delivery_fee,
+            total_cash_payable: newOrder.total_cash_payable,
+            status: newOrder.status,
+            special_instructions: newOrder.special_instructions,
+            created_at: newOrder.created_at,
+            updated_at: newOrder.updated_at
+          };
+
+          const { error: oError } = await supabase.from('orders').upsert([supabaseOrderPayload]);
+          if (!oError) {
+            const itemsPayload = (newOrder.items || []).map(it => ({
+              id: it.id,
+              order_id: newOrder.id,
+              menu_item_id: it.menu_item_id && isUuid(it.menu_item_id) ? it.menu_item_id : null, // Set null if menu_item_id is not a valid UUID (e.g. 'm-001')
+              item_name: it.item_name,
+              item_price: it.item_price,
+              quantity: it.quantity,
+              subtotal: it.subtotal
+            }));
+            await supabase.from('order_items').upsert(itemsPayload);
+          } else {
+            console.error('Supabase order save error:', oError);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to persist order to Supabase:', err);
+      }
+    }
+
+    // "order place hoye cart Ei thakbe" -> clearCart() is commented out/removed!
+    // clearCart();
     playNotificationSound();
     return newOrder;
   };
@@ -2491,13 +2613,36 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const vendorAcceptOrderWithPrepTime = (orderId: string, prepMinutes: number) => {
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
-        return {
+        const nextOrder = {
           ...o,
-          status: 'vendor_accepted',
+          status: 'vendor_accepted' as OrderStatus,
           vendor_prep_minutes: prepMinutes,
           customer_confirmed_prep: false,
           updated_at: new Date().toISOString()
         };
+
+        // Post to backend API
+        fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nextOrder)
+        }).catch(() => {});
+
+        // Save to Supabase
+        if (isSupabaseConfigured && supabase) {
+          supabase
+            .from('orders')
+            .update({
+              status: 'vendor_accepted',
+              vendor_prep_minutes: prepMinutes,
+              customer_confirmed_prep: false,
+              updated_at: nextOrder.updated_at
+            })
+            .eq('id', orderId)
+            .then();
+        }
+
+        return nextOrder;
       }
       return o;
     }));
@@ -2507,25 +2652,50 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const customerRespondToPrepTime = (orderId: string, accept: boolean) => {
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
+        let nextOrder: Order;
         if (accept) {
           const prepMinutes = o.vendor_prep_minutes || 15;
           const prepEndsAt = new Date(Date.now() + prepMinutes * 60 * 1000).toISOString();
-          return {
+          nextOrder = {
             ...o,
-            status: 'food_preparing',
+            status: 'food_preparing' as OrderStatus,
             customer_confirmed_prep: true,
             prep_ends_at: prepEndsAt,
             updated_at: new Date().toISOString()
           };
         } else {
-          return {
+          nextOrder = {
             ...o,
-            status: 'cancelled',
+            status: 'cancelled' as OrderStatus,
             customer_confirmed_prep: false,
             cancellation_reason: 'Customer declined preparation wait time',
             updated_at: new Date().toISOString()
           };
         }
+
+        // Post to backend API
+        fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nextOrder)
+        }).catch(() => {});
+
+        // Save to Supabase
+        if (isSupabaseConfigured && supabase) {
+          supabase
+            .from('orders')
+            .update({
+              status: nextOrder.status,
+              customer_confirmed_prep: nextOrder.customer_confirmed_prep,
+              prep_ends_at: nextOrder.prep_ends_at || null,
+              cancellation_reason: nextOrder.cancellation_reason || null,
+              updated_at: nextOrder.updated_at
+            })
+            .eq('id', orderId)
+            .then();
+        }
+
+        return nextOrder;
       }
       return o;
     }));
@@ -2535,11 +2705,32 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const vendorMarkFoodReady = (orderId: string) => {
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
-        return {
+        const nextOrder = {
           ...o,
-          status: 'ready_for_pickup',
+          status: 'ready_for_pickup' as OrderStatus,
           updated_at: new Date().toISOString()
         };
+
+        // Post to backend API
+        fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nextOrder)
+        }).catch(() => {});
+
+        // Save to Supabase
+        if (isSupabaseConfigured && supabase) {
+          supabase
+            .from('orders')
+            .update({
+              status: 'ready_for_pickup',
+              updated_at: nextOrder.updated_at
+            })
+            .eq('id', orderId)
+            .then();
+        }
+
+        return nextOrder;
       }
       return o;
     }));
@@ -2696,17 +2887,48 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus, extra?: Partial<Order>) => {
+    let updatedOrder: Order | null = null;
+
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
-        return {
+        updatedOrder = {
           ...o,
           status,
           updated_at: new Date().toISOString(),
           ...extra
         };
+        return updatedOrder;
       }
       return o;
     }));
+
+    if (updatedOrder) {
+      const orderToSave = updatedOrder as Order;
+      // Post to backend API
+      fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderToSave)
+      }).catch((err) => console.warn('Failed to update order status on server:', err));
+
+      // Save to Supabase if configured
+      if (isSupabaseConfigured && supabase) {
+        supabase
+          .from('orders')
+          .update({
+            status: orderToSave.status,
+            updated_at: orderToSave.updated_at,
+            ...extra
+          })
+          .eq('id', orderId)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Failed to sync order status to Supabase:', error);
+            }
+          });
+      }
+    }
+
     playNotificationSound();
   };
 
