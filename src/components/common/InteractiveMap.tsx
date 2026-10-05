@@ -44,6 +44,8 @@ interface InteractiveMapProps {
   showRecenterButton?: boolean;
   onFullscreenToggle?: () => void;
   polygonCoordinates?: [number, number][];
+  disableDragging?: boolean;
+  hideFill?: boolean;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
@@ -62,6 +64,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   showRecenterButton = true,
   onFullscreenToggle,
   polygonCoordinates = [],
+  disableDragging = false,
+  hideFill = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -189,6 +193,26 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
   }, [center?.[0], center?.[1], zoom]);
 
+  // Dynamic dragging and manual movement controls to prevent accidental shifts when drawing
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      const map = mapInstanceRef.current;
+      if (disableDragging) {
+        map.dragging.disable();
+        if (map.touchZoom) map.touchZoom.disable();
+        if (map.doubleClickZoom) map.doubleClickZoom.disable();
+        if (map.boxZoom) map.boxZoom.disable();
+        if ((map as any).tap) (map as any).tap.disable();
+      } else {
+        map.dragging.enable();
+        if (map.touchZoom) map.touchZoom.enable();
+        if (map.doubleClickZoom) map.doubleClickZoom.enable();
+        if (map.boxZoom) map.boxZoom.enable();
+        if ((map as any).tap) (map as any).tap.enable();
+      }
+    }
+  }, [disableDragging]);
+
   // Recenter Map on Target Location
   const handleRecenter = () => {
     if (mapInstanceRef.current) {
@@ -229,14 +253,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       if (polygonCoordinates.length >= 3) {
         L.polygon(polygonCoordinates, {
           color: radiusCircle?.color || '#E11D48',
-          fillColor: radiusCircle?.color || '#E11D48',
-          fillOpacity: 0.18,
+          fillColor: hideFill ? 'transparent' : (radiusCircle?.color || '#E11D48'),
+          fillOpacity: hideFill ? 0 : 0.18,
           weight: 3,
+          dashArray: hideFill ? '5, 5' : undefined,
         }).addTo(layerGroup);
       } else if (polygonCoordinates.length === 2) {
         L.polyline(polygonCoordinates, {
           color: radiusCircle?.color || '#E11D48',
           weight: 3,
+          dashArray: hideFill ? '5, 5' : undefined,
         }).addTo(layerGroup);
       }
 
@@ -258,8 +284,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     if (!hasActivePolygon && radiusCircle && Array.isArray(radiusCircle.center) && radiusCircle.center.length >= 2 && !isNaN(Number(radiusCircle.center[0])) && !isNaN(Number(radiusCircle.center[1]))) {
       const circle = L.circle(radiusCircle.center as [number, number], {
         color: radiusCircle.color || '#10b981',
-        fillColor: radiusCircle.color || '#10b981',
-        fillOpacity: 0.12,
+        fillColor: hideFill ? 'transparent' : (radiusCircle.color || '#10b981'),
+        fillOpacity: hideFill ? 0 : 0.12,
         weight: 2,
         dashArray: '4, 4',
         radius: radiusCircle.radiusMeters,

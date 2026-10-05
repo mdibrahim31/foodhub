@@ -114,6 +114,16 @@ export const AdminPortal: React.FC = () => {
   const [isZoneMapPickerOpen, setIsZoneMapPickerOpen] = useState(false);
   const [zBoundaryMode, setZBoundaryMode] = useState<'circle' | 'polygon'>('circle');
   const [zBoundaryCoords, setZBoundaryCoords] = useState<[number, number][]>([]);
+  const [mapHeight, setMapHeight] = useState<number>(500);
+  const [isShapeConfirmed, setIsShapeConfirmed] = useState(false);
+  const [zZoom, setZZoom] = useState(13);
+  const [isHandDragEnabled, setIsHandDragEnabled] = useState(false);
+
+  const panMap = (direction: 'up' | 'down' | 'left' | 'right') => {
+    const step = 0.0025; // panning step in lat/lng degrees (approx 250m)
+    setZLat(prev => direction === 'up' ? prev + step : direction === 'down' ? prev - step : prev);
+    setZLng(prev => direction === 'left' ? prev - step : direction === 'right' ? prev + step : prev);
+  };
 
   // Ad Banner Form State
   const [isAddAdOpen, setIsAddAdOpen] = useState(false);
@@ -428,6 +438,9 @@ export const AdminPortal: React.FC = () => {
     setZIsActive(true);
     setZBoundaryMode('circle');
     setZBoundaryCoords([]);
+    setIsShapeConfirmed(false);
+    setZZoom(13);
+    setIsHandDragEnabled(false);
     setIsAddZoneOpen(true);
   };
 
@@ -443,6 +456,9 @@ export const AdminPortal: React.FC = () => {
     setZIsActive(zone.is_active !== false);
     setZBoundaryCoords(zone.boundary_coordinates || []);
     setZBoundaryMode(zone.boundary_coordinates && zone.boundary_coordinates.length >= 3 ? 'polygon' : 'circle');
+    setIsShapeConfirmed(zone.boundary_coordinates && zone.boundary_coordinates.length >= 3 ? true : false);
+    setZZoom(13);
+    setIsHandDragEnabled(false);
     setIsAddZoneOpen(true);
   };
 
@@ -455,6 +471,11 @@ export const AdminPortal: React.FC = () => {
 
     if (zBoundaryMode === 'polygon' && zBoundaryCoords.length < 3) {
       alert('Please add at least 3 points on the map to draw a custom shape, or choose Circular (গোলাকার) mode.');
+      return;
+    }
+
+    if (zBoundaryMode === 'polygon' && !isShapeConfirmed) {
+      alert('সীমানা আঁকা শেষ করে অবশ্যই ম্যাপের নিচে "Confirm Shape (ওকে বাটন)" এ ক্লিক করুন, তবেই জোনটি সেভ করতে পারবেন।');
       return;
     }
 
@@ -2822,10 +2843,10 @@ export const AdminPortal: React.FC = () => {
 
                     <div className="space-y-4">
                       {/* Full Map Picker Interaction */}
-                      <div className="rounded-2xl overflow-hidden border border-slate-200 h-[500px] w-full shadow-inner relative group">
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 w-full shadow-inner relative group animate-in fade-in" style={{ height: `${mapHeight}px` }}>
                         <InteractiveMap
                           center={[zLat, zLng]}
-                          zoom={13}
+                          zoom={zZoom}
                           heightClass="h-full w-full"
                           radiusCircle={{
                             center: [zLat, zLng],
@@ -2834,7 +2855,13 @@ export const AdminPortal: React.FC = () => {
                             label: `${zName || 'Zone'} Boundary (${zRadiusKm} KM)`
                           }}
                           polygonCoordinates={zBoundaryMode === 'polygon' ? zBoundaryCoords : []}
+                          disableDragging={!isHandDragEnabled}
+                          hideFill={!isShapeConfirmed}
                           onMapClick={(lat, lng) => {
+                            if (isShapeConfirmed) {
+                              // If shape is confirmed, clicking map shouldn't add points. Give option to redraw first.
+                              return;
+                            }
                             if (zBoundaryMode === 'polygon') {
                               setZBoundaryCoords(prev => {
                                 const next = [...prev, [lat, lng] as [number, number]];
@@ -2855,14 +2882,206 @@ export const AdminPortal: React.FC = () => {
                           showFullscreenButton={false}
                           showRecenterButton={true}
                         />
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl pointer-events-none z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {zBoundaryMode === 'polygon' ? 'Click map to add custom boundary coordinates' : 'Click map to set center point'}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl pointer-events-none z-10 transition-opacity flex items-center space-x-1.5 border border-white/20">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                          <span>
+                            {isShapeConfirmed 
+                              ? '🔒 Shape Locked & Confirmed' 
+                              : zBoundaryMode === 'polygon' 
+                                ? 'Click map to add custom coordinates' 
+                                : 'Click map to set center point'
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Map Controls Panel (BELOW THE MAP) */}
+                      <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs">
+                        <div className="flex flex-col sm:flex-row items-center justify-between border-b border-slate-100 pb-3 gap-3">
+                          <div>
+                            <h5 className="font-extrabold text-slate-900 text-xs flex items-center space-x-2">
+                              <Compass className="w-4 h-4 text-rose-500 animate-spin" style={{ animationDuration: '6s' }} />
+                              <span>Map Calibration Controls (ম্যাপ কন্ট্রোলস)</span>
+                            </h5>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Adjust Viewport, Navigation, and Shape confirmation</p>
+                          </div>
+
+                          {/* OK / Confirm Shape Button */}
+                          <div className="flex items-center space-x-2 w-full sm:w-auto shrink-0">
+                            {isShapeConfirmed ? (
+                              <button
+                                type="button"
+                                onClick={() => setIsShapeConfirmed(false)}
+                                className="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer font-bold"
+                              >
+                                <span>✏️ Redraw Shape (পুনরায় আঁকুন)</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (zBoundaryMode === 'polygon' && zBoundaryCoords.length < 3) {
+                                    alert('সীমানা নিশ্চিত করতে কমপক্ষে ৩টি পয়েন্ট ম্যাপে ক্লিক করে যোগ করুন।');
+                                    return;
+                                  }
+                                  setIsShapeConfirmed(true);
+                                }}
+                                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer border-2 border-white font-bold"
+                              >
+                                <span>✅ Confirm Shape (আকৃতি নিশ্চিত করুন - ওকে বাটন)</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {/* Col 1: Map Size & Zoom */}
+                          <div className="space-y-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
+                            <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                              Map Zoom & Size (জুম ও সাইজ)
+                            </label>
+                            <div className="space-y-2">
+                              {/* Zoom In/Out Buttons */}
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setZZoom(z => Math.max(8, z - 1))}
+                                  className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 rounded-lg font-black text-xs transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
+                                  title="Zoom Out"
+                                >
+                                  <span>🔍➖ Zoom Out</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setZZoom(z => Math.min(20, z + 1))}
+                                  className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 rounded-lg font-black text-xs transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
+                                  title="Zoom In"
+                                >
+                                  <span>🔍➕ Zoom In</span>
+                                </button>
+                              </div>
+
+                              {/* Height Controls */}
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setMapHeight(h => Math.max(300, h - 50))}
+                                  className="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-bold text-[11px] transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
+                                >
+                                  <span>➖ Smaller Map</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setMapHeight(h => Math.min(800, h + 50))}
+                                  className="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-bold text-[11px] transition flex items-center justify-center space-x-1 cursor-pointer shadow-2xs"
+                                >
+                                  <span>➕ Larger Map</span>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1 mt-1">
+                              <span>Zoom: <strong className="text-slate-700 font-mono">{zZoom}x</strong></span>
+                              <span>Height: <strong className="text-slate-700 font-mono">{mapHeight}px</strong></span>
+                            </div>
+                          </div>
+
+                          {/* Col 2: Arrow Movement Pad */}
+                          <div className="space-y-2 flex flex-col items-center bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
+                            <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px] text-center w-full">
+                              Move Map Camera (ম্যাপ ক্যামেরা সরান)
+                            </label>
+                            <div className="relative w-28 h-20 flex items-center justify-center bg-white border border-slate-200 rounded-2xl shadow-2xs pt-1">
+                              {/* North ⬆️ */}
+                              <button
+                                type="button"
+                                onClick={() => panMap('up')}
+                                className="absolute top-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                                title="Pan North"
+                              >
+                                ⬆️
+                              </button>
+                              {/* West ⬅️ */}
+                              <button
+                                type="button"
+                                onClick={() => panMap('left')}
+                                className="absolute left-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                                title="Pan West"
+                              >
+                                ⬅️
+                              </button>
+                              {/* East ➡️ */}
+                              <button
+                                type="button"
+                                onClick={() => panMap('right')}
+                                className="absolute right-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                                title="Pan East"
+                              >
+                                ➡️
+                              </button>
+                              {/* South ⬇️ */}
+                              <button
+                                type="button"
+                                onClick={() => panMap('down')}
+                                className="absolute bottom-0.5 bg-slate-50 hover:bg-rose-50 text-rose-600 hover:text-rose-700 w-7.5 h-7.5 rounded-lg shadow-2xs border border-slate-200 flex items-center justify-center active:scale-90 transition cursor-pointer text-xs font-black"
+                                title="Pan South"
+                              >
+                                ⬇️
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Col 3: Hand Drag & Instruction Status */}
+                          <div className="space-y-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <div className="space-y-1.5">
+                              <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                                Hand dragging Lock (হাত দিয়ে ম্যাপ সরানো লক)
+                              </label>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsHandDragEnabled(!isHandDragEnabled)}
+                                  className={`flex-1 py-2 px-3 rounded-xl font-extrabold text-[10px] uppercase tracking-wider transition-all border flex items-center justify-center space-x-1.5 cursor-pointer ${
+                                    isHandDragEnabled
+                                      ? 'bg-amber-100 text-amber-800 border-amber-300 shadow-2xs'
+                                      : 'bg-slate-900 text-white border-slate-950 shadow-2xs'
+                                  }`}
+                                >
+                                  <span>{isHandDragEnabled ? '🔓 Hand Drag ON' : '🔒 Hand Drag LOCKED'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="text-[10px] font-bold leading-tight">
+                              {isHandDragEnabled ? (
+                                <p className="text-amber-800">⚠️ হাত দিয়ে নাড়ালে আঁকা নষ্ট হতে পারে। কাজ শেষ হলে পুনরায় লক করুন।</p>
+                              ) : (
+                                <p className="text-emerald-700">✅ লক সক্রিয়! ম্যাপের ওপর স্পর্শ করলে আঁকা নিখুঁত হবে, ম্যাপ নড়বে না।</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status notification based on isShapeConfirmed */}
+                        <div className={`p-3 rounded-xl border font-bold text-xs flex items-center space-x-2.5 transition-all ${
+                          isShapeConfirmed 
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                            : 'bg-rose-50 border-rose-200 text-rose-800'
+                        }`}>
+                          <span className="text-sm">{isShapeConfirmed ? '⭐' : '👉'}</span>
+                          <p className="leading-tight">
+                            {isShapeConfirmed 
+                              ? 'আপনার জোন বাউন্ডারি নিখুঁতভাবে নিশ্চিত করা হয়েছে এবং ম্যাপে শো করছে। এখন ডানদিকের বা উপরের "Save Zone" বাটনে ক্লিক করে সেভ করুন।'
+                              : zBoundaryMode === 'polygon'
+                                ? `পয়েন্ট যোগ করেছেন: ${zBoundaryCoords.length} টি। সীমানা অঙ্কন শেষ করে অবশ্যই "Confirm Shape (ওকে বাটন)" ক্লিক করুন।`
+                                : 'বৃত্তাকার জোনের সীমানা নিশ্চিত করতে অবশ্যই "Confirm Shape (ওকে বাটন)" ক্লিক করুন।'
+                            }
+                          </p>
                         </div>
                       </div>
 
                       {/* Controls - Only show Circle radius slider in Circle Mode */}
                       {zBoundaryMode === 'circle' && (
-                        <div className="space-y-4 pt-2 animate-in fade-in">
+                        <div className="space-y-4 pt-2 animate-in fade-in bg-white border border-slate-200 p-4 rounded-2xl">
                           <div className="flex items-center justify-between text-xs font-black">
                             <label className="text-[10px] text-slate-700 uppercase tracking-widest">
                               Coverage Radius (কভারেজ রেডিয়াস)
