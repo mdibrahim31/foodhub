@@ -71,15 +71,15 @@ export const CustomerPortal: React.FC = () => {
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
 
   // Persistent navigation and views so refreshing never resets to home
-  const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'offers' | 'carts' | 'account'>(() => {
+  const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'carts' | 'orders' | 'account'>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('foodiplace_customer_bottom_nav') as 'food' | 'grocery' | 'offers' | 'carts' | 'account';
-      if (['food', 'grocery', 'offers', 'carts', 'account'].includes(saved)) return saved;
+      const saved = localStorage.getItem('foodiplace_customer_bottom_nav') as 'food' | 'grocery' | 'carts' | 'orders' | 'account';
+      if (['food', 'grocery', 'carts', 'orders', 'account'].includes(saved)) return saved;
     }
     return 'food';
   });
 
-  const setActiveBottomNav = (nav: 'food' | 'grocery' | 'offers' | 'carts' | 'account') => {
+  const setActiveBottomNav = (nav: 'food' | 'grocery' | 'carts' | 'orders' | 'account') => {
     setActiveBottomNavState(nav);
     if (typeof window !== 'undefined') {
       localStorage.setItem('foodiplace_customer_bottom_nav', nav);
@@ -693,252 +693,156 @@ export const CustomerPortal: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-24 overflow-x-hidden max-w-full">
-      {activeBottomNav === 'offers' ? (
+      {activeBottomNav === 'orders' || (activeBottomNav === 'account' && accountSubView === 'orders') ? (
         /* 
           ========================================================================
-          OFFERS & DEALS VIEW (Replaced middle Search tab in Bottom Navigation)
+          DEDICATED FULL SCREEN ORDERS VIEW (100% Matching Screenshot_20261005_032143.jpg)
           ========================================================================
         */
-        <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28">
-          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Exclusive Savings</span>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Offers & Discounts</h1>
+        <div className="max-w-md mx-auto min-h-screen bg-slate-50/50 text-slate-900 pb-28 select-none">
+          {/* Header: Back/Close, Orders Title, Shopping Cart Icon with Badge */}
+          <div className="sticky top-0 bg-white border-b border-slate-100 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+            <div className="flex items-center space-x-2.5">
+              <button 
+                onClick={() => {
+                  setAccountSubView('none');
+                  setActiveBottomNav('food');
+                }}
+                className="p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
+                aria-label="Back to Food"
+              >
+                <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+              </button>
+              <h1 className="text-base font-black text-slate-900">Orders</h1>
             </div>
             <button 
-              onClick={() => setActiveBottomNav('food')}
-              className="p-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-xs font-bold px-3"
+              onClick={() => setActiveBottomNav('carts')}
+              className="relative p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
+              aria-label="Cart"
             >
-              Back to Food
+              <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+              {totalCartCount > 0 && (
+                <span className="absolute -top-1 -right-1.5 w-4.5 h-4.5 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                  {totalCartCount}
+                </span>
+              )}
             </button>
           </div>
 
-          <div className="px-5 py-5 space-y-6">
-            {/* Promo Vouchers */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-black text-slate-900 flex items-center space-x-1.5">
-                <Ticket className="w-4 h-4 text-rose-600" />
-                <span>Active Voucher Codes</span>
-              </h3>
+          {/* Scrollable Content */}
+          <div className="p-5 space-y-5">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight pl-0.5">Past orders</h2>
 
-              <div className="space-y-2.5">
-                {[
-                  { code: 'FOODVIBE40', title: '40% OFF on all Kacchi Biryani & Fast Food', minSpend: 'Min spend ৳300', expiry: 'Expires in 2 days' },
-                  { code: 'FREEDELIVERY', title: 'Free Delivery on All Cash Orders', minSpend: 'Min spend ৳250', expiry: 'Valid all month' },
-                  { code: 'CRISPY20', title: 'Flat ৳80 Discount on Burgers & Fried Chicken', minSpend: 'Min spend ৳350', expiry: 'Daily special' },
-                ].map((vouch) => (
-                  <div key={vouch.code} className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 shadow-xs flex items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="px-2.5 py-0.5 bg-rose-600 text-white font-mono font-black text-xs rounded-lg shadow-2xs">
-                          {vouch.code}
-                        </span>
-                        <span className="text-[10px] font-bold text-rose-700">{vouch.expiry}</span>
-                      </div>
-                      <h4 className="text-xs font-black text-slate-900">{vouch.title}</h4>
-                      <p className="text-[10px] text-slate-500 font-medium">{vouch.minSpend}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard?.writeText(vouch.code);
-                        alert(`Voucher code "${vouch.code}" copied!`);
-                      }}
-                      className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 rounded-xl text-xs font-black shadow-xs shrink-0 cursor-pointer"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                ))}
+            {orders.length === 0 ? (
+              <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
+                <div className="w-16 h-16 rounded-3xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto border border-slate-100">
+                  <Receipt className="w-7 h-7 stroke-[1.5]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-800">No past orders found</h3>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                    Your order history will appear here once you place some delicious cash-on-delivery orders.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setAccountSubView('none');
+                    setActiveBottomNav('food');
+                  }}
+                  className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Order delicious food
+                </button>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((ord) => {
+                  const vendorImage = ord.vendor?.cover_image || ord.vendor?.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150';
+                  
+                  // Format delivery date nicely matching screenshot
+                  const formattedDate = new Date(ord.created_at).toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  }) + ' ' + new Date(ord.created_at).toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
 
-            {/* Restaurants with Big Offers */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-black text-slate-900 flex items-center space-x-1.5">
-                <Sparkles className="w-4 h-4 text-orange-600" />
-                <span>Featured Restaurants with Big Savings</span>
-              </h3>
+                  const isDelivered = ord.status === 'delivered';
+                  const isCancelled = ord.status === 'cancelled';
+                  
+                  const statusText = isDelivered 
+                    ? `Delivered on ${formattedDate}` 
+                    : isCancelled
+                    ? `Cancelled on ${formattedDate}`
+                    : `Status: ${ord.status.replace(/_/g, ' ').toUpperCase()}`;
 
-              <div className="grid grid-cols-1 gap-3.5">
-                {vendors.map((v) => {
-                  const distanceKm = calculateDistanceKm(v.latitude, v.longitude, customerLat, customerLng);
+                  const itemsSummary = (ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ');
+
                   return (
-                    <div
-                      key={v.id}
-                      onClick={() => setSelectedVendorForMenu(v)}
-                      className="p-3.5 bg-white border border-slate-200 rounded-3xl shadow-xs hover:shadow-md hover:border-orange-300 transition cursor-pointer flex items-center gap-3.5"
-                    >
-                      <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
-                        <img src={v.cover_image || v.logo_url} alt={v.name} className="w-full h-full object-cover" />
-                        <span className="absolute bottom-0 inset-x-0 bg-rose-600 text-white font-black text-[9px] text-center py-0.5">
-                          35% OFF
-                        </span>
+                    <div key={ord.id} className="bg-white rounded-2xl p-4.5 border border-slate-200/90 shadow-2xs space-y-4">
+                      {/* Upper Content Row */}
+                      <div className="flex items-start gap-4">
+                        {/* Left Side: Square Vendor Cover image */}
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0">
+                          <img src={vendorImage} alt={ord.vendor?.name} className="w-full h-full object-cover" />
+                        </div>
+
+                        {/* Center & Right Details */}
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-black text-sm text-slate-900 truncate leading-snug">
+                              {ord.vendor?.name || 'Restaurant'}
+                            </h3>
+                            <span className="font-black text-sm text-slate-900 shrink-0">
+                              Tk {ord.total_cash_payable}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-500 leading-tight">
+                            {statusText}
+                          </p>
+                          <p className="text-xs text-slate-400 font-semibold truncate leading-tight pt-0.5">
+                            {itemsSummary}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="flex-1 space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-extrabold text-sm text-slate-900">{v.name}</h4>
-                          <span className="flex items-center gap-0.5 font-bold text-xs text-slate-800">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {v.rating || 4.8}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500">{v.cuisine}</p>
-                        <p className="text-[11px] text-emerald-700 font-bold">🛵 Delivery from ৳{settings.base_delivery_charge} &bull; {distanceKm.toFixed(1)} km</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      {/* Reorder Button */}
+                      <button
+                        onClick={() => {
+                          if (ord.vendor && ord.items && ord.items.length > 0) {
+                            clearCart();
+                            ord.items.forEach(it => {
+                              const foundMenuItem = menuItems.find(mi => mi.id === it.menu_item_id) || {
+                                id: it.menu_item_id || `m-${Date.now()}`,
+                                vendor_id: ord.vendor_id,
+                                name: it.item_name,
+                                price: it.item_price,
+                                is_available: true,
+                                category: 'Main Course',
+                                image_url: vendorImage
+                              };
+                              for (let i = 0; i < it.quantity; i++) {
+                                addToCart(foundMenuItem as MenuItem, ord.vendor!);
+                              }
+                            });
+                            setActiveBottomNav('carts');
+                            alert(`🛒 Reordered items from "${ord.vendor.name}"!\nAll items have been added to your cart.`);
+                          }
+                        }}
+                        className="w-full py-3 bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-2xs cursor-pointer flex items-center justify-center"
+                      >
+                        Select items to reorder
+                      </button>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            )}
           </div>
         </div>
-      ) : activeBottomNav === 'account' ? (
-        accountSubView === 'orders' ? (
-          /* 
-            ========================================================================
-            DEDICATED FULL SCREEN ORDERS VIEW (100% Matching Screenshot_20261005_032143.jpg)
-            ========================================================================
-          */
-          <div className="max-w-md mx-auto min-h-screen bg-slate-50/50 text-slate-900 pb-28 select-none">
-            {/* Header: X Close, Orders Title, Shopping Cart Icon with Badge */}
-            <div className="sticky top-0 bg-white border-b border-slate-100 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
-              <button 
-                onClick={() => setAccountSubView('none')}
-                className="p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="w-6 h-6 stroke-[2]" />
-              </button>
-              <h1 className="text-base font-black text-slate-900">Orders</h1>
-              <button 
-                onClick={() => setActiveBottomNav('carts')}
-                className="relative p-1 text-slate-800 hover:text-orange-600 transition flex items-center justify-center cursor-pointer"
-                aria-label="Cart"
-              >
-                <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
-                {totalCartCount > 0 && (
-                  <span className="absolute -top-1 -right-1.5 w-4.5 h-4.5 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
-                    {totalCartCount}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="p-5 space-y-5">
-              <h2 className="text-xl font-black text-slate-900 tracking-tight pl-0.5">Past orders</h2>
-
-              {orders.length === 0 ? (
-                <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
-                  <div className="w-16 h-16 rounded-3xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto border border-slate-100">
-                    <Receipt className="w-7 h-7 stroke-[1.5]" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-black text-slate-800">No past orders found</h3>
-                    <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                      Your order history will appear here once you place some delicious cash-on-delivery orders.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setAccountSubView('none');
-                      setActiveBottomNav('food');
-                    }}
-                    className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition"
-                  >
-                    Order delicious food
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {orders.map((ord) => {
-                    const vendorImage = ord.vendor?.cover_image || ord.vendor?.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150';
-                    
-                    // Format delivery date nicely matching screenshot
-                    const formattedDate = new Date(ord.created_at).toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    }) + ' ' + new Date(ord.created_at).toLocaleTimeString('en-GB', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    });
-
-                    const isDelivered = ord.status === 'delivered';
-                    const isCancelled = ord.status === 'cancelled';
-                    
-                    const statusText = isDelivered 
-                      ? `Delivered on ${formattedDate}` 
-                      : isCancelled
-                      ? `Cancelled on ${formattedDate}`
-                      : `Status: ${ord.status.replace(/_/g, ' ').toUpperCase()}`;
-
-                    const itemsSummary = (ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ');
-
-                    return (
-                      <div key={ord.id} className="bg-white rounded-2xl p-4.5 border border-slate-200/90 shadow-2xs space-y-4">
-                        {/* Upper Content Row */}
-                        <div className="flex items-start gap-4">
-                          {/* Left Side: Square Vendor Cover image */}
-                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0">
-                            <img src={vendorImage} alt={ord.vendor?.name} className="w-full h-full object-cover" />
-                          </div>
-
-                          {/* Center & Right Details */}
-                          <div className="flex-1 min-w-0 space-y-0.5">
-                            <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-black text-sm text-slate-900 truncate leading-snug">
-                                {ord.vendor?.name || 'Restaurant'}
-                              </h3>
-                              <span className="font-black text-sm text-slate-900 shrink-0">
-                                Tk {ord.total_cash_payable}
-                              </span>
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-500 leading-tight">
-                              {statusText}
-                            </p>
-                            <p className="text-xs text-slate-400 font-semibold truncate leading-tight pt-0.5">
-                              {itemsSummary}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Reorder Button matching screenshot perfectly (vibrant orange instead of pink, matching theme!) */}
-                        <button
-                          onClick={() => {
-                            if (ord.vendor && ord.items && ord.items.length > 0) {
-                              clearCart();
-                              ord.items.forEach(it => {
-                                const foundMenuItem = menuItems.find(mi => mi.id === it.menu_item_id) || {
-                                  id: it.menu_item_id || `m-${Date.now()}`,
-                                  vendor_id: ord.vendor_id,
-                                  name: it.item_name,
-                                  price: it.item_price,
-                                  is_available: true,
-                                  category: 'Main Course',
-                                  image_url: vendorImage
-                                };
-                                for (let i = 0; i < it.quantity; i++) {
-                                  addToCart(foundMenuItem as MenuItem, ord.vendor!);
-                                }
-                              });
-                              setActiveBottomNav('carts');
-                              alert(`🛒 Reordered items from "${ord.vendor.name}"!\nAll items have been added to your cart.`);
-                            }
-                          }}
-                          className="w-full py-3 bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-2xs cursor-pointer flex items-center justify-center"
-                        >
-                          Select items to reorder
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : accountSubView === 'favourites' ? (
+      ) : activeBottomNav === 'account' ? ( accountSubView === 'favourites' ? (
           /* 
             ========================================================================
             DEDICATED FULL SCREEN FAVOURITES VIEW (100% Matching Screenshot_20261005_153503.jpg & ..._153506.jpg)
@@ -1244,12 +1148,11 @@ export const CustomerPortal: React.FC = () => {
               <div className="grid grid-cols-3 gap-3">
                 {/* Orders Card */}
                 <button 
-                  onClick={() => setAccountSubView(prev => prev === 'orders' ? 'none' : 'orders')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-                    (accountSubView as string) === 'orders' 
-                      ? 'border-orange-500 bg-orange-50/50 shadow-xs' 
-                      : 'border-slate-200/90 bg-white hover:border-slate-300 shadow-xs'
-                  }`}
+                  onClick={() => {
+                    setAccountSubView('none');
+                    setActiveBottomNav('orders');
+                  }}
+                  className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-xs transition-all cursor-pointer"
                 >
                   <Receipt className="w-6 h-6 text-slate-800 stroke-[1.8]" />
                   <span className="text-xs font-bold text-slate-800 mt-2">Orders</span>
@@ -2663,10 +2566,10 @@ export const CustomerPortal: React.FC = () => {
       */}
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-4 shadow-xl">
         <div className="max-w-md mx-auto flex items-center justify-around">
-          {/* Food (Active in Orange) */}
+          {/* 1. Food (Active in Orange) */}
           <button
             onClick={() => setActiveBottomNav('food')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
               activeBottomNav === 'food' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
@@ -2676,13 +2579,13 @@ export const CustomerPortal: React.FC = () => {
             <span className="text-[10px] mt-0.5">Food</span>
           </button>
 
-          {/* Grocery */}
+          {/* 2. Grocery */}
           <button
             onClick={() => {
               setActiveBottomNav('grocery');
               setSearchQuery('Grocery');
             }}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
               activeBottomNav === 'grocery' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
@@ -2692,38 +2595,17 @@ export const CustomerPortal: React.FC = () => {
             <span className="text-[10px] mt-0.5">Grocery</span>
           </button>
 
-          {/* Offers (Replaced Search) */}
+          {/* 3. Carts (Middle Tab) */}
           <button
-            onClick={() => {
-              setActiveBottomNav('offers');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
-              activeBottomNav === 'offers' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
-            }`}
-          >
-            <div className={`relative p-1 rounded-xl ${activeBottomNav === 'offers' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <Tag className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 px-1 bg-rose-600 text-white font-black text-[8px] rounded-full">
-                %
-              </span>
-            </div>
-            <span className="text-[10px] mt-0.5">Offers</span>
-          </button>
-
-          {/* Carts */}
-          <button
-            onClick={() => {
-              setActiveBottomNav('carts');
-            }}
-            className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+            onClick={() => setActiveBottomNav('carts')}
+            className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
               activeBottomNav === 'carts' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-orange-50 text-orange-600' : ''}`}>
+            <div className={`relative p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-orange-50 text-orange-600' : ''}`}>
               <ShoppingBag className="w-5 h-5" />
               {totalCartCount > 0 && (
-                <span className="absolute top-0 right-2 w-4 h-4 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
                   {totalCartCount}
                 </span>
               )}
@@ -2731,10 +2613,26 @@ export const CustomerPortal: React.FC = () => {
             <span className="text-[10px] mt-0.5">Carts</span>
           </button>
 
-          {/* Account */}
+          {/* 4. Orders (Replaced Carts) */}
+          <button
+            onClick={() => {
+              setAccountSubView('none');
+              setActiveBottomNav('orders');
+            }}
+            className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+              activeBottomNav === 'orders' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'orders' ? 'bg-orange-50 text-orange-600' : ''}`}>
+              <Receipt className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] mt-0.5">Orders</span>
+          </button>
+
+          {/* 5. Account */}
           <button
             onClick={() => setActiveBottomNav('account')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
               activeBottomNav === 'account' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
