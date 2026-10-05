@@ -692,7 +692,7 @@ export const CustomerPortal: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pb-24">
+    <div className="min-h-screen bg-white text-slate-900 pb-24 overflow-x-hidden max-w-full">
       {activeBottomNav === 'offers' ? (
         /* 
           ========================================================================
@@ -1090,7 +1090,7 @@ export const CustomerPortal: React.FC = () => {
                             <div className="pt-0.5">
                               <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-pink-50 text-[#DB2777] border border-pink-100 rounded-lg text-[10px] font-black">
                                 <Ticket className="w-3 h-3 text-[#DB2777]" />
-                                <span>35% off Tk. 299: back4more</span>
+                                <span>35% off</span>
                               </span>
                             </div>
                           </div>
@@ -1874,222 +1874,128 @@ export const CustomerPortal: React.FC = () => {
 
         {/* 8. SHOP BY CATEGORY SECTION - REMOVED AS REQUESTED */}
 
-        {/* 9. STICKY FILTER CHIPS BAR (Fitting 100% on single row without horizontal sliding) */}
-        <section className="sticky top-0 z-30 bg-white/95 backdrop-blur-md py-2 flex items-center justify-between gap-1 border-b border-slate-100 w-full max-w-full px-0.5">
-          {/* 3-Dot / Filter Settings Button */}
-          <button 
-            onClick={() => {
-              setIsFilterSettingsOpen(true);
-              setIsSortMenuOpen(false);
-            }}
-            className={`p-1.5 rounded-full border text-slate-700 shadow-2xs hover:bg-slate-100 shrink-0 cursor-pointer relative transition ${
-              isRating4PlusOnly || hasOfferOnly ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-white border-slate-200'
-            }`}
-            title="All Filters"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            {(isRating4PlusOnly || hasOfferOnly) && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-600 ring-1 ring-white" />
-            )}
-          </button>
-
-          {/* Sort Button */}
-          <button
-            onClick={() => {
-              setIsSortMenuOpen(true);
-              setIsFilterSettingsOpen(false);
-            }}
-            className={`px-2.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
-              selectedSort !== 'popular' ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <span>Sort</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Offers Chip */}
-          <button
-            onClick={() => setHasOfferOnly(prev => !prev)}
-            className={`px-2.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
-              hasOfferOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <span>Offers</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Ratings 4.0+ Chip */}
-          <button
-            onClick={() => setIsRating4PlusOnly(prev => !prev)}
-            className={`px-2.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
-              isRating4PlusOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>Ratings 4.0+</span>
-          </button>
-        </section>
-
-        {/* 3-Dot Filter Settings Modal (Fixed Overlay to Prevent Overflow Clipping & Click Through) */}
-        <AnimatePresence>
-          {isFilterSettingsOpen && (
+        {/* 9. STICKY FILTER CHIPS BAR (Visible ONLY on Food page) */}
+        {activeBottomNav === 'food' && (
+          <section className="sticky top-0 z-30 bg-white/95 py-2 flex items-center justify-start space-x-2 border-b border-slate-100 w-full max-w-full px-0.5 overflow-x-auto scrollbar-none">
+            {/* 3-Dot / Sliders Icon Button (Brought back as requested, list popup disabled) */}
             <div 
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in" 
-              onClick={() => setIsFilterSettingsOpen(false)}
+              className="p-1.5 rounded-full border border-slate-200 text-slate-700 shadow-2xs shrink-0 bg-white flex items-center justify-center"
+              title="Filter Icon"
             >
-              <motion.div 
-                initial={{ y: 100, opacity: 0 }} 
-                animate={{ y: 0, opacity: 1 }} 
-                exit={{ y: 100, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()} 
-                className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto"
-              >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center space-x-2">
-                    <SlidersHorizontal className="w-5 h-5 text-orange-600" />
-                    <h3 className="font-extrabold text-base text-slate-900">All Filters</h3>
-                  </div>
-                  <button 
-                    onClick={() => setIsFilterSettingsOpen(false)}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full transition cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+              <SlidersHorizontal className="w-4 h-4 text-slate-700" />
+            </div>
 
-                <div className="space-y-2.5">
-                  {/* Ratings 4.0+ Option */}
-                  <button
-                    onClick={() => setIsRating4PlusOnly(prev => !prev)}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      isRating4PlusOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>Ratings 4.0+</span>
-                    </div>
-                    {isRating4PlusOnly && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
+            {/* Sort Button (ONLY clicking Sort opens the list modal) */}
+            <button
+              onClick={() => setIsSortMenuOpen(true)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
+                selectedSort === 'new' || selectedSort === 'distance' ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <span>
+                {selectedSort === 'new' ? 'Sort: New' : selectedSort === 'distance' ? 'Sort: Distance' : 'Sort'}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
 
-                  {/* Offers Only Option */}
-                  <button
-                    onClick={() => setHasOfferOnly(prev => !prev)}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      hasOfferOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Percent className="w-4 h-4 text-orange-600" />
-                      <span>Offers Only</span>
-                    </div>
-                    {hasOfferOnly && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
+            {/* Offers Chip */}
+            <button
+              onClick={() => setHasOfferOnly(prev => !prev)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
+                hasOfferOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <span>Offers</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
 
-                  {/* Nearest Distance Option */}
-                  <button
-                    onClick={() => setSelectedSort(prev => prev === 'distance' ? 'popular' : 'distance')}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      selectedSort === 'distance' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-orange-600" />
-                      <span>Nearest Distance</span>
-                    </div>
-                    {selectedSort === 'distance' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
-                </div>
+            {/* Ratings 4.0+ Chip */}
+            <button
+              onClick={() => setIsRating4PlusOnly(prev => !prev)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
+                isRating4PlusOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>Ratings 4.0+</span>
+            </button>
+          </section>
+        )}
 
+        {/* Sort Options Modal (ONLY New Vendors & Nearest Distance - Instant close without lingering blur) */}
+        {isSortMenuOpen && (
+          <div 
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50" 
+            onClick={() => setIsSortMenuOpen(false)}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto animate-in fade-in"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-base text-slate-900">Sort Vendors By</h3>
                 <button 
-                  onClick={() => setIsFilterSettingsOpen(false)}
-                  className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-slate-800 transition cursor-pointer shadow-md"
+                  onClick={() => setIsSortMenuOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full transition cursor-pointer"
                 >
-                  Apply Filters
+                  <X className="w-4 h-4" />
                 </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+              </div>
 
-        {/* Sort Options Modal (Fixed Overlay to Prevent Overflow Clipping & Click Through) */}
-        <AnimatePresence>
-          {isSortMenuOpen && (
-            <div 
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in" 
-              onClick={() => setIsSortMenuOpen(false)}
-            >
-              <motion.div 
-                initial={{ y: 100, opacity: 0 }} 
-                animate={{ y: 0, opacity: 1 }} 
-                exit={{ y: 100, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()} 
-                className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto"
+              <div className="space-y-2.5">
+                {/* 1. New Vendors */}
+                <button
+                  onClick={() => { 
+                    if (selectedSort === 'new') {
+                      setSelectedSort('popular'); 
+                      setIsNewOnly(false);
+                    } else {
+                      setSelectedSort('new'); 
+                      setIsNewOnly(true); 
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                    selectedSort === 'new' || isNewOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500 shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <span>New Vendors</span>
+                  </div>
+                  {(selectedSort === 'new' || isNewOnly) && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                </button>
+
+                {/* 2. Nearest Distance */}
+                <button
+                  onClick={() => { 
+                    if (selectedSort === 'distance') {
+                      setSelectedSort('popular'); 
+                    } else {
+                      setSelectedSort('distance'); 
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
+                    selectedSort === 'distance' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500 shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <MapPin className="w-4 h-4 text-orange-600" />
+                    <span>Nearest Distance</span>
+                  </div>
+                  {selectedSort === 'distance' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
+                </button>
+              </div>
+
+              {/* APPLY FILTERS Button (Matching Screenshot) */}
+              <button 
+                onClick={() => setIsSortMenuOpen(false)}
+                className="w-full py-3.5 bg-[#0F172A] hover:bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-[0.99] mt-2"
               >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="font-extrabold text-base text-slate-900">Sort Vendors By</h3>
-                  <button 
-                    onClick={() => setIsSortMenuOpen(false)}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full transition cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-2.5">
-                  <button
-                    onClick={() => { setSelectedSort('popular'); setIsNewOnly(false); setIsSortMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      selectedSort === 'popular' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <span>Popular</span>
-                    {selectedSort === 'popular' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
-
-                  <button
-                    onClick={() => { setSelectedSort('new'); setIsNewOnly(true); setIsSortMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      selectedSort === 'new' || isNewOnly ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
-                      <span>New Vendors</span>
-                    </div>
-                    {(selectedSort === 'new' || isNewOnly) && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
-
-                  <button
-                    onClick={() => { setSelectedSort('rating'); setIsSortMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      selectedSort === 'rating' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>Highest Rating</span>
-                    </div>
-                    {selectedSort === 'rating' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
-
-                  <button
-                    onClick={() => { setSelectedSort('distance'); setIsSortMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-extrabold transition cursor-pointer ${
-                      selectedSort === 'distance' ? 'bg-orange-50 text-orange-600 border-2 border-orange-500' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <MapPin className="w-4 h-4 text-orange-600" />
-                      <span>Nearest Distance</span>
-                    </div>
-                    {selectedSort === 'distance' && <Check className="w-5 h-5 text-orange-600 stroke-[3]" />}
-                  </button>
-                </div>
-              </motion.div>
+                APPLY FILTERS
+              </button>
             </div>
-          )}
-        </AnimatePresence>
+          </div>
+        )}
 
         {/* 10. EXPLORE RESTAURANTS/SHOPS NEARBY (Matching Screenshot 4 & 5) */}
         <section className="space-y-4">
@@ -2162,7 +2068,7 @@ export const CustomerPortal: React.FC = () => {
                     <div className="pt-1 flex items-center justify-between">
                       <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[11px] font-bold">
                         <Ticket className="w-3 h-3 text-rose-500" />
-                        <span>35% off Tk. 299: back4more</span>
+                        <span>35% off</span>
                       </span>
                       <span className="text-xs font-bold text-orange-600 group-hover:translate-x-1 transition-transform">
                         View Menu &rarr;
