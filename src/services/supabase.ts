@@ -183,6 +183,26 @@ export const INITIAL_VENDORS: Vendor[] = [
     password: '123',
     cover_image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&auto=format&fit=crop&q=80',
     logo_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=150&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'a0000005-0000-0000-0000-000000000005',
+    unique_id: 'LWTL',
+    name: "Tripti's Kitchen",
+    description: 'Authentic Bengali home cooked delicacies, curries and traditional feasts',
+    cuisine: 'Bengali, Home Cooked, Traditional',
+    phone: '01733344455',
+    address: 'Halishahar Main Road, Chittagong',
+    zone: 'Halishahar Zone',
+    latitude: 22.3400,
+    longitude: 91.7900,
+    google_maps_link: 'https://maps.google.com/?q=22.3400,91.7900',
+    is_active: true,
+    rating: 4.0,
+    estimated_prep_time_minutes: 20,
+    is_password_set: true,
+    password: '123',
+    cover_image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
+    logo_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop&q=80'
   }
 ];
 

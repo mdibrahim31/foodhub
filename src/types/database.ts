@@ -238,3 +238,26 @@ export interface RiderMessage {
   created_at: string;
   is_read?: boolean;
 }
+
+export interface VendorReview {
+  id: string;
+  vendor_id: string;
+  order_id?: string;
+  order_code: string;
+  customer_name?: string;
+  customer_phone?: string;
+  rating: number; // 1 to 5
+  comment: string;
+  created_at: string;
+  vendor_reply?: {
+    text: string;
+    replied_at: string;
+    status: 'approved' | 'pending' | 'rejected';
+  };
+  dispute?: {
+    reason: string;
+    comment?: string;
+    status: 'submitted' | 'under_review' | 'resolved';
+    disputed_at: string;
+  };
+}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { MenuItem, Order, OrderStatus, Vendor } from '../../types/database';
+import { VendorReviewsView } from './VendorReviewsView';
 import { 
   Store, 
   Clock, 
@@ -1391,8 +1392,8 @@ export const VendorPortal: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-black text-slate-900 tracking-tight">Reviews</h3>
                 <button 
-                  onClick={() => alert('Customer reviews: High ratings on food quality and packaging!')}
-                  className="text-xs font-bold text-slate-500 hover:text-orange-600 transition flex items-center"
+                  onClick={() => setIsReviewsModalOpen(true)}
+                  className="text-xs font-bold text-slate-500 hover:text-orange-600 transition flex items-center cursor-pointer"
                 >
                   <span>More</span>
                   <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -1959,6 +1960,78 @@ export const VendorPortal: React.FC = () => {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: VENDOR REVIEWS SCREEN (100% Matching Screenshot 1 & 2)
+        ========================================================================
+      */}
+      {isReviewsModalOpen && currentVendor && (
+        <div className="fixed inset-0 z-50 bg-[#f8f9fa] overflow-y-auto animate-in fade-in">
+          <VendorReviewsView
+            vendor={currentVendor}
+            orders={vendorOrders}
+            onClose={() => setIsReviewsModalOpen(false)}
+            onOpenStoreSelector={() => setIsStoreSelectorOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: STORE SELECTOR
+        ========================================================================
+      */}
+      {isStoreSelectorOpen && currentVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Building2 className="w-5 h-5 text-slate-800" />
+                <h3 className="font-black text-slate-900 text-base">Select Restaurant</h3>
+              </div>
+              <button
+                onClick={() => setIsStoreSelectorOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {vendors.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setCurrentVendor(v);
+                    setIsStoreSelectorOpen(false);
+                  }}
+                  className={`w-full p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    v.id === currentVendor.id
+                      ? 'border-[#d70f64] bg-pink-50/40'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3 truncate">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 shrink-0">
+                      {v.unique_id || 'VND'}
+                    </div>
+                    <div className="truncate">
+                      <p className="font-bold text-xs text-slate-900 truncate">
+                        {v.name} {v.unique_id ? `(${v.unique_id})` : ''}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">{v.zone || v.address}</p>
+                    </div>
+                  </div>
+                  {v.id === currentVendor.id && (
+                    <CheckCircle className="w-4 h-4 text-[#d70f64] shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -263,11 +263,40 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}vendors`, INITIAL_VENDORS);
-    return Array.isArray(parsed) ? parsed : INITIAL_VENDORS;
+    const parsed = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, INITIAL_VENDORS);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const existingIds = new Set(parsed.map(v => v.id));
+      const missing = INITIAL_VENDORS.filter(v => !existingIds.has(v.id));
+      if (missing.length > 0) {
+        return [...parsed, ...missing];
+      }
+      return parsed;
+    }
+    return INITIAL_VENDORS;
   });
 
-  const [currentVendor, setCurrentVendor] = useState<Vendor | null>(() => vendors[0] || null);
+  const [currentVendor, setCurrentVendorState] = useState<Vendor | null>(() => {
+    const initialList = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, INITIAL_VENDORS);
+    const list = Array.isArray(initialList) && initialList.length > 0 ? initialList : INITIAL_VENDORS;
+    const savedVendorId = typeof window !== 'undefined' ? localStorage.getItem(`${STORAGE_KEY_PREFIX}selected_vendor_id`) : null;
+    if (savedVendorId) {
+      const match = list.find(v => v.id === savedVendorId);
+      if (match) return match;
+    }
+    const tripti = list.find(v => v.name.toLowerCase().includes('tripti') || v.unique_id === 'LWTL');
+    if (tripti) return tripti;
+    return list[0] || null;
+  });
+
+  const setCurrentVendor = (vendor: Vendor | ((prev: Vendor | null) => Vendor | null)) => {
+    setCurrentVendorState(prev => {
+      const next = typeof vendor === 'function' ? vendor(prev) : vendor;
+      if (typeof window !== 'undefined' && next?.id) {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}selected_vendor_id`, next.id);
+      }
+      return next;
+    });
+  };
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
     const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}menu_items`, INITIAL_MENU_ITEMS);
