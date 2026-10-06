@@ -38,7 +38,16 @@ import {
   Filter,
   MoreVertical,
   Pencil,
-  Search
+  Search,
+  Trophy,
+  BarChart2,
+  Receipt,
+  FileSpreadsheet,
+  Landmark,
+  Globe,
+  MessageSquareQuote,
+  Settings,
+  Building2
 } from 'lucide-react';
 
 export const VendorPortal: React.FC = () => {
@@ -106,6 +115,29 @@ export const VendorPortal: React.FC = () => {
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
   const [isVendorAuthModalOpen, setIsVendorAuthModalOpen] = useState(false);
   const [vendorAuthMode, setVendorAuthMode] = useState<'login' | 'register'>('login');
+
+  // Modals for More view items
+  const [isTopProgramOpen, setIsTopProgramOpen] = useState(false);
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+  const [isInvoicesModalOpen, setIsInvoicesModalOpen] = useState(false);
+  const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
+  const [isPaymentsModalOpen, setIsPaymentsModalOpen] = useState(false);
+  const [isOpeningTimesOpen, setIsOpeningTimesOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState<'English' | 'বাংলা'>('English');
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+
+  const getUserInitials = (name: string): string => {
+    if (!name) return 'FU';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'FU';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   // New Dish Form
   const [dishName, setDishName] = useState('');
@@ -770,101 +802,276 @@ export const VendorPortal: React.FC = () => {
       ) : activeBottomNav === 'more' ? (
         /* 
           ========================================================================
-          MORE & CASH LEDGER VIEW
+          MORE VIEW (100% Matching Screenshot_20261006_141354 and 141359)
           ========================================================================
         */
-        <div className="max-w-md mx-auto min-h-screen bg-slate-50 text-slate-900 pb-28">
-          <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between z-10">
-            <h2 className="text-base font-black text-slate-900">Partner Settings & Ledger</h2>
-            <button onClick={() => setActiveBottomNav('overview')} className="p-1 text-slate-400">
-              <X className="w-6 h-6" />
+        <div className="max-w-md mx-auto min-h-screen bg-slate-50/70 text-slate-900 pb-28 select-none">
+          {/* Top Bar / Store Pill & Close Button (Matching Screenshot 1) */}
+          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-4 pt-4 pb-3 flex items-center justify-between border-b border-slate-100 shadow-2xs">
+            <button
+              onClick={() => setIsStoreSelectorOpen(true)}
+              className="flex-1 max-w-[84%] flex items-center space-x-2.5 px-4 py-2.5 rounded-full border border-slate-200/90 bg-white shadow-2xs text-slate-900 hover:border-slate-300 transition text-left cursor-pointer"
+            >
+              <Building2 className="w-4 h-4 text-slate-800 shrink-0 stroke-[2]" />
+              <span className="font-bold text-sm truncate">
+                {currentVendor.name} {currentVendor.unique_id ? `(${currentVendor.unique_id})` : '(LWTL)'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveBottomNav('overview')}
+              className="w-10 h-10 rounded-full border border-slate-200 bg-white shadow-2xs flex items-center justify-center text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition cursor-pointer ml-3 shrink-0"
+              title="Close and return to Overview"
+            >
+              <X className="w-5 h-5 stroke-[2.5]" />
             </button>
           </div>
 
-          <div className="p-4 space-y-4">
-            <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-3">
-              <h3 className="font-black text-sm text-slate-900">Cash Flow & Settlements</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
-                  <span className="text-[11px] font-bold text-emerald-800 block">Total Cash Collected</span>
-                  <span className="text-lg font-black font-mono text-emerald-900">
-                    {settings.currency_symbol}{cashCollectedFromRiders}
-                  </span>
+          <div className="p-4 space-y-6">
+            {/* User / Admin Profile Card (Matching Screenshot 1) */}
+            <div 
+              onClick={() => {
+                if (!currentUser || currentUser.role !== 'vendor') {
+                  setVendorAuthMode('login');
+                  setIsVendorAuthModalOpen(true);
+                } else {
+                  setIsSettingsModalOpen(true);
+                }
+              }}
+              className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs p-4 flex items-center justify-between cursor-pointer hover:border-slate-300 transition active:scale-[0.99]"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-14 h-14 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-800 font-extrabold text-lg shrink-0">
+                  {getUserInitials(currentUser?.name || currentVendor.name || 'Farid Ullah')}
                 </div>
-                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                  <span className="text-[11px] font-bold text-amber-800 block">Pending Handover</span>
-                  <span className="text-lg font-black font-mono text-amber-900">
-                    {settings.currency_symbol}{pendingCashToReceive}
-                  </span>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base leading-tight">
+                    {currentUser?.name || currentVendor.name || 'Farid Ullah'}
+                  </h3>
+                  <p className="text-[11px] font-black uppercase tracking-wider text-slate-400 mt-0.5">
+                    ADMIN
+                  </p>
                 </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-slate-400 stroke-[2.5]" />
+            </div>
+
+            {/* Section 1: Monitor your performance */}
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                Monitor your performance
+              </h2>
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                <button
+                  onClick={() => setIsTopProgramOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Trophy className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Top Restaurant Program</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setActiveBottomNav('overview')}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <BarChart2 className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Performance</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsOrderHistoryOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <History className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Order history</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsReviewsModalOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Star className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Reviews</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsInvoicesModalOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Receipt className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Invoices</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsReportsModalOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <FileSpreadsheet className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Reports</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
               </div>
             </div>
 
-            <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-2 text-xs">
-              <h4 className="font-black text-slate-900 text-sm">Restaurant Info</h4>
-              <p className="text-slate-600 flex items-center space-x-1.5">
-                <MapPin className="w-3.5 h-3.5 text-orange-600" />
-                <span>{currentVendor.address}</span>
-              </p>
-              <p className="text-slate-400 font-mono text-[11px]">
-                Lat: {currentVendor.latitude.toFixed(4)}, Lng: {currentVendor.longitude.toFixed(4)}
-              </p>
+            {/* Section 2: Grow your business */}
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                Grow your business
+              </h2>
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                <button
+                  onClick={() => setActiveBottomNav('ads')}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Megaphone className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Advertising</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsPromotionsOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Tag className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Promotions</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
             </div>
 
-            {/* Vendor Login / Registration or Logout Card */}
-            <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-3xl shadow-xs space-y-3">
-              {(!currentUser || currentUser.role !== 'vendor') ? (
-                <>
-                  <div className="flex items-center space-x-2 text-orange-700">
-                    <Store className="w-5 h-5 stroke-[2.5]" />
-                    <h4 className="font-black text-sm text-slate-900">Partner Access & Auth</h4>
+            {/* Section 3: Manage your business */}
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                Manage your business
+              </h2>
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                <button
+                  onClick={() => setIsPaymentsModalOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Landmark className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Payments</span>
                   </div>
-                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    Log in to your vendor account or register/set your new password to manage kitchen operations.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      onClick={() => {
-                        setVendorAuthMode('login');
-                        setIsVendorAuthModalOpen(true);
-                      }}
-                      className="py-3 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
-                    >
-                      Vendor Login
-                    </button>
-                    <button
-                      onClick={() => {
-                        setVendorAuthMode('register');
-                        setIsVendorAuthModalOpen(true);
-                      }}
-                      className="py-3 px-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-xs text-center shadow-md transition cursor-pointer active:scale-95"
-                    >
-                      Registration
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Partner</span>
-                      <h4 className="font-black text-slate-900 text-sm">{currentUser.name} ({currentUser.phone})</h4>
-                    </div>
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
 
-                  <button
-                    onClick={() => {
-                      logoutUser();
-                      setActiveBottomNav('overview');
-                    }}
-                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4 stroke-[2.5]" />
-                    <span>Log out</span>
-                  </button>
-                </div>
-              )}
+                <button
+                  onClick={() => setIsOpeningTimesOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Clock className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Opening times</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Settings className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Settings</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Section 4: About panda partner */}
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                About panda partner
+              </h2>
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                <button
+                  onClick={() => setIsHelpOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <HelpCircle className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Help Center</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setCurrentLanguage(prev => prev === 'English' ? 'বাংলা' : 'English')}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Globe className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Language</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-slate-500">
+                    <span className="text-sm font-semibold text-slate-600">{currentLanguage}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5]" />
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setFeedbackSubmitted(false);
+                    setFeedbackText('');
+                    setIsFeedbackModalOpen(true);
+                  }}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <MessageSquareQuote className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Send us feedback</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (currentUser && currentUser.role === 'vendor') {
+                      setIsLogoutConfirmOpen(true);
+                    } else {
+                      setVendorAuthMode('login');
+                      setIsVendorAuthModalOpen(true);
+                    }
+                  }}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <LogOut className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">
+                      {currentUser && currentUser.role === 'vendor' ? 'Logout' : 'Partner Login'}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Version Footer (Matching Screenshot 2) */}
+            <div className="text-center py-4 text-xs font-medium text-slate-400">
+              Version 3.60.0
             </div>
           </div>
         </div>
@@ -1256,12 +1463,12 @@ export const VendorPortal: React.FC = () => {
           {/* More */}
           <button
             onClick={() => setActiveBottomNav('more')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all ${
-              activeBottomNav === 'more' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+              activeBottomNav === 'more' ? 'text-rose-600 font-black' : 'text-slate-500 font-medium'
             }`}
           >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'more' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <MenuIcon className="w-5 h-5 stroke-[2]" />
+            <div className={`p-1 rounded-xl ${activeBottomNav === 'more' ? 'bg-rose-50 text-rose-600' : ''}`}>
+              <MenuIcon className="w-5 h-5 stroke-[2.2]" />
             </div>
             <span className="text-[10px] mt-0.5">More</span>
           </button>
