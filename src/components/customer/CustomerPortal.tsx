@@ -2197,7 +2197,7 @@ export const CustomerPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        RESTAURANT MENU MODAL
+        RESTAURANT MENU MODAL (100% Matching Screenshot 2-Column Grid & Cart Bar)
         ========================================================================
       */}
       <AnimatePresence>
@@ -2211,7 +2211,7 @@ export const CustomerPortal: React.FC = () => {
           {/* Main Scrollable Content */}
           <div 
             ref={menuScrollContainerRef}
-            className="flex-1 overflow-y-auto scrollbar-none"
+            className="flex-1 overflow-y-auto scrollbar-none pb-36"
           >
             {/* 1. Header Cover Area */}
             <div className="relative h-52 overflow-hidden bg-slate-900">
@@ -2230,29 +2230,42 @@ export const CustomerPortal: React.FC = () => {
               {/* Overlay for better readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-              {/* Top Navigation Overlay (Always Fixed relative to modal) */}
+              {/* Top Navigation Overlay */}
               <div className="absolute top-4 inset-x-4 flex items-center justify-between z-40">
                 <button 
                   onClick={() => setSelectedVendorForMenu(null)}
-                  className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform"
+                  className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform cursor-pointer"
                 >
-                  <ArrowLeft className="w-5 h-5 stroke-[3]" />
+                  <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
                 </button>
                 
                 <div className="flex items-center space-x-2">
                   <button 
                     onClick={() => setIsRestaurantReviewsOpen(true)}
                     className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform cursor-pointer"
-                    title="Ratings & Reviews"
-                    aria-label="Ratings & Reviews"
+                    title="Ratings & Info"
                   >
                     <Info className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={(e) => toggleFavorite(selectedVendorForMenu.id, e)}
-                    className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900"
+                    className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 cursor-pointer"
                   >
                     <Heart className={`w-5 h-5 ${favorites.includes(selectedVendorForMenu.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({ title: selectedVendorForMenu.name, url: window.location.href }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(window.location.href);
+                        alert('✅ Restaurant link copied to clipboard!');
+                      }
+                    }}
+                    className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform cursor-pointer"
+                    title="Share"
+                  >
+                    <Share2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -2288,35 +2301,15 @@ export const CustomerPortal: React.FC = () => {
               >
                 <Star className="w-4 h-4 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
                 <span className="text-slate-900 font-black">
-                  {selectedVendorForMenu.rating ? selectedVendorForMenu.rating.toFixed(1) : '5'}
+                  {selectedVendorForMenu.rating ? selectedVendorForMenu.rating.toFixed(1) : '5.0'}
                 </span>
                 <span className="text-slate-500 font-semibold">(2k+ ratings)</span>
               </div>
-              <div>
-                <button 
-                  onClick={() => setIsRestaurantReviewsOpen(true)}
-                  className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
-                >
-                  See all outlets
-                </button>
-              </div>
             </div>
 
-            {/* 3. Delivery / Pick-Up Tabs */}
-            <div className="px-5 pb-4">
-              <div className="bg-slate-100 p-1 rounded-2xl flex items-center">
-                <button className="flex-1 py-2.5 bg-white shadow-xs rounded-xl text-sm font-black text-slate-900">
-                  Delivery
-                </button>
-                <button className="flex-1 py-2.5 rounded-xl text-sm font-black text-slate-500 flex items-center justify-center gap-1.5">
-                  Pick-Up <span className="text-[10px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-md">15% off</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 4. Sticky Search & Category Bar */}
-            <div className={`sticky top-0 z-30 transition-colors duration-300 ${isMenuHeaderSticky ? 'bg-white shadow-md' : 'bg-transparent'}`}>
-              {/* Search Menu (Visible only when not sticky or partially visible?) In video it sticks */}
+            {/* 3. Sticky Search & Category Bar */}
+            <div className={`sticky top-0 z-30 transition-colors duration-300 ${isMenuHeaderSticky ? 'bg-white shadow-md' : 'bg-white border-b border-slate-100'}`}>
+              {/* Search Menu Bar */}
               <div className="px-5 py-2">
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -2325,21 +2318,21 @@ export const CustomerPortal: React.FC = () => {
                     placeholder="Search menu"
                     value={menuSearchQuery}
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border-none rounded-2xl text-xs font-bold placeholder:text-slate-500 focus:ring-0"
+                    className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-2xl text-xs font-bold placeholder:text-slate-400 focus:ring-0"
                   />
                 </div>
               </div>
 
-              {/* Categories Scroller */}
-              <div className="px-5 py-1 overflow-x-auto scrollbar-none flex items-center space-x-6 border-b border-slate-50">
+              {/* Categories Horizontal Scroll Tabs */}
+              <div className="px-5 py-1.5 overflow-x-auto scrollbar-none flex items-center space-x-6 border-t border-slate-100">
                 {['Popular', ...new Set(menuItems.filter(m => m.vendor_id === selectedVendorForMenu.id).map(m => m.category))].map((cat) => {
                   const isSelected = activeMenuCategory === cat;
                   return (
                     <button
                       key={cat}
                       onClick={() => scrollToCategory(cat)}
-                      className={`whitespace-nowrap pb-2.5 text-xs font-black transition-all relative ${
-                        isSelected ? 'text-slate-900' : 'text-slate-400'
+                      className={`whitespace-nowrap pb-2 text-xs font-extrabold transition-all relative cursor-pointer ${
+                        isSelected ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'
                       }`}
                     >
                       {cat}
@@ -2355,58 +2348,62 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* 5. Menu Sections */}
-            <div className="px-5 pb-32 space-y-8 mt-4">
+            {/* 5. Menu Sections (100% 2-Column Grid Layout matching screenshot) */}
+            <div className="px-4 pt-4 space-y-8">
               {/* Popular Section (Grid Layout) */}
               <div 
                 ref={(el) => { categorySectionRefs.current['Popular'] = el; }}
-                className="space-y-4"
+                className="space-y-3"
               >
                 <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-600 fill-orange-600" />
+                  <Flame className="w-5 h-5 text-rose-600 fill-rose-600" />
                   <div>
-                    <h4 className="text-base font-black text-slate-900">Popular</h4>
-                    <p className="text-[10px] font-bold text-slate-400">Most ordered right now</p>
+                    <h4 className="text-base font-extrabold text-slate-900">Popular</h4>
+                    <p className="text-[11px] font-medium text-slate-500">Most ordered right now</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3.5">
                   {menuItems
                     .filter((m) => m.vendor_id === selectedVendorForMenu.id)
-                    .slice(0, 6) // Mock "Popular" logic
+                    .slice(0, 6)
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
+                      const originalPrice = Math.round(dish.price * 1.12);
                       return (
-                        <div key={dish.id} className="space-y-2 group">
+                        <div key={dish.id} className="space-y-1.5 group cursor-pointer">
                           <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-2xs">
                             <img 
                               src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400'} 
                               alt={dish.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
-                            {/* Floating '+' Button style from video */}
+                            {/* Overlay Badge at Bottom Right of Image matching screenshot */}
                             <div className="absolute bottom-2 right-2">
                               {cartItem ? (
-                                <div className="flex items-center bg-white shadow-lg rounded-full p-1 border border-slate-100">
-                                  <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-50 rounded-full"><Minus className="w-3 h-3" /></button>
-                                  <span className="text-[10px] font-black px-1">{cartItem.quantity}</span>
-                                  <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-full"><Plus className="w-3 h-3" /></button>
+                                <div className="flex items-center bg-white/95 backdrop-blur-xs shadow-md rounded-full p-0.5 border border-slate-100">
+                                  <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"><Minus className="w-3 h-3" /></button>
+                                  <span className="text-[11px] font-black px-1.5 text-slate-900">{cartItem.quantity}</span>
+                                  <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-[#d70f64] hover:bg-pink-50 rounded-full cursor-pointer"><Plus className="w-3 h-3" /></button>
                                 </div>
                               ) : (
                                 <button 
                                   onClick={() => addToCart(dish, selectedVendorForMenu)}
-                                  className="w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-800 hover:bg-rose-600 hover:text-white transition-colors border border-slate-100"
+                                  className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-slate-900 hover:bg-[#d70f64] hover:text-white transition-colors border border-slate-100 cursor-pointer active:scale-90"
                                 >
-                                  <Plus className="w-4 h-4 stroke-[3]" />
+                                  <Plus className="w-4 h-4 stroke-[2.5]" />
                                 </button>
                               )}
                             </div>
                           </div>
-                          <div className="px-0.5">
-                            <h5 className="font-bold text-[13px] text-slate-900 leading-tight line-clamp-1">{dish.name}</h5>
-                            <p className="text-[11px] font-black text-slate-900 mt-0.5">{settings.currency_symbol}{dish.price}</p>
-                            <div className="flex items-center gap-1 mt-1 opacity-70">
-                              <span className="text-[10px] font-bold text-slate-400">👍 90%</span>
+                          <div className="px-0.5 space-y-0.5">
+                            <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-1">{dish.name}</h5>
+                            <div className="flex items-center space-x-1.5">
+                              <span className="text-xs font-black text-[#d70f64]">{settings.currency_symbol} {dish.price}</span>
+                              <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                              <span>👍 64%</span>
                             </div>
                           </div>
                         </div>
@@ -2415,47 +2412,54 @@ export const CustomerPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Other Category Sections (List Layout) */}
+              {/* All Other Categories (2-Column Grid Layout matching screenshot) */}
               {[...new Set(menuItems.filter(m => m.vendor_id === selectedVendorForMenu.id).map(m => m.category))].map((cat) => (
                 <div 
                   key={cat}
                   ref={(el) => { categorySectionRefs.current[cat] = el; }}
-                  className="space-y-4"
+                  className="space-y-3 border-t border-slate-100 pt-5"
                 >
-                  <h4 className="text-base font-black text-slate-900 border-t border-slate-50 pt-4">{cat}</h4>
-                  <div className="space-y-6">
+                  <h4 className="text-base font-extrabold text-slate-900">{cat}</h4>
+                  <div className="grid grid-cols-2 gap-3.5">
                     {menuItems
                       .filter(m => m.vendor_id === selectedVendorForMenu.id && m.category === cat)
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
+                        const originalPrice = Math.round(dish.price * 1.12);
                         return (
-                          <div key={dish.id} className="flex items-start justify-between gap-4">
-                            <div className="flex-1 space-y-1">
-                              <h5 className="font-extrabold text-[14px] text-slate-900 leading-tight">{dish.name}</h5>
-                              <p className="text-[11px] font-bold text-slate-900">{settings.currency_symbol}{dish.price}</p>
-                              <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">{dish.description}</p>
-                            </div>
-                            <div className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border border-slate-100 shadow-2xs">
+                          <div key={dish.id} className="space-y-1.5 group cursor-pointer">
+                            <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-2xs">
                               <img 
-                                src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200'} 
+                                src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400'} 
                                 alt={dish.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                               />
-                              <div className="absolute bottom-1 right-1">
+                              {/* Overlay Badge at Bottom Right of Image matching screenshot */}
+                              <div className="absolute bottom-2 right-2">
                                 {cartItem ? (
-                                  <div className="flex items-center bg-white shadow-lg rounded-full p-1 border border-slate-100 scale-90">
-                                    <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-50 rounded-full"><Minus className="w-3 h-3" /></button>
-                                    <span className="text-[10px] font-black px-1">{cartItem.quantity}</span>
-                                    <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-full"><Plus className="w-3 h-3" /></button>
+                                  <div className="flex items-center bg-white/95 backdrop-blur-xs shadow-md rounded-full p-0.5 border border-slate-100">
+                                    <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"><Minus className="w-3 h-3" /></button>
+                                    <span className="text-[11px] font-black px-1.5 text-slate-900">{cartItem.quantity}</span>
+                                    <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-[#d70f64] hover:bg-pink-50 rounded-full cursor-pointer"><Plus className="w-3 h-3" /></button>
                                   </div>
                                 ) : (
                                   <button 
                                     onClick={() => addToCart(dish, selectedVendorForMenu)}
-                                    className="w-7 h-7 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-800 hover:bg-rose-600 hover:text-white transition-colors border border-slate-100"
+                                    className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-slate-900 hover:bg-[#d70f64] hover:text-white transition-colors border border-slate-100 cursor-pointer active:scale-90"
                                   >
-                                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                                    <Plus className="w-4 h-4 stroke-[2.5]" />
                                   </button>
                                 )}
+                              </div>
+                            </div>
+                            <div className="px-0.5 space-y-0.5">
+                              <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-1">{dish.name}</h5>
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-xs font-black text-[#d70f64]">{settings.currency_symbol} {dish.price}</span>
+                                <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                                <span>👍 67%</span>
                               </div>
                             </div>
                           </div>
@@ -2467,7 +2471,52 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </div>
 
-          {/* 6. Bottom Floating Cart Summary removed as requested */}
+          {/* 6. Bottom Sticky Floating Cart Bar (100% Matching Foodpanda Screenshot) */}
+          {cart.length > 0 && (
+            <div className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-100 shadow-2xl p-3 space-y-2 animate-in slide-in-from-bottom">
+              {/* Discount Notice Banner */}
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2 text-emerald-700 text-xs font-extrabold px-1">
+                  <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                    ✓
+                  </div>
+                  <span>You've got 10% off your order!</span>
+                </div>
+                <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-full h-full bg-emerald-600 rounded-full" />
+                </div>
+              </div>
+
+              {/* Main Foodpanda Pink Button */}
+              <button
+                onClick={() => {
+                  setIsViewingCartDetail(true);
+                }}
+                className="w-full py-3 px-4 bg-[#d70f64] hover:bg-[#c00d58] text-white rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-white text-[#d70f64] font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                    {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
+                  </div>
+                  <div className="text-left truncate">
+                    <span className="font-extrabold text-sm block leading-tight">View your cart</span>
+                    <span className="text-[11px] text-pink-100 font-medium block truncate max-w-[170px]">
+                      {selectedVendorForMenu.name} - {selectedVendorForMenu.zone || selectedVendorForMenu.address}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="font-extrabold text-sm block leading-tight">
+                    {settings.currency_symbol} {cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0)}
+                  </span>
+                  <span className="text-[10px] text-pink-200 line-through block">
+                    {settings.currency_symbol} {Math.round(cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0) * 1.12)}
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
       </AnimatePresence>
