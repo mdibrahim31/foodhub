@@ -44,6 +44,54 @@ import {
   Users
 } from 'lucide-react';
 
+// Parse latitude and longitude from various Google Maps and map URL formats
+function parseGoogleMapsCoordinates(urlOrText: string): { lat: number; lng: number } | null {
+  if (!urlOrText) return null;
+  const str = urlOrText.trim();
+
+  // Pattern 1: @22.3585,91.8385 or @22.3585,91.8385,15z
+  const atMatch = str.match(/@([0-9.-]+),([0-9.-]+)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // Pattern 2: ?q=22.3585,91.8385 or &q=22.3585,91.8385 or ?ll=22.3585,91.8385
+  const qMatch = str.match(/[?&](?:q|ll)=([0-9.-]+),([0-9.-]+)/);
+  if (qMatch) {
+    const lat = parseFloat(qMatch[1]);
+    const lng = parseFloat(qMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // Pattern 3: !3d22.3585!4d91.8385
+  const dMatch = str.match(/!3d([0-9.-]+)!4d([0-9.-]+)/);
+  if (dMatch) {
+    const lat = parseFloat(dMatch[1]);
+    const lng = parseFloat(dMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // Pattern 4: Plain comma-separated coordinates e.g. 22.3571, 91.8337
+  const plainMatch = str.match(/^([0-9.-]+)\s*,\s*([0-9.-]+)$/);
+  if (plainMatch) {
+    const lat = parseFloat(plainMatch[1]);
+    const lng = parseFloat(plainMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}
+
 export const AdminPortal: React.FC = () => {
   const { 
     settings, 
@@ -697,7 +745,7 @@ export const AdminPortal: React.FC = () => {
             }`}
           >
             <MapPin className="w-4 h-4" />
-            <span>Rider Zones ({zones.length})</span>
+            <span>Zones ({zones.length})</span>
           </button>
 
           <button
@@ -1557,7 +1605,7 @@ export const AdminPortal: React.FC = () => {
                   </span>
                   <div>
                     <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                      Rider & Delivery Zones (রাইডার ও ডেলিভারি জোন)
+                      Zones (ডেলিভারি জোন)
                     </h3>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">
                       Create geographic zones and boundary circles. Orders from a zone are strictly dispatched ONLY to riders in that zone!
@@ -3200,7 +3248,15 @@ export const AdminPortal: React.FC = () => {
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Operating Delivery Zone *</label>
                   <select
                     value={vZone}
-                    onChange={(e) => setVZone(e.target.value)}
+                    onChange={(e) => {
+                      const zVal = e.target.value;
+                      setVZone(zVal);
+                      const match = zones.find(z => z.name === zVal || z.id === zVal);
+                      if (match) {
+                        setVLat(match.center_latitude || 22.3590);
+                        setVLng(match.center_longitude || 91.8380);
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                     required
                   >
@@ -3287,14 +3343,27 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Google Maps Location URL</label>
+                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Google Maps Location URL / Coordinates</label>
                 <input
-                  type="url"
+                  type="text"
                   value={vGoogleMapsLink}
-                  onChange={(e) => setVGoogleMapsLink(e.target.value)}
-                  placeholder="e.g. https://maps.app.goo.gl/..."
+                  onChange={(e) => {
+                    const link = e.target.value;
+                    setVGoogleMapsLink(link);
+                    const parsed = parseGoogleMapsCoordinates(link);
+                    if (parsed) {
+                      setVLat(parsed.lat);
+                      setVLng(parsed.lng);
+                    }
+                  }}
+                  placeholder="e.g. https://maps.app.goo.gl/... or 22.3571, 91.8337"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
                 />
+                {vGoogleMapsLink && parseGoogleMapsCoordinates(vGoogleMapsLink) && (
+                  <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded-xl mt-1">
+                    ✓ GPS Coordinates extracted: {vLat.toFixed(4)}, {vLng.toFixed(4)}
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 flex space-x-3">
