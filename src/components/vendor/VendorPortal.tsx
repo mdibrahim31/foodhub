@@ -48,7 +48,10 @@ import {
   Globe,
   MessageSquareQuote,
   Settings,
-  Building2
+  Building2,
+  Image,
+  Upload,
+  Camera
 } from 'lucide-react';
 
 export const VendorPortal: React.FC = () => {
@@ -56,6 +59,8 @@ export const VendorPortal: React.FC = () => {
     vendors, 
     currentVendor, 
     setCurrentVendor, 
+    updateVendor,
+    uploadVendorImage,
     menuItems, 
     addMenuItem, 
     toggleMenuItemAvailability, 
@@ -147,6 +152,10 @@ export const VendorPortal: React.FC = () => {
   const [isPaymentsModalOpen, setIsPaymentsModalOpen] = useState(false);
   const [isOpeningTimesOpen, setIsOpeningTimesOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isStoreBrandingOpen, setIsStoreBrandingOpen] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<'English' | 'বাংলা'>('English');
   const [feedbackRating, setFeedbackRating] = useState(5);
@@ -1033,6 +1042,20 @@ export const VendorPortal: React.FC = () => {
                   <div className="flex items-center space-x-3.5">
                     <Settings className="w-5 h-5 text-slate-800 stroke-[2]" />
                     <span className="text-[15px] font-bold text-slate-900">Settings</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsStoreBrandingOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-rose-50/50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Image className="w-5 h-5 text-rose-600 stroke-[2]" />
+                    <div>
+                      <span className="text-[15px] font-bold text-slate-900 block leading-tight">Store Profile & Cover Images</span>
+                      <span className="text-[11px] text-slate-500 font-medium">প্রোফাইল লোগো ও কভার ছবি আপলোড</span>
+                    </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>
@@ -1997,6 +2020,160 @@ export const VendorPortal: React.FC = () => {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: VENDOR PROFILE LOGO & COVER IMAGE UPLOAD (IMAGES BUCKET / FOLDER)
+        ========================================================================
+      */}
+      {isStoreBrandingOpen && currentVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-5 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsStoreBrandingOpen(false)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 border-b border-slate-100 pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Image className="w-6 h-6 stroke-[2]" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Store Profile & Cover Images</h3>
+                <p className="text-xs text-slate-500 font-medium">Upload profile logo and store banner cover</p>
+              </div>
+            </div>
+
+            {uploadFeedback && (
+              <div
+                className={`p-3.5 rounded-2xl text-xs font-bold flex items-center space-x-2 ${
+                  uploadFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}
+              >
+                <span>{uploadFeedback.message}</span>
+              </div>
+            )}
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-1">
+              <p className="font-bold text-slate-800">📁 Storage Location / সংরক্ষণাগার:</p>
+              <p className="text-[11px] font-mono text-slate-500">
+                images/&lt;vendor_name&gt;/logo_* and cover_*
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Uploaded images will be saved under vendor folder inside the <code className="bg-slate-200 px-1 rounded">images</code> bucket.
+              </p>
+            </div>
+
+            {/* Profile Logo Upload */}
+            <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-black text-xs text-slate-900">Profile Logo Image (প্রোফাইল লোগো)</h4>
+                  <p className="text-[11px] text-slate-500">Recommended 1:1 square ratio (e.g., 500x500px)</p>
+                </div>
+                {currentVendor.logo_url ? (
+                  <img
+                    src={currentVendor.logo_url}
+                    alt="Vendor Logo"
+                    className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-400">
+                    No Logo
+                  </div>
+                )}
+              </div>
+
+              <label className="flex items-center justify-center space-x-2 w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs transition active:scale-98">
+                <Upload className="w-4 h-4" />
+                <span>{isUploadingLogo ? 'Uploading Logo...' : 'Upload Profile Logo Image'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploadingLogo}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !currentVendor) return;
+                    setIsUploadingLogo(true);
+                    setUploadFeedback(null);
+                    const res = await uploadVendorImage(currentVendor.name, file, 'logo');
+                    setIsUploadingLogo(false);
+                    if (res.success && res.url) {
+                      updateVendor(currentVendor.id, { logo_url: res.url });
+                      setUploadFeedback({ type: 'success', message: '✅ Profile Logo uploaded successfully!' });
+                    } else {
+                      setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload logo image.' });
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Cover Image Upload */}
+            <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-black text-xs text-slate-900">Cover Banner Image (কভার ইমেজ)</h4>
+                  <p className="text-[11px] text-slate-500">Recommended 16:9 banner ratio (e.g., 1200x675px)</p>
+                </div>
+              </div>
+
+              {currentVendor.cover_image ? (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200 h-28 bg-slate-100">
+                  <img
+                    src={currentVendor.cover_image}
+                    alt="Vendor Cover"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-20 rounded-2xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-xs font-bold text-slate-400">
+                  No Cover Image Uploaded
+                </div>
+              )}
+
+              <label className="flex items-center justify-center space-x-2 w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs transition active:scale-98">
+                <Camera className="w-4 h-4 text-rose-400" />
+                <span>{isUploadingCover ? 'Uploading Cover Banner...' : 'Upload Cover Banner Image'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploadingCover}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !currentVendor) return;
+                    setIsUploadingCover(true);
+                    setUploadFeedback(null);
+                    const res = await uploadVendorImage(currentVendor.name, file, 'cover');
+                    setIsUploadingCover(false);
+                    if (res.success && res.url) {
+                      updateVendor(currentVendor.id, { cover_image: res.url });
+                      setUploadFeedback({ type: 'success', message: '✅ Cover Image uploaded successfully!' });
+                    } else {
+                      setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload cover image.' });
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setIsStoreBrandingOpen(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

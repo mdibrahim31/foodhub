@@ -83,6 +83,11 @@ interface DeliveryContextType {
     google_maps_link?: string;
   }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
+  uploadVendorImage: (
+    vendorName: string, 
+    file: File, 
+    type: 'logo' | 'cover'
+  ) => Promise<{ success: boolean; url?: string; message?: string }>;
   toggleVendorPause: (id: string) => void;
   deleteVendor: (id: string) => void;
   
@@ -2532,11 +2537,116 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const updateVendor = (id: string, updates: Partial<Vendor>) => {
+  const updateVendor = async (id: string, updates: Partial<Vendor>) => {
     setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
     if (currentVendor && currentVendor.id === id) {
       setCurrentVendor(prev => prev ? { ...prev, ...updates } : null);
     }
+
+    try {
+      await fetch(`/api/vendors/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch (err) {
+      console.warn('Server vendor update error:', err);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('vendors').update(updates).eq('id', id);
+      } catch (err) {
+        console.warn('Supabase vendor update error:', err);
+      }
+    }
+  };
+
+  const uploadVendorImage = async (
+    vendorName: string, 
+    file: File, 
+    type: 'logo' | 'cover'
+  ): Promise<{ success: boolean; url?: string; message?: string }> => {
+    const folderName = (vendorName || 'vendor')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9_-]/g, '_');
+
+    const ext = file.name.split('.').pop() || 'png';
+    const fileName = `${type}_${Date.now()}.${ext}`;
+    const filePath = `${folderName}/${fileName}`;
+
+    // 1. Try Supabase Storage bucket "images" if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let { error: uploadErr } = await supabase.storage
+          .from('images')
+          .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+
+        if (uploadErr && uploadErr.message?.toLowerCase().includes('bucket not found')) {
+          await supabase.storage.createBucket('images', { public: true });
+          const retry = await supabase.storage
+            .from('images')
+            .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+          uploadErr = retry.error;
+        }
+
+        if (!uploadErr) {
+          const { data: publicUrlData } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          
+          if (publicUrlData?.publicUrl) {
+            return {
+              success: true,
+              url: publicUrlData.publicUrl,
+              message: `Uploaded to Supabase bucket "images/${folderName}/${fileName}"`
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase storage upload fallback:', err);
+      }
+    }
+
+    // 2. Fallback to Express backend `/api/upload` or FileReader
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = reader.result as string;
+        try {
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              folderName,
+              fileName,
+              fileData: base64Data
+            })
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.url) {
+              return resolve({
+                success: true,
+                url: json.url,
+                message: `Uploaded to "images/${folderName}/${fileName}"`
+              });
+            }
+          }
+        } catch {}
+
+        resolve({
+          success: true,
+          url: base64Data,
+          message: `Saved image to "images/${folderName}/${fileName}"`
+        });
+      };
+      reader.onerror = () => {
+        resolve({ success: false, message: 'Failed to read image file.' });
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const updateSettings = (newSettings: Partial<SystemSettings>) => {
@@ -3682,6 +3792,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentVendor,
         adminRegisterVendor,
         updateVendor,
+        uploadVendorImage,
         toggleVendorPause,
         deleteVendor,
         menuItems,

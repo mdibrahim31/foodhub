@@ -9,6 +9,9 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Serve uploaded images statically
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'data', 'uploads')));
+
 // Path to persistent data file
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DATA_FILE = path.resolve(DATA_DIR, 'db.json');
@@ -499,6 +502,38 @@ app.delete('/api/food-categories/:id', (req, res) => {
   serverState.foodCategories = serverState.foodCategories.filter(c => c.id !== id);
   saveState(serverState);
   res.json({ success: true });
+});
+
+// File Upload Endpoint (Saves vendor profile & cover images into data/uploads/images/:folderName/)
+app.post('/api/upload', (req, res) => {
+  try {
+    const { folderName, fileName, fileData } = req.body;
+    if (!folderName || !fileName || !fileData) {
+      return res.status(400).json({ success: false, message: 'Missing parameters' });
+    }
+    const safeFolder = (folderName || 'vendor').replace(/[^a-z0-9_-]/gi, '_');
+    const safeFile = (fileName || 'image.png').replace(/[^a-z0-9_.-]/gi, '_');
+    const targetDir = path.resolve(process.cwd(), 'data', 'uploads', 'images', safeFolder);
+    
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    
+    const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.json({ success: true, url: fileData });
+    }
+    
+    const buffer = Buffer.from(matches[2], 'base64');
+    const filePath = path.join(targetDir, safeFile);
+    fs.writeFileSync(filePath, buffer);
+    
+    const publicUrl = `/uploads/images/${safeFolder}/${safeFile}`;
+    res.json({ success: true, url: publicUrl });
+  } catch (err) {
+    console.error('Upload endpoint error:', err);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
 });
 
 // 7. Customer Cart API (Saved to database per individual customer account)
