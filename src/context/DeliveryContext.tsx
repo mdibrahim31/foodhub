@@ -349,6 +349,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {}
   }, [allAddresses]);
 
+  // Strict user-isolated vendor sync (Ensure vendor account only loads logged-in vendor data)
+  useEffect(() => {
+    if (currentUser?.role === 'vendor') {
+      const match = vendors.find(v => 
+        (currentUser.reference_id && v.id === currentUser.reference_id) || 
+        (currentUser.phone && v.phone === currentUser.phone)
+      );
+      if (match) {
+        setCurrentVendorState(match);
+      }
+    }
+  }, [currentUser, vendors]);
+
   // Load addresses strictly for active customer from server database
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'customer') {

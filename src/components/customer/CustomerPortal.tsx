@@ -542,11 +542,14 @@ export const CustomerPortal: React.FC = () => {
     const normCustZone = activeCustomerZone.name.toLowerCase().replace(/\s*zone\s*/i, '').trim();
     const normVendorZone = (v.zone || '').toLowerCase().replace(/\s*zone\s*/i, '').trim();
 
-    // Direct zone name match or ID match
-    const isZoneNameMatch = normVendorZone.length > 0 && normVendorZone === normCustZone;
-    const isZoneIdMatch = Boolean(v.zone && v.zone === activeCustomerZone.id);
-    // If vendor has no explicit zone assigned, check if vendor's GPS coordinate is in this zone
-    const isPointMatch = !v.zone && isPointInZone(v.latitude, v.longitude, activeCustomerZone);
+    // Flexible zone name match, zone ID match, or GPS location inside active zone boundary/radius
+    const isZoneNameMatch = normVendorZone.length > 0 && (
+      normVendorZone === normCustZone ||
+      normVendorZone.includes(normCustZone) ||
+      normCustZone.includes(normVendorZone)
+    );
+    const isZoneIdMatch = Boolean(v.zone && (v.zone === activeCustomerZone.id || v.zone.toLowerCase() === activeCustomerZone.name.toLowerCase()));
+    const isPointMatch = Boolean(v.latitude && v.longitude && isPointInZone(v.latitude, v.longitude, activeCustomerZone));
 
     const matchesZone = isZoneNameMatch || isZoneIdMatch || isPointMatch;
     if (!matchesZone) {
