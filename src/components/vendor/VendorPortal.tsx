@@ -100,7 +100,27 @@ export const VendorPortal: React.FC = () => {
   // Menu Page States
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    if (typeof window !== 'undefined' && currentVendor?.id) {
+      try {
+        const saved = localStorage.getItem(`foodiplace_vendor_categories_${currentVendor.id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  // Sync custom categories per vendor
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && currentVendor?.id) {
+      try {
+        localStorage.setItem(`foodiplace_vendor_categories_${currentVendor.id}`, JSON.stringify(customCategories));
+      } catch {}
+    }
+  }, [customCategories, currentVendor?.id]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
