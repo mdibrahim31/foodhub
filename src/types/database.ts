@@ -98,6 +98,22 @@ export interface AdBanner {
   created_at?: string;
 }
 
+export interface MenuVariationOption {
+  id: string;
+  name: string; // e.g., "Full", "Half", "1:1", "1:2", "Large", "Medium", "Mild", "Spicy"
+  price: number; // additional price offset or option price
+}
+
+export interface MenuVariationGroup {
+  id: string;
+  name: string; // e.g., "Portion / Size", "Spice Level", "Choice of Add-ons"
+  type: 'single' | 'multiple'; // single choice (radio) or multiple choice (checkbox)
+  required: boolean;
+  min_selection?: number;
+  max_selection?: number;
+  options: MenuVariationOption[];
+}
+
 export interface MenuItem {
   id: string;
   vendor_id: string;
@@ -107,6 +123,7 @@ export interface MenuItem {
   image_url?: string;
   category: string;
   is_available: boolean;
+  variations?: MenuVariationGroup[];
 }
 
 export interface CustomerAddress {
@@ -185,6 +202,8 @@ export interface OrderItem {
   item_price: number;
   quantity: number;
   subtotal: number;
+  selected_variations?: string[];
+  special_instructions?: string;
 }
 
 export interface Order {

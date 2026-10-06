@@ -34,9 +34,18 @@ import {
 import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../utils/geo';
 import { FoodCategory } from '../types/database';
 
+export interface CartItemOption {
+  groupName: string;
+  optionName: string;
+  price: number;
+}
+
 export interface CartItem {
   menuItem: MenuItem;
   quantity: number;
+  selectedVariations?: CartItemOption[];
+  specialInstructions?: string;
+  unitPrice?: number;
 }
 
 interface DeliveryContextType {
@@ -94,6 +103,7 @@ interface DeliveryContextType {
   // Menu Items
   menuItems: MenuItem[];
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
+  updateMenuItem: (id: string, updates: Partial<MenuItem>) => void;
   toggleMenuItemAvailability: (id: string) => void;
   deleteMenuItem: (id: string) => void;
 
@@ -150,7 +160,14 @@ interface DeliveryContextType {
   orders: Order[];
   cart: CartItem[];
   cartVendor: Vendor | null;
-  addToCart: (item: MenuItem, vendor: Vendor) => void;
+  addToCart: (
+    item: MenuItem, 
+    vendor: Vendor, 
+    quantityToAdd?: number, 
+    selectedVariations?: CartItemOption[], 
+    specialInstructions?: string,
+    customUnitPrice?: number
+  ) => void;
   removeFromCart: (menuItemId: string) => void;
   updateCartQuantity: (menuItemId: string, qty: number) => void;
   clearCart: () => void;
@@ -2701,6 +2718,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMenuItems(prev => [newItem, ...prev]);
   };
 
+  const updateMenuItem = async (id: string, updates: Partial<MenuItem>) => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('menu_items').update(updates).eq('id', id);
+      } catch (err) {
+        console.warn('Supabase update menu item error:', err);
+      }
+    }
+    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+  };
+
   const toggleMenuItemAvailability = async (id: string) => {
     const target = menuItems.find(m => m.id === id);
     if (!target) return;
@@ -3216,13 +3244,28 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // CART & ORDER CREATION (EXACT PIN POINT DELIVERY CALCULATION)
   // -------------------------------------------------------------
-  const addToCart = (item: MenuItem, vendor: Vendor) => {
+  const addToCart = (
+    item: MenuItem, 
+    vendor: Vendor, 
+    quantityToAdd: number = 1, 
+    selectedVariations?: CartItemOption[], 
+    specialInstructions?: string,
+    customUnitPrice?: number
+  ) => {
+    const finalUnitPrice = customUnitPrice !== undefined ? customUnitPrice : item.price;
+
     if (cartVendor && cartVendor.id !== vendor.id && cart.length > 0) {
       const confirmReset = window.confirm(
         `Your cart contains items from ${cartVendor.name}. Clear cart and add from ${vendor.name}?`
       );
       if (!confirmReset) return;
-      const newItems = [{ menuItem: item, quantity: 1 }];
+      const newItems: CartItem[] = [{ 
+        menuItem: item, 
+        quantity: quantityToAdd, 
+        selectedVariations, 
+        specialInstructions, 
+        unitPrice: finalUnitPrice 
+      }];
       setCart(newItems);
       setCartVendor(vendor);
       persistCustomerCart(newItems, vendor);
@@ -3231,14 +3274,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setCartVendor(vendor);
     setCart(prev => {
-      const existing = prev.find(ci => ci.menuItem.id === item.id);
+      const varKey = JSON.stringify(selectedVariations || []);
+      const existingIndex = prev.findIndex(ci => 
+        ci.menuItem.id === item.id && JSON.stringify(ci.selectedVariations || []) === varKey
+      );
+
       let updated: CartItem[];
-      if (existing) {
-        updated = prev.map(ci => 
-          ci.menuItem.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
+      if (existingIndex >= 0) {
+        updated = prev.map((ci, idx) => 
+          idx === existingIndex ? { ...ci, quantity: ci.quantity + quantityToAdd } : ci
         );
       } else {
-        updated = [...prev, { menuItem: item, quantity: 1 }];
+        updated = [...prev, { 
+          menuItem: item, 
+          quantity: quantityToAdd, 
+          selectedVariations, 
+          specialInstructions, 
+          unitPrice: finalUnitPrice 
+        }];
       }
       persistCustomerCart(updated, vendor);
       return updated;
@@ -3303,7 +3356,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return null;
     }
 
-    const foodTotal = cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0);
+    const foodTotal = cart.reduce((sum, ci) => sum + (ci.unitPrice ?? ci.menuItem.price) * ci.quantity, 0);
     const distanceKm = calculateDistanceKm(
       cartVendor.latitude,
       cartVendor.longitude,
@@ -3351,14 +3404,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ? crypto.randomUUID() 
           : `00000000-0000-4000-9000-${(Date.now() + index).toString(16).padStart(12, '0')}`;
           
+        const unitPrice = ci.unitPrice ?? ci.menuItem.price;
+        const selectedVarStrings = ci.selectedVariations?.map(v => `${v.groupName}: ${v.optionName}${v.price > 0 ? ` (+৳${v.price})` : ''}`);
+
         return {
           id: itemId,
           order_id: orderId,
           menu_item_id: ci.menuItem.id,
           item_name: ci.menuItem.name,
-          item_price: ci.menuItem.price,
+          item_price: unitPrice,
           quantity: ci.quantity,
-          subtotal: ci.menuItem.price * ci.quantity
+          subtotal: unitPrice * ci.quantity,
+          selected_variations: selectedVarStrings,
+          special_instructions: ci.specialInstructions || ''
         };
       }),
       vendor: cartVendor
@@ -3833,6 +3891,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deleteVendor,
         menuItems,
         addMenuItem,
+        updateMenuItem,
         toggleMenuItemAvailability,
         deleteMenuItem,
         foodCategories,

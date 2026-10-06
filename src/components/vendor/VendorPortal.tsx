@@ -63,6 +63,7 @@ export const VendorPortal: React.FC = () => {
     uploadVendorImage,
     menuItems, 
     addMenuItem, 
+    updateMenuItem,
     toggleMenuItemAvailability, 
     deleteMenuItem,
     orders, 
@@ -171,12 +172,93 @@ export const VendorPortal: React.FC = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // New Dish Form
+  // New/Edit Dish Form State
+  const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
   const [dishName, setDishName] = useState('');
   const [dishPrice, setDishPrice] = useState('');
   const [dishCategory, setDishCategory] = useState('Main Course');
   const [dishDescription, setDishDescription] = useState('');
   const [dishImageUrl, setDishImageUrl] = useState('');
+  const [dishVariations, setDishVariations] = useState<import('../../types/database').MenuVariationGroup[]>([]);
+
+  const openAddDishModal = () => {
+    setEditingDish(null);
+    setDishName('');
+    setDishPrice('');
+    setDishCategory('Main Course');
+    setDishDescription('');
+    setDishImageUrl('');
+    setDishVariations([]);
+    setIsAddDishOpen(true);
+  };
+
+  const openEditDishModal = (item: MenuItem) => {
+    setEditingDish(item);
+    setDishName(item.name);
+    setDishPrice(item.price.toString());
+    setDishCategory(item.category || 'Main Course');
+    setDishDescription(item.description || '');
+    setDishImageUrl(item.image_url || '');
+    setDishVariations(item.variations || []);
+    setIsAddDishOpen(true);
+  };
+
+  const addVariationGroup = () => {
+    setDishVariations(prev => [
+      ...prev,
+      {
+        id: `var-${Date.now()}`,
+        name: 'Portion / Size',
+        type: 'single',
+        required: true,
+        options: [
+          { id: `opt-${Date.now()}-1`, name: 'Full (1:2)', price: 0 },
+          { id: `opt-${Date.now()}-2`, name: 'Half (1:1)', price: 0 }
+        ]
+      }
+    ]);
+  };
+
+  const updateVariationGroup = (index: number, updates: Partial<import('../../types/database').MenuVariationGroup>) => {
+    setDishVariations(prev => prev.map((g, i) => i === index ? { ...g, ...updates } : g));
+  };
+
+  const removeVariationGroup = (index: number) => {
+    setDishVariations(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addOptionToGroup = (groupIndex: number) => {
+    setDishVariations(prev => prev.map((g, i) => {
+      if (i !== groupIndex) return g;
+      return {
+        ...g,
+        options: [
+          ...g.options,
+          { id: `opt-${Date.now()}`, name: 'New Option', price: 0 }
+        ]
+      };
+    }));
+  };
+
+  const updateOptionInGroup = (groupIndex: number, optionIndex: number, updates: Partial<import('../../types/database').MenuVariationOption>) => {
+    setDishVariations(prev => prev.map((g, i) => {
+      if (i !== groupIndex) return g;
+      return {
+        ...g,
+        options: g.options.map((opt, oi) => oi === optionIndex ? { ...opt, ...updates } : opt)
+      };
+    }));
+  };
+
+  const removeOptionFromGroup = (groupIndex: number, optionIndex: number) => {
+    setDishVariations(prev => prev.map((g, i) => {
+      if (i !== groupIndex) return g;
+      return {
+        ...g,
+        options: g.options.filter((_, oi) => oi !== optionIndex)
+      };
+    }));
+  };
 
   // Auth Handlers
   const handleVendorLoginSubmit = (e: React.FormEvent) => {
@@ -421,20 +503,34 @@ export const VendorPortal: React.FC = () => {
     e.preventDefault();
     if (!dishName.trim() || !dishPrice) return;
 
-    addMenuItem({
-      vendor_id: currentVendor.id,
-      name: dishName.trim(),
-      description: dishDescription.trim(),
-      price: parseFloat(dishPrice),
-      category: dishCategory,
-      is_available: true,
-      image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-    });
+    if (editingDish) {
+      updateMenuItem(editingDish.id, {
+        name: dishName.trim(),
+        description: dishDescription.trim(),
+        price: parseFloat(dishPrice),
+        category: dishCategory,
+        image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
+        variations: dishVariations.length > 0 ? dishVariations : undefined
+      });
+    } else {
+      addMenuItem({
+        vendor_id: currentVendor.id,
+        name: dishName.trim(),
+        description: dishDescription.trim(),
+        price: parseFloat(dishPrice),
+        category: dishCategory,
+        is_available: true,
+        image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
+        variations: dishVariations.length > 0 ? dishVariations : undefined
+      });
+    }
 
     setDishName('');
     setDishPrice('');
     setDishDescription('');
     setDishImageUrl('');
+    setDishVariations([]);
+    setEditingDish(null);
     setIsAddDishOpen(false);
   };
 
@@ -717,8 +813,8 @@ export const VendorPortal: React.FC = () => {
                         {/* "+ Add" Button inside Category (Matching Screenshot) */}
                         <button
                           onClick={() => {
+                            openAddDishModal();
                             setDishCategory(categoryName);
-                            setIsAddDishOpen(true);
                           }}
                           className="w-full py-2.5 px-3 border border-orange-200 hover:border-orange-300 bg-white hover:bg-orange-50/40 text-orange-600 rounded-2xl font-bold text-xs flex items-center justify-center space-x-1 transition shadow-2xs cursor-pointer active:scale-[0.99]"
                         >
@@ -747,7 +843,7 @@ export const VendorPortal: React.FC = () => {
                                   />
                                 </div>
 
-                                {/* Center: Name, Description, No options, Price */}
+                                {/* Center: Name, Description, Variations, Price */}
                                 <div className="flex-1 min-w-0 pr-2">
                                   <h4 className="font-extrabold text-sm text-slate-900 truncate">
                                     {item.name}
@@ -757,8 +853,10 @@ export const VendorPortal: React.FC = () => {
                                   </p>
 
                                   <div className="flex items-center justify-between mt-1 text-xs">
-                                    <span className="text-[11px] text-slate-400 font-medium">
-                                      No options
+                                    <span className="text-[11px] text-orange-600 font-semibold truncate max-w-[130px]">
+                                      {item.variations && item.variations.length > 0 
+                                        ? item.variations.map(v => v.name).join(', ') 
+                                        : 'No variations'}
                                     </span>
                                     <span className="font-mono font-bold text-slate-900">
                                       BDT {item.price.toFixed(2)}
@@ -766,8 +864,16 @@ export const VendorPortal: React.FC = () => {
                                   </div>
                                 </div>
 
-                                {/* Right: iOS Style Switch Toggle */}
-                                <div className="flex items-center space-x-2 shrink-0">
+                                {/* Right: Edit, iOS Style Switch Toggle & Delete */}
+                                <div className="flex items-center space-x-1.5 shrink-0">
+                                  <button
+                                    onClick={() => openEditDishModal(item)}
+                                    className="text-slate-400 hover:text-orange-600 p-1 transition cursor-pointer"
+                                    title="Edit dish and variations"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+
                                   <button
                                     type="button"
                                     onClick={() => toggleMenuItemAvailability(item.id)}
@@ -786,7 +892,7 @@ export const VendorPortal: React.FC = () => {
                                   {/* Delete option */}
                                   <button
                                     onClick={() => deleteMenuItem(item.id)}
-                                    className="text-slate-300 hover:text-rose-500 p-1 transition"
+                                    className="text-slate-300 hover:text-rose-500 p-1 transition cursor-pointer"
                                     title="Delete product"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1744,11 +1850,108 @@ export const VendorPortal: React.FC = () => {
                 )}
               </div>
 
+              {/* Variations Builder Section */}
+              <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900">Variations & Portion Sizes (ভ্যারিয়েশন)</h4>
+                    <p className="text-[11px] text-slate-500">Add portion sizes (e.g. Full, Half, 1:1, 1:2) or choices</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addVariationGroup}
+                    className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Group</span>
+                  </button>
+                </div>
+
+                {dishVariations.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
+                    No variations added yet. Click "+ Add Group" to create options like Portion Size or Add-ons.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {dishVariations.map((group, groupIdx) => (
+                      <div key={group.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            value={group.name}
+                            onChange={(e) => updateVariationGroup(groupIdx, { name: e.target.value })}
+                            placeholder="Group Name (e.g. Size / Portion)"
+                            className="flex-1 px-2.5 py-1.5 text-xs font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                          />
+                          <select
+                            value={group.type}
+                            onChange={(e) => updateVariationGroup(groupIdx, { type: e.target.value as 'single' | 'multiple' })}
+                            className="px-2 py-1.5 text-xs font-semibold border border-slate-200 bg-white rounded-lg"
+                          >
+                            <option value="single">Single Choice (Radio)</option>
+                            <option value="multiple">Multiple Choice (Checkbox)</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => removeVariationGroup(groupIdx)}
+                            className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                            title="Remove group"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Options in this group */}
+                        <div className="space-y-1.5 pl-1">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                            <span>Option Name (e.g. Full, 1:2)</span>
+                            <span>Extra Price (+BDT)</span>
+                          </div>
+                          {group.options.map((opt, optIdx) => (
+                            <div key={opt.id} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={opt.name}
+                                onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { name: e.target.value })}
+                                placeholder="Option Name"
+                                className="flex-1 px-2.5 py-1 text-xs border border-slate-200 bg-white rounded-lg font-medium"
+                              />
+                              <input
+                                type="number"
+                                value={opt.price}
+                                onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: parseFloat(e.target.value) || 0 })}
+                                placeholder="0"
+                                className="w-20 px-2 py-1 text-xs border border-slate-200 bg-white rounded-lg font-mono font-bold"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeOptionFromGroup(groupIdx, optIdx)}
+                                className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => addOptionToGroup(groupIdx)}
+                            className="mt-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Option</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAddDishOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1756,7 +1959,7 @@ export const VendorPortal: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
                 >
-                  Save Dish
+                  {editingDish ? 'Update Dish & Variations' : 'Save Dish'}
                 </button>
               </div>
             </form>

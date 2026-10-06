@@ -146,6 +146,54 @@ export const CustomerPortal: React.FC = () => {
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
+  // Foodpanda Style Menu Item Modal States
+  const [selectedMenuItemForModal, setSelectedMenuItemForModal] = useState<MenuItem | null>(null);
+  const [selectedModalVariations, setSelectedModalVariations] = useState<Record<string, import('../../context/DeliveryContext').CartItemOption>>({});
+  const [modalQuantity, setModalQuantity] = useState(1);
+  const [modalSpecialInstructions, setModalSpecialInstructions] = useState('');
+
+  const handleOpenMenuItemModal = (dish: MenuItem) => {
+    setSelectedMenuItemForModal(dish);
+    setModalQuantity(1);
+    setModalSpecialInstructions('');
+
+    const initialVars: Record<string, import('../../context/DeliveryContext').CartItemOption> = {};
+    if (dish.variations) {
+      dish.variations.forEach(g => {
+        if (g.options && g.options.length > 0) {
+          initialVars[g.id || g.name] = {
+            groupName: g.name,
+            optionName: g.options[0].name,
+            price: g.options[0].price || 0
+          };
+        }
+      });
+    }
+    setSelectedModalVariations(initialVars);
+  };
+
+  const calculatedModalUnitPrice = useMemo(() => {
+    if (!selectedMenuItemForModal) return 0;
+    const basePrice = selectedMenuItemForModal.price;
+    const extraPrice = Object.values(selectedModalVariations).reduce((sum, v) => sum + (v.price || 0), 0);
+    return basePrice + extraPrice;
+  }, [selectedMenuItemForModal, selectedModalVariations]);
+
+  const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
+
+  const handleConfirmAddToCartFromModal = () => {
+    if (!selectedMenuItemForModal || !selectedVendorForMenu) return;
+    addToCart(
+      selectedMenuItemForModal,
+      selectedVendorForMenu,
+      modalQuantity,
+      Object.values(selectedModalVariations),
+      modalSpecialInstructions,
+      calculatedModalUnitPrice
+    );
+    setSelectedMenuItemForModal(null);
+  };
+
   // Filter orders strictly for the active customer account (Only show the logged-in customer's orders)
   const myOrders = useMemo(() => {
     if (!currentUser || currentUser.role !== 'customer') {
@@ -259,6 +307,7 @@ export const CustomerPortal: React.FC = () => {
     (isEditProfileOpen ? 1 : 0) +
     (isSettingsModalOpen ? 1 : 0) +
     (isLogoutConfirmOpen ? 1 : 0) +
+    (selectedMenuItemForModal ? 1 : 0) +
     (isCartOpen ? 1 : 0);
 
   const prevOpenCountRef = useRef(0);
@@ -2371,24 +2420,28 @@ export const CustomerPortal: React.FC = () => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                       const originalPrice = Math.round(dish.price * 1.12);
                       return (
-                        <div key={dish.id} className="space-y-1.5 group cursor-pointer">
+                        <div 
+                          key={dish.id} 
+                          onClick={() => handleOpenMenuItemModal(dish)}
+                          className="space-y-1.5 group cursor-pointer"
+                        >
                           <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-2xs">
                             <img 
                               src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400'} 
                               alt={dish.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
-                            {/* Overlay Badge at Bottom Right of Image matching screenshot */}
-                            <div className="absolute bottom-2 right-2">
+                            {/* Overlay Badge at Bottom Right of Image */}
+                            <div className="absolute bottom-2 right-2" onClick={(e) => e.stopPropagation()}>
                               {cartItem ? (
                                 <div className="flex items-center bg-white/95 backdrop-blur-xs shadow-md rounded-full p-0.5 border border-slate-100">
                                   <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"><Minus className="w-3 h-3" /></button>
                                   <span className="text-[11px] font-black px-1.5 text-slate-900">{cartItem.quantity}</span>
-                                  <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-[#d70f64] hover:bg-pink-50 rounded-full cursor-pointer"><Plus className="w-3 h-3" /></button>
+                                  <button onClick={() => handleOpenMenuItemModal(dish)} className="p-1 text-[#d70f64] hover:bg-pink-50 rounded-full cursor-pointer"><Plus className="w-3 h-3" /></button>
                                 </div>
                               ) : (
                                 <button 
-                                  onClick={() => addToCart(dish, selectedVendorForMenu)}
+                                  onClick={() => handleOpenMenuItemModal(dish)}
                                   className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-slate-900 hover:bg-[#d70f64] hover:text-white transition-colors border border-slate-100 cursor-pointer active:scale-90"
                                 >
                                   <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -2403,7 +2456,10 @@ export const CustomerPortal: React.FC = () => {
                               <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
                             </div>
                             <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                              <span>👍 64%</span>
+                              <span>👍 92%</span>
+                              {dish.variations && dish.variations.length > 0 && (
+                                <span className="text-[10px] text-pink-600 font-bold bg-pink-50 px-1 rounded">Options</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2427,24 +2483,28 @@ export const CustomerPortal: React.FC = () => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                         const originalPrice = Math.round(dish.price * 1.12);
                         return (
-                          <div key={dish.id} className="space-y-1.5 group cursor-pointer">
+                          <div 
+                            key={dish.id} 
+                            onClick={() => handleOpenMenuItemModal(dish)}
+                            className="space-y-1.5 group cursor-pointer"
+                          >
                             <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-2xs">
                               <img 
                                 src={dish.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400'} 
                                 alt={dish.name}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                               />
-                              {/* Overlay Badge at Bottom Right of Image matching screenshot */}
-                              <div className="absolute bottom-2 right-2">
+                              {/* Overlay Badge at Bottom Right of Image */}
+                              <div className="absolute bottom-2 right-2" onClick={(e) => e.stopPropagation()}>
                                 {cartItem ? (
                                   <div className="flex items-center bg-white/95 backdrop-blur-xs shadow-md rounded-full p-0.5 border border-slate-100">
                                     <button onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)} className="p-1 text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"><Minus className="w-3 h-3" /></button>
                                     <span className="text-[11px] font-black px-1.5 text-slate-900">{cartItem.quantity}</span>
-                                    <button onClick={() => addToCart(dish, selectedVendorForMenu)} className="p-1 text-[#d70f64] hover:bg-pink-50 rounded-full cursor-pointer"><Plus className="w-3 h-3" /></button>
+                                    <button onClick={() => handleOpenMenuItemModal(dish)} className="p-1 text-[#d70f64] hover:bg-pink-50 rounded-full cursor-pointer"><Plus className="w-3 h-3" /></button>
                                   </div>
                                 ) : (
                                   <button 
-                                    onClick={() => addToCart(dish, selectedVendorForMenu)}
+                                    onClick={() => handleOpenMenuItemModal(dish)}
                                     className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-slate-900 hover:bg-[#d70f64] hover:text-white transition-colors border border-slate-100 cursor-pointer active:scale-90"
                                   >
                                     <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -2459,7 +2519,10 @@ export const CustomerPortal: React.FC = () => {
                                 <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
                               </div>
                               <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                                <span>👍 67%</span>
+                                <span>👍 95%</span>
+                                {dish.variations && dish.variations.length > 0 && (
+                                  <span className="text-[10px] text-pink-600 font-bold bg-pink-50 px-1 rounded">Options</span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -2828,6 +2891,169 @@ export const CustomerPortal: React.FC = () => {
                 className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs shadow-md transition"
               >
                 Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        FOODPANDA STYLE MENU ITEM & VARIATION SELECTION MODAL
+        ========================================================================
+      */}
+      {selectedMenuItemForModal && selectedVendorForMenu && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+            {/* Top Dish Cover Header */}
+            <div className="relative h-56 shrink-0 bg-slate-100">
+              <img
+                src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600'}
+                alt={selectedMenuItemForModal.name}
+                className="w-full h-full object-cover"
+              />
+              <button
+                onClick={() => setSelectedMenuItemForModal(null)}
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white flex items-center justify-center transition cursor-pointer backdrop-blur-xs"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-full text-xs font-bold">
+                {selectedMenuItemForModal.category}
+              </div>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Dish Name & Description */}
+              <div className="space-y-1 border-b border-slate-100 pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-lg font-black text-slate-900 leading-snug">
+                    {selectedMenuItemForModal.name}
+                  </h3>
+                  <span className="text-base font-black text-[#d70f64] shrink-0 font-mono">
+                    {settings.currency_symbol} {selectedMenuItemForModal.price}
+                  </span>
+                </div>
+                {selectedMenuItemForModal.description && (
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {selectedMenuItemForModal.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 pt-1">
+                  <span className="text-amber-500">👍 95%</span>
+                  <span>·</span>
+                  <span className="text-slate-400 font-medium">Popular choice</span>
+                </div>
+              </div>
+
+              {/* Variation Groups */}
+              {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedMenuItemForModal.variations.map((group) => {
+                    const groupKey = group.id || group.name;
+                    const selectedVal = selectedModalVariations[groupKey];
+
+                    return (
+                      <div key={groupKey} className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
+                            {group.name}
+                          </h4>
+                          <span className="text-[10px] font-bold text-[#d70f64] bg-pink-50 px-2 py-0.5 rounded-full">
+                            {group.required ? 'Required' : 'Optional'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5 pt-1">
+                          {group.options.map((opt) => {
+                            const isSelected = selectedVal?.optionName === opt.name;
+                            return (
+                              <label
+                                key={opt.id || opt.name}
+                                onClick={() => {
+                                  setSelectedModalVariations(prev => ({
+                                    ...prev,
+                                    [groupKey]: {
+                                      groupName: group.name,
+                                      optionName: opt.name,
+                                      price: opt.price || 0
+                                    }
+                                  }));
+                                }}
+                                className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${
+                                  isSelected 
+                                    ? 'bg-white border-[#d70f64] text-slate-900 shadow-2xs' 
+                                    : 'bg-white/60 border-slate-200 text-slate-700 hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center space-x-2.5">
+                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                    isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
+                                  }`}>
+                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                  </div>
+                                  <span className="text-xs font-extrabold">{opt.name}</span>
+                                </div>
+                                <span className="text-xs font-black text-slate-600 font-mono">
+                                  {opt.price > 0 ? `+${settings.currency_symbol} ${opt.price}` : 'Free'}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {/* Special Instructions Input */}
+              <div className="space-y-1.5 pt-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Special Instructions (বিশেষ নির্দেশনা)
+                </label>
+                <input
+                  type="text"
+                  value={modalSpecialInstructions}
+                  onChange={(e) => setModalSpecialInstructions(e.target.value)}
+                  placeholder="e.g. Less spicy, extra sauce, no cutlery..."
+                  className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#d70f64] font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Bottom Sticky Add to Basket Bar */}
+            <div className="p-4 bg-white border-t border-slate-100 shadow-2xl flex items-center justify-between gap-3 shrink-0">
+              {/* Quantity Controller */}
+              <div className="flex items-center bg-slate-100 rounded-2xl p-1 border border-slate-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setModalQuantity(q => Math.max(1, q - 1))}
+                  className="w-8 h-8 rounded-xl bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-200 transition cursor-pointer"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="w-8 text-center font-black text-xs text-slate-900 font-mono">
+                  {modalQuantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setModalQuantity(q => q + 1)}
+                  className="w-8 h-8 rounded-xl bg-white text-[#d70f64] font-bold flex items-center justify-center hover:bg-pink-50 transition cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Big Foodpanda Pink Submit Button */}
+              <button
+                type="button"
+                onClick={handleConfirmAddToCartFromModal}
+                className="flex-1 py-3 px-4 bg-[#d70f64] hover:bg-[#b00c50] text-white rounded-2xl font-black text-xs sm:text-sm flex items-center justify-between shadow-lg shadow-pink-500/20 active:scale-[0.98] transition cursor-pointer"
+              >
+                <span>Add to Basket</span>
+                <span className="font-mono text-sm">{settings.currency_symbol} {calculatedModalTotal}</span>
               </button>
             </div>
           </div>

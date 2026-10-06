@@ -678,6 +678,16 @@ export const VendorOrdersTerminal: React.FC = () => {
                                   <span className="text-rose-600 font-mono mr-1.5">{item.quantity}x</span>
                                   {item.item_name}
                                 </div>
+                                {item.selected_variations && item.selected_variations.length > 0 && (
+                                  <div className="text-[11px] font-semibold text-orange-700 bg-orange-50 rounded-md px-1.5 py-0.5 mt-0.5 border border-orange-100">
+                                    {item.selected_variations.join(' • ')}
+                                  </div>
+                                )}
+                                {item.special_instructions && (
+                                  <div className="text-[11px] italic text-slate-500 mt-0.5">
+                                    Note: "{item.special_instructions}"
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <span className="font-mono font-bold text-slate-700">
