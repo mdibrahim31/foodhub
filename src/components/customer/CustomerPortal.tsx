@@ -1314,23 +1314,13 @@ export const CustomerPortal: React.FC = () => {
 
               {/* Conditional Logout Button */}
               <div className="pt-2 pb-6">
-                <div className="space-y-3">
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Logged In Account</span>
-                      <h4 className="font-black text-slate-900 text-sm">{currentUser?.name} ({currentUser?.phone})</h4>
-                    </div>
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  </div>
-
-                  <button
-                    onClick={() => setIsLogoutConfirmOpen(true)}
-                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4 stroke-[2.5]" />
-                    <span>Log out</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIsLogoutConfirmOpen(true)}
+                  className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 stroke-[2.5]" />
+                  <span>Log out</span>
+                </button>
               </div>
             </div>
           </div>
