@@ -78,7 +78,12 @@ export function isPointInZone(lat: number, lng: number, zone: DeliveryZone): boo
 /**
  * Find the matching zone for a given point.
  */
-export function findZoneForPoint(lat: number, lng: number, zones: DeliveryZone[]): DeliveryZone | null {
+export function findZoneForPoint(
+  lat: number, 
+  lng: number, 
+  zones: DeliveryZone[], 
+  fallbackToClosest: boolean = true
+): DeliveryZone | null {
   if (!zones || zones.length === 0) return null;
   
   const activeZones = zones.filter(z => z.is_active !== false);
@@ -95,6 +100,10 @@ export function findZoneForPoint(lat: number, lng: number, zones: DeliveryZone[]
       return distA - distB;
     });
     return matchingZones[0];
+  }
+
+  if (!fallbackToClosest) {
+    return null;
   }
 
   // Fallback: if outside all configured zones, return the closest zone

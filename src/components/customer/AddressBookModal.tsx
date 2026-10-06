@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { useDelivery } from '../../context/DeliveryContext';
 import { CustomerAddress } from '../../types/database';
+import { findZoneForPoint } from '../../utils/geo';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -112,7 +113,8 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     setSelectedAddress, 
     addAddress, 
     updateAddress, 
-    deleteAddress 
+    deleteAddress,
+    zones
   } = useDelivery();
 
   // Navigation sub-views:
@@ -342,6 +344,9 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     e.preventDefault();
     if (!addressLine.trim()) return;
 
+    const detectedZone = findZoneForPoint(pinnedLat, pinnedLng, zones);
+    const zoneName = detectedZone?.name || 'Chawkbazar Zone';
+
     if (editingAddressId) {
       updateAddress(editingAddressId, {
         address_line: addressLine.trim(),
@@ -349,6 +354,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
         label,
         latitude: pinnedLat,
         longitude: pinnedLng,
+        zone: zoneName,
       });
     } else {
       addAddress({
@@ -359,6 +365,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
         details: noteToRider.trim() || cityField,
         latitude: pinnedLat,
         longitude: pinnedLng,
+        zone: zoneName,
         is_default: addresses.length === 0,
       });
     }
@@ -419,7 +426,10 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                   return (
                     <div 
                       key={addr.id}
-                      onClick={() => setSelectedAddress(addr)}
+                      onClick={() => {
+                        setSelectedAddress(addr);
+                        onClose();
+                      }}
                       className={`px-4 py-4 flex items-start justify-between cursor-pointer transition hover:bg-slate-50/80 ${
                         isSelected ? 'bg-orange-50/30' : ''
                       }`}

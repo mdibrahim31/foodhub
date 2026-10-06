@@ -507,17 +507,22 @@ export const CustomerPortal: React.FC = () => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderInstructions, setOrderInstructions] = useState('');
 
-  // Customer Coordinates
+  // Customer Coordinates from active address in Address Book or default
   const customerLat = selectedAddress?.latitude || 22.3590;
   const customerLng = selectedAddress?.longitude || 91.8380;
 
-  // Active Customer Zone based on address or pin location
+  // Active Customer Zone based strictly on the map pin point (customerLat, customerLng)
   const activeCustomerZone = React.useMemo(() => {
+    // 1. Determine zone from exact pin coordinates inside zone boundary / radius
+    const zoneFromCoords = findZoneForPoint(customerLat, customerLng, zones, false);
+    if (zoneFromCoords) return zoneFromCoords;
+
+    // 2. If coordinates are matched with fallback or selectedAddress zone name
     if (selectedAddress?.zone) {
       const match = zones.find(z => z.name.toLowerCase() === selectedAddress.zone?.toLowerCase() || z.id === selectedAddress.zone);
       if (match) return match;
     }
-    return findZoneForPoint(customerLat, customerLng, zones);
+    return findZoneForPoint(customerLat, customerLng, zones, true);
   }, [selectedAddress?.zone, customerLat, customerLng, zones]);
 
   const toggleFavorite = (vendorId: string, e: React.MouseEvent) => {
@@ -529,13 +534,24 @@ export const CustomerPortal: React.FC = () => {
 
   // Filtered and Sorted Vendors (Strictly filtered by Customer Zone Boundary)
   const filteredVendors = vendors.filter((v) => {
-    // 1. Filter strictly by Customer Zone: Only vendors inside the customer's active zone are shown
-    const matchesZone = activeCustomerZone
-      ? (
-          (v.zone && (v.zone.toLowerCase() === activeCustomerZone.name.toLowerCase() || v.zone === activeCustomerZone.id)) ||
-          isPointInZone(v.latitude, v.longitude, activeCustomerZone)
-        )
-      : true;
+    // 1. Filter strictly by Customer Zone: Only vendors added/belonging to this zone are shown!
+    if (!activeCustomerZone) {
+      return false; // If no zone matches the pinned location, do not show any vendor
+    }
+
+    const normCustZone = activeCustomerZone.name.toLowerCase().replace(/\s*zone\s*/i, '').trim();
+    const normVendorZone = (v.zone || '').toLowerCase().replace(/\s*zone\s*/i, '').trim();
+
+    // Direct zone name match or ID match
+    const isZoneNameMatch = normVendorZone.length > 0 && normVendorZone === normCustZone;
+    const isZoneIdMatch = Boolean(v.zone && v.zone === activeCustomerZone.id);
+    // If vendor has no explicit zone assigned, check if vendor's GPS coordinate is in this zone
+    const isPointMatch = !v.zone && isPointInZone(v.latitude, v.longitude, activeCustomerZone);
+
+    const matchesZone = isZoneNameMatch || isZoneIdMatch || isPointMatch;
+    if (!matchesZone) {
+      return false; // Reject vendors from other zones!
+    }
 
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
