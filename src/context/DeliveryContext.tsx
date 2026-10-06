@@ -1059,10 +1059,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [customers]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(addresses));
-  }, [addresses]);
-
-  useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}riders`, JSON.stringify(riders));
   }, [riders]);
 
@@ -2705,7 +2701,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           price: newItem.price,
           image_url: newItem.image_url || null,
           category: newItem.category || 'Main Course',
-          is_available: newItem.is_available ?? true
+          is_available: newItem.is_available ?? true,
+          variations: newItem.variations || null
         }]);
         if (error) {
           console.error('Supabase error inserting menu item:', error);
@@ -3456,6 +3453,54 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         const sVendorId = vId && isUuid(vId) ? vId : null;
 
+        // 1. Ensure customer exists in Supabase to satisfy foreign key constraints
+        if (sCustomerId && currentUser) {
+          try {
+            const { data: cExists } = await supabase.from('customers').select('id').eq('id', sCustomerId).maybeSingle();
+            if (!cExists) {
+              const customerPayload = {
+                id: sCustomerId,
+                name: currentUser.name || 'Customer',
+                phone: currentUser.phone || '01800000000',
+                password: '123', // placeholder password
+                email: (currentUser as any).email || currentCustomer?.email || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              await supabase.from('customers').upsert([customerPayload]);
+            }
+          } catch (cErr) {
+            console.warn('Customer auto-create on order failed:', cErr);
+          }
+        }
+
+        // 2. Ensure vendor exists in Supabase to satisfy foreign key constraints
+        if (sVendorId && cartVendor) {
+          try {
+            const { data: vExists } = await supabase.from('vendors').select('id').eq('id', sVendorId).maybeSingle();
+            if (!vExists) {
+              const vendorPayload = {
+                id: sVendorId,
+                unique_id: cartVendor.unique_id || `v-${Date.now()}`,
+                name: cartVendor.name,
+                phone: cartVendor.phone || '01700000000',
+                address: cartVendor.address || 'Chattogram',
+                latitude: cartVendor.latitude || 22.3590,
+                longitude: cartVendor.longitude || 91.8380,
+                zone: cartVendor.zone || 'Chawkbazar Zone',
+                is_active: cartVendor.is_active !== false,
+                is_paused: cartVendor.is_paused === true,
+                rating: cartVendor.rating || 4.8,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              await supabase.from('vendors').upsert([vendorPayload]);
+            }
+          } catch (vErr) {
+            console.warn('Vendor auto-create on order failed:', vErr);
+          }
+        }
+
         const supabaseOrderPayload = {
           id: newOrder.id,
           order_code: newOrder.order_code,
@@ -3486,7 +3531,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             item_name: it.item_name,
             item_price: it.item_price,
             quantity: it.quantity,
-            subtotal: it.subtotal
+            subtotal: it.subtotal,
+            selected_variations: it.selected_variations || null,
+            special_instructions: it.special_instructions || null
           }));
           await supabase.from('order_items').upsert(itemsPayload);
         } else {
@@ -3503,7 +3550,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 item_name: it.item_name,
                 item_price: it.item_price,
                 quantity: it.quantity,
-                subtotal: it.subtotal
+                subtotal: it.subtotal,
+                selected_variations: it.selected_variations || null,
+                special_instructions: it.special_instructions || null
               }));
               await supabase.from('order_items').upsert(itemsPayload);
             }

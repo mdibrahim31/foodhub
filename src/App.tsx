@@ -26,10 +26,18 @@ function CustomerSiteLayout() {
   const { 
     role, 
     setRole, 
+    currentUser,
     isSupabaseConfigured, 
     supabaseConfig, 
     connectSupabase 
   } = useDelivery();
+
+  // Auto-route to correct portal if user is logged in
+  useEffect(() => {
+    if (currentUser && currentUser.role && role !== currentUser.role) {
+      setRole(currentUser.role);
+    }
+  }, [currentUser, role, setRole]);
 
   const [dbUrl, setDbUrl] = useState(supabaseConfig.url || '');
   const [dbKey, setDbKey] = useState(supabaseConfig.anonKey || '');

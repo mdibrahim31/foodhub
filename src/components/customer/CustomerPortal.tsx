@@ -2536,53 +2536,6 @@ export const CustomerPortal: React.FC = () => {
               ))}
             </div>
           </div>
-
-          {/* 6. Bottom Sticky Floating Cart Bar (100% Matching Foodpanda Screenshot) */}
-          {cart.length > 0 && (
-            <div className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-100 shadow-2xl p-3 space-y-2 animate-in slide-in-from-bottom">
-              {/* Discount Notice Banner */}
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2 text-emerald-700 text-xs font-extrabold px-1">
-                  <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                    ✓
-                  </div>
-                  <span>You've got 10% off your order!</span>
-                </div>
-                <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="w-full h-full bg-emerald-600 rounded-full" />
-                </div>
-              </div>
-
-              {/* Main Foodpanda Pink Button */}
-              <button
-                onClick={() => {
-                  setIsViewingCartDetail(true);
-                }}
-                className="w-full py-3 px-4 bg-[#d70f64] hover:bg-[#c00d58] text-white rounded-2xl shadow-lg flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-white text-[#d70f64] font-black text-xs flex items-center justify-center shadow-xs shrink-0">
-                    {cart.reduce((sum, ci) => sum + ci.quantity, 0)}
-                  </div>
-                  <div className="text-left truncate">
-                    <span className="font-extrabold text-sm block leading-tight">View your cart</span>
-                    <span className="text-[11px] text-pink-100 font-medium block truncate max-w-[170px]">
-                      {selectedVendorForMenu.name} - {selectedVendorForMenu.zone || selectedVendorForMenu.address}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="font-extrabold text-sm block leading-tight">
-                    {settings.currency_symbol} {cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0)}
-                  </span>
-                  <span className="text-[10px] text-pink-200 line-through block">
-                    {settings.currency_symbol} {Math.round(cart.reduce((sum, ci) => sum + ci.menuItem.price * ci.quantity, 0) * 1.12)}
-                  </span>
-                </div>
-              </button>
-            </div>
-          )}
         </motion.div>
       )}
       </AnimatePresence>
@@ -3349,43 +3302,6 @@ export const CustomerPortal: React.FC = () => {
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
         />
-      )}
-
-      {/* Floating Bottom Cart Bar (Sticky above bottom dock) */}
-      {cart.length > 0 && activeBottomNav !== 'carts' && !selectedVendorForMenu && (
-        <div className="fixed bottom-16 inset-x-4 max-w-md mx-auto z-40 animate-in fade-in slide-in-from-bottom-2 flex items-center space-x-2">
-          <button
-            onClick={() => setActiveBottomNav('carts')}
-            className="flex-1 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-2xl py-3 px-4 flex items-center justify-between shadow-2xl shadow-orange-600/30 active:scale-[0.98] transition cursor-pointer border border-white/20"
-          >
-            <div className="flex items-center space-x-2.5 truncate">
-              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black shrink-0">
-                {totalCartCount}
-              </span>
-              <div className="text-left truncate">
-                <p className="text-[10px] font-black uppercase tracking-wider text-orange-100">View Cart</p>
-                <p className="text-xs font-bold truncate max-w-[160px]">{cartVendor?.name}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1.5 shrink-0">
-              <span className="font-mono font-black text-sm">{settings.currency_symbol}{foodTotal}</span>
-              <ArrowRight className="w-4 h-4 stroke-[3]" />
-            </div>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm('Are you sure you want to remove this cart? (কার্ট রিমুভ করতে চান?)')) {
-                clearCart();
-              }
-            }}
-            className="w-12 h-12 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition shrink-0 cursor-pointer"
-            title="Remove Cart"
-          >
-            <Trash2 className="w-5 h-5 text-rose-600" />
-          </button>
-        </div>
       )}
 
       {/* 

@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
     image_url TEXT,
     category VARCHAR(100) DEFAULT 'Main Course',
     is_available BOOLEAN DEFAULT true,
+    variations JSONB DEFAULT '[]'::JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -244,7 +245,9 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     item_name VARCHAR(255) NOT NULL,
     item_price NUMERIC(10, 2) NOT NULL,
     quantity INT NOT NULL DEFAULT 1,
-    subtotal NUMERIC(10, 2) NOT NULL
+    subtotal NUMERIC(10, 2) NOT NULL,
+    selected_variations TEXT[],
+    special_instructions TEXT
 );
 
 -- ====================================================================
