@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
+import { CustomerRestaurantReviewsModal } from './CustomerRestaurantReviewsModal';
 import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../../utils/geo';
 import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
@@ -134,6 +135,7 @@ export const CustomerPortal: React.FC = () => {
   const [activeMenuCategory, setActiveMenuCategory] = useState('All');
 
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isRestaurantReviewsOpen, setIsRestaurantReviewsOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
@@ -222,6 +224,7 @@ export const CustomerPortal: React.FC = () => {
     (isAddressModalOpen ? 1 : 0) + 
     (isCustomerLoginModalOpen ? 1 : 0) +
     (isAuthModalOpen ? 1 : 0) +
+    (isRestaurantReviewsOpen ? 1 : 0) +
     (isEditProfileOpen ? 1 : 0) +
     (isSettingsModalOpen ? 1 : 0) +
     (isLogoutConfirmOpen ? 1 : 0) +
@@ -250,7 +253,7 @@ export const CustomerPortal: React.FC = () => {
       }
     }
     prevOpenCountRef.current = openCount;
-  }, [openCount, activeBottomNav, selectedVendorForMenu, isViewingCartDetail, accountSubView, isAddressModalOpen, isCustomerLoginModalOpen, isAuthModalOpen, isEditProfileOpen, isSettingsModalOpen, isLogoutConfirmOpen, isCartOpen]);
+  }, [openCount, activeBottomNav, selectedVendorForMenu, isViewingCartDetail, accountSubView, isAddressModalOpen, isCustomerLoginModalOpen, isAuthModalOpen, isRestaurantReviewsOpen, isEditProfileOpen, isSettingsModalOpen, isLogoutConfirmOpen, isCartOpen]);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -269,6 +272,8 @@ export const CustomerPortal: React.FC = () => {
         setIsCustomerLoginModalOpen(false);
       } else if (isAuthModalOpen) {
         setIsAuthModalOpen(false);
+      } else if (isRestaurantReviewsOpen) {
+        setIsRestaurantReviewsOpen(false);
       } else if (isEditProfileOpen) {
         setIsEditProfileOpen(false);
       } else if (isSettingsModalOpen) {
@@ -2116,7 +2121,12 @@ export const CustomerPortal: React.FC = () => {
                 </button>
                 
                 <div className="flex items-center space-x-2">
-                  <button className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900">
+                  <button 
+                    onClick={() => setIsRestaurantReviewsOpen(true)}
+                    className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform cursor-pointer"
+                    title="Ratings & Reviews"
+                    aria-label="Ratings & Reviews"
+                  >
                     <Info className="w-5 h-5" />
                   </button>
                   <button 
@@ -2152,14 +2162,25 @@ export const CustomerPortal: React.FC = () => {
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 {selectedVendorForMenu.name}
               </h3>
-              <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600">
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                <span className="text-slate-900">{selectedVendorForMenu.rating || 4.7}</span>
-                <span className="text-slate-400">(2k+ ratings)</span>
+              <div 
+                onClick={() => setIsRestaurantReviewsOpen(true)}
+                className="inline-flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600 cursor-pointer hover:opacity-85 transition group active:scale-95 py-0.5 px-2 rounded-full hover:bg-slate-50 select-none"
+                title="View Ratings & Reviews"
+              >
+                <Star className="w-4 h-4 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span className="text-slate-900 font-black">
+                  {selectedVendorForMenu.rating ? selectedVendorForMenu.rating.toFixed(1) : '5'}
+                </span>
+                <span className="text-slate-500 font-semibold">(2k+ ratings)</span>
               </div>
-              <button className="text-[11px] font-bold text-rose-600 hover:underline">
-                See all outlets
-              </button>
+              <div>
+                <button 
+                  onClick={() => setIsRestaurantReviewsOpen(true)}
+                  className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                >
+                  See all outlets
+                </button>
+              </div>
             </div>
 
             {/* 3. Delivery / Pick-Up Tabs */}
@@ -2341,6 +2362,14 @@ export const CustomerPortal: React.FC = () => {
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}
       />
+
+      {/* RATINGS & REVIEWS MODAL (100% Matching Screenshot 2) */}
+      {isRestaurantReviewsOpen && selectedVendorForMenu && (
+        <CustomerRestaurantReviewsModal
+          vendor={selectedVendorForMenu}
+          onClose={() => setIsRestaurantReviewsOpen(false)}
+        />
+      )}
 
       {/* EDIT PROFILE / SETTINGS MODAL */}
       {(isEditProfileOpen || isSettingsModalOpen) && (
