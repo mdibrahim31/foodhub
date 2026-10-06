@@ -133,64 +133,38 @@ export const CustomerPortal: React.FC = () => {
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [activeMenuCategory, setActiveMenuCategory] = useState('All');
 
-  const [userName, setUserName] = useState(() => currentUser?.name || 'Customer');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [customerPhone, setCustomerPhone] = useState(() => currentUser?.phone || '');
-  const [customerEmail, setCustomerEmail] = useState('');
+  const [formName, setFormName] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formEmail, setFormEmail] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaveFeedback, setProfileSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (currentCustomer) {
-      setUserName(currentCustomer.name || currentUser?.name || 'Customer');
-      setCustomerPhone(currentCustomer.phone || currentUser?.phone || '');
-      setCustomerEmail(currentCustomer.email || '');
-    } else if (currentUser && currentUser.role === 'customer') {
-      setUserName(currentUser.name || 'Customer');
-      setCustomerPhone(currentUser.phone || '');
-      setCustomerEmail('');
-    } else {
-      setUserName('Guest User');
-      setCustomerPhone('');
-      setCustomerEmail('');
-    }
-  }, [currentCustomer, currentUser]);
+  const accountDisplayName = currentCustomer?.name || currentUser?.name || 'Customer';
 
   const openEditProfile = () => {
-    if (currentCustomer) {
-      setUserName(currentCustomer.name || currentUser?.name || '');
-      setCustomerPhone(currentCustomer.phone || currentUser?.phone || '');
-      setCustomerEmail(currentCustomer.email || '');
-    } else if (currentUser) {
-      setUserName(currentUser.name || '');
-      setCustomerPhone(currentUser.phone || '');
-      setCustomerEmail('');
-    }
+    setFormName(currentCustomer?.name || currentUser?.name || '');
+    setFormPhone(currentCustomer?.phone || currentUser?.phone || '');
+    setFormEmail(currentCustomer?.email || '');
     setProfileSaveFeedback(null);
     setIsEditProfileOpen(true);
   };
 
   const openSettingsModal = () => {
-    if (currentCustomer) {
-      setUserName(currentCustomer.name || currentUser?.name || '');
-      setCustomerPhone(currentCustomer.phone || currentUser?.phone || '');
-      setCustomerEmail(currentCustomer.email || '');
-    } else if (currentUser) {
-      setUserName(currentUser.name || '');
-      setCustomerPhone(currentUser.phone || '');
-      setCustomerEmail('');
-    }
+    setFormName(currentCustomer?.name || currentUser?.name || '');
+    setFormPhone(currentCustomer?.phone || currentUser?.phone || '');
+    setFormEmail(currentCustomer?.email || '');
     setProfileSaveFeedback(null);
     setIsSettingsModalOpen(true);
   };
 
   const handleSaveProfile = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const trimmedName = userName.trim();
-    const trimmedPhone = customerPhone.trim();
-    const trimmedEmail = customerEmail.trim();
+    const trimmedName = formName.trim();
+    const trimmedPhone = formPhone.trim();
+    const trimmedEmail = formEmail.trim();
 
     if (!trimmedName) {
       setProfileSaveFeedback({ type: 'error', message: 'Please enter a valid display name.' });
@@ -217,7 +191,7 @@ export const CustomerPortal: React.FC = () => {
           setIsEditProfileOpen(false);
           setIsSettingsModalOpen(false);
           setProfileSaveFeedback(null);
-        }, 900);
+        }, 800);
       } else {
         setProfileSaveFeedback({ type: 'error', message: res.message || 'Failed to update profile.' });
       }
@@ -1232,7 +1206,7 @@ export const CustomerPortal: React.FC = () => {
             <div className="px-5 py-5 space-y-6">
               {/* User Name & View Profile */}
               <div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">{userName}</h2>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">{accountDisplayName}</h2>
                 <button 
                   onClick={openEditProfile}
                   className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block cursor-pointer"
@@ -2405,8 +2379,8 @@ export const CustomerPortal: React.FC = () => {
                 <input
                   type="text"
                   required
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
                   placeholder="Your Name"
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
                 />
@@ -2417,8 +2391,8 @@ export const CustomerPortal: React.FC = () => {
                 <input
                   type="tel"
                   required
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
                   placeholder="01XXXXXXXXX"
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
                 />
@@ -2428,8 +2402,8 @@ export const CustomerPortal: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Email Address</label>
                 <input
                   type="email"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
                   placeholder="customer@example.com"
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
                 />

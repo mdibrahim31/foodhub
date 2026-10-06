@@ -541,10 +541,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('customers')
             .select('*');
           if (!custError && custData && isSubscribed && Array.isArray(custData)) {
-            setCustomers(custData.map((c: any) => ({
-              ...c,
-              addresses: c.addresses || []
-            })));
+            setCustomers(prev => {
+              const map = new Map(prev.map(c => [c.id, c]));
+              let hasChanges = false;
+              custData.forEach((c: any) => {
+                if (c && c.id) {
+                  const existing = map.get(c.id);
+                  if (
+                    !existing ||
+                    existing.name !== c.name ||
+                    existing.phone !== c.phone ||
+                    existing.email !== c.email ||
+                    existing.avatar_url !== c.avatar_url
+                  ) {
+                    map.set(c.id, { ...existing, ...c, addresses: c.addresses || existing?.addresses || [] });
+                    hasChanges = true;
+                  }
+                }
+              });
+              return hasChanges ? Array.from(map.values()) : prev;
+            });
           }
 
           // Fetch orders from Supabase with relational items
@@ -625,10 +641,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (Array.isArray(cData) && cData.length > 0 && isSubscribed) {
             setCustomers(prev => {
               const map = new Map(prev.map(c => [c.id, c]));
+              let hasChanges = false;
               cData.forEach((c: CustomerUser) => {
-                if (c && c.id) map.set(c.id, { ...map.get(c.id), ...c });
+                if (c && c.id) {
+                  const existing = map.get(c.id);
+                  if (
+                    !existing ||
+                    existing.name !== c.name ||
+                    existing.phone !== c.phone ||
+                    existing.email !== c.email ||
+                    existing.avatar_url !== c.avatar_url
+                  ) {
+                    map.set(c.id, { ...existing, ...c });
+                    hasChanges = true;
+                  }
+                }
               });
-              return Array.from(map.values());
+              return hasChanges ? Array.from(map.values()) : prev;
             });
           }
         }
