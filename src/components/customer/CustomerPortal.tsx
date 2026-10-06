@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
@@ -145,6 +145,29 @@ export const CustomerPortal: React.FC = () => {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Filter orders strictly for the active customer account (Only show the logged-in customer's orders)
+  const myOrders = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'customer') {
+      return [];
+    }
+    const currentCustId = currentCustomer?.id || currentUser.reference_id || currentUser.id;
+    const currentCustPhone = (currentUser.phone || currentCustomer?.phone || '').replace(/\D/g, '');
+
+    return orders.filter(ord => {
+      if (ord.customer_id && (ord.customer_id === currentCustId || ord.customer_id === currentUser.id)) {
+        return true;
+      }
+      if (currentCustPhone && ord.customer_phone) {
+        const orderPhone = ord.customer_phone.replace(/\D/g, '');
+        if (orderPhone && orderPhone === currentCustPhone) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [orders, currentUser, currentCustomer]);
+
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -824,7 +847,7 @@ export const CustomerPortal: React.FC = () => {
               </div>
             )}
 
-            {orders.length === 0 ? (
+            {myOrders.length === 0 ? (
               <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
                 <div className="w-16 h-16 rounded-3xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto border border-slate-100">
                   <Receipt className="w-7 h-7 stroke-[1.5]" />
@@ -847,7 +870,7 @@ export const CustomerPortal: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {orders.map((ord) => {
+                {myOrders.map((ord) => {
                   const vendorImage = ord.vendor?.cover_image || ord.vendor?.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150';
                   
                   // Format delivery date nicely matching screenshot
@@ -2832,7 +2855,7 @@ export const CustomerPortal: React.FC = () => {
         tokon customer er kace ekTa permission window show hobe..jeTate bola hobe vendor er food ready hote eto minit lagbe apni ki order continue korte chan ki na..customer ok ba no select korte pare.ok bolle.order puropuri place hoye jabe.vendor order ready korbe"
         ========================================================================
       */}
-      {orders.filter(o => o.status === 'vendor_accepted' && !o.customer_confirmed_prep).map((prepOrder) => (
+      {myOrders.filter(o => o.status === 'vendor_accepted' && !o.customer_confirmed_prep).map((prepOrder) => (
         <div key={prepOrder.id} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 text-center shadow-2xl border border-slate-100">
             <div className="w-14 h-14 rounded-3xl bg-amber-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">

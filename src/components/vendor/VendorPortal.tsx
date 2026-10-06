@@ -64,6 +64,8 @@ export const VendorPortal: React.FC = () => {
     updateOrderStatus,
     settings,
     riders,
+    foodCategories,
+    addFoodCategory,
     currentUser,
     loginUser,
     setPasswordForUser,
@@ -433,6 +435,14 @@ export const VendorPortal: React.FC = () => {
     const cat = newCategoryName.trim();
     if (!customCategories.includes(cat)) {
       setCustomCategories(prev => [...prev, cat]);
+    }
+    // Also persist category in database foodCategories if not existing
+    if (!foodCategories.some(c => c.name.toLowerCase() === cat.toLowerCase())) {
+      addFoodCategory({
+        name: cat,
+        is_active: true,
+        category_type: 'food'
+      });
     }
     setNewCategoryName('');
     setIsAddCategoryOpen(false);
