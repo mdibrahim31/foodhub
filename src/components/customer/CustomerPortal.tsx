@@ -151,6 +151,8 @@ export const CustomerPortal: React.FC = () => {
   const [selectedModalVariations, setSelectedModalVariations] = useState<Record<string, import('../../context/DeliveryContext').CartItemOption>>({});
   const [modalQuantity, setModalQuantity] = useState(1);
   const [modalSpecialInstructions, setModalSpecialInstructions] = useState('');
+  const [isUnavailPopupOpen, setIsUnavailPopupOpen] = useState(false);
+  const [unavailPreference, setUnavailPreference] = useState<'remove' | 'call'>('remove');
 
   const handleOpenMenuItemModal = (dish: MenuItem) => {
     setSelectedMenuItemForModal(dish);
@@ -308,6 +310,7 @@ export const CustomerPortal: React.FC = () => {
     (isSettingsModalOpen ? 1 : 0) +
     (isLogoutConfirmOpen ? 1 : 0) +
     (selectedMenuItemForModal ? 1 : 0) +
+    (isUnavailPopupOpen ? 1 : 0) +
     (isCartOpen ? 1 : 0);
 
   const prevOpenCountRef = useRef(0);
@@ -3074,8 +3077,11 @@ export const CustomerPortal: React.FC = () => {
                 If this product is not available
               </h3>
               
-              <div className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-xs font-black text-slate-800 bg-slate-50 hover:bg-slate-100/50 transition cursor-pointer">
-                <span>Remove it from my order</span>
+              <div 
+                onClick={() => setIsUnavailPopupOpen(true)}
+                className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-xs font-black text-slate-800 bg-slate-50 hover:bg-slate-100/50 transition cursor-pointer"
+              >
+                <span>{unavailPreference === 'remove' ? 'Remove it from my order' : 'Call me'}</span>
                 <span className="text-slate-400 font-mono text-sm font-bold">&gt;</span>
               </div>
             </div>
@@ -3113,6 +3119,77 @@ export const CustomerPortal: React.FC = () => {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        BOTTOM SHEET POPUP: IF PRODUCT IS NOT AVAILABLE
+        ========================================================================
+      */}
+      {isUnavailPopupOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-200" onClick={() => setIsUnavailPopupOpen(false)}>
+          <div 
+            className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-6 animate-in slide-in-from-bottom duration-300 pb-8 relative shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Pull indicator bar */}
+            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto -mt-2 mb-2" />
+
+            <h3 className="font-extrabold text-2xl text-slate-900 tracking-tight">
+              If this product is not available
+            </h3>
+
+            {/* Options List */}
+            <div className="space-y-4">
+              {/* Option 1: Call me */}
+              <label 
+                onClick={() => setUnavailPreference('call')}
+                className="flex items-center space-x-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition"
+              >
+                <div>
+                  {unavailPreference === 'call' ? (
+                    <div className="w-5 h-5 rounded-full border-2 border-[#d70f64] bg-[#d70f64] flex items-center justify-center shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shrink-0" />
+                  )}
+                </div>
+                <span className="text-sm font-extrabold text-slate-800">
+                  Call me
+                </span>
+              </label>
+
+              {/* Option 2: Remove it from my order */}
+              <label 
+                onClick={() => setUnavailPreference('remove')}
+                className="flex items-center space-x-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition"
+              >
+                <div>
+                  {unavailPreference === 'remove' ? (
+                    <div className="w-5 h-5 rounded-full border-2 border-[#d70f64] bg-[#d70f64] flex items-center justify-center shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shrink-0" />
+                  )}
+                </div>
+                <span className="text-sm font-extrabold text-slate-800">
+                  Remove it from my order
+                </span>
+              </label>
+            </div>
+
+            {/* Apply Button */}
+            <button
+              type="button"
+              onClick={() => setIsUnavailPopupOpen(false)}
+              className="w-full py-4 bg-[#d70f64] hover:bg-[#b00c50] text-white rounded-2xl font-black text-sm flex items-center justify-center cursor-pointer shadow-lg shadow-pink-500/10 active:scale-[0.98] transition"
+            >
+              Apply
+            </button>
           </div>
         </div>
       )}
