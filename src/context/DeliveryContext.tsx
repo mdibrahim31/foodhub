@@ -1848,6 +1848,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrentUser(null);
     setCart([]);
     setCartVendor(null);
+    try {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+    } catch {}
   };
 
   const connectSupabase = async (url: string, anonKey: string): Promise<{ success: boolean; message: string }> => {

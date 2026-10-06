@@ -234,7 +234,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder={targetRole === 'vendor' ? '01711122233' : targetRole === 'rider' ? '01755500011' : '01882208531'}
+                  placeholder="e.g. 01711223344"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-rose-500"
                   required
                 />
@@ -425,7 +425,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Tanvir Ahmed"
+                placeholder="e.g. Rahim Ahmed"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-rose-500"
                 required
               />
@@ -439,7 +439,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="01882208531"
+                placeholder="e.g. 01711223344"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-rose-500"
                 required
               />
@@ -453,7 +453,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tanvir@gmail.com"
+                placeholder="e.g. rahim@example.com"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-rose-500"
               />
             </div>
