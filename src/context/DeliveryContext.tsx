@@ -1204,6 +1204,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             customer_phone: newReview.customer_phone || null,
             rating: newReview.rating,
             comment: newReview.comment,
+            mentioned_items: newReview.mentioned_items || [],
             vendor_reply: newReview.vendor_reply || null,
             created_at: newReview.created_at
           }], { onConflict: 'order_code' });

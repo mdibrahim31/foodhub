@@ -139,6 +139,7 @@ export const CustomerPortal: React.FC = () => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isRestaurantReviewsOpen, setIsRestaurantReviewsOpen] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<Order | null>(null);
+  const [selectedMentionedDishes, setSelectedMentionedDishes] = useState<string[]>([]);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -921,6 +922,7 @@ export const CustomerPortal: React.FC = () => {
                                   setSelectedOrderForReview(ord);
                                   setReviewRating(5);
                                   setReviewComment('');
+                                  setSelectedMentionedDishes((ord.items || []).map(i => i.item_name));
                                 }}
                                 className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 rounded-xl text-xs font-black transition flex items-center space-x-1.5 cursor-pointer shadow-2xs active:scale-95"
                               >
@@ -2477,11 +2479,13 @@ export const CustomerPortal: React.FC = () => {
                     customer_name: currentUser?.name || selectedOrderForReview.customer_name || 'Customer',
                     customer_phone: currentUser?.phone || selectedOrderForReview.customer_phone,
                     rating: reviewRating,
-                    comment: reviewComment.trim()
+                    comment: reviewComment.trim(),
+                    mentioned_items: selectedMentionedDishes
                   });
                   setReviewSuccessMessage(`Review submitted for #${selectedOrderForReview.order_code}!`);
                   setSelectedOrderForReview(null);
                   setReviewComment('');
+                  setSelectedMentionedDishes([]);
                   setTimeout(() => setReviewSuccessMessage(null), 4000);
                 } finally {
                   setIsSubmittingReview(false);
@@ -2514,6 +2518,41 @@ export const CustomerPortal: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Mention/Tag ordered menu items */}
+              {selectedOrderForReview.items && selectedOrderForReview.items.length > 0 && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Mention Dishes in Review (Tap to select):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedOrderForReview.items.map((it, idx) => {
+                      const isSelected = selectedMentionedDishes.includes(it.item_name);
+                      return (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => {
+                            setSelectedMentionedDishes(prev => 
+                              prev.includes(it.item_name)
+                                ? prev.filter(name => name !== it.item_name)
+                                : [...prev, it.item_name]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span>{it.item_name}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Feedback Comment */}
               <div>

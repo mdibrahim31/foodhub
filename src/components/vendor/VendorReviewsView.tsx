@@ -18,7 +18,8 @@ import {
   User, 
   MapPin, 
   Send,
-  Edit2
+  Edit2,
+  Utensils
 } from 'lucide-react';
 import { Vendor, VendorReview, Order } from '../../types/database';
 
@@ -550,9 +551,24 @@ export const VendorReviewsView: React.FC<VendorReviewsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Review Text Comment (e.g. "very poor qty") */}
-                <div className="px-4 py-3.5 text-sm font-semibold text-slate-900 border-b border-slate-100 leading-snug">
-                  {review.comment}
+                {/* Review Text Comment (e.g. "very poor qty") & Mentioned Items */}
+                <div className="px-4 py-3.5 space-y-2 border-b border-slate-100">
+                  <p className="text-sm font-semibold text-slate-900 leading-snug">
+                    {review.comment}
+                  </p>
+                  {review.mentioned_items && review.mentioned_items.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {review.mentioned_items.map((it, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-pink-50 text-[#d70f64] text-[11px] font-bold border border-pink-200/70"
+                        >
+                          <Utensils className="w-3 h-3 text-[#d70f64]" />
+                          <span>{it}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* 

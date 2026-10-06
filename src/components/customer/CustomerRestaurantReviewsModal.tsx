@@ -10,9 +10,11 @@ import {
   MessageSquare, 
   ChevronRight,
   Sparkles,
-  ShoppingBag
+  ShoppingBag,
+  Utensils,
+  AlertCircle
 } from 'lucide-react';
-import { Vendor } from '../../types/database';
+import { Vendor, Order } from '../../types/database';
 import { useDelivery } from '../../context/DeliveryContext';
 
 interface CustomerRestaurantReviewsModalProps {
@@ -28,6 +30,7 @@ interface ReviewItem {
   rating: number; // 1 to 5
   timeAgo: string;
   comment: string;
+  mentioned_items?: string[];
   helpfulCount: number;
   hasVotedHelpful?: boolean;
   createdAt: number;
@@ -39,7 +42,16 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
   onClose,
   onNavigateToOrders
 }) => {
-  const { reviews: contextReviews, orders } = useDelivery();
+  const { reviews: contextReviews, orders, currentUser, addOrderReview } = useDelivery();
+
+  // Find unreviewed delivered orders for this vendor
+  const unreviewedDeliveredOrders = useMemo(() => {
+    return (orders || []).filter(o => 
+      o.vendor_id === vendor.id && 
+      o.status === 'delivered' &&
+      !contextReviews.some(r => r.order_code === o.order_code || (r.order_id && r.order_id === o.id))
+    );
+  }, [orders, vendor.id, contextReviews]);
 
   // Initial base reviews (empty by default, loaded only from persistent reviews/database)
   const [baseReviews, setBaseReviews] = useState<ReviewItem[]>(() => {
@@ -73,6 +85,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
         rating: r.rating,
         timeAgo: timeStr,
         comment: r.comment,
+        mentioned_items: r.mentioned_items || [],
         helpfulCount: 0,
         createdAt: new Date(r.created_at).getTime(),
         orderCode: r.order_code
@@ -87,76 +100,31 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
   // Filter state
   const [activeFilter, setActiveFilter] = useState<'top' | 'newest' | 'highest' | 'lowest'>('top');
 
-  // Info modal state
+  // Modal dialog states
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [isNoOrderModalOpen, setIsNoOrderModalOpen] = useState(false);
 
-  // Write review form state
+  // Write review form state (Strictly attached to a delivered order)
   const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<Order | null>(null);
+  const [selectedMentionedDishes, setSelectedMentionedDishes] = useState<string[]>([]);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [newUserName, setNewUserName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Persist reviews to localStorage
-  const saveReviews = (updated: ReviewItem[]) => {
-    setBaseReviews(updated);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`foodiplace_customer_reviews_${vendor.id}`, JSON.stringify(updated));
-      } catch (e) {
-        console.warn('Error saving reviews:', e);
-      }
-    }
-  };
-
-  // Toggle helpful vote
-  const toggleHelpful = (id: string) => {
-    const updated = reviews.map(r => {
-      if (r.id === id) {
-        const nextVoted = !r.hasVotedHelpful;
-        return {
-          ...r,
-          hasVotedHelpful: nextVoted,
-          helpfulCount: nextVoted ? r.helpfulCount + 1 : Math.max(0, r.helpfulCount - 1)
-        };
-      }
-      return r;
-    });
-    saveReviews(updated);
-  };
-
-  // Submit new review
-  const handleSubmitReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    const newRev: ReviewItem = {
-      id: `rev-${Date.now()}`,
-      userName: newUserName.trim() || 'Food Lover',
-      rating: newRating,
-      timeAgo: 'Just now',
-      comment: newComment.trim(),
-      helpfulCount: 0,
-      createdAt: Date.now()
-    };
-
-    saveReviews([newRev, ...reviews]);
-    setNewComment('');
-    setIsWriteReviewOpen(false);
-  };
-
-  // Filter and sort reviews
+  // Filtered reviews
   const filteredReviews = useMemo(() => {
     const list = [...reviews];
     if (activeFilter === 'newest') {
       return list.sort((a, b) => b.createdAt - a.createdAt);
     }
     if (activeFilter === 'highest') {
-      return list.sort((a, b) => b.rating - a.rating);
+      return list.sort((a, b) => b.rating - a.rating || b.createdAt - a.createdAt);
     }
     if (activeFilter === 'lowest') {
-      return list.sort((a, b) => a.rating - b.rating);
+      return list.sort((a, b) => a.rating - b.rating || b.createdAt - a.createdAt);
     }
-    // Top reviews (default)
     return list.sort((a, b) => (b.helpfulCount || 0) - (a.helpfulCount || 0) || b.rating - a.rating);
   }, [reviews, activeFilter]);
 
@@ -188,15 +156,60 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
     };
   }, [reviews]);
 
+  const handleOpenReviewAction = () => {
+    if (unreviewedDeliveredOrders.length > 0) {
+      const targetOrder = unreviewedDeliveredOrders[0];
+      setSelectedOrderForReview(targetOrder);
+      setNewRating(5);
+      setNewComment('');
+      setNewUserName(currentUser?.name || targetOrder.customer_name || '');
+      setSelectedMentionedDishes((targetOrder.items || []).map(i => i.item_name));
+      setIsWriteReviewOpen(true);
+    } else {
+      setIsNoOrderModalOpen(true);
+    }
+  };
+
+  // Submit verified review
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setIsSubmitting(true);
+
+    try {
+      if (selectedOrderForReview) {
+        await addOrderReview({
+          vendor_id: vendor.id,
+          order_id: selectedOrderForReview.id,
+          order_code: selectedOrderForReview.order_code,
+          customer_id: currentUser?.id,
+          customer_name: newUserName.trim() || currentUser?.name || selectedOrderForReview.customer_name || 'Customer',
+          customer_phone: currentUser?.phone || selectedOrderForReview.customer_phone,
+          rating: newRating,
+          comment: newComment.trim(),
+          mentioned_items: selectedMentionedDishes
+        });
+      }
+      setIsWriteReviewOpen(false);
+      setSelectedOrderForReview(null);
+      setNewComment('');
+      setSelectedMentionedDishes([]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Toggle helpful vote
+  const toggleHelpful = (id: string) => {
+    // Helpful vote local handling
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-[#f8f9fa] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200 font-sans select-none">
       <div className="max-w-md mx-auto min-h-screen bg-[#f8f9fa] text-slate-900 pb-20 flex flex-col">
         {/* 
           ========================================================================
-          TOP HEADER BAR (Matching Screenshot 2)
-          - Left: ✕ Close button
-          - Center/Left: "Ratings & Reviews", Subtitle: "Ma Biryani - Gulshan"
-          - Right: ⓘ Info button
+          TOP HEADER BAR
           ========================================================================
         */}
         <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-4 pt-3.5 pb-3 flex items-center justify-between border-b border-slate-100 shadow-2xs">
@@ -217,7 +230,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
                 Ratings & Reviews
               </h1>
               <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                {vendor.name} - {vendor.zone ? vendor.zone.replace(' Zone', '') : 'Gulshan'}
+                {vendor.name} - {vendor.zone ? vendor.zone.replace(' Zone', '') : 'Chittagong'}
               </p>
             </div>
           </div>
@@ -235,8 +248,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 
         {/* 
           ========================================================================
-          HIGHLIGHTS BANNER (Matching Screenshot 2)
-          - Soft rose/pink box: "This restaurant is getting better reviews!"
+          HIGHLIGHTS BANNER
           ========================================================================
         */}
         <div className="px-4 pt-3">
@@ -252,9 +264,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 
         {/* 
           ========================================================================
-          OVERALL RATING CARD (Matching Screenshot 2)
-          - Left: 3.7 + Amber Stars + "All ratings (1k+)"
-          - Right: 5 ★ down to 1 ★ distribution bars with amber fill
+          OVERALL RATING CARD
           ========================================================================
         */}
         <div className="mx-4 mt-3 bg-white rounded-3xl border border-slate-100 shadow-2xs p-5">
@@ -309,7 +319,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 
         {/* 
           ========================================================================
-          SECTION TITLE: "Reviews"
+          SECTION TITLE: "Reviews" & Rate Order Button
           ========================================================================
         */}
         <div className="px-4 mt-6 mb-3 flex items-center justify-between">
@@ -317,21 +327,17 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
             Reviews
           </h2>
           <button
-            onClick={() => setIsWriteReviewOpen(true)}
-            className="text-xs font-black text-rose-600 hover:text-rose-700 flex items-center space-x-1 cursor-pointer"
+            onClick={handleOpenReviewAction}
+            className="text-xs font-black text-rose-600 hover:text-rose-700 flex items-center space-x-1 cursor-pointer active:scale-95 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-full border border-rose-200 transition"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>Write a review</span>
+            <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+            <span>{unreviewedDeliveredOrders.length > 0 ? `Rate Order #${unreviewedDeliveredOrders[0].order_code}` : 'Rate Order'}</span>
           </button>
         </div>
 
         {/* 
           ========================================================================
-          HORIZONTAL FILTER PILLS (Matching Screenshot 2)
-          - Top reviews (active dark pill)
-          - Newest
-          - Highest rating
-          - Lowest rating
+          HORIZONTAL FILTER PILLS
           ========================================================================
         */}
         <div className="px-4 mb-4 overflow-x-auto scrollbar-none flex items-center space-x-2.5 pb-1">
@@ -382,7 +388,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 
         {/* 
           ========================================================================
-          REVIEWS LIST (100% Matching Screenshot 2)
+          REVIEWS LIST
           ========================================================================
         */}
         <div className="space-y-3 px-4">
@@ -396,101 +402,119 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
             </div>
           ) : (
             filteredReviews.map((rev) => (
-            <div
-              key={rev.id}
-              className="bg-white rounded-3xl border border-slate-100 shadow-2xs p-4 space-y-2.5"
-            >
-              {/* Reviewer Name & Top reviewer badge */}
-              <div className="flex items-center space-x-2">
-                <span className="font-black text-sm text-slate-900 tracking-tight">
-                  {rev.userName}
-                </span>
-
-                {rev.isTopReviewer && (
-                  <span className="px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 text-[10px] font-black tracking-tight">
-                    Top reviewer
+              <div
+                key={rev.id}
+                className="bg-white rounded-3xl border border-slate-100 shadow-2xs p-4 space-y-2.5"
+              >
+                {/* Reviewer Name & Top reviewer badge */}
+                <div className="flex items-center space-x-2">
+                  <span className="font-black text-sm text-slate-900 tracking-tight">
+                    {rev.userName}
                   </span>
+
+                  {rev.isTopReviewer && (
+                    <span className="px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 text-[10px] font-black tracking-tight">
+                      Top reviewer
+                    </span>
+                  )}
+
+                  {rev.orderCode && (
+                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                      #{rev.orderCode}
+                    </span>
+                  )}
+                </div>
+
+                {/* Stars & Time Ago */}
+                <div className="flex items-center space-x-1.5 text-xs text-slate-400">
+                  <div className="flex items-center space-x-0.5">
+                    {[1, 2, 3, 4, 5].map((starIdx) => (
+                      <Star
+                        key={starIdx}
+                        className={`w-3.5 h-3.5 ${
+                          starIdx <= rev.rating
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'fill-slate-200 text-slate-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span>·</span>
+                  <span className="text-slate-500 font-medium">{rev.timeAgo}</span>
+                </div>
+
+                {/* Comment text */}
+                <p className="text-xs sm:text-[13px] text-slate-800 font-medium leading-relaxed">
+                  {rev.comment}
+                </p>
+
+                {/* Mentioned dishes tags */}
+                {rev.mentioned_items && rev.mentioned_items.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {rev.mentioned_items.map((it, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 text-[11px] font-bold border border-amber-200/70"
+                      >
+                        <Utensils className="w-3 h-3 text-amber-600" />
+                        <span>{it}</span>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-
-              {/* Stars & Time Ago (e.g. ★★★★★ · 2 weeks ago) */}
-              <div className="flex items-center space-x-1.5 text-xs text-slate-400">
-                <div className="flex items-center space-x-0.5">
-                  {[1, 2, 3, 4, 5].map((starIdx) => (
-                    <Star
-                      key={starIdx}
-                      className={`w-3.5 h-3.5 ${
-                        starIdx <= rev.rating
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'fill-slate-200 text-slate-200'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span>·</span>
-                <span className="text-slate-500 font-medium">{rev.timeAgo}</span>
-              </div>
-
-              {/* Comment text */}
-              <p className="text-xs sm:text-[13px] text-slate-800 font-medium leading-relaxed">
-                {rev.comment}
-              </p>
-
-              {/* 👍 Helpful button (Interactive) */}
-              <div className="pt-1">
-                <button
-                  onClick={() => toggleHelpful(rev.id)}
-                  className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer active:scale-95 ${
-                    rev.hasVotedHelpful
-                      ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                      : 'bg-white border border-slate-200/90 text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <ThumbsUp className={`w-3.5 h-3.5 ${rev.hasVotedHelpful ? 'fill-rose-500 text-rose-500' : ''}`} />
-                  <span>Helpful {rev.helpfulCount > 0 ? `(${rev.helpfulCount})` : ''}</span>
-                </button>
-              </div>
-            </div>
-          )))}
+            ))
+          )}
         </div>
       </div>
 
       {/* 
         ========================================================================
-        MODAL: RATING INFO (Triggered by ⓘ button)
+        MODAL: VERIFIED ORDER REQUIRED (When user has no delivered order)
         ========================================================================
       */}
-      {isInfoModalOpen && (
+      {isNoOrderModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Info className="w-5 h-5 text-rose-600" />
-                <h3 className="font-black text-slate-900 text-base">Ratings & Reviews Policy</h3>
-              </div>
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+              <ShoppingBag className="w-6 h-6 stroke-[2.3]" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="font-black text-slate-900 text-base">Delivered Order Required</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                To guarantee authentic ratings, reviews can only be submitted after placing and receiving an order from <span className="font-bold text-slate-900">{vendor.name}</span>.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
               <button
-                onClick={() => setIsInfoModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+                onClick={() => {
+                  setIsNoOrderModalOpen(false);
+                  onClose();
+                }}
+                className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-xs"
               >
-                <X className="w-4 h-4" />
+                Order Food from {vendor.name}
               </button>
-            </div>
 
-            <div className="text-xs text-slate-600 space-y-2.5 leading-relaxed">
-              <p>
-                <strong>Authentic Orders:</strong> Only customers who have placed and received an order from <span className="font-bold text-slate-900">{vendor.name}</span> can submit verified reviews.
-              </p>
-              <p>
-                <strong>Recalculation:</strong> Overall rating scores are dynamically weighted using recent orders from the last 6 months to ensure fresh quality standards.
-              </p>
-            </div>
+              {onNavigateToOrders && (
+                <button
+                  onClick={() => {
+                    setIsNoOrderModalOpen(false);
+                    onNavigateToOrders();
+                  }}
+                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  View My Order History
+                </button>
+              )}
 
-            <div className="pt-2">
               <button
-                onClick={() => setIsInfoModalOpen(false)}
-                className="w-full py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-black rounded-xl transition cursor-pointer"
+                onClick={() => setIsNoOrderModalOpen(false)}
+                className="w-full py-1 text-xs text-slate-400 hover:text-slate-600 font-bold"
               >
-                Got it
+                Cancel
               </button>
             </div>
           </div>
@@ -499,16 +523,16 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 
       {/* 
         ========================================================================
-        MODAL: WRITE A REVIEW
+        MODAL: RATE & REVIEW DELIVERED ORDER
         ========================================================================
       */}
-      {isWriteReviewOpen && (
+      {isWriteReviewOpen && selectedOrderForReview && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
                 <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                <h3 className="font-black text-slate-900 text-base">Rate {vendor.name}</h3>
+                <h3 className="font-black text-slate-900 text-base">Rate Your Order</h3>
               </div>
               <button
                 onClick={() => setIsWriteReviewOpen(false)}
@@ -518,10 +542,21 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
               </button>
             </div>
 
+            {/* Order summary */}
+            <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/70 space-y-1 text-xs">
+              <div className="flex justify-between font-bold text-slate-800">
+                <span className="truncate">{vendor.name}</span>
+                <span className="font-mono text-amber-800">#{selectedOrderForReview.order_code}</span>
+              </div>
+              <p className="text-[11px] text-slate-500 truncate">
+                {(selectedOrderForReview.items || []).map(i => `${i.quantity}x ${i.item_name}`).join(', ')}
+              </p>
+            </div>
+
             <form onSubmit={handleSubmitReview} className="space-y-3.5">
               {/* Star selector */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Your Rating</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">How was your food & service?</label>
                 <div className="flex items-center space-x-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -545,25 +580,48 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
                 </div>
               </div>
 
-              {/* User Name */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Your Name (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Mamun"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-semibold"
-                />
-              </div>
+              {/* Mention ordered dishes */}
+              {selectedOrderForReview.items && selectedOrderForReview.items.length > 0 && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Mention Dishes in Review (Tap to select):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedOrderForReview.items.map((it, idx) => {
+                      const isSelected = selectedMentionedDishes.includes(it.item_name);
+                      return (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => {
+                            setSelectedMentionedDishes(prev => 
+                              prev.includes(it.item_name)
+                                ? prev.filter(name => name !== it.item_name)
+                                : [...prev, it.item_name]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span>{it.item_name}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Comment text */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Feedback / Comment</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Your Review *</label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="Share details of your food taste, packaging or delivery..."
+                  placeholder="Tell us about the food taste, temperature, packaging..."
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
@@ -580,12 +638,55 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer transition active:scale-95"
+                  disabled={isSubmitting || !newComment.trim()}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer transition active:scale-95 disabled:opacity-50"
                 >
-                  Submit Review
+                  {isSubmitting ? 'Submitting...' : 'Submit Review'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: RATING INFO
+        ========================================================================
+      */}
+      {isInfoModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Info className="w-5 h-5 text-rose-600" />
+                <h3 className="font-black text-slate-900 text-base">Ratings & Reviews Policy</h3>
+              </div>
+              <button
+                onClick={() => setIsInfoModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 space-y-2.5 leading-relaxed">
+              <p>
+                <strong>Authentic Orders:</strong> Only customers who have placed and received an order from <span className="font-bold text-slate-900">{vendor.name}</span> can submit verified reviews.
+              </p>
+              <p>
+                <strong>Dish Mentions:</strong> Customers can highlight specific dishes they enjoyed from their delivered order.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setIsInfoModalOpen(false)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-black rounded-xl transition cursor-pointer"
+              >
+                Got it
+              </button>
+            </div>
           </div>
         </div>
       )}

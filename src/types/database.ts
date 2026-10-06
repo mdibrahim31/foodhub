@@ -249,6 +249,7 @@ export interface VendorReview {
   customer_phone?: string;
   rating: number; // 1 to 5
   comment: string;
+  mentioned_items?: string[]; // Menu items/dishes mentioned in review
   created_at: string;
   vendor_reply?: {
     text: string;
