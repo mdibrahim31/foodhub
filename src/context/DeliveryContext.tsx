@@ -3390,45 +3390,65 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         const sCustomerId = cleanCustId && isUuid(cleanCustId) ? cleanCustId : null;
 
-        // Sanitize vendor_id to ensure it's a valid UUID
-        const sVendorId = newOrder.vendor_id && isUuid(newOrder.vendor_id) ? newOrder.vendor_id : null;
+        // Resolve vendor_id to a valid UUID if possible
+        let vId = newOrder.vendor_id;
+        if (vId) {
+          const matchedVendor = vendors.find(v => v.id === vId || v.unique_id === vId);
+          if (matchedVendor && isUuid(matchedVendor.id)) vId = matchedVendor.id;
+        }
+        const sVendorId = vId && isUuid(vId) ? vId : null;
 
-        if (sVendorId) {
-          const supabaseOrderPayload = {
-            id: newOrder.id,
-            order_code: newOrder.order_code,
-            customer_id: sCustomerId,
-            customer_name: newOrder.customer_name,
-            customer_phone: newOrder.customer_phone,
-            vendor_id: sVendorId,
-            zone: newOrder.zone,
-            delivery_address: newOrder.delivery_address,
-            delivery_latitude: newOrder.delivery_latitude,
-            delivery_longitude: newOrder.delivery_longitude,
-            food_total: newOrder.food_total,
-            delivery_distance_km: newOrder.delivery_distance_km,
-            delivery_fee: newOrder.delivery_fee,
-            total_cash_payable: newOrder.total_cash_payable,
-            status: newOrder.status,
-            special_instructions: newOrder.special_instructions,
-            created_at: newOrder.created_at,
-            updated_at: newOrder.updated_at
-          };
+        const supabaseOrderPayload = {
+          id: newOrder.id,
+          order_code: newOrder.order_code,
+          customer_id: sCustomerId,
+          customer_name: newOrder.customer_name,
+          customer_phone: newOrder.customer_phone,
+          vendor_id: sVendorId,
+          zone: newOrder.zone,
+          delivery_address: newOrder.delivery_address,
+          delivery_latitude: newOrder.delivery_latitude,
+          delivery_longitude: newOrder.delivery_longitude,
+          food_total: newOrder.food_total,
+          delivery_distance_km: newOrder.delivery_distance_km,
+          delivery_fee: newOrder.delivery_fee,
+          total_cash_payable: newOrder.total_cash_payable,
+          status: newOrder.status,
+          special_instructions: newOrder.special_instructions,
+          created_at: newOrder.created_at,
+          updated_at: newOrder.updated_at
+        };
 
-          const { error: oError } = await supabase.from('orders').upsert([supabaseOrderPayload]);
-          if (!oError) {
-            const itemsPayload = (newOrder.items || []).map(it => ({
-              id: it.id,
-              order_id: newOrder.id,
-              menu_item_id: it.menu_item_id && isUuid(it.menu_item_id) ? it.menu_item_id : null, // Set null if menu_item_id is not a valid UUID (e.g. 'm-001')
-              item_name: it.item_name,
-              item_price: it.item_price,
-              quantity: it.quantity,
-              subtotal: it.subtotal
-            }));
-            await supabase.from('order_items').upsert(itemsPayload);
-          } else {
-            console.error('Supabase order save error:', oError);
+        const { error: oError } = await supabase.from('orders').upsert([supabaseOrderPayload]);
+        if (!oError) {
+          const itemsPayload = (newOrder.items || []).map(it => ({
+            id: it.id,
+            order_id: newOrder.id,
+            menu_item_id: it.menu_item_id && isUuid(it.menu_item_id) ? it.menu_item_id : null,
+            item_name: it.item_name,
+            item_price: it.item_price,
+            quantity: it.quantity,
+            subtotal: it.subtotal
+          }));
+          await supabase.from('order_items').upsert(itemsPayload);
+        } else {
+          console.error('Supabase order save error:', oError);
+          // If foreign key constraint failed on vendor_id/customer_id, retry with null IDs
+          if (oError.message?.includes('foreign key') || oError.code === '23503') {
+            const fallbackPayload = { ...supabaseOrderPayload, vendor_id: null, customer_id: null };
+            const { error: fbErr } = await supabase.from('orders').upsert([fallbackPayload]);
+            if (!fbErr && newOrder.items && newOrder.items.length > 0) {
+              const itemsPayload = newOrder.items.map(it => ({
+                id: it.id,
+                order_id: newOrder.id,
+                menu_item_id: null,
+                item_name: it.item_name,
+                item_price: it.item_price,
+                quantity: it.quantity,
+                subtotal: it.subtotal
+              }));
+              await supabase.from('order_items').upsert(itemsPayload);
+            }
           }
         }
       } catch (err) {
