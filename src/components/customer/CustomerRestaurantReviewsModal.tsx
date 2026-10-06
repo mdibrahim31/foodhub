@@ -9,13 +9,16 @@ import {
   Plus, 
   MessageSquare, 
   ChevronRight,
-  Sparkles
+  Sparkles,
+  ShoppingBag
 } from 'lucide-react';
 import { Vendor } from '../../types/database';
+import { useDelivery } from '../../context/DeliveryContext';
 
 interface CustomerRestaurantReviewsModalProps {
   vendor: Vendor;
   onClose: () => void;
+  onNavigateToOrders?: () => void;
 }
 
 interface ReviewItem {
@@ -28,14 +31,18 @@ interface ReviewItem {
   helpfulCount: number;
   hasVotedHelpful?: boolean;
   createdAt: number;
+  orderCode?: string;
 }
 
 export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsModalProps> = ({
   vendor,
-  onClose
+  onClose,
+  onNavigateToOrders
 }) => {
-  // Initial reviews matching Screenshot 2 precisely
-  const [reviews, setReviews] = useState<ReviewItem[]>(() => {
+  const { reviews: contextReviews, orders } = useDelivery();
+
+  // Initial base reviews matching Screenshot 2 precisely
+  const [baseReviews, setBaseReviews] = useState<ReviewItem[]>(() => {
     const storageKey = `foodiplace_customer_reviews_${vendor.id}`;
     if (typeof window !== 'undefined') {
       try {
@@ -90,6 +97,32 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
     ];
   });
 
+  // Convert real database reviews for this vendor into ReviewItem format
+  const reviews = useMemo(() => {
+    const dbReviewsForVendor = (contextReviews || []).filter(r => r.vendor_id === vendor.id);
+    const dbItems: ReviewItem[] = dbReviewsForVendor.map(r => {
+      // Calculate relative time
+      const diffMs = Date.now() - new Date(r.created_at).getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 3600 * 24));
+      const timeStr = diffDays <= 0 ? 'Today' : diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+
+      return {
+        id: r.id,
+        userName: r.customer_name || 'Customer',
+        rating: r.rating,
+        timeAgo: timeStr,
+        comment: r.comment,
+        helpfulCount: 0,
+        createdAt: new Date(r.created_at).getTime(),
+        orderCode: r.order_code
+      };
+    });
+
+    const dbOrderCodes = new Set(dbItems.map(d => d.orderCode).filter(Boolean));
+    const merged = [...dbItems, ...baseReviews.filter(b => !dbOrderCodes.has(b.orderCode))];
+    return merged;
+  }, [contextReviews, vendor.id, baseReviews]);
+
   // Filter state
   const [activeFilter, setActiveFilter] = useState<'top' | 'newest' | 'highest' | 'lowest'>('top');
 
@@ -104,7 +137,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 
   // Persist reviews to localStorage
   const saveReviews = (updated: ReviewItem[]) => {
-    setReviews(updated);
+    setBaseReviews(updated);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(`foodiplace_customer_reviews_${vendor.id}`, JSON.stringify(updated));

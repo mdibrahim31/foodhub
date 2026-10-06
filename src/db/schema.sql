@@ -181,6 +181,24 @@ CREATE TABLE IF NOT EXISTS order_items (
   subtotal NUMERIC(10, 2) NOT NULL
 );
 
+-- 11. REVIEWS TABLE (Customer Order Reviews for Vendors)
+CREATE TABLE IF NOT EXISTS reviews (
+  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  vendor_id VARCHAR(255) NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  order_id VARCHAR(255) REFERENCES orders(id) ON DELETE CASCADE,
+  order_code VARCHAR(100) NOT NULL,
+  customer_id VARCHAR(255),
+  customer_name VARCHAR(255) NOT NULL,
+  customer_phone VARCHAR(50),
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT NOT NULL,
+  vendor_reply JSONB,
+  dispute JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_order_review UNIQUE (order_code)
+);
+
 -- INDEXES FOR FAST QUERYING
 CREATE INDEX IF NOT EXISTS idx_vendors_zone ON vendors(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_zone ON riders(zone);
@@ -188,3 +206,28 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_vendor ON orders(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_orders_rider ON orders(rider_id);
 CREATE INDEX IF NOT EXISTS idx_ads_active ON ads_banners(is_active);
+CREATE INDEX IF NOT EXISTS idx_reviews_vendor_id ON reviews(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_order_code ON reviews(order_code);
+CREATE INDEX IF NOT EXISTS idx_reviews_rating ON reviews(rating);
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at DESC);
+
+-- TRIGGER FUNCTION TO RECALCULATE VENDOR RATING AUTOMATICALLY
+CREATE OR REPLACE FUNCTION update_vendor_average_rating()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE vendors
+  SET rating = ROUND((
+    SELECT COALESCE(AVG(rating), 0)
+    FROM reviews
+    WHERE vendor_id = NEW.vendor_id
+  )::numeric, 1)
+  WHERE id = NEW.vendor_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_vendor_rating ON reviews;
+CREATE TRIGGER trigger_update_vendor_rating
+AFTER INSERT OR UPDATE ON reviews
+FOR EACH ROW
+EXECUTE FUNCTION update_vendor_average_rating();

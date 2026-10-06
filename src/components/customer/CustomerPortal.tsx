@@ -67,7 +67,9 @@ export const CustomerPortal: React.FC = () => {
     logoutUser,
     loginUser,
     registerCustomer,
-    zones
+    zones,
+    reviews,
+    addOrderReview
   } = useDelivery();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -136,6 +138,11 @@ export const CustomerPortal: React.FC = () => {
 
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isRestaurantReviewsOpen, setIsRestaurantReviewsOpen] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<Order | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
@@ -809,6 +816,13 @@ export const CustomerPortal: React.FC = () => {
           <div className="p-5 space-y-5">
             <h2 className="text-xl font-black text-slate-900 tracking-tight pl-0.5">Past orders</h2>
 
+            {reviewSuccessMessage && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center space-x-2 text-xs font-bold text-emerald-800 animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
+                <span>{reviewSuccessMessage}</span>
+              </div>
+            )}
+
             {orders.length === 0 ? (
               <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
                 <div className="w-16 h-16 rounded-3xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto border border-slate-100">
@@ -883,6 +897,51 @@ export const CustomerPortal: React.FC = () => {
                           </p>
                         </div>
                       </div>
+
+                      {/* Rate & Review Action (Strictly for delivered orders) */}
+                      {isDelivered && (
+                        <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                          {(() => {
+                            const orderReview = reviews.find(r => r.order_code === ord.order_code || (r.order_id && r.order_id === ord.id));
+                            if (orderReview) {
+                              return (
+                                <div className="flex items-center space-x-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  <span>Reviewed</span>
+                                  <span className="flex items-center text-amber-500 ml-1">
+                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400 inline" />
+                                    <span className="ml-0.5 text-slate-800 font-bold">{orderReview.rating}</span>
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <button
+                                onClick={() => {
+                                  setSelectedOrderForReview(ord);
+                                  setReviewRating(5);
+                                  setReviewComment('');
+                                }}
+                                className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 rounded-xl text-xs font-black transition flex items-center space-x-1.5 cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <span>Rate & Review Order</span>
+                              </button>
+                            );
+                          })()}
+
+                          <span className="text-[11px] font-bold text-slate-400">
+                            Verified delivery
+                          </span>
+                        </div>
+                      )}
+
+                      {!isDelivered && !isCancelled && (
+                        <div className="pt-2 flex items-center justify-between border-t border-slate-100 text-[11px] text-slate-400 font-medium">
+                          <span>Review available after delivery</span>
+                          <span className="capitalize text-orange-600 font-bold">{ord.status.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
 
                       {/* Reorder Button */}
                       <button
@@ -2368,7 +2427,126 @@ export const CustomerPortal: React.FC = () => {
         <CustomerRestaurantReviewsModal
           vendor={selectedVendorForMenu}
           onClose={() => setIsRestaurantReviewsOpen(false)}
+          onNavigateToOrders={() => {
+            setIsRestaurantReviewsOpen(false);
+            setSelectedVendorForMenu(null);
+            setActiveBottomNav('orders');
+          }}
         />
+      )}
+
+      {/* MODAL: RATE & REVIEW DELIVERED ORDER */}
+      {selectedOrderForReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                <h3 className="font-black text-slate-900 text-base">Rate & Review Order</h3>
+              </div>
+              <button
+                onClick={() => setSelectedOrderForReview(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Order & Vendor Summary */}
+            <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/70 space-y-1 text-xs">
+              <div className="flex justify-between font-bold text-slate-800">
+                <span className="truncate">{selectedOrderForReview.vendor?.name || 'Restaurant'}</span>
+                <span className="font-mono text-amber-800">#{selectedOrderForReview.order_code}</span>
+              </div>
+              <p className="text-[11px] text-slate-500 truncate">
+                {(selectedOrderForReview.items || []).map(i => `${i.quantity}x ${i.item_name}`).join(', ')}
+              </p>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!reviewComment.trim()) return;
+                setIsSubmittingReview(true);
+                try {
+                  await addOrderReview({
+                    vendor_id: selectedOrderForReview.vendor_id,
+                    order_id: selectedOrderForReview.id,
+                    order_code: selectedOrderForReview.order_code,
+                    customer_id: currentUser?.id,
+                    customer_name: currentUser?.name || selectedOrderForReview.customer_name || 'Customer',
+                    customer_phone: currentUser?.phone || selectedOrderForReview.customer_phone,
+                    rating: reviewRating,
+                    comment: reviewComment.trim()
+                  });
+                  setReviewSuccessMessage(`Review submitted for #${selectedOrderForReview.order_code}!`);
+                  setSelectedOrderForReview(null);
+                  setReviewComment('');
+                  setTimeout(() => setReviewSuccessMessage(null), 4000);
+                } finally {
+                  setIsSubmittingReview(false);
+                }
+              }}
+              className="space-y-3.5"
+            >
+              {/* Star rating selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">How was your food & experience?</label>
+                <div className="flex items-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 cursor-pointer transition active:scale-90"
+                    >
+                      <Star
+                        className={`w-7 h-7 ${
+                          star <= reviewRating
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'fill-slate-100 text-slate-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="text-xs font-black text-slate-800 ml-2">
+                    {reviewRating} / 5 Stars
+                  </span>
+                </div>
+              </div>
+
+              {/* Feedback Comment */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Your Review *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Tell us about the taste, packaging, and portion size..."
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-medium"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForReview(null)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReview || !reviewComment.trim()}
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer transition active:scale-95 disabled:opacity-50"
+                >
+                  {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* EDIT PROFILE / SETTINGS MODAL */}

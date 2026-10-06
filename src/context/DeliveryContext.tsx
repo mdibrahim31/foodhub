@@ -13,7 +13,8 @@ import {
   DELIVERY_ZONES,
   DeliveryZone,
   RiderMessage,
-  AdBanner
+  AdBanner,
+  VendorReview
 } from '../types/database';
 import { 
   DEFAULT_SETTINGS, 
@@ -167,6 +168,10 @@ interface DeliveryContextType {
   updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<Order>) => void;
   playNotificationSound: () => void;
 
+  // Reviews & Ratings
+  reviews: VendorReview[];
+  addOrderReview: (review: Omit<VendorReview, 'id' | 'created_at'>) => Promise<{ success: boolean; message: string; review?: VendorReview }>;
+
   // Admin Broadcast & Direct Messaging to Riders
   riderMessages: RiderMessage[];
   sendAdminMessage: (msg: Omit<RiderMessage, 'id' | 'created_at'>) => void;
@@ -312,6 +317,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const parsed = safeJsonParse<CustomerAddress[]>(`${STORAGE_KEY_PREFIX}addresses`, []);
     return Array.isArray(parsed) ? parsed : [];
   });
+
+  const [reviews, setReviews] = useState<VendorReview[]>(() => {
+    const parsed = safeJsonParse<VendorReview[]>(`${STORAGE_KEY_PREFIX}reviews`, []);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}reviews`, JSON.stringify(reviews));
+    } catch {}
+  }, [reviews]);
 
   // Strict user-isolated addresses list (Only shows the logged-in customer's own addresses)
   const addresses = React.useMemo(() => {
@@ -470,6 +486,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Array.isArray(data.orders)) {
           setOrders(data.orders);
         }
+      } else if (data?.type === 'ORDER_REVIEW_SUBMITTED' && data?.review) {
+        setReviews(prev => {
+          const idx = prev.findIndex(r => r.order_code === data.review.order_code || r.id === data.review.id);
+          if (idx >= 0) {
+            const copy = [...prev];
+            copy[idx] = data.review;
+            return copy;
+          }
+          return [data.review, ...prev];
+        });
       } else if (data?.type === 'CUSTOMER_PROFILE_UPDATED') {
         const { customer } = data;
         if (customer && customer.id) {
@@ -619,6 +645,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const oData = await oRes.json();
           if (Array.isArray(oData) && isSubscribed) {
             setOrders(oData);
+          }
+        }
+      } catch {}
+
+      try {
+        const revRes = await fetch('/api/reviews');
+        if (revRes.ok) {
+          const revData = await revRes.json();
+          if (Array.isArray(revData) && isSubscribed) {
+            setReviews(revData);
           }
         }
       } catch {}
@@ -1092,6 +1128,84 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     : null;
 
   // Sound notification
+  const addOrderReview = async (reviewData: Omit<VendorReview, 'id' | 'created_at'>) => {
+    const newReview: VendorReview = {
+      ...reviewData,
+      id: `rev-${Date.now()}`,
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Update local reviews immediately
+    setReviews(prev => {
+      const idx = prev.findIndex(r => 
+        (r.order_code && r.order_code === newReview.order_code) ||
+        (r.order_id && r.order_id === newReview.order_id)
+      );
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = newReview;
+        return copy;
+      }
+      return [newReview, ...prev];
+    });
+
+    // 2. Recalculate vendor rating locally
+    setVendors(prev => prev.map(v => {
+      if (v.id === newReview.vendor_id) {
+        const allVendorReviews = [newReview, ...reviews.filter(r => r.vendor_id === v.id && r.order_code !== newReview.order_code)];
+        const avg = allVendorReviews.reduce((sum, r) => sum + r.rating, 0) / allVendorReviews.length;
+        return { ...v, rating: Math.round(avg * 10) / 10 };
+      }
+      return v;
+    }));
+
+    // 3. Post to backend server /api/reviews
+    try {
+      await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReview)
+      });
+    } catch (e) {
+      console.warn('Failed to post review to server:', e);
+    }
+
+    // 4. Save to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('reviews')
+          .upsert([{
+            id: newReview.id,
+            vendor_id: newReview.vendor_id,
+            order_id: newReview.order_id || null,
+            order_code: newReview.order_code,
+            customer_id: newReview.customer_id || null,
+            customer_name: newReview.customer_name || 'Customer',
+            customer_phone: newReview.customer_phone || null,
+            rating: newReview.rating,
+            comment: newReview.comment,
+            vendor_reply: newReview.vendor_reply || null,
+            created_at: newReview.created_at
+          }], { onConflict: 'order_code' });
+      } catch (err) {
+        console.warn('Supabase review insert notice:', err);
+      }
+    }
+
+    // 5. Broadcast to other tabs
+    try {
+      if (foodiplaceRealtimeChannel) {
+        foodiplaceRealtimeChannel.postMessage({
+          type: 'ORDER_REVIEW_SUBMITTED',
+          review: newReview
+        });
+      }
+    } catch {}
+
+    return { success: true, message: 'Review submitted successfully!', review: newReview };
+  };
+
   const playNotificationSound = () => {
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -3598,6 +3712,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         riderConfirmCashCollectedFromCustomer,
         updateOrderStatus,
         playNotificationSound,
+        reviews,
+        addOrderReview,
         riderMessages,
         sendAdminMessage,
         markRiderMessageAsRead,

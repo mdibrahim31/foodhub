@@ -10,6 +10,17 @@
   "customers": [],
   "addresses": [],
   "customerCarts": {},
+  "reviews": [
+    {
+      "vendor_id": "a0000005-0000-0000-0000-000000000005",
+      "order_code": "lwtl-2624-cvxx",
+      "customer_name": "Mamun",
+      "rating": 5,
+      "comment": "Fresh and delicious food!",
+      "id": "rev-1791281228590",
+      "created_at": "2026-10-06T10:07:08.590Z"
+    }
+  ],
   "zones": [
     {
       "id": "zone-001",
@@ -152,5 +163,5 @@
   "menuItems": [],
   "foodCategories": [],
   "adBanners": [],
-  "updatedAt": "2026-10-06T06:56:06.556Z"
+  "updatedAt": "2026-10-06T10:07:08.591Z"
 }

@@ -34,6 +34,7 @@ interface ServerState {
   customers: any[];
   addresses: any[];
   customerCarts: Record<string, { items: any[]; vendor: any; updatedAt: string }>;
+  reviews?: any[];
   updatedAt: string;
 }
 
@@ -47,6 +48,7 @@ const INITIAL_SERVER_STATE: ServerState = {
   customers: [],
   addresses: [],
   customerCarts: {},
+  reviews: [],
   zones: [
     {
       id: 'zone-001',
@@ -639,6 +641,60 @@ app.delete('/api/addresses/:customerIdentifier/:addressId', (req, res) => {
   serverState.addresses = serverState.addresses.filter(a => a.id !== addressId);
   saveState(serverState);
   res.json({ success: true });
+});
+
+// 10. Reviews API (Customer Order Reviews & Ratings)
+app.get('/api/reviews', (req, res) => {
+  if (!serverState.reviews) serverState.reviews = [];
+  const { vendor_id, order_code } = req.query;
+  
+  let list = [...serverState.reviews];
+  if (vendor_id) {
+    list = list.filter((r: any) => r.vendor_id === vendor_id);
+  }
+  if (order_code) {
+    list = list.filter((r: any) => r.order_code === order_code);
+  }
+  res.json(list);
+});
+
+app.post('/api/reviews', (req, res) => {
+  if (!serverState.reviews) serverState.reviews = [];
+  const newReview = req.body;
+  if (!newReview.id) newReview.id = `rev-${Date.now()}`;
+  if (!newReview.created_at) newReview.created_at = new Date().toISOString();
+
+  // Deduplicate by order_code or id
+  const existingIdx = serverState.reviews.findIndex((r: any) => 
+    (newReview.order_code && r.order_code === newReview.order_code) ||
+    (newReview.id && r.id === newReview.id)
+  );
+
+  if (existingIdx >= 0) {
+    serverState.reviews[existingIdx] = {
+      ...serverState.reviews[existingIdx],
+      ...newReview,
+      updated_at: new Date().toISOString()
+    };
+  } else {
+    serverState.reviews.unshift(newReview);
+  }
+
+  // Recalculate vendor average rating if vendors in serverState
+  if (newReview.vendor_id && serverState.vendors && serverState.vendors.length > 0) {
+    const vReviews = serverState.reviews.filter((r: any) => r.vendor_id === newReview.vendor_id);
+    if (vReviews.length > 0) {
+      const avg = vReviews.reduce((sum: number, r: any) => sum + (Number(r.rating) || 0), 0) / vReviews.length;
+      const rounded = Math.round(avg * 10) / 10;
+      const vIdx = serverState.vendors.findIndex((v: any) => v.id === newReview.vendor_id);
+      if (vIdx >= 0) {
+        serverState.vendors[vIdx].rating = rounded;
+      }
+    }
+  }
+
+  saveState(serverState);
+  res.json({ success: true, review: newReview });
 });
 
 // -------------------------------------------------------------

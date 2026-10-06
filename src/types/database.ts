@@ -244,6 +244,7 @@ export interface VendorReview {
   vendor_id: string;
   order_id?: string;
   order_code: string;
+  customer_id?: string;
   customer_name?: string;
   customer_phone?: string;
   rating: number; // 1 to 5
