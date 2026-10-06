@@ -123,65 +123,7 @@ const INITIAL_SERVER_STATE: ServerState = {
       created_at: new Date().toISOString()
     }
   ],
-  riders: [
-    {
-      id: 'r0000001-0000-0000-0000-000000000001',
-      name: 'Rahim Rider',
-      phone: '01755500011',
-      photo_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-      home_address: 'Chawkbazar, Chittagong',
-      zone: 'Chawkbazar Zone',
-      vehicle_type: 'Motorcycle',
-      is_online: true,
-      is_paused: false,
-      current_latitude: 22.3588,
-      current_longitude: 91.8378,
-      last_location_updated_at: new Date().toISOString(),
-      cash_in_hand: 2500,
-      is_approved: true,
-      is_password_set: true,
-      password: '123',
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'r0000002-0000-0000-0000-000000000002',
-      name: 'Karim Express',
-      phone: '01855500022',
-      photo_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      home_address: 'Khulshi, Chittagong',
-      zone: 'Khulshi Zone',
-      vehicle_type: 'Motorcycle',
-      is_online: true,
-      is_paused: false,
-      current_latitude: 22.3615,
-      current_longitude: 91.8205,
-      last_location_updated_at: new Date().toISOString(),
-      cash_in_hand: 1200,
-      is_approved: true,
-      is_password_set: true,
-      password: '123',
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 'r0000003-0000-0000-0000-000000000003',
-      name: 'Shaon Delivery',
-      phone: '01955500033',
-      photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      home_address: 'GEC Circle, Chittagong',
-      zone: 'GEC Zone',
-      vehicle_type: 'Bicycle',
-      is_online: true,
-      is_paused: false,
-      current_latitude: 22.3592,
-      current_longitude: 91.8220,
-      last_location_updated_at: new Date().toISOString(),
-      cash_in_hand: 1800,
-      is_approved: true,
-      is_password_set: true,
-      password: '123',
-      created_at: new Date().toISOString()
-    }
-  ],
+  riders: [],
   vendors: [],
   orders: [],
   settings: null,
@@ -434,7 +376,44 @@ app.put('/api/orders/:id', (req, res) => {
 
 // 6. Vendors API
 app.get('/api/vendors', (_req, res) => {
+  if (!serverState.vendors) serverState.vendors = [];
   res.json(serverState.vendors);
+});
+
+app.post('/api/vendors', (req, res) => {
+  if (!serverState.vendors) serverState.vendors = [];
+  const newVendor = req.body;
+  if (!newVendor.id) newVendor.id = `v-${Date.now()}`;
+  const existingIdx = serverState.vendors.findIndex(v => v.id === newVendor.id || (newVendor.phone && v.phone === newVendor.phone));
+  if (existingIdx >= 0) {
+    serverState.vendors[existingIdx] = { ...serverState.vendors[existingIdx], ...newVendor, updated_at: new Date().toISOString() };
+    saveState(serverState);
+    return res.json({ success: true, vendor: serverState.vendors[existingIdx] });
+  }
+  serverState.vendors.unshift(newVendor);
+  saveState(serverState);
+  res.json({ success: true, vendor: newVendor });
+});
+
+app.put('/api/vendors/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.vendors) serverState.vendors = [];
+  const idx = serverState.vendors.findIndex(v => v.id === id);
+  if (idx >= 0) {
+    serverState.vendors[idx] = { ...serverState.vendors[idx], ...updates, updated_at: new Date().toISOString() };
+    saveState(serverState);
+    return res.json({ success: true, vendor: serverState.vendors[idx] });
+  }
+  res.status(404).json({ success: false, message: 'Vendor not found' });
+});
+
+app.delete('/api/vendors/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.vendors) serverState.vendors = [];
+  serverState.vendors = serverState.vendors.filter(v => v.id !== id);
+  saveState(serverState);
+  res.json({ success: true });
 });
 
 app.post('/api/vendors/:id/pause', (req, res) => {
@@ -446,6 +425,80 @@ app.post('/api/vendors/:id/pause', (req, res) => {
   }
   saveState(serverState);
   res.json({ success: true, vendor: target });
+});
+
+// 6B. Menu Items API
+app.get('/api/menu-items', (req, res) => {
+  if (!serverState.menuItems) serverState.menuItems = [];
+  const { vendor_id } = req.query;
+  if (vendor_id) {
+    return res.json(serverState.menuItems.filter(m => m.vendor_id === vendor_id));
+  }
+  res.json(serverState.menuItems);
+});
+
+app.post('/api/menu-items', (req, res) => {
+  if (!serverState.menuItems) serverState.menuItems = [];
+  const newItem = req.body;
+  if (!newItem.id) newItem.id = `m-${Date.now()}`;
+  const existingIdx = serverState.menuItems.findIndex(m => m.id === newItem.id);
+  if (existingIdx >= 0) {
+    serverState.menuItems[existingIdx] = { ...serverState.menuItems[existingIdx], ...newItem };
+    saveState(serverState);
+    return res.json({ success: true, item: serverState.menuItems[existingIdx] });
+  }
+  serverState.menuItems.push(newItem);
+  saveState(serverState);
+  res.json({ success: true, item: newItem });
+});
+
+app.put('/api/menu-items/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.menuItems) serverState.menuItems = [];
+  const idx = serverState.menuItems.findIndex(m => m.id === id);
+  if (idx >= 0) {
+    serverState.menuItems[idx] = { ...serverState.menuItems[idx], ...updates };
+    saveState(serverState);
+    return res.json({ success: true, item: serverState.menuItems[idx] });
+  }
+  res.status(404).json({ success: false, message: 'Item not found' });
+});
+
+app.delete('/api/menu-items/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.menuItems) serverState.menuItems = [];
+  serverState.menuItems = serverState.menuItems.filter(m => m.id !== id);
+  saveState(serverState);
+  res.json({ success: true });
+});
+
+// 6C. Food Categories API
+app.get('/api/food-categories', (_req, res) => {
+  if (!serverState.foodCategories) serverState.foodCategories = [];
+  res.json(serverState.foodCategories);
+});
+
+app.post('/api/food-categories', (req, res) => {
+  if (!serverState.foodCategories) serverState.foodCategories = [];
+  const newCat = req.body;
+  if (!newCat.id) newCat.id = `cat-${Date.now()}`;
+  const idx = serverState.foodCategories.findIndex(c => c.id === newCat.id || c.name.toLowerCase() === newCat.name.toLowerCase());
+  if (idx >= 0) {
+    serverState.foodCategories[idx] = { ...serverState.foodCategories[idx], ...newCat };
+  } else {
+    serverState.foodCategories.push(newCat);
+  }
+  saveState(serverState);
+  res.json({ success: true, category: newCat });
+});
+
+app.delete('/api/food-categories/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.foodCategories) serverState.foodCategories = [];
+  serverState.foodCategories = serverState.foodCategories.filter(c => c.id !== id);
+  saveState(serverState);
+  res.json({ success: true });
 });
 
 // 7. Customer Cart API (Saved to database per individual customer account)

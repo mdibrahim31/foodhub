@@ -41,7 +41,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
 }) => {
   const { reviews: contextReviews, orders } = useDelivery();
 
-  // Initial base reviews matching Screenshot 2 precisely
+  // Initial base reviews (empty by default, loaded only from persistent reviews/database)
   const [baseReviews, setBaseReviews] = useState<ReviewItem[]>(() => {
     const storageKey = `foodiplace_customer_reviews_${vendor.id}`;
     if (typeof window !== 'undefined') {
@@ -55,46 +55,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
         console.warn('Error reading saved reviews:', e);
       }
     }
-
-    return [
-      {
-        id: 'rev-001',
-        userName: 'Mamun',
-        rating: 5,
-        timeAgo: '2 weeks ago',
-        comment: 'good',
-        helpfulCount: 0,
-        createdAt: Date.now() - 14 * 24 * 3600 * 1000
-      },
-      {
-        id: 'rev-002',
-        userName: 'Sabbir',
-        rating: 5,
-        timeAgo: '1 month ago',
-        comment: 'The food was really good. The biryani tasted great and the portion was pretty decent. Overall, had a good experience.',
-        helpfulCount: 0,
-        createdAt: Date.now() - 30 * 24 * 3600 * 1000
-      },
-      {
-        id: 'rev-003',
-        userName: 'Az',
-        isTopReviewer: true,
-        rating: 4,
-        timeAgo: '2 months ago',
-        comment: 'Packaging was solid and delivery was right on time. Taste is consistent with their usual standard. Loved the mint chutney!',
-        helpfulCount: 3,
-        createdAt: Date.now() - 60 * 24 * 3600 * 1000
-      },
-      {
-        id: 'rev-004',
-        userName: 'Farhan Chowdhury',
-        rating: 5,
-        timeAgo: '3 weeks ago',
-        comment: 'Crispy, hot and flavorful. Arrived well within the estimated time. Definitely ordering again!',
-        helpfulCount: 5,
-        createdAt: Date.now() - 21 * 24 * 3600 * 1000
-      }
-    ];
+    return [];
   });
 
   // Convert real database reviews for this vendor into ReviewItem format
@@ -199,24 +160,33 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
     return list.sort((a, b) => (b.helpfulCount || 0) - (a.helpfulCount || 0) || b.rating - a.rating);
   }, [reviews, activeFilter]);
 
-  // Dynamic Rating calculations
-  // Screenshot displays "3.7" or vendor's rating with breakdown
+  // Dynamic Rating calculations computed from actual reviews
   const avgRatingDisplay = useMemo(() => {
-    if (vendor.rating && vendor.rating > 0) {
-      return vendor.rating.toFixed(1);
+    if (reviews.length === 0) {
+      return (vendor.rating && vendor.rating > 0) ? vendor.rating.toFixed(1) : '0';
     }
-    return '3.7';
-  }, [vendor.rating]);
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / reviews.length).toFixed(1);
+  }, [reviews, vendor.rating]);
 
-  // Distribution percentages matching Screenshot 2:
-  // 5: ~70%, 4: ~15%, 3: ~10%, 2: ~5%, 1: ~20%
-  const distributionPercentages: Record<number, number> = {
-    5: 68,
-    4: 18,
-    3: 12,
-    2: 6,
-    1: 22
-  };
+  // Dynamic distribution percentages calculated from real reviews
+  const distributionPercentages = useMemo<Record<number, number>>(() => {
+    if (reviews.length === 0) {
+      return { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    }
+    const counts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach(r => {
+      const rounded = Math.min(5, Math.max(1, Math.round(r.rating)));
+      counts[rounded] = (counts[rounded] || 0) + 1;
+    });
+    return {
+      5: Math.round((counts[5] / reviews.length) * 100),
+      4: Math.round((counts[4] / reviews.length) * 100),
+      3: Math.round((counts[3] / reviews.length) * 100),
+      2: Math.round((counts[2] / reviews.length) * 100),
+      1: Math.round((counts[1] / reviews.length) * 100)
+    };
+  }, [reviews]);
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f8f9fa] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200 font-sans select-none">
@@ -310,14 +280,14 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
               </div>
 
               <div className="text-xs font-semibold text-slate-500 pt-0.5">
-                All ratings (1k+)
+                {reviews.length === 0 ? 'No ratings yet' : `All ratings (${reviews.length})`}
               </div>
             </div>
 
             {/* Right Column: 5 ★ down to 1 ★ Distribution Bars */}
             <div className="space-y-1.5 pl-2">
               {[5, 4, 3, 2, 1].map((stars) => {
-                const pct = distributionPercentages[stars] || 15;
+                const pct = distributionPercentages[stars] || 0;
                 return (
                   <div key={stars} className="flex items-center space-x-2 text-xs">
                     <span className="font-bold text-slate-700 w-3 text-right">{stars}</span>
@@ -416,7 +386,16 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
           ========================================================================
         */}
         <div className="space-y-3 px-4">
-          {filteredReviews.map((rev) => (
+          {filteredReviews.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-2xs p-8 text-center space-y-2">
+              <Star className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="font-bold text-sm text-slate-800">No reviews yet for this restaurant</p>
+              <p className="text-xs text-slate-400">
+                Customer reviews submitted after order delivery will appear here.
+              </p>
+            </div>
+          ) : (
+            filteredReviews.map((rev) => (
             <div
               key={rev.id}
               className="bg-white rounded-3xl border border-slate-100 shadow-2xs p-4 space-y-2.5"
@@ -472,7 +451,7 @@ export const CustomerRestaurantReviewsModal: React.FC<CustomerRestaurantReviewsM
                 </button>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
 

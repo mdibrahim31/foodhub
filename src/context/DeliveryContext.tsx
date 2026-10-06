@@ -268,28 +268,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
-    const parsed = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, INITIAL_VENDORS);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      const existingIds = new Set(parsed.map(v => v.id));
-      const missing = INITIAL_VENDORS.filter(v => !existingIds.has(v.id));
-      if (missing.length > 0) {
-        return [...parsed, ...missing];
-      }
-      return parsed;
-    }
-    return INITIAL_VENDORS;
+    const parsed = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, []);
+    return Array.isArray(parsed) ? parsed : [];
   });
 
   const [currentVendor, setCurrentVendorState] = useState<Vendor | null>(() => {
-    const initialList = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, INITIAL_VENDORS);
-    const list = Array.isArray(initialList) && initialList.length > 0 ? initialList : INITIAL_VENDORS;
+    const initialList = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, []);
+    const list = Array.isArray(initialList) ? initialList : [];
     const savedVendorId = typeof window !== 'undefined' ? localStorage.getItem(`${STORAGE_KEY_PREFIX}selected_vendor_id`) : null;
     if (savedVendorId) {
       const match = list.find(v => v.id === savedVendorId);
       if (match) return match;
     }
-    const tripti = list.find(v => v.name.toLowerCase().includes('tripti') || v.unique_id === 'LWTL');
-    if (tripti) return tripti;
     return list[0] || null;
   });
 
@@ -304,8 +294,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}menu_items`, INITIAL_MENU_ITEMS);
-    return Array.isArray(parsed) ? parsed : INITIAL_MENU_ITEMS;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}menu_items`, []);
+    return Array.isArray(parsed) ? parsed : [];
   });
 
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
@@ -392,8 +382,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Riders state: strictly enforces persistent is_paused so paused riders never auto-resume
   const [riders, setRiders] = useState<Rider[]>(() => {
-    const list: Rider[] = safeJsonParse(`${STORAGE_KEY_PREFIX}riders`, INITIAL_RIDERS);
-    const validList = Array.isArray(list) ? list : INITIAL_RIDERS;
+    const list: Rider[] = safeJsonParse(`${STORAGE_KEY_PREFIX}riders`, []);
+    const validList = Array.isArray(list) ? list : [];
     const pausedIds = getStoredPausedRiderIds();
     return validList.map(r => {
       if (!r) return r;
@@ -409,14 +399,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentRider, setCurrentRider] = useState<Rider | null>(() => riders[0] || null);
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}orders`, INITIAL_ORDERS);
-    return Array.isArray(parsed) ? parsed : INITIAL_ORDERS;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}orders`, []);
+    return Array.isArray(parsed) ? parsed : [];
   });
 
   const [foodCategories, setFoodCategories] = useState<FoodCategory[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}food_categories`, INITIAL_FOOD_CATEGORIES);
-    const valid = Array.isArray(parsed) ? parsed.filter(c => c && c.id && !['cat-1','cat-2','cat-3','cat-4','cat-5','cat-6','cat-7','cat-8','cat-9','cat-10','cat-11'].includes(c.id)) : [];
-    return valid;
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}food_categories`, []);
+    return Array.isArray(parsed) ? parsed : [];
   });
 
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
@@ -639,6 +628,36 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       // 2. Query backend server database /api/zones and /api/riders for cross-browser synchronization
+      try {
+        const vRes = await fetch('/api/vendors');
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          if (Array.isArray(vData) && isSubscribed) {
+            setVendors(vData);
+          }
+        }
+      } catch {}
+
+      try {
+        const mRes = await fetch('/api/menu-items');
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          if (Array.isArray(mData) && isSubscribed) {
+            setMenuItems(mData);
+          }
+        }
+      } catch {}
+
+      try {
+        const catRes = await fetch('/api/food-categories');
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (Array.isArray(catData) && isSubscribed) {
+            setFoodCategories(catData);
+          }
+        }
+      } catch {}
+
       try {
         const oRes = await fetch('/api/orders');
         if (oRes.ok) {

@@ -368,8 +368,7 @@ export const VendorPortal: React.FC = () => {
   // Combine existing categories and custom added categories
   const allCategoryNames = Array.from(new Set([
     ...existingCategories,
-    ...customCategories,
-    ...(existingCategories.length === 0 ? ['Bhorta & Bhaji', 'Main Course', 'Fast Food'] : [])
+    ...customCategories
   ]));
 
   const filteredMenuItems = currentMenuItems.filter(item => {
@@ -617,7 +616,15 @@ export const VendorPortal: React.FC = () => {
 
             {/* Category Groups Accordion List (Matching Screenshot) */}
             <div className="space-y-4 pt-1">
-              {allCategoryNames.map((categoryName) => {
+              {allCategoryNames.length === 0 ? (
+                <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-8 text-center space-y-2">
+                  <p className="font-bold text-sm text-slate-800">No categories created yet</p>
+                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                    Tap "+ Add category" above to create your first menu category and start adding products.
+                  </p>
+                </div>
+              ) : (
+                allCategoryNames.map((categoryName) => {
                 const categoryItems = filteredMenuItems.filter(item => item.category === categoryName);
                 const isCollapsed = !!collapsedCategories[categoryName];
 
@@ -754,7 +761,7 @@ export const VendorPortal: React.FC = () => {
                     )}
                   </div>
                 );
-              })}
+              }))}
             </div>
           </div>
         </div>

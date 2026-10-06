@@ -31,27 +31,9 @@ interface VendorReviewsViewProps {
 
 const STORAGE_KEY_PREFIX = 'foodiplace_vendor_reviews_';
 
-// Initial sample review that 100% matches Screenshot 1 & 2
-const getInitialReviews = (vendor: Vendor): VendorReview[] => {
-  const vendorUniqueId = (vendor.unique_id || 'LWTL').toLowerCase();
-  return [
-    {
-      id: `rev-${vendor.id}-001`,
-      vendor_id: vendor.id,
-      order_id: `ord-${vendorUniqueId}-2624`,
-      order_code: `${vendorUniqueId}-2624-cvxx`,
-      customer_name: 'Tanvir Ahmed',
-      customer_phone: '01811223344',
-      rating: 4,
-      comment: 'very poor qty',
-      created_at: '2026-06-14T13:06:00.000Z',
-      vendor_reply: {
-        text: 'ki doroner shomssa hoyce jante pari? kichu na bole shudu karap bolle ki hobe baiya.ar 4star o to dicen dekci.karap hole 1star diten.apnader to hotel er posa kabar gulai balo lagbe..balo kabar apnader peTe shoy na',
-        replied_at: '2026-06-15T11:31:00.000Z',
-        status: 'approved'
-      }
-    }
-  ];
+// Initial reviews are empty for newly registered vendors (loaded only from database)
+const getInitialReviews = (_vendor: Vendor): VendorReview[] => {
+  return [];
 };
 
 export const VendorReviewsView: React.FC<VendorReviewsViewProps> = ({
@@ -176,10 +158,8 @@ export const VendorReviewsView: React.FC<VendorReviewsViewProps> = ({
   }, [reviews, totalReviews]);
 
   // Average Rating
-  // Note: in Foodpanda Partner app, if reviews are low or during incubation, it displays '0'
   const storeRatingDisplay = useMemo(() => {
     if (totalReviews === 0) return '0';
-    if (totalReviews === 1 && reviews[0].rating === 4) return '0'; // Exactly matches screenshot value
     const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
     return (sum / totalReviews).toFixed(1);
   }, [reviews, totalReviews]);
@@ -236,17 +216,13 @@ export const VendorReviewsView: React.FC<VendorReviewsViewProps> = ({
     if (realOrder) {
       setSelectedOrderDetails(realOrder);
     } else {
-      // Mock order preview for demo review matching screenshot
       setSelectedOrderDetails({
         order_code: review.order_code,
-        customer_name: review.customer_name || 'Tanvir Ahmed',
-        customer_phone: review.customer_phone || '01811223344',
-        delivery_address: 'House 14, Road 3, Halishahar Housing Estate, Chittagong',
-        items: [
-          { item_name: "Special Chicken Khichuri & Egg", quantity: 1, item_price: 220, subtotal: 220 },
-          { item_name: "Special Firni Dessert", quantity: 1, item_price: 60, subtotal: 60 }
-        ],
-        total: 280,
+        customer_name: review.customer_name || 'Customer',
+        customer_phone: review.customer_phone || '',
+        delivery_address: 'Standard customer delivery address',
+        items: [],
+        total: 0,
         created_at: review.created_at
       });
     }
@@ -845,7 +821,7 @@ export const VendorReviewsView: React.FC<VendorReviewsViewProps> = ({
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">Standard menu items from Tripti's Kitchen</p>
+                <p className="text-xs text-slate-400">Order items for {vendor.name}</p>
               )}
             </div>
 
@@ -853,7 +829,7 @@ export const VendorReviewsView: React.FC<VendorReviewsViewProps> = ({
             <div className="pt-2 border-t border-slate-100 flex justify-between items-center font-black text-sm">
               <span className="text-slate-800">Total Bill:</span>
               <span className="font-mono text-[#d70f64] text-base">
-                ৳{(selectedOrderDetails as any).total || (selectedOrderDetails as any).total_cash_payable || 280}
+                ৳{(selectedOrderDetails as any).total || (selectedOrderDetails as any).total_cash_payable || 0}
               </span>
             </div>
 
