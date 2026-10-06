@@ -4,7 +4,7 @@ import { useDelivery } from '../../context/DeliveryContext';
 import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
 import { CustomerRestaurantReviewsModal } from './CustomerRestaurantReviewsModal';
-import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../../utils/geo';
+import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone, parseGoogleMapsLinkOrCoords } from '../../utils/geo';
 import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
   MapPin, 
@@ -513,16 +513,18 @@ export const CustomerPortal: React.FC = () => {
 
   // Active Customer Zone based strictly on the map pin point (customerLat, customerLng)
   const activeCustomerZone = React.useMemo(() => {
-    // 1. Determine zone from exact pin coordinates inside zone boundary / radius
+    // 1. Determine zone from exact pin coordinates inside zone boundary / radius (NO FALLBACK)
     const zoneFromCoords = findZoneForPoint(customerLat, customerLng, zones, false);
     if (zoneFromCoords) return zoneFromCoords;
 
-    // 2. If coordinates are matched with fallback or selectedAddress zone name
+    // 2. If address has a zone specified, verify customer pin is inside that zone
     if (selectedAddress?.zone) {
       const match = zones.find(z => z.name.toLowerCase() === selectedAddress.zone?.toLowerCase() || z.id === selectedAddress.zone);
-      if (match) return match;
+      if (match && isPointInZone(customerLat, customerLng, match)) return match;
     }
-    return findZoneForPoint(customerLat, customerLng, zones, true);
+
+    // Customer pinned outside all configured delivery zones (e.g. pinned in Dhaka when only CTG zone exists) -> return null
+    return null;
   }, [selectedAddress?.zone, customerLat, customerLng, zones]);
 
   const toggleFavorite = (vendorId: string, e: React.MouseEvent) => {
@@ -534,26 +536,40 @@ export const CustomerPortal: React.FC = () => {
 
   // Filtered and Sorted Vendors (Strictly filtered by Customer Zone Boundary)
   const filteredVendors = vendors.filter((v) => {
-    // 1. Filter strictly by Customer Zone: Only vendors added/belonging to this zone are shown!
+    // 1. Filter strictly by Customer Zone: Only vendors added/belonging to this active zone are shown!
     if (!activeCustomerZone) {
-      return false; // If no zone matches the pinned location, do not show any vendor
+      return false; // Customer pinned outside all delivery zones (e.g., in Dhaka) -> show 0 vendors!
+    }
+
+    // Determine vendor's actual GPS location (from vendor's latitude/longitude OR parsed google_maps_link)
+    let vendorLat = v.latitude;
+    let vendorLng = v.longitude;
+    if ((!vendorLat || !vendorLng) && v.google_maps_link) {
+      const parsedCoords = parseGoogleMapsLinkOrCoords(v.google_maps_link);
+      if (parsedCoords) {
+        vendorLat = parsedCoords.lat;
+        vendorLng = parsedCoords.lng;
+      }
     }
 
     const normCustZone = activeCustomerZone.name.toLowerCase().replace(/\s*zone\s*/i, '').trim();
     const normVendorZone = (v.zone || '').toLowerCase().replace(/\s*zone\s*/i, '').trim();
 
-    // Flexible zone name match, zone ID match, or GPS location inside active zone boundary/radius
+    // Check if vendor's GPS coordinate is physically inside the active customer zone boundary/radius
+    const isPointInsideActiveZone = Boolean(vendorLat && vendorLng && isPointInZone(vendorLat, vendorLng, activeCustomerZone));
+
+    // Flexible zone name or ID match
     const isZoneNameMatch = normVendorZone.length > 0 && (
       normVendorZone === normCustZone ||
       normVendorZone.includes(normCustZone) ||
       normCustZone.includes(normVendorZone)
     );
     const isZoneIdMatch = Boolean(v.zone && (v.zone === activeCustomerZone.id || v.zone.toLowerCase() === activeCustomerZone.name.toLowerCase()));
-    const isPointMatch = Boolean(v.latitude && v.longitude && isPointInZone(v.latitude, v.longitude, activeCustomerZone));
 
-    const matchesZone = isZoneNameMatch || isZoneIdMatch || isPointMatch;
+    // Strict boundary match: Vendor MUST either be physically located inside active customer zone OR explicitly assigned to it
+    const matchesZone = isPointInsideActiveZone || isZoneNameMatch || isZoneIdMatch;
     if (!matchesZone) {
-      return false; // Reject vendors from other zones!
+      return false; // Reject vendors outside active customer zone!
     }
 
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
