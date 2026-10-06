@@ -484,17 +484,114 @@ app.get('/api/customers', (_req, res) => {
 app.post('/api/customers', (req, res) => {
   const newCustomer = req.body;
   if (!serverState.customers) serverState.customers = [];
+  const oldPhone = newCustomer.oldPhone;
+  const cleanNewPhone = (newCustomer.phone || '').replace(/\D/g, '');
+  const cleanOldPhone = (oldPhone || '').replace(/\D/g, '');
+
   const existingIdx = serverState.customers.findIndex(c => 
-    c.id === newCustomer.id || 
-    (c.phone && newCustomer.phone && c.phone.replace(/\D/g, '') === newCustomer.phone.replace(/\D/g, ''))
+    (newCustomer.id && c.id === newCustomer.id) || 
+    (cleanOldPhone && c.phone && c.phone.replace(/\D/g, '') === cleanOldPhone) ||
+    (cleanNewPhone && c.phone && c.phone.replace(/\D/g, '') === cleanNewPhone)
   );
+
+  const customerToSave = {
+    ...newCustomer,
+    updated_at: new Date().toISOString()
+  };
+  delete customerToSave.oldPhone;
+
   if (existingIdx >= 0) {
-    serverState.customers[existingIdx] = { ...serverState.customers[existingIdx], ...newCustomer };
+    serverState.customers[existingIdx] = { 
+      ...serverState.customers[existingIdx], 
+      ...customerToSave 
+    };
   } else {
-    serverState.customers.push(newCustomer);
+    serverState.customers.push({
+      ...customerToSave,
+      created_at: customerToSave.created_at || new Date().toISOString()
+    });
   }
+
+  // If phone/name changed, update customer's addresses
+  if (customerToSave.phone && serverState.addresses) {
+    const custId = customerToSave.id;
+    serverState.addresses.forEach(a => {
+      const aClean = (a.customer_phone || '').replace(/\D/g, '');
+      if (
+        (custId && a.customer_id === custId) || 
+        (cleanOldPhone && aClean === cleanOldPhone) || 
+        (cleanNewPhone && aClean === cleanNewPhone)
+      ) {
+        a.customer_phone = customerToSave.phone;
+        if (customerToSave.name) a.customer_name = customerToSave.name;
+        if (custId) a.customer_id = custId;
+      }
+    });
+  }
+
   saveState(serverState);
-  res.json({ success: true, customer: newCustomer });
+  console.log(`[API] Customer saved/updated: ${customerToSave.name} (${customerToSave.phone})`);
+  res.json({ success: true, customer: existingIdx >= 0 ? serverState.customers[existingIdx] : customerToSave });
+});
+
+// Update Customer by ID
+app.put('/api/customers/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.customers) serverState.customers = [];
+
+  const oldPhone = updates.oldPhone;
+  const cleanNewPhone = (updates.phone || '').replace(/\D/g, '');
+  const cleanOldPhone = (oldPhone || '').replace(/\D/g, '');
+
+  let existingIdx = serverState.customers.findIndex(c => c.id === id);
+  if (existingIdx === -1 && cleanOldPhone) {
+    existingIdx = serverState.customers.findIndex(c => 
+      c.phone && c.phone.replace(/\D/g, '') === cleanOldPhone
+    );
+  }
+
+  const updatesToSave = {
+    ...updates,
+    id,
+    updated_at: new Date().toISOString()
+  };
+  delete updatesToSave.oldPhone;
+
+  if (existingIdx >= 0) {
+    serverState.customers[existingIdx] = {
+      ...serverState.customers[existingIdx],
+      ...updatesToSave
+    };
+
+    // Update addresses
+    if (updatesToSave.phone && serverState.addresses) {
+      serverState.addresses.forEach(a => {
+        const aClean = (a.customer_phone || '').replace(/\D/g, '');
+        if (
+          a.customer_id === id || 
+          (cleanOldPhone && aClean === cleanOldPhone) || 
+          (cleanNewPhone && aClean === cleanNewPhone)
+        ) {
+          a.customer_phone = updatesToSave.phone;
+          if (updatesToSave.name) a.customer_name = updatesToSave.name;
+          a.customer_id = id;
+        }
+      });
+    }
+
+    saveState(serverState);
+    console.log(`[API] Customer ${id} updated: ${updatesToSave.name} (${updatesToSave.phone})`);
+    return res.json({ success: true, customer: serverState.customers[existingIdx] });
+  }
+
+  const newCust = {
+    ...updatesToSave,
+    created_at: new Date().toISOString()
+  };
+  serverState.customers.push(newCust);
+  saveState(serverState);
+  res.json({ success: true, customer: newCust });
 });
 
 // 9. Customer Addresses API (Strictly isolated by customer phone/ID)

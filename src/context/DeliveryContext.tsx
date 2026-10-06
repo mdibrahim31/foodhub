@@ -49,6 +49,7 @@ interface DeliveryContextType {
   loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; message?: string };
   setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
   registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
+  updateCustomerProfile: (data: { name: string; phone: string; email?: string; avatar_url?: string }) => Promise<{ success: boolean; message: string }>;
   deleteCustomer?: (id: string) => void;
   logoutUser: () => void;
 
@@ -441,6 +442,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else if (data?.type === 'ORDERS_SYNC') {
         if (Array.isArray(data.orders)) {
           setOrders(data.orders);
+        }
+      } else if (data?.type === 'CUSTOMER_PROFILE_UPDATED') {
+        const { customer } = data;
+        if (customer && customer.id) {
+          setCustomers(prev => {
+            const idx = prev.findIndex(c => c.id === customer.id || c.phone === customer.phone);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], ...customer };
+              return updated;
+            }
+            return [...prev, customer];
+          });
         }
       }
     };
@@ -1321,6 +1335,194 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setCurrentUser(customerAccount);
     return { success: true };
+  };
+
+  const updateCustomerProfile = async (data: {
+    name: string;
+    phone: string;
+    email?: string;
+    avatar_url?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const cleanPhone = data.phone.trim();
+    const cleanName = data.name.trim();
+    const cleanEmail = (data.email || '').trim();
+
+    if (!cleanName) {
+      return { success: false, message: 'Name cannot be empty.' };
+    }
+    if (!cleanPhone) {
+      return { success: false, message: 'Phone number cannot be empty.' };
+    }
+
+    // Determine target customer
+    let targetCustomer = currentCustomer;
+    if (!targetCustomer && currentUser && currentUser.role === 'customer') {
+      const cleanUserPhone = (currentUser.phone || '').replace(/\D/g, '');
+      targetCustomer = customers.find(c => 
+        c.id === currentUser.reference_id || 
+        c.phone === currentUser.phone || 
+        (cleanUserPhone && c.phone && c.phone.replace(/\D/g, '') === cleanUserPhone)
+      ) || null;
+    }
+
+    const previousPhone = targetCustomer?.phone || currentUser?.phone || '';
+    const customerId = targetCustomer?.id || currentUser?.reference_id || (currentUser?.id ? currentUser.id.replace(/^u-c-/, '') : `c-${Date.now()}`);
+
+    const updatedCustomer: CustomerUser = {
+      ...(targetCustomer || {
+        id: customerId,
+        password: '',
+        created_at: new Date().toISOString(),
+        addresses: []
+      }),
+      id: customerId,
+      name: cleanName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      avatar_url: data.avatar_url || targetCustomer?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    };
+
+    // 1. Update customers state & local storage
+    setCustomers(prev => {
+      const cleanPrevPhone = previousPhone.replace(/\D/g, '');
+      const idx = prev.findIndex(c => 
+        c.id === customerId || 
+        (cleanPrevPhone && c.phone && c.phone.replace(/\D/g, '') === cleanPrevPhone) || 
+        c.phone === previousPhone
+      );
+      let updated: CustomerUser[];
+      if (idx >= 0) {
+        updated = [...prev];
+        updated[idx] = { ...updated[idx], ...updatedCustomer };
+      } else {
+        updated = [...prev, updatedCustomer];
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}customers`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    // 2. Update currentUser session state & localStorage
+    const updatedAccount: UserAccount = {
+      id: `u-c-${customerId}`,
+      role: 'customer',
+      name: cleanName,
+      phone: cleanPhone,
+      is_password_set: true,
+      reference_id: customerId
+    };
+    setCurrentUser(updatedAccount);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedAccount));
+      localStorage.setItem('foodhub_customer_phone', cleanPhone);
+      localStorage.setItem('foodhub_customer_name', cleanName);
+    }
+
+    // 3. Update customer addresses (if phone/name changed)
+    setAllAddresses((prev: CustomerAddress[]) => {
+      const cleanPrevPhone = previousPhone.replace(/\D/g, '');
+      const updated = prev.map((a: CustomerAddress) => {
+        const aClean = (a.customer_phone || '').replace(/\D/g, '');
+        if (
+          a.customer_id === customerId || 
+          (cleanPrevPhone && aClean === cleanPrevPhone) || 
+          a.customer_phone === previousPhone
+        ) {
+          return {
+            ...a,
+            customer_name: cleanName,
+            customer_phone: cleanPhone,
+            customer_id: customerId
+          };
+        }
+        return a;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    // 4. Migrate cart if phone key changed
+    if (previousPhone && previousPhone !== cleanPhone) {
+      const oldUserAccount: UserAccount = {
+        id: `u-c-${customerId}`,
+        role: 'customer',
+        name: cleanName,
+        phone: previousPhone,
+        is_password_set: true,
+        reference_id: customerId
+      };
+      const oldCartKey = getCustomerCartKey(oldUserAccount);
+      const newCartKey = getCustomerCartKey(updatedAccount);
+      if (oldCartKey !== newCartKey) {
+        const oldCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${oldCartKey}`, []);
+        const oldVendor = safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${oldCartKey}`, null);
+        if (oldCart.length > 0) {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${newCartKey}`, JSON.stringify(oldCart));
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${newCartKey}`, JSON.stringify(oldVendor));
+          fetch(`/api/cart/${encodeURIComponent(newCartKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: oldCart, vendor: oldVendor })
+          }).catch(() => {});
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_${oldCartKey}`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${oldCartKey}`);
+          fetch(`/api/cart/${encodeURIComponent(oldCartKey)}`, { method: 'DELETE' }).catch(() => {});
+        }
+      }
+    }
+
+    // 5. Save to backend database server (/api/customers)
+    try {
+      await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...updatedCustomer,
+          oldPhone: previousPhone
+        })
+      });
+    } catch (e) {
+      console.warn('Backend /api/customers sync warning:', e);
+    }
+
+    // 6. Save directly to Supabase `customers` table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const supaPayload: Record<string, any> = {
+          id: customerId,
+          name: cleanName,
+          phone: cleanPhone,
+          email: cleanEmail || null,
+          avatar_url: updatedCustomer.avatar_url || null,
+          updated_at: new Date().toISOString()
+        };
+        const { error: supaErr } = await supabase.from('customers').upsert([supaPayload]);
+        if (supaErr) {
+          console.warn('Supabase customer upsert warning:', supaErr);
+        } else if (previousPhone && previousPhone !== cleanPhone) {
+          // Update customer_addresses in Supabase
+          await supabase
+            .from('customer_addresses')
+            .update({ customer_phone: cleanPhone, customer_name: cleanName })
+            .or(`customer_id.eq.${customerId},customer_phone.eq.${previousPhone}`);
+        }
+      } catch (err) {
+        console.warn('Supabase customer update exception:', err);
+      }
+    }
+
+    // 7. Cross-tab sync
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'CUSTOMER_PROFILE_UPDATED',
+        customer: updatedCustomer
+      });
+    } catch {}
+
+    return { success: true, message: 'Profile updated in database!' };
   };
 
   const logoutUser = () => {
@@ -3164,6 +3366,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         loginUser,
         setPasswordForUser,
         registerCustomer,
+        updateCustomerProfile,
         deleteCustomer,
         logoutUser,
         zones,

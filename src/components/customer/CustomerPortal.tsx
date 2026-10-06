@@ -61,6 +61,7 @@ export const CustomerPortal: React.FC = () => {
     orders,
     currentUser,
     currentCustomer,
+    updateCustomerProfile,
     customerRespondToPrepTime,
     logoutUser,
     loginUser,
@@ -136,18 +137,96 @@ export const CustomerPortal: React.FC = () => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [customerPhone, setCustomerPhone] = useState(() => currentUser?.phone || '');
-  const [customerEmail, setCustomerEmail] = useState('customer@example.com');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaveFeedback, setProfileSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'customer') {
+    if (currentCustomer) {
+      setUserName(currentCustomer.name || currentUser?.name || 'Customer');
+      setCustomerPhone(currentCustomer.phone || currentUser?.phone || '');
+      setCustomerEmail(currentCustomer.email || '');
+    } else if (currentUser && currentUser.role === 'customer') {
       setUserName(currentUser.name || 'Customer');
       setCustomerPhone(currentUser.phone || '');
+      setCustomerEmail('');
     } else {
       setUserName('Guest User');
       setCustomerPhone('');
+      setCustomerEmail('');
     }
-  }, [currentUser]);
+  }, [currentCustomer, currentUser]);
+
+  const openEditProfile = () => {
+    if (currentCustomer) {
+      setUserName(currentCustomer.name || currentUser?.name || '');
+      setCustomerPhone(currentCustomer.phone || currentUser?.phone || '');
+      setCustomerEmail(currentCustomer.email || '');
+    } else if (currentUser) {
+      setUserName(currentUser.name || '');
+      setCustomerPhone(currentUser.phone || '');
+      setCustomerEmail('');
+    }
+    setProfileSaveFeedback(null);
+    setIsEditProfileOpen(true);
+  };
+
+  const openSettingsModal = () => {
+    if (currentCustomer) {
+      setUserName(currentCustomer.name || currentUser?.name || '');
+      setCustomerPhone(currentCustomer.phone || currentUser?.phone || '');
+      setCustomerEmail(currentCustomer.email || '');
+    } else if (currentUser) {
+      setUserName(currentUser.name || '');
+      setCustomerPhone(currentUser.phone || '');
+      setCustomerEmail('');
+    }
+    setProfileSaveFeedback(null);
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = userName.trim();
+    const trimmedPhone = customerPhone.trim();
+    const trimmedEmail = customerEmail.trim();
+
+    if (!trimmedName) {
+      setProfileSaveFeedback({ type: 'error', message: 'Please enter a valid display name.' });
+      return;
+    }
+    if (!trimmedPhone) {
+      setProfileSaveFeedback({ type: 'error', message: 'Please enter a valid mobile number.' });
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileSaveFeedback(null);
+
+    try {
+      const res = await updateCustomerProfile({
+        name: trimmedName,
+        phone: trimmedPhone,
+        email: trimmedEmail,
+      });
+
+      if (res.success) {
+        setProfileSaveFeedback({ type: 'success', message: '✅ Profile updated and saved to database!' });
+        setTimeout(() => {
+          setIsEditProfileOpen(false);
+          setIsSettingsModalOpen(false);
+          setProfileSaveFeedback(null);
+        }, 900);
+      } else {
+        setProfileSaveFeedback({ type: 'error', message: res.message || 'Failed to update profile.' });
+      }
+    } catch (err: any) {
+      setProfileSaveFeedback({ type: 'error', message: err?.message || 'Error saving to database.' });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const [selectedVendorForMenu, setSelectedVendorForMenuState] = useState<Vendor | null>(() => {
     if (typeof window !== 'undefined') {
@@ -1142,8 +1221,8 @@ export const CustomerPortal: React.FC = () => {
             <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Account</h1>
               <button 
-                onClick={() => setIsSettingsModalOpen(true)}
-                className="p-1 text-slate-800 hover:text-orange-600 transition"
+                onClick={openSettingsModal}
+                className="p-1 text-slate-800 hover:text-orange-600 transition cursor-pointer"
                 aria-label="Settings"
               >
                 <Settings className="w-6 h-6 stroke-[2]" />
@@ -1155,8 +1234,8 @@ export const CustomerPortal: React.FC = () => {
               <div>
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight">{userName}</h2>
                 <button 
-                  onClick={() => setIsEditProfileOpen(true)}
-                  className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block"
+                  onClick={openEditProfile}
+                  className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block cursor-pointer"
                 >
                   View profile
                 </button>
@@ -1236,7 +1315,7 @@ export const CustomerPortal: React.FC = () => {
 
                 {/* Settings */}
                 <div 
-                  onClick={() => setIsSettingsModalOpen(true)}
+                  onClick={openSettingsModal}
                   className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
                 >
                   <div className="flex items-center space-x-3.5">
@@ -2302,40 +2381,46 @@ export const CustomerPortal: React.FC = () => {
       {/* EDIT PROFILE / SETTINGS MODAL */}
       {(isEditProfileOpen || isSettingsModalOpen) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-black text-slate-900 text-base">
                 {isEditProfileOpen ? 'User Profile' : 'Account Settings'}
               </h3>
               <button 
+                type="button"
                 onClick={() => {
                   setIsEditProfileOpen(false);
                   setIsSettingsModalOpen(false);
+                  setProfileSaveFeedback(null);
                 }} 
-                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer p-1"
               >
                 &times;
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Display Name</label>
                 <input
                   type="text"
+                  required
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                  placeholder="Your Name"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
                 />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
                 <input
-                  type="text"
+                  type="tel"
+                  required
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  placeholder="01XXXXXXXXX"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
                 />
               </div>
 
@@ -2345,22 +2430,49 @@ export const CustomerPortal: React.FC = () => {
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  placeholder="customer@example.com"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
                 />
               </div>
-            </div>
 
-            <div className="pt-2 flex justify-end space-x-2">
-              <button
-                onClick={() => {
-                  setIsEditProfileOpen(false);
-                  setIsSettingsModalOpen(false);
-                }}
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black shadow-xs transition"
-              >
-                Save Changes
-              </button>
-            </div>
+              {profileSaveFeedback && (
+                <div className={`p-2.5 rounded-xl text-center font-bold text-xs ${
+                  profileSaveFeedback.type === 'success' 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                }`}>
+                  {profileSaveFeedback.message}
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditProfileOpen(false);
+                    setIsSettingsModalOpen(false);
+                    setProfileSaveFeedback(null);
+                  }}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-xl text-xs font-black shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSavingProfile ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      <span>Saving to DB...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

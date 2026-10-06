@@ -9,17 +9,17 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     build: {
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'index.html'),
-          vendor: path.resolve(__dirname, 'vendor.html'),
-          orders: path.resolve(__dirname, 'orders.html'),
-          rider: path.resolve(__dirname, 'rider.html'),
-          admin: path.resolve(__dirname, 'admin.html'),
+          main: path.resolve(import.meta.dirname, 'index.html'),
+          vendor: path.resolve(import.meta.dirname, 'vendor.html'),
+          orders: path.resolve(import.meta.dirname, 'orders.html'),
+          rider: path.resolve(import.meta.dirname, 'rider.html'),
+          admin: path.resolve(import.meta.dirname, 'admin.html'),
         },
       },
     },
