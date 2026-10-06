@@ -2897,165 +2897,222 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
-      {/* 
-        ========================================================================
-        FOODPANDA STYLE MENU ITEM & VARIATION SELECTION MODAL
-        ========================================================================
-      */}
       {selectedMenuItemForModal && selectedVendorForMenu && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col animate-in slide-in-from-bottom duration-300">
-            {/* Top Dish Cover Header */}
-            <div className="relative h-56 shrink-0 bg-slate-100">
+        <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto animate-in slide-in-from-bottom duration-300">
+          {/* Main Fullscreen Container */}
+          <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full pb-24 relative bg-white">
+            
+            {/* Top Dish Cover Header with Close Button */}
+            <div className="relative h-72 sm:h-80 w-full shrink-0 bg-slate-100">
               <img
-                src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600'}
+                src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
                 className="w-full h-full object-cover"
               />
               <button
                 onClick={() => setSelectedMenuItemForModal(null)}
-                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white flex items-center justify-center transition cursor-pointer backdrop-blur-xs"
+                className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white text-slate-800 shadow-md flex items-center justify-center hover:bg-slate-100 transition cursor-pointer z-10"
+                title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 stroke-[2.5]" />
               </button>
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-full text-xs font-bold">
-                {selectedMenuItemForModal.category}
-              </div>
             </div>
 
-            {/* Scrollable Content Body */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {/* Dish Name & Description */}
-              <div className="space-y-1 border-b border-slate-100 pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-lg font-black text-slate-900 leading-snug">
-                    {selectedMenuItemForModal.name}
-                  </h3>
-                  <span className="text-base font-black text-[#d70f64] shrink-0 font-mono">
-                    {settings.currency_symbol} {selectedMenuItemForModal.price}
+            {/* Product Details Header Section */}
+            <div className="px-5 pt-5 pb-3 space-y-2">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                {selectedMenuItemForModal.name}
+              </h2>
+              
+              {/* Price & Original Price with Strike-through */}
+              <div className="flex flex-col space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                    {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 ? 'from' : ''}
+                  </span>
+                  <span className="text-base font-black text-[#d70f64] font-mono">
+                    Tk {selectedMenuItemForModal.price}
+                  </span>
+                  <span className="text-xs text-slate-400 line-through font-semibold font-mono">
+                    Tk {Math.round(selectedMenuItemForModal.price * 1.12)}
                   </span>
                 </div>
-                {selectedMenuItemForModal.description && (
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    {selectedMenuItemForModal.description}
-                  </p>
-                )}
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 pt-1">
-                  <span className="text-amber-500">👍 95%</span>
-                  <span>·</span>
-                  <span className="text-slate-400 font-medium">Popular choice</span>
+                
+                {/* Thumbs-up Rating */}
+                <div className="flex items-center space-x-1 text-xs font-bold text-slate-700">
+                  <span>👍 52%</span>
                 </div>
               </div>
 
-              {/* Variation Groups */}
-              {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 ? (
-                <div className="space-y-4">
-                  {selectedMenuItemForModal.variations.map((group) => {
-                    const groupKey = group.id || group.name;
-                    const selectedVal = selectedModalVariations[groupKey];
+              {/* Description */}
+              {selectedMenuItemForModal.description && (
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold pt-1">
+                  {selectedMenuItemForModal.description}
+                </p>
+              )}
+            </div>
 
-                    return (
-                      <div key={groupKey} className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
+            {/* Space separation strip */}
+            <div className="h-2 bg-slate-100 w-full" />
+
+            {/* Variation Groups (matching Screenshot 1) */}
+            {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 ? (
+              <div className="space-y-4 pt-4">
+                {selectedMenuItemForModal.variations.map((group) => {
+                  const groupKey = group.id || group.name;
+                  const selectedVal = selectedModalVariations[groupKey];
+
+                  return (
+                    <div key={groupKey} className="space-y-3">
+                      {/* Variation Title Header */}
+                      <div className="flex items-center justify-between px-5">
+                        <div className="flex flex-col">
+                          <h3 className="font-extrabold text-lg text-slate-900">
                             {group.name}
-                          </h4>
-                          <span className="text-[10px] font-bold text-[#d70f64] bg-pink-50 px-2 py-0.5 rounded-full">
-                            {group.required ? 'Required' : 'Optional'}
+                          </h3>
+                          <span className="text-xs text-slate-400 font-bold">
+                            Done
                           </span>
                         </div>
-
-                        <div className="space-y-1.5 pt-1">
-                          {group.options.map((opt) => {
-                            const isSelected = selectedVal?.optionName === opt.name;
-                            return (
-                              <label
-                                key={opt.id || opt.name}
-                                onClick={() => {
-                                  setSelectedModalVariations(prev => ({
-                                    ...prev,
-                                    [groupKey]: {
-                                      groupName: group.name,
-                                      optionName: opt.name,
-                                      price: opt.price || 0
-                                    }
-                                  }));
-                                }}
-                                className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${
-                                  isSelected 
-                                    ? 'bg-white border-[#d70f64] text-slate-900 shadow-2xs' 
-                                    : 'bg-white/60 border-slate-200 text-slate-700 hover:border-slate-300'
-                                }`}
-                              >
-                                <div className="flex items-center space-x-2.5">
-                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                                    isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
-                                  }`}>
-                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                  </div>
-                                  <span className="text-xs font-extrabold">{opt.name}</span>
-                                </div>
-                                <span className="text-xs font-black text-slate-600 font-mono">
-                                  {opt.price > 0 ? `+${settings.currency_symbol} ${opt.price}` : 'Free'}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
+                        <span className="bg-slate-100 text-slate-600 font-extrabold text-[11px] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          Completed
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : null}
 
-              {/* Special Instructions Input */}
-              <div className="space-y-1.5 pt-2">
-                <label className="block text-xs font-bold text-slate-800">
-                  Special Instructions (বিশেষ নির্দেশনা)
-                </label>
-                <input
-                  type="text"
+                      {/* Options Radio List */}
+                      <div className="space-y-1 px-5">
+                        {group.options.map((opt) => {
+                          const isSelected = selectedVal?.optionName === opt.name;
+                          const currentOptionPrice = selectedMenuItemForModal.price + (opt.price || 0);
+                          const originalOptionPrice = Math.round(currentOptionPrice * 1.12);
+
+                          return (
+                            <div
+                              key={opt.id || opt.name}
+                              onClick={() => {
+                                setSelectedModalVariations(prev => ({
+                                  ...prev,
+                                  [groupKey]: {
+                                    groupName: group.name,
+                                    optionName: opt.name,
+                                    price: opt.price || 0
+                                  }
+                                }));
+                              }}
+                              className="flex items-center justify-between py-3 border-b border-slate-100 last:border-b-0 cursor-pointer group"
+                            >
+                              <span className="text-sm font-extrabold text-slate-800">
+                                {opt.name}
+                              </span>
+                              
+                              <div className="flex items-center">
+                                {/* Option Price with markup strike-through */}
+                                <div className="text-right flex flex-col font-mono">
+                                  <span className="text-xs font-black text-[#d70f64]">
+                                    Tk {currentOptionPrice}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 line-through font-semibold">
+                                    Tk {originalOptionPrice}
+                                  </span>
+                                </div>
+
+                                {/* Nice Native Style Radio Selection */}
+                                <div className="ml-3.5">
+                                  {isSelected ? (
+                                    <div className="w-5 h-5 rounded-full border-2 border-[#d70f64] bg-[#d70f64] flex items-center justify-center shrink-0">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shrink-0 group-hover:border-[#d70f64] transition-colors" />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Spacer strip after variations */}
+                      <div className="h-2 bg-slate-100 w-full mt-4" />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {/* Special Instructions Section (matching Screenshot 2) */}
+            <div className="px-5 pt-4 space-y-2">
+              <h3 className="font-extrabold text-lg text-slate-900">
+                Special instructions
+              </h3>
+              <p className="text-xs text-slate-500 leading-normal font-medium">
+                Please let us know if you are allergic to anything or if we need to avoid anything
+              </p>
+              
+              {/* Textarea container */}
+              <div className="relative pt-1">
+                <textarea
+                  maxLength={500}
                   value={modalSpecialInstructions}
                   onChange={(e) => setModalSpecialInstructions(e.target.value)}
-                  placeholder="e.g. Less spicy, extra sauce, no cutlery..."
-                  className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#d70f64] font-medium"
+                  placeholder="e.g. no mayo"
+                  className="w-full text-xs p-3.5 border border-slate-300 rounded-2xl focus:outline-hidden focus:ring-2 focus:ring-[#d70f64] font-medium resize-none"
+                  rows={3}
                 />
+                <span className="absolute bottom-2.5 right-3 text-[10px] font-bold text-slate-400">
+                  {modalSpecialInstructions.length}/500
+                </span>
               </div>
             </div>
 
-            {/* Bottom Sticky Add to Basket Bar */}
-            <div className="p-4 bg-white border-t border-slate-100 shadow-2xl flex items-center justify-between gap-3 shrink-0">
-              {/* Quantity Controller */}
-              <div className="flex items-center bg-slate-100 rounded-2xl p-1 border border-slate-200 shrink-0">
+            {/* Spacer strip */}
+            <div className="h-2 bg-slate-100 w-full my-4" />
+
+            {/* If product not available Section (matching Screenshot 2) */}
+            <div className="px-5 space-y-3 pb-8">
+              <h3 className="font-extrabold text-base text-slate-900">
+                If this product is not available
+              </h3>
+              
+              <div className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-xs font-black text-slate-800 bg-slate-50 hover:bg-slate-100/50 transition cursor-pointer">
+                <span>Remove it from my order</span>
+                <span className="text-slate-400 font-mono text-sm font-bold">&gt;</span>
+              </div>
+            </div>
+
+            {/* Sticky Bottom Action Bar with circular count buttons */}
+            <div className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-100 p-4 flex items-center justify-between gap-4 shadow-2xl shrink-0 z-20 max-w-2xl mx-auto w-full">
+              {/* Quantity Controller with border circles */}
+              <div className="flex items-center space-x-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setModalQuantity(q => Math.max(1, q - 1))}
-                  className="w-8 h-8 rounded-xl bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-200 transition cursor-pointer"
+                  className="w-10 h-10 rounded-full border border-slate-300 bg-white text-slate-500 font-bold flex items-center justify-center hover:bg-slate-50 hover:border-slate-400 transition cursor-pointer"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
-                <span className="w-8 text-center font-black text-xs text-slate-900 font-mono">
+                <span className="text-center font-black text-sm text-slate-900 font-mono w-4">
                   {modalQuantity}
                 </span>
                 <button
                   type="button"
                   onClick={() => setModalQuantity(q => q + 1)}
-                  className="w-8 h-8 rounded-xl bg-white text-[#d70f64] font-bold flex items-center justify-center hover:bg-pink-50 transition cursor-pointer"
+                  className="w-10 h-10 rounded-full border border-slate-300 bg-white text-[#d70f64] font-bold flex items-center justify-center hover:bg-pink-50 hover:border-[#d70f64] transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Big Foodpanda Pink Submit Button */}
+              {/* Add to Cart Submit Button */}
               <button
                 type="button"
                 onClick={handleConfirmAddToCartFromModal}
-                className="flex-1 py-3 px-4 bg-[#d70f64] hover:bg-[#b00c50] text-white rounded-2xl font-black text-xs sm:text-sm flex items-center justify-between shadow-lg shadow-pink-500/20 active:scale-[0.98] transition cursor-pointer"
+                className="flex-1 py-3.5 px-6 bg-[#d70f64] hover:bg-[#b00c50] text-white rounded-2xl font-black text-sm flex items-center justify-center transition shadow-md shadow-pink-500/10 cursor-pointer active:scale-[0.98]"
               >
-                <span>Add to Basket</span>
-                <span className="font-mono text-sm">{settings.currency_symbol} {calculatedModalTotal}</span>
+                <span>Add to cart</span>
               </button>
             </div>
+
           </div>
         </div>
       )}

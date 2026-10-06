@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
   image_url TEXT,
   category VARCHAR(100) NOT NULL,
   is_available BOOLEAN NOT NULL DEFAULT TRUE,
+  variations JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -178,7 +179,9 @@ CREATE TABLE IF NOT EXISTS order_items (
   item_name VARCHAR(255) NOT NULL,
   item_price NUMERIC(10, 2) NOT NULL,
   quantity INT NOT NULL DEFAULT 1,
-  subtotal NUMERIC(10, 2) NOT NULL
+  subtotal NUMERIC(10, 2) NOT NULL,
+  selected_variations JSONB,
+  special_instructions TEXT
 );
 
 -- 11. REVIEWS TABLE (Customer Order Reviews for Vendors)
