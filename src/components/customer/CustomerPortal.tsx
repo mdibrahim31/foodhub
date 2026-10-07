@@ -2000,26 +2000,24 @@ export const CustomerPortal: React.FC = () => {
                     isSelected ? 'scale-105' : 'hover:scale-102'
                   }`}
                 >
-                  <div className={`w-18 h-18 rounded-full flex items-center justify-center p-0.5 bg-white border transition-all ${
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border ${
                     isSelected 
-                      ? 'border-orange-600 ring-3 ring-orange-500/20 scale-102' 
-                      : 'border-red-500 hover:border-red-600 shadow-2xs'
+                      ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
+                      : 'bg-white border-slate-200/80 hover:border-slate-300'
                   }`}>
-                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-50">
-                      {cat.image_url && !isBroken ? (
-                        <img 
-                          src={cat.image_url} 
-                          alt={cat.name} 
-                          referrerPolicy="no-referrer"
-                          onError={() => setBrokenImages(prev => ({ ...prev, [cat.id]: true }))}
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : (
-                        <span className="text-3xl filter drop-shadow-sm">{cat.icon || '🍽️'}</span>
-                      )}
-                    </div>
+                    {cat.image_url && !isBroken ? (
+                      <img 
+                        src={cat.image_url} 
+                        alt={cat.name} 
+                        referrerPolicy="no-referrer"
+                        onError={() => setBrokenImages(prev => ({ ...prev, [cat.id]: true }))}
+                        className="w-9 h-9 object-contain rounded-lg" 
+                      />
+                    ) : (
+                      <span>{cat.icon || '🍽️'}</span>
+                    )}
                   </div>
-                  <span className={`text-[11px] mt-2 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
+                  <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
                     isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
                   }`}>
                     {cat.name}
