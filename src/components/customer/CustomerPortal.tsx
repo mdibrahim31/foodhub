@@ -627,7 +627,14 @@ export const CustomerPortal: React.FC = () => {
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRating = !isRating4PlusOnly || v.rating >= 4.0;
-    const matchesCuisine = activeCuisineFilter === 'All' || v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase());
+    const hasMenuItemInSelectedCategory = menuItems.some(
+      m => m.vendor_id === v.id && 
+           m.category && 
+           m.category.toLowerCase().trim() === activeCuisineFilter.toLowerCase().trim()
+    );
+    const matchesCuisine = activeCuisineFilter === 'All' || 
+      v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase()) ||
+      hasMenuItemInSelectedCategory;
     
     // Filter by type: Food page shows restaurants, Grocery page shows shops
     const matchesType = activeBottomNav === 'food' 
