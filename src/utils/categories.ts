@@ -47,5 +47,6 @@ export const MASTER_FOOD_CATEGORIES: FoodCategory[] = [
   { id: 'cat-healthy', name: 'Healthy', icon: '🍎', image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=120&h=120&q=80', is_active: true, category_type: 'food' },
   { id: 'cat-rolls', name: 'Rolls & Wrap', icon: '🌯', image_url: 'https://images.unsplash.com/photo-1626700051175-6518c4793f4f?auto=format&fit=crop&w=120&h=120&q=80', is_active: true, category_type: 'food' },
   { id: 'cat-coconut', name: 'Coconut', icon: '🥥', image_url: 'https://images.unsplash.com/photo-1526318896980-cf78c088247c?auto=format&fit=crop&w=120&h=120&q=80', is_active: true, category_type: 'food' },
-  { id: 'cat-ramadan', name: 'Ramadan', icon: '🌙', image_url: 'https://images.unsplash.com/photo-1581078426770-6d336e5de7bf?auto=format&fit=crop&w=120&h=120&q=80', is_active: true, category_type: 'food' }
+  { id: 'cat-ramadan', name: 'Ramadan', icon: '🌙', image_url: 'https://images.unsplash.com/photo-1581078426770-6d336e5de7bf?auto=format&fit=crop&w=120&h=120&q=80', is_active: true, category_type: 'food' },
+  { id: 'cat-curry', name: 'Curry', icon: '🍲', is_active: true, category_type: 'food' }
 ];
