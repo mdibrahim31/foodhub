@@ -176,7 +176,7 @@ export const VendorPortal: React.FC = () => {
   const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
   const [dishName, setDishName] = useState('');
   const [dishPrice, setDishPrice] = useState('');
-  const [dishCategory, setDishCategory] = useState('Main Course');
+  const [dishCategory, setDishCategory] = useState('Burger');
   const [dishDescription, setDishDescription] = useState('');
   const [dishImageUrl, setDishImageUrl] = useState('');
   const [dishVariations, setDishVariations] = useState<import('../../types/database').MenuVariationGroup[]>([]);
@@ -185,7 +185,7 @@ export const VendorPortal: React.FC = () => {
     setEditingDish(null);
     setDishName('');
     setDishPrice('');
-    setDishCategory('Main Course');
+    setDishCategory('Burger');
     setDishDescription('');
     setDishImageUrl('');
     setDishVariations([]);
@@ -1776,13 +1776,17 @@ export const VendorPortal: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
-                  <input
-                    type="text"
+                  <select
                     value={dishCategory}
                     onChange={(e) => setDishCategory(e.target.value)}
-                    placeholder="Bhorta & Bhaji"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold"
-                  />
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold bg-white cursor-pointer"
+                  >
+                    {foodCategories.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.icon || '🍽️'} {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

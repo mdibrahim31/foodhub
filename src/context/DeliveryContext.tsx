@@ -33,6 +33,7 @@ import {
 } from '../services/supabase';
 import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../utils/geo';
 import { FoodCategory } from '../types/database';
+import { MASTER_FOOD_CATEGORIES } from '../utils/categories';
 
 export interface CartItemOption {
   groupName: string;
@@ -436,8 +437,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [foodCategories, setFoodCategories] = useState<FoodCategory[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}food_categories`, []);
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = safeJsonParse<FoodCategory[]>(`${STORAGE_KEY_PREFIX}food_categories`, []);
+    const masterMap = new Map(MASTER_FOOD_CATEGORIES.map(c => [c.name.toLowerCase().trim(), c]));
+    if (Array.isArray(parsed)) {
+      parsed.forEach(c => {
+        if (c && c.name) {
+          const norm = c.name.toLowerCase().trim();
+          if (!masterMap.has(norm)) {
+            masterMap.set(norm, c);
+          }
+        }
+      });
+    }
+    return Array.from(masterMap.values());
   });
 
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
@@ -600,7 +612,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('food_categories')
             .select('*');
           if (!catError && catData && isSubscribed && Array.isArray(catData)) {
-            setFoodCategories(catData as FoodCategory[]);
+            setFoodCategories(() => {
+              const masterMap = new Map(MASTER_FOOD_CATEGORIES.map(c => [c.name.toLowerCase().trim(), c]));
+              (catData as FoodCategory[]).forEach(c => {
+                if (c && c.name) {
+                  const norm = c.name.toLowerCase().trim();
+                  if (!masterMap.has(norm)) {
+                    masterMap.set(norm, c);
+                  }
+                }
+              });
+              return Array.from(masterMap.values());
+            });
           }
 
           const { data: menuData, error: menuError } = await supabase
@@ -685,7 +708,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (catRes.ok) {
           const catData = await catRes.json();
           if (Array.isArray(catData) && isSubscribed) {
-            setFoodCategories(catData);
+            setFoodCategories(() => {
+              const masterMap = new Map(MASTER_FOOD_CATEGORIES.map(c => [c.name.toLowerCase().trim(), c]));
+              catData.forEach(c => {
+                if (c && c.name) {
+                  const norm = c.name.toLowerCase().trim();
+                  if (!masterMap.has(norm)) {
+                    masterMap.set(norm, c);
+                  }
+                }
+              });
+              return Array.from(masterMap.values());
+            });
           }
         }
       } catch {}
