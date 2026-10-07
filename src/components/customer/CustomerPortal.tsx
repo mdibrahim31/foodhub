@@ -1820,7 +1820,7 @@ export const CustomerPortal: React.FC = () => {
             Header wrapping Location and Search bar
             ========================================================================
           */}
-          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-5 px-4 rounded-b-[2.5rem] shadow-sm">
+          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-6 px-4 rounded-b-[2.5rem] shadow-sm">
             <div className="max-w-md mx-auto space-y-3">
               {/* Top Row: Location Pin + Current Location + Chittagong + Heart */}
               <div className="flex items-center justify-between">
@@ -1862,6 +1862,120 @@ export const CustomerPortal: React.FC = () => {
                   className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
                 />
               </div>
+
+              {/* 
+                ======================================================================
+                TOP 16:9 HERO BANNER AD CAROUSEL (INSIDE THE ORANGE WINDOW - EXACT SCREENSHOT)
+                ======================================================================
+              */}
+              {heroSlides.length > 0 && (
+                <div className="pt-1 space-y-2">
+                  <div className="relative overflow-hidden w-full aspect-[16/9] rounded-3xl border border-white/20 shadow-md bg-black">
+                    <div 
+                      className="w-full h-full relative"
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      {heroSlides.map((slide, i) => {
+                        const mediaSource = slide.videoUrl || slide.image;
+                        const ytId = getYouTubeVideoId(mediaSource);
+                        const isDirectVid = isDirectVideoUrl(mediaSource);
+                        const ytEmbedUrl = ytId ? getYouTubeEmbedUrl(mediaSource) : null;
+                        const isActive = i === activeSlide;
+
+                        return (
+                          <div 
+                            key={slide.id}
+                            style={getSlideStyle(i)}
+                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-3xl bg-black"
+                          >
+                            {ytId && ytEmbedUrl ? (
+                              <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
+                                <iframe 
+                                  src={ytEmbedUrl}
+                                  title={slide.title || 'Video Banner'}
+                                  className="w-[106%] h-[106%] pointer-events-none border-0 object-cover scale-110"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  loading={isActive ? "eager" : "lazy"}
+                                />
+                              </div>
+                            ) : isDirectVid ? (
+                              <video 
+                                src={mediaSource}
+                                autoPlay 
+                                muted 
+                                loop 
+                                playsInline 
+                                className="w-full h-full object-cover pointer-events-none"
+                              />
+                            ) : (
+                              <img 
+                                src={slide.image} 
+                                alt={slide.title || 'Banner'} 
+                                className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
+                                }}
+                              />
+                            )}
+
+                            {/* Transparent overlay covering video so user cannot stop it and click opens restaurant */}
+                            <div 
+                              onClick={() => {
+                                if (slide.vendor) {
+                                  setSelectedVendorForMenu(slide.vendor);
+                                }
+                              }}
+                              className="absolute inset-0 z-20 cursor-pointer bg-transparent"
+                              title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
+                            />
+
+                            {/* Video LIVE Indicator Badge */}
+                            {(ytId || isDirectVid) && (
+                              <div className="absolute top-3 right-3 z-30 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1.5 shadow-md pointer-events-none">
+                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                <span>LIVE VIDEO</span>
+                              </div>
+                            )}
+
+                            {/* Target Restaurant info pill if assigned */}
+                            {slide.vendor && (
+                              <div 
+                                onClick={() => setSelectedVendorForMenu(slide.vendor)}
+                                className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
+                              >
+                                <span>🎯 {slide.vendor.name}</span>
+                                <span className="text-[10px] text-orange-400 font-bold ml-1">View Menu &rarr;</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Dots Carousel Indicator in translucent pill matching Screenshot */}
+                  {heroSlides.length > 1 && (
+                    <div className="flex justify-center pt-1.5">
+                      <div className="bg-black/25 backdrop-blur-xs px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-2xs">
+                        {heroSlides.map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveSlide(idx)}
+                            className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
+                              activeSlide === idx 
+                                ? 'w-5 bg-white' 
+                                : 'w-1.5 bg-white/50 hover:bg-white/80'
+                            }`}
+                            aria-label={`Go to slide ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </header>
 
@@ -1871,118 +1985,6 @@ export const CustomerPortal: React.FC = () => {
             ========================================================================
           */}
           <main className="max-w-md mx-auto px-4 py-4 space-y-6">
-
-            {/* 
-              ======================================================================
-              TOP 16:9 HERO BANNER AD CAROUSEL (IMAGES & AUTOPLAY YOUTUBE VIDEOS)
-              ======================================================================
-            */}
-            {heroSlides.length > 0 && (
-              <section className="space-y-2 pt-1">
-                <div className="relative overflow-hidden w-full aspect-[16/9] rounded-3xl border border-slate-100 shadow-md bg-slate-950">
-                  <div 
-                    className="w-full h-full relative"
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    {heroSlides.map((slide, i) => {
-                      const mediaSource = slide.videoUrl || slide.image;
-                      const ytId = getYouTubeVideoId(mediaSource);
-                      const isDirectVid = isDirectVideoUrl(mediaSource);
-                      const ytEmbedUrl = ytId ? getYouTubeEmbedUrl(mediaSource) : null;
-                      const isActive = i === activeSlide;
-
-                      return (
-                        <div 
-                          key={slide.id}
-                          style={getSlideStyle(i)}
-                          className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-3xl bg-black"
-                        >
-                          {ytId && ytEmbedUrl ? (
-                            <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
-                              <iframe 
-                                src={ytEmbedUrl}
-                                title={slide.title || 'Video Banner'}
-                                className="w-[106%] h-[106%] pointer-events-none border-0 object-cover scale-110"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                loading={isActive ? "eager" : "lazy"}
-                              />
-                            </div>
-                          ) : isDirectVid ? (
-                            <video 
-                              src={mediaSource}
-                              autoPlay 
-                              muted 
-                              loop 
-                              playsInline 
-                              className="w-full h-full object-cover pointer-events-none"
-                            />
-                          ) : (
-                            <img 
-                              src={slide.image} 
-                              alt={slide.title || 'Banner'} 
-                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
-                              }}
-                            />
-                          )}
-
-                          {/* Transparent overlay covering video so user cannot stop it and click opens restaurant */}
-                          <div 
-                            onClick={() => {
-                              if (slide.vendor) {
-                                setSelectedVendorForMenu(slide.vendor);
-                              }
-                            }}
-                            className="absolute inset-0 z-20 cursor-pointer bg-transparent"
-                            title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
-                          />
-
-                          {/* Video LIVE Indicator Badge */}
-                          {(ytId || isDirectVid) && (
-                            <div className="absolute top-3 right-3 z-30 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1.5 shadow-md pointer-events-none">
-                              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                              <span>LIVE VIDEO</span>
-                            </div>
-                          )}
-
-                          {/* Target Restaurant info pill if assigned */}
-                          {slide.vendor && (
-                            <div 
-                              onClick={() => setSelectedVendorForMenu(slide.vendor)}
-                              className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
-                            >
-                              <span>🎯 {slide.vendor.name}</span>
-                              <span className="text-[10px] text-orange-400 font-bold ml-1">View Menu &rarr;</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Dots Carousel Indicator */}
-                {heroSlides.length > 1 && (
-                  <div className="flex justify-center space-x-1.5 pt-1">
-                    {heroSlides.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveSlide(idx)}
-                        className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
-                          activeSlide === idx 
-                            ? 'w-6 bg-orange-600' 
-                            : 'w-1.5 bg-slate-300 hover:bg-slate-400'
-                        }`}
-                        aria-label={`Go to slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
 
             {/* 
               ======================================================================
@@ -2062,11 +2064,15 @@ export const CustomerPortal: React.FC = () => {
                         className="relative w-32 h-32 rounded-3xl overflow-hidden shrink-0 shadow-xs border border-slate-100 hover:scale-102 transition-transform cursor-pointer focus:outline-hidden"
                       >
                         <img 
-                          src={ad.image_url} 
+                          src={ad.image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80'} 
                           alt="Featured Offer" 
                           className="w-full h-full object-cover"
+                          loading="lazy"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80';
+                            const img = e.currentTarget;
+                            if (img.src !== 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80') {
+                              img.src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80';
+                            }
                           }}
                         />
                         {/* Tiny target badge if any */}
