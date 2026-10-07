@@ -1933,24 +1933,16 @@ export const CustomerPortal: React.FC = () => {
                     {/* Background Banner Image */}
                     <img 
                       src={slide.image} 
-                      alt={slide.title} 
+                      alt={slide.title || 'Banner'} 
                       className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
                     />
                     
-                    {/* Overlay Text Details with Dark Gradient Scrim */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 flex flex-col justify-end">
-                      <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest bg-black/35 px-2 py-0.5 rounded-md self-start mb-1.5 backdrop-blur-xs">
-                        {slide.actionText || 'Promotion'}
-                      </span>
-                      <h4 className="text-white font-black text-sm sm:text-base leading-snug drop-shadow-sm line-clamp-1">
-                        {slide.title}
-                      </h4>
-                      {slide.subtitle && (
-                        <p className="text-slate-200 text-[10px] sm:text-xs mt-0.5 line-clamp-1 drop-shadow-xs opacity-90">
-                          {slide.subtitle}
-                        </p>
-                      )}
-                    </div>
+                    {/* Subtle vendor tag if linked */}
+                    {slide.vendor && (
+                      <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1 shadow-md">
+                        <span>🎯 {slide.vendor.name}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

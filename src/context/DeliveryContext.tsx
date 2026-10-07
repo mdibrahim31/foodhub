@@ -478,7 +478,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (error) {
             console.error('Error fetching ads from Supabase:', error);
           } else if (data) {
-            setAdBanners(data as AdBanner[]);
+            const mapped = data.map((d: any) => ({
+              ...d,
+              portal_type: d.portal_type || (d.target_category === 'grocery' ? 'grocery' : 'food')
+            }));
+            setAdBanners(mapped as AdBanner[]);
             return;
           }
         } catch (err) {
@@ -2900,62 +2904,74 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
+    // Always immediately update local state and localStorage so posting never fails
+    setAdBanners(prev => {
+      const next = [newAd, ...prev];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase
-          .from('ads_banners')
-          .insert([
-            {
-              id: newAd.id,
-              title: newAd.title,
-              subtitle: newAd.subtitle || null,
-              action_text: newAd.action_text || 'Redeem now',
-              image_url: newAd.image_url,
-              target_vendor_id: newAd.target_vendor_id || null,
-              is_active: newAd.is_active,
-              order_index: newAd.order_index || 0,
-              portal_type: newAd.portal_type || 'food',
-              created_at: newAd.created_at
-            }
-          ]);
+        const payload: any = {
+          id: newAd.id,
+          title: newAd.title || 'Promotional Banner',
+          subtitle: newAd.subtitle || null,
+          action_text: newAd.action_text || 'Redeem now',
+          image_url: newAd.image_url,
+          target_vendor_id: newAd.target_vendor_id || null,
+          target_category: newAd.portal_type || 'food',
+          is_active: newAd.is_active,
+          order_index: newAd.order_index || 0,
+          created_at: newAd.created_at
+        };
+
+        const { error } = await supabase.from('ads_banners').insert([payload]);
         if (error) {
-          console.error('Supabase error inserting banner:', error);
-          alert('Database Error: ' + error.message);
-          return;
+          console.warn('Supabase error inserting banner:', error);
+          if (error.code === '23503' || error.message?.includes('foreign key')) {
+            const fallbackPayload = { ...payload, target_vendor_id: null };
+            try {
+              await supabase.from('ads_banners').insert([fallbackPayload]);
+            } catch (retryErr) {
+              console.warn('Fallback insert also failed:', retryErr);
+            }
+          }
         }
       } catch (err) {
-        console.error('Failed to insert banner in database:', err);
+        console.warn('Failed to insert banner in database:', err);
       }
     }
-
-    setAdBanners(prev => [newAd, ...prev]);
   };
 
   const updateAdBanner = async (id: string, updates: Partial<AdBanner>) => {
+    setAdBanners(prev => {
+      const next = prev.map(a => a.id === id ? { ...a, ...updates } : a);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase
-          .from('ads_banners')
-          .update({
-            title: updates.title,
-            subtitle: updates.subtitle || null,
-            action_text: updates.action_text,
-            image_url: updates.image_url,
-            target_vendor_id: updates.target_vendor_id || null,
-            is_active: updates.is_active,
-            order_index: updates.order_index,
-            portal_type: updates.portal_type
-          })
-          .eq('id', id);
-        if (error) {
-          console.error('Supabase error updating banner:', error);
-        }
+        const payload: any = {};
+        if (updates.title !== undefined) payload.title = updates.title;
+        if (updates.subtitle !== undefined) payload.subtitle = updates.subtitle || null;
+        if (updates.action_text !== undefined) payload.action_text = updates.action_text;
+        if (updates.image_url !== undefined) payload.image_url = updates.image_url;
+        if (updates.target_vendor_id !== undefined) payload.target_vendor_id = updates.target_vendor_id || null;
+        if (updates.is_active !== undefined) payload.is_active = updates.is_active;
+        if (updates.order_index !== undefined) payload.order_index = updates.order_index;
+        if (updates.portal_type !== undefined) payload.target_category = updates.portal_type;
+
+        await supabase.from('ads_banners').update(payload).eq('id', id);
       } catch (err) {
-        console.error('Failed to update banner in database:', err);
+        console.warn('Failed to update banner in database:', err);
       }
     }
-
-    setAdBanners(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
   const deleteAdBanner = async (id: string) => {

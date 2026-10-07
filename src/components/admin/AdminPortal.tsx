@@ -1502,17 +1502,18 @@ export const AdminPortal: React.FC = () => {
                               {ad.portal_type || 'food'}
                             </span>
                           </div>
-                          <h4 className="font-black text-base sm:text-lg leading-tight tracking-tight">
-                            {ad.title}
-                          </h4>
-                          {ad.subtitle && (
-                            <p className="text-[11px] font-medium opacity-90 truncate">{ad.subtitle}</p>
+                          {targetVendor ? (
+                            <h4 className="font-black text-base leading-tight tracking-tight">
+                              🎯 {targetVendor.name}
+                            </h4>
+                          ) : (
+                            <h4 className="font-black text-base leading-tight tracking-tight">
+                              General Promo Banner
+                            </h4>
                           )}
-                          <div className="pt-1">
-                            <span className="inline-flex items-center space-x-1 text-xs font-black bg-black/20 px-3 py-1 rounded-xl">
-                              <span>{ad.action_text || 'Redeem now'}</span>
-                            </span>
-                          </div>
+                          <p className="text-[11px] font-medium opacity-80">
+                            {targetVendor ? `Target: ${targetVendor.name}` : 'Unlinked offer banner'}
+                          </p>
                         </div>
 
                         <div className="relative w-32 h-24 sm:w-36 sm:h-28 rounded-2xl overflow-hidden shrink-0 shadow-md">
@@ -3732,71 +3733,37 @@ export const AdminPortal: React.FC = () => {
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!adTitle.trim() || !adImageUrl.trim()) {
-                  alert('Please enter banner heading title and image URL');
+                if (!adImageUrl.trim()) {
+                  alert('Please enter banner image URL');
                   return;
                 }
                 addAdBanner({
-                  title: adTitle.trim(),
-                  subtitle: adSubtitle.trim(),
-                  action_text: adActionText.trim() || 'Redeem now',
+                  title: 'Promotional Banner',
+                  subtitle: '',
+                  action_text: 'Redeem now',
                   image_url: adImageUrl.trim(),
                   target_vendor_id: adTargetVendorId || undefined,
                   is_active: true,
                   portal_type: adPortalType
                 });
                 setIsAddAdOpen(false);
-                setAdTitle('Welcome back! Enjoy 35% off & free delivery');
-                setAdSubtitle('');
+                setAdImageUrl('');
+                setAdTargetVendorId('');
+                setTargetVendorSearchQuery('');
                 alert('New Promotional Banner Ad Published Successfully! 🎉');
               }}
               className="space-y-3.5 text-xs font-bold"
             >
               <div className="space-y-1">
-                <label className="text-slate-600">Banner Heading Title (Bold Text)*</label>
-                <input
-                  type="text"
-                  required
-                  value={adTitle}
-                  onChange={(e) => setAdTitle(e.target.value)}
-                  placeholder="e.g. Welcome back! Enjoy 35% off & free delivery"
+                <label className="text-slate-600">Display on Page *</label>
+                <select
+                  value={adPortalType}
+                  onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-600">Banner Subtitle / Description (Optional)</label>
-                <input
-                  type="text"
-                  value={adSubtitle}
-                  onChange={(e) => setAdSubtitle(e.target.value)}
-                  placeholder="e.g. Order from top Chittagong restaurants with 100% COD"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-slate-600">Action Button Text</label>
-                  <input
-                    type="text"
-                    value={adActionText}
-                    onChange={(e) => setAdActionText(e.target.value)}
-                    placeholder="e.g. Redeem now"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-600">Display on Page *</label>
-                  <select
-                    value={adPortalType}
-                    onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
-                  >
-                    <option value="food">Food Page</option>
-                    <option value="grocery">Grocery Page</option>
-                  </select>
-                </div>
+                >
+                  <option value="food">Food Page</option>
+                  <option value="grocery">Grocery Page</option>
+                </select>
               </div>
 
               {/* Target Restaurant Search & ID Selection Box */}
@@ -3970,17 +3937,17 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               {/* Banner Live Preview */}
-              <div className="p-3 bg-gradient-to-r from-rose-500 to-orange-500 rounded-2xl text-white space-y-1">
+              <div className="p-3 bg-slate-900 rounded-2xl text-white space-y-2">
                 <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">Live Banner Preview</span>
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <div>
-                    <h4 className="font-black text-sm">{adTitle || 'Your Banner Title'}</h4>
-                    <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-lg mt-1 inline-block">{adActionText || 'Redeem now'} &rarr;</span>
+                {adImageUrl ? (
+                  <div className="relative w-full h-32 sm:h-36 rounded-xl overflow-hidden shadow-xs border border-white/10">
+                    <img src={adImageUrl} alt="Preview" className="w-full h-full object-cover" />
                   </div>
-                  {adImageUrl && (
-                    <img src={adImageUrl} alt="Preview" className="w-16 h-14 object-cover rounded-xl shadow-xs shrink-0" />
-                  )}
-                </div>
+                ) : (
+                  <div className="w-full h-24 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold">
+                    Enter image URL above to preview banner
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 flex justify-end space-x-2">
