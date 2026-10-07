@@ -125,6 +125,7 @@ interface DeliveryContextType {
   addresses: CustomerAddress[];
   selectedAddress: CustomerAddress | null;
   setSelectedAddress: (addr: CustomerAddress) => void;
+  activateAddress: (id: string) => Promise<void>;
   addAddress: (addr: Omit<CustomerAddress, 'id'>) => CustomerAddress;
   updateAddress: (id: string, updates: Partial<CustomerAddress>) => void;
   deleteAddress: (id: string) => void;
@@ -364,8 +365,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [allAddresses, currentUser]);
 
-  const [selectedAddress, setSelectedAddress] = useState<CustomerAddress | null>(() => {
-    return addresses.find(a => a?.is_default) || addresses[0] || null;
+  const [selectedAddress, setSelectedAddressState] = useState<CustomerAddress | null>(() => {
+    const active = addresses.find(a => a?.status === 'active');
+    if (active) return active;
+    const def = addresses.find(a => a?.is_default);
+    if (def) return def;
+    return addresses[0] || null;
   });
 
   // Sync addresses to localStorage whenever allAddresses changes
@@ -388,41 +393,95 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [currentUser, vendors]);
 
-  // Load addresses strictly for active customer from server database
+  // Load addresses strictly for active customer from server database & Supabase
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'customer') {
-      const guestAddrs = allAddresses.filter(a => !a.customer_phone || a.customer_phone === 'guest');
-      setSelectedAddress(guestAddrs[0] || null);
-      return;
-    }
+    const cleanIdentifier = currentUser && currentUser.role === 'customer'
+      ? (currentUser.phone || '').replace(/\D/g, '') || currentUser.id
+      : 'guest';
 
-    const cleanIdentifier = (currentUser.phone || '').replace(/\D/g, '') || currentUser.id;
-    fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data?.addresses && Array.isArray(data.addresses) && data.addresses.length > 0) {
-          setAllAddresses(prev => {
-            const others = prev.filter(a => {
-              const aClean = (a.customer_phone || '').replace(/\D/g, '');
-              return aClean !== cleanIdentifier && a.customer_id !== currentUser.id;
-            });
-            return [...data.addresses, ...others];
-          });
-          const def = data.addresses.find((a: CustomerAddress) => a.is_default) || data.addresses[0] || null;
-          setSelectedAddress(def);
-        } else {
-          // If no remote addresses, check local user addresses
-          const userLocal = allAddresses.filter(a => {
-            const aClean = (a.customer_phone || '').replace(/\D/g, '');
-            return (cleanIdentifier && aClean && aClean === cleanIdentifier) || 
-                   (a.customer_id && currentUser.id && a.customer_id === currentUser.id);
-          });
-          const def = userLocal.find(a => a.is_default) || userLocal[0] || null;
-          setSelectedAddress(def);
+    const fetchAddresses = async () => {
+      let loadedRemote: CustomerAddress[] = [];
+
+      // 1. Fetch from server backend API
+      try {
+        const res = await fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.addresses && Array.isArray(data.addresses)) {
+            loadedRemote = data.addresses;
+          }
         }
-      })
-      .catch(() => {});
-  }, [currentUser?.id, currentUser?.phone, currentUser?.role]);
+      } catch (err) {
+        console.warn('Backend addresses fetch error:', err);
+      }
+
+      // 2. Fetch from Supabase if configured
+      if (isSupabaseConfigured && supabase) {
+        try {
+          let query = supabase.from('customer_addresses').select('*');
+          if (cleanIdentifier !== 'guest') {
+            const rawPhone = currentUser?.phone || '';
+            query = query.or(`customer_phone.eq.${rawPhone},customer_phone.eq.${cleanIdentifier}`);
+          }
+          const { data, error } = await query;
+          if (!error && Array.isArray(data) && data.length > 0) {
+            for (const row of data) {
+              const existingIdx = loadedRemote.findIndex(a => a.id === row.id);
+              if (existingIdx >= 0) {
+                loadedRemote[existingIdx] = { ...loadedRemote[existingIdx], ...row };
+              } else {
+                loadedRemote.push(row as CustomerAddress);
+              }
+            }
+          }
+        } catch (supaErr) {
+          console.warn('Supabase customer_addresses load notice:', supaErr);
+        }
+      }
+
+      if (loadedRemote.length > 0) {
+        // Ensure at least one has status: 'active'
+        const hasActive = loadedRemote.some(a => a.status === 'active');
+        if (!hasActive) {
+          const defIdx = loadedRemote.findIndex(a => a.is_default);
+          const activeItem = defIdx >= 0 ? loadedRemote[defIdx] : loadedRemote[0];
+          activeItem.status = 'active';
+          activeItem.is_default = true;
+          loadedRemote.forEach(a => {
+            if (a.id !== activeItem.id) {
+              a.status = 'inactive';
+              a.is_default = false;
+            }
+          });
+        }
+
+        setAllAddresses(prev => {
+          const others = prev.filter(a => {
+            const aClean = (a.customer_phone || '').replace(/\D/g, '');
+            return cleanIdentifier !== 'guest' 
+              ? (aClean !== cleanIdentifier && a.customer_id !== currentUser?.id)
+              : (a.customer_phone && a.customer_phone !== 'guest');
+          });
+          return [...loadedRemote, ...others];
+        });
+
+        const activeAddr = loadedRemote.find(a => a.status === 'active') || loadedRemote.find(a => a.is_default) || loadedRemote[0] || null;
+        setSelectedAddressState(activeAddr);
+      } else {
+        // Fallback to local
+        const userLocal = allAddresses.filter(a => {
+          if (cleanIdentifier === 'guest') return !a.customer_phone || a.customer_phone === 'guest';
+          const aClean = (a.customer_phone || '').replace(/\D/g, '');
+          return (cleanIdentifier && aClean && aClean === cleanIdentifier) || 
+                 (a.customer_id && currentUser?.id && a.customer_id === currentUser.id);
+        });
+        const active = userLocal.find(a => a.status === 'active') || userLocal.find(a => a.is_default) || userLocal[0] || null;
+        setSelectedAddressState(active);
+      }
+    };
+
+    fetchAddresses();
+  }, [currentUser?.id, currentUser?.phone, currentUser?.role, isSupabaseConfigured]);
 
   // Riders state: strictly enforces persistent is_paused so paused riders never auto-resume
   const [riders, setRiders] = useState<Rider[]>(() => {
@@ -583,6 +642,25 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
       } else if (data?.type === 'BANNER_SYNC' && Array.isArray(data.banners)) {
         setAdBanners(data.banners);
+      } else if (data?.type === 'ADDRESS_ACTIVATED' && data?.addressId) {
+        const { addressId, cleanIdentifier } = data;
+        setAllAddresses(prev => prev.map(a => {
+          const aClean = (a.customer_phone || '').replace(/\D/g, '');
+          const isSameCust = (cleanIdentifier && aClean && cleanIdentifier === aClean) ||
+                             (cleanIdentifier === 'guest' && (!a.customer_phone || a.customer_phone === 'guest'));
+          if (isSameCust) {
+            return {
+              ...a,
+              status: (a.id === addressId ? 'active' : 'inactive') as 'active' | 'inactive',
+              is_default: a.id === addressId
+            };
+          }
+          return a;
+        }));
+        setSelectedAddressState(prev => {
+          if (!prev) return null;
+          return prev.id === addressId ? { ...prev, status: 'active', is_default: true } : prev;
+        });
       } else if (data?.type === 'CUSTOMER_PROFILE_UPDATED') {
         const { customer } = data;
         if (customer && customer.id) {
@@ -3134,38 +3212,174 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // CUSTOMER ADDRESSES (Strictly isolated by logged-in customer account & database synced)
   // -------------------------------------------------------------
+  const activateAddress = async (id: string) => {
+    const custPhone = currentUser?.phone || 'guest';
+    const custId = currentUser?.id || '';
+    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
+
+    // 1. Update in memory state & localStorage
+    let activatedAddr: CustomerAddress | null = null;
+    const updated = allAddresses.map(a => {
+      const aClean = (a.customer_phone || '').replace(/\D/g, '');
+      const isSameCust = (cleanIdentifier && aClean && cleanIdentifier === aClean) ||
+                         (custId && a.customer_id === custId) ||
+                         (custPhone && a.customer_phone === custPhone) ||
+                         (cleanIdentifier === 'guest' && (!a.customer_phone || a.customer_phone === 'guest'));
+
+      if (isSameCust) {
+        if (a.id === id) {
+          const activeItem: CustomerAddress = { ...a, status: 'active', is_default: true };
+          activatedAddr = activeItem;
+          return activeItem;
+        } else {
+          return { ...a, status: 'inactive' as const, is_default: false };
+        }
+      }
+      return a;
+    });
+
+    setAllAddresses(updated);
+    if (activatedAddr) {
+      setSelectedAddressState(activatedAddr);
+    }
+
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(updated));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}active_addr_${cleanIdentifier}`, id);
+    } catch {}
+
+    // 2. Persist active status to backend server database API
+    try {
+      await fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}/${encodeURIComponent(id)}/activate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.warn('Failed to persist active address to server API:', e);
+    }
+
+    // 3. Persist active status to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        if (cleanIdentifier !== 'guest') {
+          await supabase
+            .from('customer_addresses')
+            .update({ status: 'inactive', is_default: false })
+            .or(`customer_phone.eq.${custPhone},customer_phone.eq.${cleanIdentifier}`);
+        }
+        await supabase
+          .from('customer_addresses')
+          .update({ status: 'active', is_default: true })
+          .eq('id', id);
+      } catch (err) {
+        console.warn('Supabase activate address error:', err);
+      }
+    }
+
+    // 4. Realtime broadcast sync across other open tabs
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'ADDRESS_ACTIVATED',
+        addressId: id,
+        cleanIdentifier
+      });
+    } catch {}
+  };
+
+  const setSelectedAddress = (addr: CustomerAddress) => {
+    setSelectedAddressState(addr);
+    if (addr?.id) {
+      activateAddress(addr.id);
+    }
+  };
+
   const addAddress = (addr: Omit<CustomerAddress, 'id'>) => {
     const custPhone = currentUser?.phone || 'guest';
     const custId = currentUser?.id || '';
     const custName = currentUser?.name || addr.customer_name || 'Customer';
+    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
 
     // Auto-detect zone if not specified
     const detectedZone = addr.zone || findZoneForPoint(addr.latitude, addr.longitude, zones)?.name || '';
 
+    const newId = `addr-${Date.now()}`;
     const newAddr: CustomerAddress = { 
       ...addr, 
-      id: `addr-${Date.now()}`,
+      id: newId,
       customer_phone: custPhone,
       customer_id: custId,
       customer_name: custName,
-      zone: detectedZone
+      zone: detectedZone,
+      status: 'active',
+      is_default: true
     };
 
-    setAllAddresses(prev => [newAddr, ...prev]);
-    setSelectedAddress(newAddr);
+    // Mark previous addresses of this customer as inactive
+    const updatedPrev = allAddresses.map(a => {
+      const aClean = (a.customer_phone || '').replace(/\D/g, '');
+      const isSameCust = (cleanIdentifier && aClean && cleanIdentifier === aClean) ||
+                         (custId && a.customer_id === custId) ||
+                         (custPhone && a.customer_phone === custPhone) ||
+                         (cleanIdentifier === 'guest' && (!a.customer_phone || a.customer_phone === 'guest'));
+      if (isSameCust) {
+        return { ...a, status: 'inactive' as const, is_default: false };
+      }
+      return a;
+    });
+
+    const nextAll = [newAddr, ...updatedPrev];
+    setAllAddresses(nextAll);
+    setSelectedAddressState(newAddr);
+
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(nextAll));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}active_addr_${cleanIdentifier}`, newId);
+    } catch {}
 
     // Save to Database server
-    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
     fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newAddr)
-    }).catch(() => {});
+    }).catch(e => console.warn('Failed to save address to server API:', e));
+
+    // Save to Supabase
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          if (cleanIdentifier !== 'guest') {
+            await supabase
+              .from('customer_addresses')
+              .update({ status: 'inactive', is_default: false })
+              .or(`customer_phone.eq.${custPhone},customer_phone.eq.${cleanIdentifier}`);
+          }
+          await supabase.from('customer_addresses').upsert([{
+            id: newAddr.id,
+            customer_phone: newAddr.customer_phone,
+            customer_name: newAddr.customer_name,
+            label: newAddr.label,
+            address_line: newAddr.address_line,
+            details: newAddr.details || null,
+            latitude: newAddr.latitude,
+            longitude: newAddr.longitude,
+            zone: newAddr.zone || null,
+            is_default: true,
+            status: 'active'
+          }]);
+        } catch (supaErr) {
+          console.warn('Supabase addAddress error:', supaErr);
+        }
+      })();
+    }
 
     return newAddr;
   };
 
   const updateAddress = (id: string, updates: Partial<CustomerAddress>) => {
+    const custPhone = currentUser?.phone || 'guest';
+    const custId = currentUser?.id || '';
+    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
+
     setAllAddresses(prev => prev.map(a => {
       if (a.id !== id) return a;
       const updated = { ...a, ...updates };
@@ -3177,7 +3391,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
 
     if (selectedAddress && selectedAddress.id === id) {
-      setSelectedAddress(prev => {
+      setSelectedAddressState(prev => {
         if (!prev) return null;
         const updated = { ...prev, ...updates };
         if (!updates.zone && (updates.latitude || updates.longitude)) {
@@ -3188,27 +3402,56 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
     }
 
-    const cleanIdentifier = (currentUser?.phone || '').replace(/\D/g, '') || currentUser?.id || 'guest';
     const targetAddr = allAddresses.find(a => a.id === id);
     if (targetAddr) {
+      const merged = { ...targetAddr, ...updates };
       fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...targetAddr, ...updates })
+        body: JSON.stringify(merged)
       }).catch(() => {});
+
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('customer_addresses').upsert([{
+          id: merged.id,
+          customer_phone: merged.customer_phone,
+          customer_name: merged.customer_name,
+          label: merged.label,
+          address_line: merged.address_line,
+          details: merged.details || null,
+          latitude: merged.latitude,
+          longitude: merged.longitude,
+          zone: merged.zone || null,
+          is_default: merged.is_default,
+          status: merged.status || 'active'
+        }]).then();
+      }
     }
   };
 
   const deleteAddress = (id: string) => {
+    const custPhone = currentUser?.phone || 'guest';
+    const custId = currentUser?.id || '';
+    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
+
+    const wasActive = selectedAddress?.id === id || allAddresses.find(a => a.id === id)?.status === 'active';
+    const remaining = addresses.filter(a => a.id !== id);
+
     setAllAddresses(prev => prev.filter(a => a.id !== id));
-    if (selectedAddress && selectedAddress.id === id) {
-      const remaining = addresses.filter(a => a.id !== id);
-      setSelectedAddress(remaining[0] || null);
+
+    if (wasActive && remaining.length > 0) {
+      activateAddress(remaining[0].id);
+    } else if (remaining.length === 0) {
+      setSelectedAddressState(null);
     }
-    const cleanIdentifier = (currentUser?.phone || '').replace(/\D/g, '') || currentUser?.id || 'guest';
+
     fetch(`/api/addresses/${encodeURIComponent(cleanIdentifier)}/${encodeURIComponent(id)}`, {
       method: 'DELETE'
     }).catch(() => {});
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('customer_addresses').delete().eq('id', id).then();
+    }
   };
 
   // -------------------------------------------------------------
@@ -4129,6 +4372,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addresses,
         selectedAddress,
         setSelectedAddress,
+        activateAddress,
         addAddress,
         updateAddress,
         deleteAddress,

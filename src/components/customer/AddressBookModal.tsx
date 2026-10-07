@@ -111,10 +111,12 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     addresses, 
     selectedAddress, 
     setSelectedAddress, 
+    activateAddress,
     addAddress, 
     updateAddress, 
     deleteAddress,
-    zones
+    zones,
+    currentUser
   } = useDelivery();
 
   // Navigation sub-views:
@@ -358,15 +360,16 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
       });
     } else {
       addAddress({
-        customer_name: '',
-        customer_phone: '',
+        customer_name: currentUser?.name || '',
+        customer_phone: customerPhone.trim() || currentUser?.phone || '',
         label,
         address_line: addressLine.trim(),
         details: noteToRider.trim() || cityField,
         latitude: pinnedLat,
         longitude: pinnedLng,
         zone: zoneName,
-        is_default: addresses.length === 0,
+        is_default: true,
+        status: 'active'
       });
     }
 
@@ -422,31 +425,35 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                 </div>
               ) : (
                 addresses.map((addr) => {
-                  const isSelected = selectedAddress?.id === addr.id;
+                  const isActive = (selectedAddress?.id === addr.id) || (addr.status === 'active');
                   return (
                     <div 
                       key={addr.id}
                       onClick={() => {
-                        setSelectedAddress(addr);
+                        activateAddress(addr.id);
                         onClose();
                       }}
                       className={`px-4 py-4 flex items-start justify-between cursor-pointer transition hover:bg-slate-50/80 ${
-                        isSelected ? 'bg-orange-50/30' : ''
+                        isActive ? 'bg-orange-50/40 border-l-4 border-l-orange-500' : ''
                       }`}
                     >
                       {/* Left: Map Pin Icon + Text */}
                       <div className="flex items-start space-x-3.5 flex-1 pr-3">
                         <div className="mt-0.5">
-                          <MapPin className="w-5 h-5 text-slate-500 stroke-[1.8]" />
+                          <MapPin className={`w-5 h-5 stroke-[2] ${isActive ? 'text-orange-600' : 'text-slate-400'}`} />
                         </div>
-                        <div className="space-y-0.5">
-                          <div className="flex items-center space-x-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center flex-wrap gap-2">
                             <h3 className="text-sm font-extrabold text-slate-900 leading-snug">
                               {addr.address_line}
                             </h3>
-                            {isSelected && (
-                              <span className="text-[10px] font-black bg-orange-600 text-white px-2 py-0.2 rounded-full">
-                                Active
+                            {isActive ? (
+                              <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs tracking-wide">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" /> Active
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200/90 px-2 py-0.5 rounded-full tracking-wide">
+                                Inactive
                               </span>
                             )}
                           </div>
@@ -456,7 +463,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                               : 'Chittagong'}
                           </p>
                           <p className="text-xs text-slate-500 font-medium">
-                            Note to rider: {addr.customer_phone || addr.details || '01609470766'}
+                            Note to rider: {addr.details || addr.customer_phone || '01609470766'}
                           </p>
                         </div>
                       </div>
@@ -468,7 +475,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                             e.stopPropagation();
                             startEditAddress(addr);
                           }}
-                          className="p-1.5 text-slate-700 hover:text-orange-600 rounded-lg transition"
+                          className="p-1.5 text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition cursor-pointer"
                           title="Edit address"
                         >
                           <Pencil className="w-4 h-4 stroke-[2]" />
@@ -480,7 +487,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                               deleteAddress(addr.id);
                             }
                           }}
-                          className="p-1.5 text-slate-700 hover:text-rose-600 rounded-lg transition"
+                          className="p-1.5 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                           title="Delete address"
                         >
                           <Trash2 className="w-4 h-4 stroke-[2]" />

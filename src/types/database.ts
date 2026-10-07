@@ -140,6 +140,7 @@ export interface CustomerAddress {
   longitude: number;
   zone?: string;
   is_default: boolean;
+  status: 'active' | 'inactive';
 }
 
 export interface CustomerUser {

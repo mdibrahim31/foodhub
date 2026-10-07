@@ -141,8 +141,12 @@ CREATE TABLE IF NOT EXISTS customer_addresses (
   latitude NUMERIC(10, 6) NOT NULL,
   longitude NUMERIC(10, 6) NOT NULL,
   zone VARCHAR(100),
-  is_default BOOLEAN NOT NULL DEFAULT FALSE
+  is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  status VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
+
+-- Migration for existing database instances:
+ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'inactive';
 
 -- 9. ORDERS TABLE
 CREATE TABLE IF NOT EXISTS orders (

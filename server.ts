@@ -729,7 +729,7 @@ app.put('/api/customers/:id', (req, res) => {
   res.json({ success: true, customer: newCust });
 });
 
-// 9. Customer Addresses API (Strictly isolated by customer phone/ID)
+// 9. Customer Addresses API (Strictly isolated by customer phone/ID & persistent active status)
 app.get('/api/addresses/:customerIdentifier', (req, res) => {
   const { customerIdentifier } = req.params;
   const cleanId = (customerIdentifier || '').replace(/\D/g, '');
@@ -739,12 +739,65 @@ app.get('/api/addresses/:customerIdentifier', (req, res) => {
     const aPhoneClean = (a.customer_phone || '').replace(/\D/g, '');
     return (aPhoneClean && cleanId && aPhoneClean === cleanId) || 
            a.customer_id === customerIdentifier ||
-           a.customer_phone === customerIdentifier;
+           a.customer_phone === customerIdentifier ||
+           (cleanId === '' && customerIdentifier === 'guest' && (!a.customer_phone || a.customer_phone === 'guest'));
   });
+
+  // Ensure at least one has active status if addresses exist and none is active
+  const hasActive = userAddresses.some(a => a.status === 'active');
+  if (userAddresses.length > 0 && !hasActive) {
+    const defaultIdx = userAddresses.findIndex(a => a.is_default);
+    const target = defaultIdx >= 0 ? userAddresses[defaultIdx] : userAddresses[0];
+    target.status = 'active';
+    target.is_default = true;
+    userAddresses.forEach(a => {
+      if (a.id !== target.id) {
+        a.status = 'inactive';
+        a.is_default = false;
+      }
+    });
+    saveState(serverState);
+  }
   
   res.json({ success: true, addresses: userAddresses });
 });
 
+// Activate a specific address (sets status to 'active' for this address and 'inactive' for all other addresses of this customer)
+const handleActivateAddress = (req: express.Request, res: express.Response) => {
+  const { customerIdentifier, addressId } = req.params;
+  const cleanId = (customerIdentifier || '').replace(/\D/g, '');
+  if (!serverState.addresses) serverState.addresses = [];
+
+  let activatedAddress: any = null;
+
+  serverState.addresses.forEach(a => {
+    const aPhoneClean = (a.customer_phone || '').replace(/\D/g, '');
+    const isSameCust = (cleanId && aPhoneClean && cleanId === aPhoneClean) || 
+                       a.customer_id === customerIdentifier ||
+                       a.customer_phone === customerIdentifier ||
+                       (cleanId === '' && customerIdentifier === 'guest' && (!a.customer_phone || a.customer_phone === 'guest'));
+
+    if (isSameCust) {
+      if (a.id === addressId) {
+        a.status = 'active';
+        a.is_default = true;
+        activatedAddress = a;
+      } else {
+        a.status = 'inactive';
+        a.is_default = false;
+      }
+    }
+  });
+
+  saveState(serverState);
+  console.log(`[API] Address ${addressId} activated for customer ${customerIdentifier}`);
+  res.json({ success: true, activeAddress: activatedAddress, addresses: serverState.addresses });
+};
+
+app.put('/api/addresses/:customerIdentifier/:addressId/activate', handleActivateAddress);
+app.post('/api/addresses/:customerIdentifier/:addressId/activate', handleActivateAddress);
+
+// Create or Update Address
 app.post('/api/addresses/:customerIdentifier', (req, res) => {
   const { customerIdentifier } = req.params;
   const newAddress = req.body;
@@ -756,6 +809,26 @@ app.post('/api/addresses/:customerIdentifier', (req, res) => {
   if (!newAddress.customer_phone && customerIdentifier) {
     newAddress.customer_phone = customerIdentifier;
   }
+  if (!newAddress.status) {
+    newAddress.status = newAddress.is_default ? 'active' : 'active';
+  }
+
+  const cleanId = (customerIdentifier || newAddress.customer_phone || '').replace(/\D/g, '');
+
+  // If newly created/updated address is active, deactivate other addresses for this customer
+  if (newAddress.status === 'active') {
+    newAddress.is_default = true;
+    serverState.addresses.forEach(a => {
+      const aPhoneClean = (a.customer_phone || '').replace(/\D/g, '');
+      const isSameCust = (cleanId && aPhoneClean && cleanId === aPhoneClean) || 
+                         (newAddress.customer_id && a.customer_id === newAddress.customer_id) ||
+                         (newAddress.customer_phone && a.customer_phone === newAddress.customer_phone);
+      if (isSameCust && a.id !== newAddress.id) {
+        a.status = 'inactive';
+        a.is_default = false;
+      }
+    });
+  }
 
   const existingIdx = serverState.addresses.findIndex(a => a.id === newAddress.id);
   if (existingIdx >= 0) {
@@ -765,13 +838,46 @@ app.post('/api/addresses/:customerIdentifier', (req, res) => {
   }
 
   saveState(serverState);
+  console.log(`[API] Address saved: ${newAddress.address_line} (${newAddress.id}) status=${newAddress.status}`);
   res.json({ success: true, address: newAddress });
 });
 
-app.delete('/api/addresses/:customerIdentifier/:addressId', (req, res) => {
+app.put('/api/addresses/:customerIdentifier/:addressId', (req, res) => {
   const { addressId } = req.params;
+  const updates = req.body;
   if (!serverState.addresses) serverState.addresses = [];
+
+  const idx = serverState.addresses.findIndex(a => a.id === addressId);
+  if (idx >= 0) {
+    serverState.addresses[idx] = { ...serverState.addresses[idx], ...updates };
+    saveState(serverState);
+    return res.json({ success: true, address: serverState.addresses[idx] });
+  }
+  res.status(404).json({ success: false, message: 'Address not found' });
+});
+
+app.delete('/api/addresses/:customerIdentifier/:addressId', (req, res) => {
+  const { customerIdentifier, addressId } = req.params;
+  const cleanId = (customerIdentifier || '').replace(/\D/g, '');
+  if (!serverState.addresses) serverState.addresses = [];
+
+  const deleted = serverState.addresses.find(a => a.id === addressId);
   serverState.addresses = serverState.addresses.filter(a => a.id !== addressId);
+
+  // If deleted address was active, make the first remaining address for this customer active
+  if (deleted && deleted.status === 'active') {
+    const remaining = serverState.addresses.find(a => {
+      const aPhoneClean = (a.customer_phone || '').replace(/\D/g, '');
+      return (cleanId && aPhoneClean && cleanId === aPhoneClean) || 
+             a.customer_id === customerIdentifier ||
+             a.customer_phone === customerIdentifier;
+    });
+    if (remaining) {
+      remaining.status = 'active';
+      remaining.is_default = true;
+    }
+  }
+
   saveState(serverState);
   res.json({ success: true });
 });
