@@ -90,11 +90,13 @@ export interface AdBanner {
   subtitle?: string;
   action_text?: string;
   image_url: string;
+  video_url?: string; // YouTube or direct video URL for autoplay video banner
   target_vendor_id?: string;
   target_category?: string;
   is_active: boolean;
   order_index?: number;
   portal_type?: 'food' | 'grocery'; // Which portal page to show the banner on
+  banner_position?: 'top' | 'middle';
   created_at?: string;
 }
 

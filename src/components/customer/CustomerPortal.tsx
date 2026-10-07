@@ -5,6 +5,7 @@ import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
 import { CustomerRestaurantReviewsModal } from './CustomerRestaurantReviewsModal';
 import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone, parseGoogleMapsLinkOrCoords } from '../../utils/geo';
+import { getYouTubeVideoId, getYouTubeEmbedUrl, isDirectVideoUrl } from '../../utils/youtube';
 import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
   MapPin, 
@@ -460,20 +461,37 @@ export const CustomerPortal: React.FC = () => {
 
   const boostedVendors = vendors.filter(v => v.is_boosted);
 
-  const heroSlides = activeAdBanners.map((ad) => {
-    const targetVendorId = ad.target_vendor_id;
-    const targetVendor = targetVendorId 
-      ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
-      : null;
-    return {
-      id: `ad-${ad.id}`,
-      title: ad.title,
-      subtitle: ad.subtitle || null,
-      actionText: ad.action_text || 'Redeem now',
-      image: ad.image_url,
-      vendor: targetVendor || null
-    };
-  });
+  const heroSlides = useMemo(() => {
+    const slides = activeAdBanners.map((ad) => {
+      const targetVendorId = ad.target_vendor_id;
+      const targetVendor = targetVendorId 
+        ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
+        : null;
+      return {
+        id: `ad-${ad.id}`,
+        title: ad.title,
+        subtitle: ad.subtitle || null,
+        actionText: ad.action_text || 'Redeem now',
+        image: ad.image_url,
+        videoUrl: ad.video_url || null,
+        vendor: targetVendor || null
+      };
+    });
+
+    if (slides.length > 0) return slides;
+
+    return [
+      {
+        id: 'default-top-hero-1',
+        title: 'Enjoy Delicious Food & Fast Delivery',
+        subtitle: null,
+        actionText: 'Order now',
+        image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
+        videoUrl: null,
+        vendor: vendors[0] || null
+      }
+    ];
+  }, [activeAdBanners, vendors]);
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [prevSlide, setPrevSlide] = useState<number | null>(null);
@@ -486,7 +504,7 @@ export const CustomerPortal: React.FC = () => {
     }
   }, [activeSlide]);
 
-  // Auto slide every 4 seconds
+  // Auto slide every 5 seconds
   useEffect(() => {
     setActiveSlide(0);
     setPrevSlide(null);
@@ -498,7 +516,7 @@ export const CustomerPortal: React.FC = () => {
 
     const interval = setInterval(() => {
       setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 4000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [heroSlides.length]);
@@ -1858,6 +1876,120 @@ export const CustomerPortal: React.FC = () => {
 
         {/* 
           ======================================================================
+          TOP 16:9 HERO BANNER AD CAROUSEL (IMAGES & AUTOPLAY YOUTUBE VIDEOS)
+          ======================================================================
+        */}
+        {heroSlides.length > 0 && (
+          <section className="space-y-2 pt-1">
+            <div className="relative overflow-hidden w-full aspect-[16/9] rounded-3xl border border-slate-100 shadow-md bg-slate-950">
+              <div 
+                className="w-full h-full relative"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                {heroSlides.map((slide, i) => {
+                  const mediaSource = slide.videoUrl || slide.image;
+                  const ytId = getYouTubeVideoId(mediaSource);
+                  const isDirectVid = isDirectVideoUrl(mediaSource);
+                  const ytEmbedUrl = ytId ? getYouTubeEmbedUrl(mediaSource) : null;
+                  const isActive = i === activeSlide;
+
+                  return (
+                    <div 
+                      key={slide.id}
+                      style={getSlideStyle(i)}
+                      className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-3xl bg-black"
+                    >
+                      {/* Media Render: Autoplay YouTube Video OR HTML5 Video OR Image */}
+                      {ytId && ytEmbedUrl ? (
+                        <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
+                          <iframe 
+                            src={ytEmbedUrl}
+                            title={slide.title || 'Video Banner'}
+                            className="w-[106%] h-[106%] pointer-events-none border-0 object-cover scale-110"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            loading={isActive ? "eager" : "lazy"}
+                          />
+                        </div>
+                      ) : isDirectVid ? (
+                        <video 
+                          src={mediaSource}
+                          autoPlay 
+                          muted 
+                          loop 
+                          playsInline 
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
+                      ) : (
+                        <img 
+                          src={slide.image} 
+                          alt={slide.title || 'Banner'} 
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
+                        />
+                      )}
+
+                      {/* 
+                        Transparent Click Overlay:
+                        Covers the entire 16:9 banner so user cannot stop the video, 
+                        and clicking anywhere on the banner directly opens the target restaurant!
+                      */}
+                      <div 
+                        onClick={() => {
+                          if (slide.vendor) {
+                            setSelectedVendorForMenu(slide.vendor);
+                          }
+                        }}
+                        className="absolute inset-0 z-20 cursor-pointer bg-transparent"
+                        title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
+                      />
+
+                      {/* Video indicator badge if YouTube / Video */}
+                      {(ytId || isDirectVid) && (
+                        <div className="absolute top-3 right-3 z-30 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1.5 shadow-md pointer-events-none">
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                          <span>LIVE VIDEO</span>
+                        </div>
+                      )}
+
+                      {/* Target Restaurant Link badge if linked */}
+                      {slide.vendor && (
+                        <div 
+                          onClick={() => setSelectedVendorForMenu(slide.vendor)}
+                          className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
+                        >
+                          <span>🎯 {slide.vendor.name}</span>
+                          <span className="text-[10px] text-orange-400 font-bold ml-1">View Menu &rarr;</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Carousel Dot Indicators */}
+            {heroSlides.length > 1 && (
+              <div className="flex justify-center space-x-1.5 pt-1">
+                {heroSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveSlide(i)}
+                    className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
+                      activeSlide === i 
+                        ? 'w-6 bg-orange-600' 
+                        : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                    }`}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 
+          ======================================================================
           FIRST ROW: RESTAURANT TYPES LIST (Restaurant, Cloud Kitchen, Home Kitchen)
           ======================================================================
         */}
@@ -1902,69 +2034,6 @@ export const CustomerPortal: React.FC = () => {
                 );
               })}
             </div>
-          </section>
-        )}
-
-        {/* 
-          ======================================================================
-          SLIDEABLE HERO BANNER AD CAROUSEL (BETWEEN TYPES & CATEGORIES)
-          ======================================================================
-        */}
-        {heroSlides.length > 0 && (
-          <section className="space-y-2 pt-1">
-            <div className="relative overflow-hidden h-36 sm:h-40 rounded-3xl border border-slate-100 shadow-xs">
-              <div 
-                className="w-full h-full relative"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              >
-                {heroSlides.map((slide, i) => (
-                  <div 
-                    key={slide.id}
-                    onClick={() => {
-                      if (slide.vendor) {
-                        setSelectedVendorForMenu(slide.vendor);
-                      }
-                    }}
-                    style={getSlideStyle(i)}
-                    className="absolute inset-0 w-full h-full cursor-pointer select-none overflow-hidden rounded-3xl"
-                  >
-                    {/* Background Banner Image */}
-                    <img 
-                      src={slide.image} 
-                      alt={slide.title || 'Banner'} 
-                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
-                    />
-                    
-                    {/* Subtle vendor tag if linked */}
-                    {slide.vendor && (
-                      <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1 shadow-md">
-                        <span>🎯 {slide.vendor.name}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Carousel Dot Indicators */}
-            {heroSlides.length > 1 && (
-              <div className="flex justify-center space-x-1 pt-1">
-                {heroSlides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveSlide(i)}
-                    className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
-                      activeSlide === i 
-                        ? 'w-5 bg-orange-600' 
-                        : 'w-1.5 bg-slate-300 hover:bg-slate-400'
-                    }`}
-                    aria-label={`Go to slide ${i + 1}`}
-                  />
-                ))}
-              </div>
-            )}
           </section>
         )}
 

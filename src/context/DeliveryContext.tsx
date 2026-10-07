@@ -468,6 +468,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Fetch ad banners from database (Supabase) on mount
   useEffect(() => {
     const fetchAdBanners = async () => {
+      let loadedRemote: AdBanner[] = [];
       if (isSupabaseConfigured && supabase) {
         try {
           const { data, error } = await supabase
@@ -477,22 +478,91 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           
           if (error) {
             console.error('Error fetching ads from Supabase:', error);
-          } else if (data) {
-            const mapped = data.map((d: any) => ({
+          } else if (data && data.length > 0) {
+            loadedRemote = data.map((d: any) => ({
               ...d,
               portal_type: d.portal_type || (d.target_category === 'grocery' ? 'grocery' : 'food')
-            }));
-            setAdBanners(mapped as AdBanner[]);
-            return;
+            })) as AdBanner[];
           }
         } catch (err) {
           console.error('Failed to load ads from database:', err);
         }
       }
       
-      // Fallback local storage
-      const savedAds = safeJsonParse(`${STORAGE_KEY_PREFIX}ad_banners`, []);
-      setAdBanners(Array.isArray(savedAds) ? savedAds : []);
+      const savedAds = safeJsonParse<AdBanner[]>(`${STORAGE_KEY_PREFIX}ad_banners`, []);
+      
+      // Combine remote and local ads so newly posted banners never vanish
+      let combined = [...loadedRemote];
+      if (Array.isArray(savedAds)) {
+        for (const localAd of savedAds) {
+          if (!combined.some(c => c.id === localAd.id)) {
+            combined.push(localAd);
+          }
+        }
+      }
+
+      // Ensure we have both top hero 16:9 banners and middle square banners
+      const hasTop = combined.some(a => a.is_active && a.subtitle !== '__middle__');
+      const hasMiddle = combined.some(a => a.is_active && a.subtitle === '__middle__');
+
+      if (!hasTop || !hasMiddle) {
+        const initialDefaults: AdBanner[] = [
+          {
+            id: 'ad-top-hero-yt',
+            title: 'Featured Promo Video',
+            subtitle: '',
+            action_text: 'Redeem now',
+            image_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
+            video_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
+            is_active: true,
+            order_index: 0,
+            portal_type: 'food'
+          },
+          {
+            id: 'ad-top-hero-1',
+            title: 'Welcome back! Enjoy 35% off & free delivery',
+            subtitle: '',
+            action_text: 'Redeem now',
+            image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
+            is_active: true,
+            order_index: 1,
+            portal_type: 'food'
+          },
+          {
+            id: 'ad-middle-1',
+            title: 'Featured Deal',
+            subtitle: '__middle__',
+            action_text: 'Order now',
+            image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&auto=format&fit=crop&q=80',
+            is_active: true,
+            order_index: 0,
+            portal_type: 'food'
+          },
+          {
+            id: 'ad-middle-2',
+            title: 'Special Wings Offer',
+            subtitle: '__middle__',
+            action_text: 'Order now',
+            image_url: 'https://images.unsplash.com/photo-1527477378408-1bc09766436e?w=600&h=600&auto=format&fit=crop&q=80',
+            is_active: true,
+            order_index: 1,
+            portal_type: 'food'
+          }
+        ];
+
+        for (const def of initialDefaults) {
+          if (def.subtitle === '__middle__' && !hasMiddle) {
+            combined.push(def);
+          } else if (def.subtitle !== '__middle__' && !hasTop) {
+            combined.push(def);
+          }
+        }
+      }
+
+      setAdBanners(combined);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(combined));
+      } catch {}
     };
 
     fetchAdBanners();

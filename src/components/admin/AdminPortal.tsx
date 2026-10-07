@@ -3,6 +3,7 @@ import { useDelivery } from '../../context/DeliveryContext';
 import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
 import { DELIVERY_ZONES, DeliveryZone, Vendor, Rider, Order, OrderStatus } from '../../types/database';
+import { getYouTubeVideoId, getYouTubeEmbedUrl } from '../../utils/youtube';
 import { 
   ShieldCheck, 
   Settings, 
@@ -223,6 +224,7 @@ export const AdminPortal: React.FC = () => {
   const [middleAdImageUrl, setMiddleAdImageUrl] = useState('');
   const [middleAdTargetVendorId, setMiddleAdTargetVendorId] = useState('');
   const [middleTargetVendorSearchQuery, setMiddleTargetVendorSearchQuery] = useState('');
+  const [adBannerToast, setAdBannerToast] = useState<string | null>(null);
 
   const setActiveAdPortalTab = (tab: 'food' | 'grocery') => {
     setActiveAdPortalTabState(tab);
@@ -1443,14 +1445,27 @@ export const AdminPortal: React.FC = () => {
               </button>
             </div>
 
+            {/* Banner Action Toast Notification */}
+            {adBannerToast && (
+              <div className="bg-emerald-600 text-white px-4 py-3 rounded-2xl flex items-center justify-between text-xs font-bold shadow-lg animate-in fade-in">
+                <span>{adBannerToast}</span>
+                <button 
+                  onClick={() => setAdBannerToast(null)} 
+                  className="p-1 hover:bg-emerald-700 rounded-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <div className="bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-rose-600" />
-                  <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Hero Banner Ads ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__').length})</span>
+                  <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Hero Banner Ads (Top 16:9) ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__').length})</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Manage promotional ads & banners displayed at the top of the {activeAdPortalTab} home page.
+                  Manage promotional 16:9 ads & YouTube video banners displayed at the top of the {activeAdPortalTab} home page.
                 </p>
               </div>
 
@@ -1462,7 +1477,7 @@ export const AdminPortal: React.FC = () => {
                 className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-1.5 shadow-md cursor-pointer active:scale-95"
               >
                 <Plus className="w-4 h-4" />
-                <span>Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Ad</span>
+                <span>Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} 16:9 Ad</span>
               </button>
             </div>
 
@@ -1470,7 +1485,7 @@ export const AdminPortal: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__').length === 0 ? (
                 <div className="col-span-2 p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs">
-                  No {activeAdPortalTab} promotional banner ads running yet. Click "Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Ad" above to create one.
+                  No {activeAdPortalTab} promotional banner ads running yet. Click "Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} 16:9 Ad" above to create one.
                 </div>
               ) : (
                 [...adBanners]
@@ -1478,6 +1493,7 @@ export const AdminPortal: React.FC = () => {
                   .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
                   .map((ad, idx, sortedArr) => {
                     const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
+                    const ytId = getYouTubeVideoId(ad.image_url);
                     return (
                     <div 
                       key={ad.id} 
@@ -1490,12 +1506,21 @@ export const AdminPortal: React.FC = () => {
                       {/* Live Banner Mockup */}
                       <div className="flex items-center justify-between gap-3">
                         <div className="space-y-1 max-w-[220px]">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
                               ad.is_active ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-700'
                             }`}>
-                              {ad.is_active ? `● LIVE AD (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
+                              {ad.is_active ? `● LIVE (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
                             </span>
+                            {ytId ? (
+                              <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-md bg-red-600 text-white flex items-center space-x-1">
+                                <span>▶ YT VIDEO</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-md bg-black/20 text-white">
+                                16:9 IMAGE
+                              </span>
+                            )}
                             <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
                               ad.is_active ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-700'
                             }`}>
@@ -1516,12 +1541,28 @@ export const AdminPortal: React.FC = () => {
                           </p>
                         </div>
 
-                        <div className="relative w-32 h-24 sm:w-36 sm:h-28 rounded-2xl overflow-hidden shrink-0 shadow-md">
-                          <img 
-                            src={ad.image_url} 
-                            alt={ad.title} 
-                            className="w-full h-full object-cover"
-                          />
+                        {/* 16:9 Live Preview Thumbnail */}
+                        <div className="relative w-36 aspect-video sm:w-44 rounded-2xl overflow-hidden shrink-0 shadow-md bg-black">
+                          {ytId ? (
+                            <div className="relative w-full h-full">
+                              <img 
+                                src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} 
+                                alt="Video Banner" 
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center shadow-md">
+                                  <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <img 
+                              src={ad.image_url} 
+                              alt={ad.title} 
+                              className="w-full h-full object-cover"
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -3714,7 +3755,7 @@ export const AdminPortal: React.FC = () => {
       )}
       {/* 
         ========================================================================
-        MODAL: POST NEW PROMOTIONAL BANNER AD
+        MODAL: POST NEW 16:9 TOP PROMOTIONAL BANNER AD (IMAGE OR YOUTUBE VIDEO)
         ========================================================================
       */}
       {isAddAdOpen && (
@@ -3723,7 +3764,7 @@ export const AdminPortal: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2 text-rose-600">
                 <Sparkles className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">Post Custom Promotional Banner Ad</h3>
+                <h3 className="font-black text-slate-900 text-base">Post Top Banner Ad (16:9 Image or YouTube Video)</h3>
               </div>
               <button onClick={() => setIsAddAdOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
                 <X className="w-5 h-5" />
@@ -3733,15 +3774,17 @@ export const AdminPortal: React.FC = () => {
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!adImageUrl.trim()) {
-                  alert('Please enter banner image URL');
+                const cleanUrl = adImageUrl.trim();
+                if (!cleanUrl) {
                   return;
                 }
+                const ytId = getYouTubeVideoId(cleanUrl);
                 addAdBanner({
-                  title: 'Promotional Banner',
+                  title: 'Top Banner Ad',
                   subtitle: '',
-                  action_text: 'Redeem now',
-                  image_url: adImageUrl.trim(),
+                  action_text: 'Order now',
+                  image_url: cleanUrl,
+                  video_url: ytId ? cleanUrl : undefined,
                   target_vendor_id: adTargetVendorId || undefined,
                   is_active: true,
                   portal_type: adPortalType
@@ -3750,16 +3793,17 @@ export const AdminPortal: React.FC = () => {
                 setAdImageUrl('');
                 setAdTargetVendorId('');
                 setTargetVendorSearchQuery('');
-                alert('New Promotional Banner Ad Published Successfully! 🎉');
+                setAdBannerToast('✅ New 16:9 Top Banner Ad published successfully! 🎉');
               }}
-              className="space-y-3.5 text-xs font-bold"
+              className="space-y-4 text-xs font-bold"
             >
+              {/* Display Page Selector */}
               <div className="space-y-1">
                 <label className="text-slate-600">Display on Page *</label>
                 <select
                   value={adPortalType}
                   onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-bold"
                 >
                   <option value="food">Food Page</option>
                   <option value="grocery">Grocery Page</option>
@@ -3771,7 +3815,7 @@ export const AdminPortal: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <label className="text-slate-700 font-extrabold flex items-center space-x-1.5">
                     <Store className="w-4 h-4 text-rose-600" />
-                    <span>Target Restaurant Search & Selection</span>
+                    <span>Target Restaurant Selection (Click to Open)</span>
                   </label>
                   {adTargetVendorId && (
                     <button
@@ -3821,7 +3865,6 @@ export const AdminPortal: React.FC = () => {
 
                   return (
                     <div className="space-y-2">
-                      {/* Search Bar Input */}
                       <div className="relative">
                         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                         <input
@@ -3829,14 +3872,13 @@ export const AdminPortal: React.FC = () => {
                           value={targetVendorSearchQuery}
                           onChange={(e) => {
                             setTargetVendorSearchQuery(e.target.value);
-                            setAdTargetVendorId(e.target.value.trim()); // Also supports direct ID typing
+                            setAdTargetVendorId(e.target.value.trim());
                           }}
                           placeholder="Search restaurant by Name, ID (VND-1001), or Phone..."
                           className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-slate-900 text-xs focus:outline-hidden focus:border-rose-500 font-bold"
                         />
                       </div>
 
-                      {/* Matching Restaurants Dropdown Results */}
                       {targetVendorSearchQuery.trim().length > 0 && (() => {
                         const q = targetVendorSearchQuery.toLowerCase().trim();
                         const matchingVendors = vendors.filter(v => 
@@ -3849,13 +3891,13 @@ export const AdminPortal: React.FC = () => {
                         if (matchingVendors.length === 0) {
                           return (
                             <div className="p-3 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-500 font-bold">
-                              No restaurant found matching "{targetVendorSearchQuery}". Enter valid Vendor ID or search name.
+                              No restaurant found matching "{targetVendorSearchQuery}".
                             </div>
                           );
                         }
 
                         return (
-                          <div className="max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 shadow-md">
+                          <div className="max-h-36 overflow-y-auto bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 shadow-md">
                             {matchingVendors.map((v) => (
                               <div
                                 key={v.id}
@@ -3883,9 +3925,7 @@ export const AdminPortal: React.FC = () => {
                         );
                       })()}
 
-                      {/* Dropdown Quick Select Fallback */}
                       <div className="pt-1">
-                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Or select directly from registered partners list:</span>
                         <select
                           value={adTargetVendorId}
                           onChange={(e) => setAdTargetVendorId(e.target.value)}
@@ -3904,31 +3944,35 @@ export const AdminPortal: React.FC = () => {
                 })()}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-600">Banner Image URL*</label>
+              {/* Media URL Input: 16:9 Image OR YouTube Video Link */}
+              <div className="space-y-1.5">
+                <label className="text-slate-700 font-black flex items-center space-x-1.5">
+                  <span>16:9 Image URL or YouTube Video Link *</span>
+                </label>
                 <input
-                  type="url"
+                  type="text"
                   required
                   value={adImageUrl}
                   onChange={(e) => setAdImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="Paste 16:9 image URL or YouTube link (e.g. https://www.youtube.com/watch?v=... or https://youtu.be/...)"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
                 />
                 
-                {/* Preset Image Options */}
-                <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
-                  <span className="text-[10px] text-slate-400 shrink-0">Sample Images:</span>
+                {/* Sample Presets */}
+                <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto scrollbar-none">
+                  <span className="text-[10px] text-slate-400 shrink-0 font-bold">Quick Samples:</span>
                   {[
-                    { name: 'Fried Chicken', url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80' },
-                    { name: 'Biryani', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80' },
-                    { name: 'Pizza', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80' },
-                    { name: 'Burger', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80' },
+                    { name: '🎬 YouTube Video Ad', url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ' },
+                    { name: '🍗 Fried Chicken (16:9)', url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80' },
+                    { name: '🍚 Dum Biryani (16:9)', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=1280&h=720&auto=format&fit=crop&q=80' },
+                    { name: '🍕 Pizza (16:9)', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1280&h=720&auto=format&fit=crop&q=80' },
+                    { name: '🍔 Burger (16:9)', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1280&h=720&auto=format&fit=crop&q=80' },
                   ].map((preset) => (
                     <button
                       key={preset.name}
                       type="button"
                       onClick={() => setAdImageUrl(preset.url)}
-                      className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-md text-[10px] font-bold shrink-0 cursor-pointer"
+                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer transition border border-slate-200"
                     >
                       {preset.name}
                     </button>
@@ -3936,16 +3980,44 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Banner Live Preview */}
-              <div className="p-3 bg-slate-900 rounded-2xl text-white space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">Live Banner Preview</span>
-                {adImageUrl ? (
-                  <div className="relative w-full h-32 sm:h-36 rounded-xl overflow-hidden shadow-xs border border-white/10">
-                    <img src={adImageUrl} alt="Preview" className="w-full h-full object-cover" />
+              {/* 16:9 Live Preview */}
+              <div className="p-3 bg-slate-950 rounded-2xl text-white space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+                    16:9 Live Banner Preview
+                  </span>
+                  {getYouTubeVideoId(adImageUrl) && (
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-red-600 px-2 py-0.5 rounded-md text-white">
+                      ▶ Autoplay YouTube Video
+                    </span>
+                  )}
+                </div>
+
+                {adImageUrl.trim() ? (
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md border border-white/10 bg-black flex items-center justify-center">
+                    {(() => {
+                      const ytId = getYouTubeVideoId(adImageUrl);
+                      if (ytId) {
+                        return (
+                          <iframe 
+                            src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&loop=1&playlist=${ytId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`}
+                            title="Preview Video"
+                            className="w-full h-full border-0 pointer-events-none scale-105"
+                          />
+                        );
+                      }
+                      return (
+                        <img 
+                          src={adImageUrl.trim()} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                        />
+                      );
+                    })()}
                   </div>
                 ) : (
-                  <div className="w-full h-24 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold">
-                    Enter image URL above to preview banner
+                  <div className="w-full aspect-video bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold border border-white/5">
+                    Enter image URL or YouTube link above to preview 16:9 banner
                   </div>
                 )}
               </div>
@@ -3954,15 +4026,16 @@ export const AdminPortal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddAdOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                  disabled={!adImageUrl.trim()}
+                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition active:scale-95"
                 >
-                  Publish Banner Ad
+                  Publish 16:9 Banner Ad
                 </button>
               </div>
             </form>
@@ -3972,7 +4045,7 @@ export const AdminPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: POST NEW MIDDLE PROMOTIONAL SQUARE BANNER AD (NEW)
+        MODAL: POST NEW MIDDLE PROMOTIONAL SQUARE BANNER AD
         ========================================================================
       */}
       {isAddMiddleAdOpen && (
@@ -3991,15 +4064,15 @@ export const AdminPortal: React.FC = () => {
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!middleAdImageUrl.trim()) {
-                  alert('Please enter banner image URL');
+                const cleanUrl = middleAdImageUrl.trim();
+                if (!cleanUrl) {
                   return;
                 }
                 addAdBanner({
                   title: 'Featured Deal',
                   subtitle: '__middle__',
                   action_text: 'Order now',
-                  image_url: middleAdImageUrl.trim(),
+                  image_url: cleanUrl,
                   target_vendor_id: middleAdTargetVendorId || undefined,
                   is_active: true,
                   portal_type: adPortalType
@@ -4008,16 +4081,17 @@ export const AdminPortal: React.FC = () => {
                 setMiddleAdImageUrl('');
                 setMiddleAdTargetVendorId('');
                 setMiddleTargetVendorSearchQuery('');
-                alert('New Middle Square Banner Ad Published Successfully! 🎉');
+                setAdBannerToast('✅ New Middle Square Banner published successfully! 🎉');
               }}
-              className="space-y-3.5 text-xs font-bold"
+              className="space-y-4 text-xs font-bold"
             >
+              {/* Display Page Selector */}
               <div className="space-y-1">
                 <label className="text-slate-600">Display on Page *</label>
                 <select
                   value={adPortalType}
                   onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-bold"
                 >
                   <option value="food">Food Page</option>
                   <option value="grocery">Grocery Page</option>
@@ -4029,7 +4103,7 @@ export const AdminPortal: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <label className="text-slate-700 font-extrabold flex items-center space-x-1.5">
                     <Store className="w-4 h-4 text-rose-600" />
-                    <span>Target Restaurant Search & Selection</span>
+                    <span>Target Restaurant Selection (Click to Open)</span>
                   </label>
                   {middleAdTargetVendorId && (
                     <button
@@ -4045,7 +4119,6 @@ export const AdminPortal: React.FC = () => {
                   )}
                 </div>
 
-                {/* If a restaurant is already selected */}
                 {(() => {
                   const selectedVendorObj = middleAdTargetVendorId 
                     ? vendors.find(v => v.id === middleAdTargetVendorId || (v.unique_id && v.unique_id.toLowerCase() === middleAdTargetVendorId.toLowerCase()))
@@ -4079,7 +4152,6 @@ export const AdminPortal: React.FC = () => {
 
                   return (
                     <div className="space-y-2">
-                      {/* Search Bar Input */}
                       <div className="relative">
                         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                         <input
@@ -4094,7 +4166,6 @@ export const AdminPortal: React.FC = () => {
                         />
                       </div>
 
-                      {/* Matching Restaurants Dropdown Results */}
                       {middleTargetVendorSearchQuery.trim().length > 0 && (() => {
                         const q = middleTargetVendorSearchQuery.toLowerCase().trim();
                         const matchingVendors = vendors.filter(v => 
@@ -4107,13 +4178,13 @@ export const AdminPortal: React.FC = () => {
                         if (matchingVendors.length === 0) {
                           return (
                             <div className="p-3 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-500 font-bold">
-                              No restaurant found matching "{middleTargetVendorSearchQuery}". Enter valid Vendor ID or search name.
+                              No restaurant found matching "{middleTargetVendorSearchQuery}".
                             </div>
                           );
                         }
 
                         return (
-                          <div className="max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 shadow-md">
+                          <div className="max-h-36 overflow-y-auto bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 shadow-md">
                             {matchingVendors.map((v) => (
                               <div
                                 key={v.id}
@@ -4141,9 +4212,7 @@ export const AdminPortal: React.FC = () => {
                         );
                       })()}
 
-                      {/* Dropdown Quick Select Fallback */}
                       <div className="pt-1">
-                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Or select directly from registered partners list:</span>
                         <select
                           value={middleAdTargetVendorId}
                           onChange={(e) => setMiddleAdTargetVendorId(e.target.value)}
@@ -4162,10 +4231,13 @@ export const AdminPortal: React.FC = () => {
                 })()}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-600">Middle Banner Image URL (Square aspect ratio recommended)*</label>
+              {/* Square Image URL Input */}
+              <div className="space-y-1.5">
+                <label className="text-slate-700 font-black">
+                  Square Banner Image URL (1:1 Aspect Ratio) *
+                </label>
                 <input
-                  type="url"
+                  type="text"
                   required
                   value={middleAdImageUrl}
                   onChange={(e) => setMiddleAdImageUrl(e.target.value)}
@@ -4173,19 +4245,20 @@ export const AdminPortal: React.FC = () => {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
                 />
                 
-                {/* Preset Image Options */}
-                <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
-                  <span className="text-[10px] text-slate-400 shrink-0">Sample Images:</span>
+                {/* Sample Presets */}
+                <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto scrollbar-none">
+                  <span className="text-[10px] text-slate-400 shrink-0 font-bold">Quick Samples:</span>
                   {[
-                    { name: 'Deals Banner 1', url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop&q=80' },
-                    { name: 'Deals Banner 2', url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop&q=80' },
-                    { name: 'Deals Banner 3', url: 'https://images.unsplash.com/photo-1473093290046-b94874820293?w=400&h=400&fit=crop&q=80' },
+                    { name: '🍔 Burger Deal', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&auto=format&fit=crop&q=80' },
+                    { name: '🍗 Wings Deal', url: 'https://images.unsplash.com/photo-1527477378408-1bc09766436e?w=600&h=600&auto=format&fit=crop&q=80' },
+                    { name: '🍕 Pizza Deal', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80' },
+                    { name: '🍚 Biryani Deal', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&h=600&auto=format&fit=crop&q=80' },
                   ].map((preset) => (
                     <button
                       key={preset.name}
                       type="button"
                       onClick={() => setMiddleAdImageUrl(preset.url)}
-                      className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-md text-[10px] font-bold shrink-0 cursor-pointer"
+                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer transition border border-slate-200"
                     >
                       {preset.name}
                     </button>
@@ -4193,19 +4266,40 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Square Live Preview */}
+              <div className="p-3 bg-slate-950 rounded-2xl text-white space-y-2">
+                <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+                  Square 1:1 Live Preview
+                </span>
+                {middleAdImageUrl.trim() ? (
+                  <div className="w-32 h-32 mx-auto rounded-2xl overflow-hidden shadow-md border border-white/10 bg-black">
+                    <img 
+                      src={middleAdImageUrl.trim()} 
+                      alt="Middle Preview" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                ) : (
+                  <div className="w-32 h-32 mx-auto bg-slate-900 rounded-2xl flex items-center justify-center text-slate-400 text-xs font-bold border border-white/5 text-center p-2">
+                    Enter image URL above to preview square banner
+                  </div>
+                )}
+              </div>
+
               <div className="pt-2 flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setIsAddMiddleAdOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                  disabled={!middleAdImageUrl.trim()}
+                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition active:scale-95"
                 >
-                  Publish Middle Banner Ad
+                  Publish Middle Square Banner
                 </button>
               </div>
             </form>
