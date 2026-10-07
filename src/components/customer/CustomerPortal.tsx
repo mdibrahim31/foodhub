@@ -463,6 +463,7 @@ export const CustomerPortal: React.FC = () => {
     return {
       id: `ad-${ad.id}`,
       title: ad.title,
+      subtitle: ad.subtitle || null,
       actionText: ad.action_text || 'Redeem now',
       image: ad.image_url,
       vendor: targetVendor || null
@@ -1838,71 +1839,6 @@ export const CustomerPortal: React.FC = () => {
               className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
             />
           </div>
-
-          {/* Interactive Slideable Hero Carousel with Infinite Opacity Fade */}
-          {heroSlides.length > 0 && (
-            <>
-              <div 
-                className="relative overflow-hidden pt-2 pb-1 select-none h-36 flex items-center justify-center"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              >
-                {heroSlides.map((slide, i) => (
-                  <div 
-                    key={slide.id}
-                    onClick={() => {
-                      if (slide.vendor) {
-                        setSelectedVendorForMenu(slide.vendor);
-                      }
-                    }}
-                    style={getSlideStyle(i)}
-                    className="absolute inset-0 w-full h-full flex items-center justify-between gap-3 px-0.5 cursor-pointer select-none"
-                  >
-                    <div className="space-y-1.5 max-w-[200px] sm:max-w-xs z-10">
-                      <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
-                        {slide.title}
-                      </h2>
-                      <button 
-                        type="button"
-                        className="inline-flex items-center space-x-1 text-xs font-black text-white bg-black/20 hover:bg-black/30 backdrop-blur-xs px-3 py-1 rounded-xl transition pt-1 cursor-pointer"
-                      >
-                        <span>{slide.actionText || 'Redeem now'}</span>
-                        <ChevronRight className="w-4 h-4 stroke-[3]" />
-                      </button>
-                    </div>
-
-                    {/* Food Graphic */}
-                    <div className="relative shrink-0 w-36 h-28 sm:w-44 sm:h-32">
-                      <img 
-                        src={slide.image} 
-                        alt={slide.title} 
-                        className="w-full h-full object-cover rounded-2xl drop-shadow-md pointer-events-none"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Interactive Carousel Dots Pill Indicator [ — • • • • ] */}
-              <div className="flex justify-center pt-1">
-                <div className="inline-flex items-center space-x-1.5 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
-                  {heroSlides.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setActiveSlide(i)}
-                      className={`transition-all duration-300 rounded-full cursor-pointer ${
-                        activeSlide === i 
-                          ? 'w-6 h-1 bg-white' 
-                          : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'
-                      }`}
-                      aria-label={`Go to slide ${i + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </header>
 
@@ -1961,6 +1897,77 @@ export const CustomerPortal: React.FC = () => {
                 );
               })}
             </div>
+          </section>
+        )}
+
+        {/* 
+          ======================================================================
+          SLIDEABLE HERO BANNER AD CAROUSEL (BETWEEN TYPES & CATEGORIES)
+          ======================================================================
+        */}
+        {heroSlides.length > 0 && (
+          <section className="space-y-2 pt-1">
+            <div className="relative overflow-hidden h-36 sm:h-40 rounded-3xl border border-slate-100 shadow-xs">
+              <div 
+                className="w-full h-full relative"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                {heroSlides.map((slide, i) => (
+                  <div 
+                    key={slide.id}
+                    onClick={() => {
+                      if (slide.vendor) {
+                        setSelectedVendorForMenu(slide.vendor);
+                      }
+                    }}
+                    style={getSlideStyle(i)}
+                    className="absolute inset-0 w-full h-full cursor-pointer select-none overflow-hidden rounded-3xl"
+                  >
+                    {/* Background Banner Image */}
+                    <img 
+                      src={slide.image} 
+                      alt={slide.title} 
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
+                    />
+                    
+                    {/* Overlay Text Details with Dark Gradient Scrim */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 flex flex-col justify-end">
+                      <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest bg-black/35 px-2 py-0.5 rounded-md self-start mb-1.5 backdrop-blur-xs">
+                        {slide.actionText || 'Promotion'}
+                      </span>
+                      <h4 className="text-white font-black text-sm sm:text-base leading-snug drop-shadow-sm line-clamp-1">
+                        {slide.title}
+                      </h4>
+                      {slide.subtitle && (
+                        <p className="text-slate-200 text-[10px] sm:text-xs mt-0.5 line-clamp-1 drop-shadow-xs opacity-90">
+                          {slide.subtitle}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Carousel Dot Indicators */}
+            {heroSlides.length > 1 && (
+              <div className="flex justify-center space-x-1 pt-1">
+                {heroSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveSlide(i)}
+                    className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
+                      activeSlide === i 
+                        ? 'w-5 bg-orange-600' 
+                        : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                    }`}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )}
 
