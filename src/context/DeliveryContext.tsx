@@ -258,9 +258,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const params = new URLSearchParams(window.location.search);
       const portalQuery = params.get('portal') as PortalRole;
       if (['customer', 'vendor', 'rider', 'admin'].includes(portalQuery)) return portalQuery;
-
-      const saved = localStorage.getItem('foodiplace_active_portal') as PortalRole;
-      if (['customer', 'vendor', 'rider', 'admin'].includes(saved)) return saved;
     }
     return 'customer';
   });
