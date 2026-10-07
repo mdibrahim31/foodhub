@@ -253,12 +253,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Persistent Role: checks URL hash, query param, and localStorage so refreshing never resets to home
   const [role, setRoleState] = useState<PortalRole>(() => {
     if (typeof window !== 'undefined') {
-      const rawHash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
-      if (['customer', 'vendor', 'rider', 'admin'].includes(rawHash)) return rawHash;
+      const path = window.location.pathname;
+      if (path.includes('vendor.html')) return 'vendor';
+      if (path.includes('rider.html')) return 'rider';
+      if (path.includes('admin.html')) return 'admin';
 
       const params = new URLSearchParams(window.location.search);
       const portalQuery = params.get('portal') as PortalRole;
       if (['customer', 'vendor', 'rider', 'admin'].includes(portalQuery)) return portalQuery;
+
+      const rawHash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
+      if (['customer', 'vendor', 'rider', 'admin'].includes(rawHash)) return rawHash;
     }
     return 'customer';
   });

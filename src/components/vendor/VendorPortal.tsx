@@ -788,13 +788,18 @@ export const VendorPortal: React.FC = () => {
                         </span>
                         <button
                           onClick={() => {
-                            setEditingCategory(categoryName);
-                            setEditedCategoryName(categoryName);
+                            if (categoryItems.length > 0) {
+                              alert("⚠️ Cannot remove category: There are still products in this category. Move or delete them first.");
+                              return;
+                            }
+                            if (window.confirm(`Are you sure you want to remove the category "${categoryName}"?`)) {
+                              setCustomCategories(prev => prev.filter(c => c.toLowerCase().trim() !== categoryName.toLowerCase().trim()));
+                            }
                           }}
-                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition"
-                          title="Edit Category Name"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
+                          title="Remove Category"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1636,99 +1641,66 @@ export const VendorPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: ADD CATEGORY
+        MODAL: ADD CATEGORY (Selection Grid from Predefined Master List)
         ========================================================================
       */}
       {isAddCategoryOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-5 space-y-4">
             <div className="flex justify-between items-center border-b pb-3 border-slate-100">
-              <h3 className="font-black text-slate-900 text-base">Add New Category</h3>
-              <button onClick={() => setIsAddCategoryOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Select Category</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Choose a category to add to your menu</p>
+              </div>
+              <button onClick={() => setIsAddCategoryOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddCategory} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Category Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g. Bhorta & Bhaji / Biryani / Dessert"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddCategoryOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  Save Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 
-        ========================================================================
-        MODAL: EDIT CATEGORY
-        ========================================================================
-      */}
-      {editingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3 border-slate-100">
-              <h3 className="font-black text-slate-900 text-base">Edit Category Name</h3>
-              <button onClick={() => setEditingCategory(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+            <div className="grid grid-cols-3 gap-3 max-h-[360px] overflow-y-auto p-1">
+              {foodCategories
+                .filter(cat => cat.is_active !== false && (cat.category_type === 'food' || !cat.category_type))
+                .map((cat) => {
+                  const isExisting = allCategoryNames.some(cName => cName.toLowerCase().trim() === cat.name.toLowerCase().trim());
+                  return (
+                    <button
+                      key={cat.id}
+                      disabled={isExisting}
+                      onClick={() => {
+                        if (!customCategories.some(c => c.toLowerCase().trim() === cat.name.toLowerCase().trim())) {
+                          setCustomCategories(prev => [...prev, cat.name]);
+                        }
+                        setIsAddCategoryOpen(false);
+                      }}
+                      className={`flex flex-col items-center p-3 rounded-2xl border text-center transition-all ${
+                        isExisting 
+                          ? 'bg-slate-50 border-slate-100 opacity-40 cursor-not-allowed'
+                          : 'bg-white border-slate-200 hover:border-orange-300 hover:bg-orange-50/30 cursor-pointer active:scale-95'
+                      }`}
+                    >
+                      <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl bg-slate-50 mb-1.5 shadow-2xs">
+                        {cat.image_url ? (
+                          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{cat.icon || '🍽️'}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-800 line-clamp-2 leading-tight">
+                        {cat.name}
+                      </span>
+                    </button>
+                  );
+                })}
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Rename Category</label>
-                <input
-                  type="text"
-                  value={editedCategoryName}
-                  onChange={(e) => setEditedCategoryName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setEditingCategory(null)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (editedCategoryName.trim()) {
-                      setCustomCategories(prev => [...prev.filter(c => c !== editingCategory), editedCategoryName.trim()]);
-                    }
-                    setEditingCategory(null);
-                  }}
-                  className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  Update
-                </button>
-              </div>
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAddCategoryOpen(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -1774,18 +1746,29 @@ export const VendorPortal: React.FC = () => {
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold"
                   />
                 </div>
-                <div>
+                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
                   <select
                     value={dishCategory}
                     onChange={(e) => setDishCategory(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold bg-white cursor-pointer"
                   >
-                    {foodCategories.map((cat) => (
-                      <option key={cat.id} value={cat.name}>
-                        {cat.icon || '🍽️'} {cat.name}
-                      </option>
-                    ))}
+                    {allCategoryNames.length > 0 ? (
+                      allCategoryNames.map((catName) => {
+                        const matchedCat = foodCategories.find(c => c.name.toLowerCase().trim() === catName.toLowerCase().trim());
+                        return (
+                          <option key={catName} value={catName}>
+                            {matchedCat?.icon || '🍽️'} {catName}
+                          </option>
+                        );
+                      })
+                    ) : (
+                      foodCategories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.icon || '🍽️'} {cat.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>

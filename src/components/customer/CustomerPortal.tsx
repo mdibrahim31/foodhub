@@ -627,13 +627,22 @@ export const CustomerPortal: React.FC = () => {
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRating = !isRating4PlusOnly || v.rating >= 4.0;
+    
+    const normalizeCatName = (name: string) => {
+      const norm = name.toLowerCase().trim();
+      if (norm.includes('biryani') || norm.includes('biriyani')) return 'biryani';
+      if (norm.includes('kebab') || norm.includes('kabab')) return 'kebab';
+      return norm;
+    };
+
     const hasMenuItemInSelectedCategory = menuItems.some(
       m => m.vendor_id === v.id && 
            m.category && 
-           m.category.toLowerCase().trim() === activeCuisineFilter.toLowerCase().trim()
+           normalizeCatName(m.category) === normalizeCatName(activeCuisineFilter)
     );
     const matchesCuisine = activeCuisineFilter === 'All' || 
       v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase()) ||
+      normalizeCatName(v.cuisine).includes(normalizeCatName(activeCuisineFilter)) ||
       hasMenuItemInSelectedCategory;
     
     // Filter by type: Food page shows restaurants, Grocery page shows shops
@@ -1989,18 +1998,18 @@ export const CustomerPortal: React.FC = () => {
                     isSelected ? 'scale-105' : 'hover:scale-102'
                   }`}
                 >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border ${
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border overflow-hidden ${
                     isSelected 
                       ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
                       : 'bg-white border-slate-200/80 hover:border-slate-300'
                   }`}>
                     {cat.image_url ? (
-                      <img src={cat.image_url} alt={cat.name} className="w-9 h-9 object-contain" />
+                      <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span>{cat.icon || '🍽️'}</span>
+                      <span className="text-3xl">{cat.icon || '🍽️'}</span>
                     )}
                   </div>
-                  <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
+                  <span className={`text-[11px] mt-2 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
                     isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
                   }`}>
                     {cat.name}
