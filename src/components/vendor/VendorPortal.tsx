@@ -1663,7 +1663,6 @@ export const VendorPortal: React.FC = () => {
                 .filter(cat => cat.is_active !== false && (cat.category_type === 'food' || !cat.category_type))
                 .map((cat) => {
                   const isExisting = allCategoryNames.some(cName => cName.toLowerCase().trim() === cat.name.toLowerCase().trim());
-                  const isBroken = brokenImages[cat.id];
                   return (
                     <button
                       key={cat.id}
@@ -1680,18 +1679,8 @@ export const VendorPortal: React.FC = () => {
                           : 'bg-white border-slate-200 hover:border-orange-300 hover:bg-orange-50/30 cursor-pointer active:scale-95'
                       }`}
                     >
-                      <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl bg-slate-50 mb-1.5 shadow-2xs">
-                        {cat.image_url && !isBroken ? (
-                          <img 
-                            src={cat.image_url} 
-                            alt={cat.name} 
-                            referrerPolicy="no-referrer"
-                            onError={() => setBrokenImages(prev => ({ ...prev, [cat.id]: true }))}
-                            className="w-full h-full object-cover" 
-                          />
-                        ) : (
-                          <span>{cat.icon || '🍽️'}</span>
-                        )}
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-slate-50 mb-1.5 shadow-2xs">
+                        <span>{cat.icon || '🍽️'}</span>
                       </div>
                       <span className="text-[10px] font-bold text-slate-800 line-clamp-2 leading-tight">
                         {cat.name}

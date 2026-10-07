@@ -1991,7 +1991,6 @@ export const CustomerPortal: React.FC = () => {
               (activeBottomNav === 'food' ? (cat.category_type === 'food' || !cat.category_type) : cat.category_type === 'grocery')
             ).map((cat) => {
               const isSelected = activeCuisineFilter.toLowerCase() === cat.name.toLowerCase();
-              const isBroken = brokenImages[cat.id];
               return (
                 <button
                   key={cat.id}
@@ -2005,17 +2004,7 @@ export const CustomerPortal: React.FC = () => {
                       ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
                       : 'bg-white border-slate-200/80 hover:border-slate-300'
                   }`}>
-                    {cat.image_url && !isBroken ? (
-                      <img 
-                        src={cat.image_url} 
-                        alt={cat.name} 
-                        referrerPolicy="no-referrer"
-                        onError={() => setBrokenImages(prev => ({ ...prev, [cat.id]: true }))}
-                        className="w-9 h-9 object-contain rounded-lg" 
-                      />
-                    ) : (
-                      <span>{cat.icon || '🍽️'}</span>
-                    )}
+                    <span>{cat.icon || '🍽️'}</span>
                   </div>
                   <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
                     isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
