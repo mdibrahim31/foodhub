@@ -1854,14 +1854,14 @@ export const CustomerPortal: React.FC = () => {
 
               {/* 
                 ======================================================================
-                TOP 16:9 HERO BANNER AD CAROUSEL (INSIDE THE ORANGE WINDOW - EXPANDED)
+                TOP 16:9 HERO BANNER AD CAROUSEL (INSIDE THE ORANGE WINDOW - ATTACHED & SEAMLESS)
                 ======================================================================
               */}
               {heroSlides.length > 0 && (
-                <div className="pt-1 space-y-2 -mx-2 sm:-mx-3">
-                  <div className="relative overflow-hidden w-full aspect-[16/9] rounded-2xl sm:rounded-3xl border border-white/20 shadow-md bg-black">
+                <div className="space-y-1.5 -mx-2 sm:-mx-3 pt-0">
+                  <div className="relative overflow-hidden w-full aspect-[16/9] rounded-2xl sm:rounded-3xl border-0 shadow-xs bg-transparent">
                     <div 
-                      className="w-full h-full relative"
+                      className="w-full h-full relative bg-transparent"
                       onTouchStart={handleTouchStart}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={handleTouchEnd}
@@ -1871,7 +1871,7 @@ export const CustomerPortal: React.FC = () => {
                           <div 
                             key={slide.id}
                             style={getSlideStyle(i)}
-                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-2xl sm:rounded-3xl bg-black cursor-pointer"
+                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-2xl sm:rounded-3xl bg-transparent cursor-pointer"
                             onClick={() => {
                               if (slide.vendor) {
                                 setSelectedVendorForMenu(slide.vendor);
@@ -1881,7 +1881,7 @@ export const CustomerPortal: React.FC = () => {
                             <img 
                               src={slide.image} 
                               alt={slide.title || 'Banner'} 
-                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
+                              className="w-full h-full object-cover block transition-transform duration-500 hover:scale-102"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
                               }}
