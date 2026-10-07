@@ -130,6 +130,7 @@ export const VendorPortal: React.FC = () => {
     }
   }, [customCategories, currentVendor?.id]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editedCategoryName, setEditedCategoryName] = useState('');
@@ -1662,6 +1663,7 @@ export const VendorPortal: React.FC = () => {
                 .filter(cat => cat.is_active !== false && (cat.category_type === 'food' || !cat.category_type))
                 .map((cat) => {
                   const isExisting = allCategoryNames.some(cName => cName.toLowerCase().trim() === cat.name.toLowerCase().trim());
+                  const isBroken = brokenImages[cat.id];
                   return (
                     <button
                       key={cat.id}
@@ -1679,8 +1681,14 @@ export const VendorPortal: React.FC = () => {
                       }`}
                     >
                       <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl bg-slate-50 mb-1.5 shadow-2xs">
-                        {cat.image_url ? (
-                          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                        {cat.image_url && !isBroken ? (
+                          <img 
+                            src={cat.image_url} 
+                            alt={cat.name} 
+                            referrerPolicy="no-referrer"
+                            onError={() => setBrokenImages(prev => ({ ...prev, [cat.id]: true }))}
+                            className="w-full h-full object-cover" 
+                          />
                         ) : (
                           <span>{cat.icon || '🍽️'}</span>
                         )}

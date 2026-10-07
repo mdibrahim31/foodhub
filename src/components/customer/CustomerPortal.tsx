@@ -124,6 +124,7 @@ export const CustomerPortal: React.FC = () => {
   const [hasOfferOnly, setHasOfferOnly] = useState(false);
   const [isNewOnly, setIsNewOnly] = useState(false);
   const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   const isVendorNew = (v: Vendor) => {
     if (!v.created_at) return true; // Sample vendors count as new if created_at is omitted
@@ -1990,6 +1991,7 @@ export const CustomerPortal: React.FC = () => {
               (activeBottomNav === 'food' ? (cat.category_type === 'food' || !cat.category_type) : cat.category_type === 'grocery')
             ).map((cat) => {
               const isSelected = activeCuisineFilter.toLowerCase() === cat.name.toLowerCase();
+              const isBroken = brokenImages[cat.id];
               return (
                 <button
                   key={cat.id}
@@ -1998,16 +2000,24 @@ export const CustomerPortal: React.FC = () => {
                     isSelected ? 'scale-105' : 'hover:scale-102'
                   }`}
                 >
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border overflow-hidden ${
+                  <div className={`w-18 h-18 rounded-full flex items-center justify-center p-0.5 bg-white border transition-all ${
                     isSelected 
-                      ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
-                      : 'bg-white border-slate-200/80 hover:border-slate-300'
+                      ? 'border-orange-600 ring-3 ring-orange-500/20 scale-102' 
+                      : 'border-red-500 hover:border-red-600 shadow-2xs'
                   }`}>
-                    {cat.image_url ? (
-                      <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-3xl">{cat.icon || '🍽️'}</span>
-                    )}
+                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-50">
+                      {cat.image_url && !isBroken ? (
+                        <img 
+                          src={cat.image_url} 
+                          alt={cat.name} 
+                          referrerPolicy="no-referrer"
+                          onError={() => setBrokenImages(prev => ({ ...prev, [cat.id]: true }))}
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <span className="text-3xl filter drop-shadow-sm">{cat.icon || '🍽️'}</span>
+                      )}
+                    </div>
                   </div>
                   <span className={`text-[11px] mt-2 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
                     isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
