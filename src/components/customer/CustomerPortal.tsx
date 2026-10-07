@@ -1998,7 +1998,7 @@ export const CustomerPortal: React.FC = () => {
                     <span>🔥 Featured Deals</span>
                   </h3>
                 </div>
-                <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none select-none">
+                <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none select-none">
                   {activeMiddleBanners.map((ad) => {
                     const targetVendorId = ad.target_vendor_id;
                     const targetVendor = targetVendorId 
@@ -2012,7 +2012,7 @@ export const CustomerPortal: React.FC = () => {
                             setSelectedVendorForMenu(targetVendor);
                           }
                         }}
-                        className="relative w-32 h-32 rounded-3xl overflow-hidden shrink-0 shadow-xs border border-slate-100 hover:scale-102 transition-transform cursor-pointer focus:outline-hidden"
+                        className="relative w-28 sm:w-32 h-38 sm:h-44 rounded-2xl sm:rounded-3xl overflow-hidden shrink-0 shadow-xs border border-slate-100 hover:scale-102 transition-transform cursor-pointer focus:outline-hidden"
                       >
                         <img 
                           src={ad.image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80'} 
