@@ -504,6 +504,51 @@ app.delete('/api/food-categories/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// 6D. Promotional Ad Banners API
+app.get('/api/banners', (_req, res) => {
+  if (!serverState.adBanners) serverState.adBanners = [];
+  res.json(serverState.adBanners);
+});
+
+app.post('/api/banners', (req, res) => {
+  if (!serverState.adBanners) serverState.adBanners = [];
+  const newBanner = req.body;
+  if (!newBanner.id) newBanner.id = `ad-${Date.now()}`;
+  if (!newBanner.created_at) newBanner.created_at = new Date().toISOString();
+
+  const existingIdx = serverState.adBanners.findIndex(b => b.id === newBanner.id);
+  if (existingIdx >= 0) {
+    serverState.adBanners[existingIdx] = { ...serverState.adBanners[existingIdx], ...newBanner };
+  } else {
+    serverState.adBanners.unshift(newBanner);
+  }
+  saveState(serverState);
+  console.log(`[API] Banner saved: ${newBanner.id} (${newBanner.portal_type || 'food'})`);
+  res.json({ success: true, banner: newBanner });
+});
+
+app.put('/api/banners/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.adBanners) serverState.adBanners = [];
+  const idx = serverState.adBanners.findIndex(b => b.id === id);
+  if (idx >= 0) {
+    serverState.adBanners[idx] = { ...serverState.adBanners[idx], ...updates };
+    saveState(serverState);
+    return res.json({ success: true, banner: serverState.adBanners[idx] });
+  }
+  res.status(404).json({ success: false, message: 'Banner not found' });
+});
+
+app.delete('/api/banners/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.adBanners) serverState.adBanners = [];
+  serverState.adBanners = serverState.adBanners.filter(b => b.id !== id);
+  saveState(serverState);
+  console.log(`[API] Banner deleted: ${id}`);
+  res.json({ success: true });
+});
+
 // File Upload Endpoint (Saves vendor profile & cover images into data/uploads/images/:folderName/)
 app.post('/api/upload', (req, res) => {
   try {

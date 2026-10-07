@@ -461,7 +461,7 @@ export const CustomerPortal: React.FC = () => {
   const boostedVendors = vendors.filter(v => v.is_boosted);
 
   const heroSlides = useMemo(() => {
-    const slides = activeAdBanners.map((ad) => {
+    return activeAdBanners.map((ad) => {
       const targetVendorId = ad.target_vendor_id;
       const targetVendor = targetVendorId 
         ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
@@ -476,20 +476,6 @@ export const CustomerPortal: React.FC = () => {
         vendor: targetVendor || null
       };
     });
-
-    if (slides.length > 0) return slides;
-
-    return [
-      {
-        id: 'default-top-hero-1',
-        title: 'Enjoy Delicious Food & Fast Delivery',
-        subtitle: null,
-        actionText: 'Order now',
-        image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
-        videoUrl: null,
-        vendor: vendors[0] || null
-      }
-    ];
   }, [activeAdBanners, vendors]);
 
   const [activeSlide, setActiveSlide] = useState(0);

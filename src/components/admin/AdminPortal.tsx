@@ -106,6 +106,7 @@ export const AdminPortal: React.FC = () => {
     updateVendor,
     toggleVendorPause,
     deleteVendor, 
+    uploadVendorImage,
     menuItems,
     toggleMenuItemAvailability,
     riders, 
@@ -3735,16 +3736,18 @@ export const AdminPortal: React.FC = () => {
       )}
       {/* 
         ========================================================================
-        MODAL: POST NEW 16:9 TOP PROMOTIONAL BANNER AD (IMAGE ONLY)
+        MODAL: POST NEW 16:9 TOP PROMOTIONAL BANNER AD
         ========================================================================
       */}
       {isAddAdOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2 text-rose-600">
                 <Sparkles className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">Post Top Banner Ad (16:9 Image)</h3>
+                <h3 className="font-black text-slate-900 text-base">
+                  Post {adPortalType === 'food' ? 'Food' : 'Grocery'} 16:9 Banner
+                </h3>
               </div>
               <button onClick={() => setIsAddAdOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
                 <X className="w-5 h-5" />
@@ -3756,6 +3759,7 @@ export const AdminPortal: React.FC = () => {
                 e.preventDefault();
                 const cleanUrl = adImageUrl.trim();
                 if (!cleanUrl) {
+                  alert('Please provide a banner image URL or upload an image.');
                   return;
                 }
                 addAdBanner({
@@ -3775,25 +3779,12 @@ export const AdminPortal: React.FC = () => {
               }}
               className="space-y-4 text-xs font-bold"
             >
-              {/* Display Page Selector */}
-              <div className="space-y-1">
-                <label className="text-slate-600">Display on Page *</label>
-                <select
-                  value={adPortalType}
-                  onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-bold"
-                >
-                  <option value="food">Food Page</option>
-                  <option value="grocery">Grocery Page</option>
-                </select>
-              </div>
-
-              {/* Target Restaurant Search & ID Selection Box */}
+              {/* Target Restaurant (Optional) */}
               <div className="space-y-2 bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <label className="text-slate-700 font-extrabold flex items-center space-x-1.5">
                     <Store className="w-4 h-4 text-rose-600" />
-                    <span>Target Restaurant Selection (Click to Open)</span>
+                    <span>Linked Restaurant (Optional)</span>
                   </label>
                   {adTargetVendorId && (
                     <button
@@ -3804,12 +3795,11 @@ export const AdminPortal: React.FC = () => {
                       }}
                       className="text-[10px] text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-md cursor-pointer"
                     >
-                      Clear Link (✕)
+                      Clear (✕)
                     </button>
                   )}
                 </div>
 
-                {/* If a restaurant is already selected */}
                 {(() => {
                   const selectedVendorObj = adTargetVendorId 
                     ? vendors.find(v => v.id === adTargetVendorId || (v.unique_id && v.unique_id.toLowerCase() === adTargetVendorId.toLowerCase()))
@@ -3817,7 +3807,7 @@ export const AdminPortal: React.FC = () => {
 
                   if (selectedVendorObj) {
                     return (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between gap-2 shadow-2xs">
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between gap-2">
                         <div className="flex items-center space-x-2.5 min-w-0">
                           <div className="p-1.5 bg-emerald-600 text-white rounded-lg shrink-0">
                             <Store className="w-4 h-4" />
@@ -3852,7 +3842,7 @@ export const AdminPortal: React.FC = () => {
                             setTargetVendorSearchQuery(e.target.value);
                             setAdTargetVendorId(e.target.value.trim());
                           }}
-                          placeholder="Search restaurant by Name, ID (VND-1001), or Phone..."
+                          placeholder="Search restaurant by name or ID (or leave blank)..."
                           className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-slate-900 text-xs focus:outline-hidden focus:border-rose-500 font-bold"
                         />
                       </div>
@@ -3868,8 +3858,8 @@ export const AdminPortal: React.FC = () => {
 
                         if (matchingVendors.length === 0) {
                           return (
-                            <div className="p-3 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-500 font-bold">
-                              No restaurant found matching "{targetVendorSearchQuery}".
+                            <div className="p-2 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-400 font-medium">
+                              No restaurant found.
                             </div>
                           );
                         }
@@ -3886,102 +3876,74 @@ export const AdminPortal: React.FC = () => {
                                 className="p-2.5 hover:bg-rose-50 cursor-pointer transition flex items-center justify-between text-xs"
                               >
                                 <div>
-                                  <div className="flex items-center space-x-1.5">
-                                    <span className="font-extrabold text-slate-900">{v.name}</span>
-                                    <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 font-mono font-bold text-[9px] rounded-md">
-                                      {v.unique_id || v.id}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-500 font-medium">📞 {v.phone} &bull; {v.zone}</span>
+                                  <span className="font-extrabold text-slate-900">{v.name}</span>
+                                  <span className="text-[10px] text-slate-500 font-medium ml-2">({v.zone})</span>
                                 </div>
-                                <span className="px-2 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold">
-                                  Select &rarr;
+                                <span className="px-2 py-0.5 bg-slate-900 text-white rounded-lg text-[10px] font-bold">
+                                  Select
                                 </span>
                               </div>
                             ))}
                           </div>
                         );
                       })()}
-
-                      <div className="pt-1">
-                        <select
-                          value={adTargetVendorId}
-                          onChange={(e) => setAdTargetVendorId(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
-                        >
-                          <option value="">-- General Ad (Unlinked Offer Banner) --</option>
-                          {vendors.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              🎯 [{v.unique_id || v.id}] {v.name} ({v.phone} - {v.zone})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
                   );
                 })()}
               </div>
 
-              {/* Media URL Input: 16:9 Image */}
-              <div className="space-y-1.5">
-                <label className="text-slate-700 font-black flex items-center space-x-1.5">
-                  <span>16:9 Banner Image URL *</span>
+              {/* Banner Image Input */}
+              <div className="space-y-2">
+                <label className="text-slate-700 font-black">
+                  16:9 Banner Image URL *
                 </label>
                 <input
                   type="text"
                   required
                   value={adImageUrl}
                   onChange={(e) => setAdImageUrl(e.target.value)}
-                  placeholder="Paste 16:9 image URL (e.g. https://images.unsplash.com/...)"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
+                  placeholder="https://..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-xs"
                 />
                 
-                {/* Sample Presets */}
-                <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto scrollbar-none">
-                  <span className="text-[10px] text-slate-400 shrink-0 font-bold">Quick Samples:</span>
-                  {[
-                    { name: '🍗 Fried Chicken (16:9)', url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80' },
-                    { name: '🍚 Dum Biryani (16:9)', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=1280&h=720&auto=format&fit=crop&q=80' },
-                    { name: '🍕 Pizza (16:9)', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1280&h=720&auto=format&fit=crop&q=80' },
-                    { name: '🍔 Burger (16:9)', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1280&h=720&auto=format&fit=crop&q=80' },
-                  ].map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => setAdImageUrl(preset.url)}
-                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer transition border border-slate-200"
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
+                {/* File Upload Option */}
+                <div>
+                  <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-bold cursor-pointer transition border border-slate-200">
+                    <span>📁 Upload from Device</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const res = await uploadVendorImage('banners', file, 'cover');
+                          if (res.url) {
+                            setAdImageUrl(res.url);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 
               {/* 16:9 Live Preview */}
-              <div className="p-3 bg-slate-950 rounded-2xl text-white space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
-                    16:9 Live Banner Preview
-                  </span>
-                </div>
-
-                {adImageUrl.trim() ? (
-                  <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md border border-white/10 bg-black flex items-center justify-center">
+              {adImageUrl.trim() && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Preview:</span>
+                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xs border border-slate-200 bg-slate-100">
                     <img 
                       src={adImageUrl.trim()} 
-                      alt="Preview" 
+                      alt="Banner Preview" 
                       className="w-full h-full object-cover" 
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
                       }}
                     />
                   </div>
-                ) : (
-                  <div className="w-full aspect-video bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold border border-white/5">
-                    Enter image URL above to preview 16:9 banner
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="pt-2 flex justify-end space-x-2">
                 <button
@@ -3996,7 +3958,7 @@ export const AdminPortal: React.FC = () => {
                   disabled={!adImageUrl.trim()}
                   className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition active:scale-95"
                 >
-                  Publish 16:9 Banner Ad
+                  Publish Banner
                 </button>
               </div>
             </form>
@@ -4006,16 +3968,18 @@ export const AdminPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: POST NEW MIDDLE PROMOTIONAL SQUARE BANNER AD
+        MODAL: POST NEW MIDDLE PROMOTIONAL BANNER AD
         ========================================================================
       */}
       {isAddMiddleAdOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2 text-rose-600">
                 <Sparkles className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">Post Middle Square Banner Ad</h3>
+                <h3 className="font-black text-slate-900 text-base">
+                  Post {adPortalType === 'food' ? 'Food' : 'Grocery'} Middle Banner
+                </h3>
               </div>
               <button onClick={() => setIsAddMiddleAdOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
                 <X className="w-5 h-5" />
@@ -4027,6 +3991,7 @@ export const AdminPortal: React.FC = () => {
                 e.preventDefault();
                 const cleanUrl = middleAdImageUrl.trim();
                 if (!cleanUrl) {
+                  alert('Please provide a banner image URL or upload an image.');
                   return;
                 }
                 addAdBanner({
@@ -4042,29 +4007,16 @@ export const AdminPortal: React.FC = () => {
                 setMiddleAdImageUrl('');
                 setMiddleAdTargetVendorId('');
                 setMiddleTargetVendorSearchQuery('');
-                setAdBannerToast('✅ New Middle Square Banner published successfully! 🎉');
+                setAdBannerToast('✅ New Middle Banner published successfully! 🎉');
               }}
               className="space-y-4 text-xs font-bold"
             >
-              {/* Display Page Selector */}
-              <div className="space-y-1">
-                <label className="text-slate-600">Display on Page *</label>
-                <select
-                  value={adPortalType}
-                  onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-bold"
-                >
-                  <option value="food">Food Page</option>
-                  <option value="grocery">Grocery Page</option>
-                </select>
-              </div>
-
-              {/* Target Restaurant Search & ID Selection Box */}
+              {/* Target Restaurant (Optional) */}
               <div className="space-y-2 bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <label className="text-slate-700 font-extrabold flex items-center space-x-1.5">
                     <Store className="w-4 h-4 text-rose-600" />
-                    <span>Target Restaurant Selection (Click to Open)</span>
+                    <span>Linked Restaurant (Optional)</span>
                   </label>
                   {middleAdTargetVendorId && (
                     <button
@@ -4075,7 +4027,7 @@ export const AdminPortal: React.FC = () => {
                       }}
                       className="text-[10px] text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-md cursor-pointer"
                     >
-                      Clear Link (✕)
+                      Clear (✕)
                     </button>
                   )}
                 </div>
@@ -4087,7 +4039,7 @@ export const AdminPortal: React.FC = () => {
 
                   if (selectedVendorObj) {
                     return (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between gap-2 shadow-2xs">
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between gap-2">
                         <div className="flex items-center space-x-2.5 min-w-0">
                           <div className="p-1.5 bg-emerald-600 text-white rounded-lg shrink-0">
                             <Store className="w-4 h-4" />
@@ -4122,7 +4074,7 @@ export const AdminPortal: React.FC = () => {
                             setMiddleTargetVendorSearchQuery(e.target.value);
                             setMiddleAdTargetVendorId(e.target.value.trim());
                           }}
-                          placeholder="Search restaurant by Name, ID (VND-1001), or Phone..."
+                          placeholder="Search restaurant by name or ID (or leave blank)..."
                           className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-slate-900 text-xs focus:outline-hidden focus:border-rose-500 font-bold"
                         />
                       </div>
@@ -4138,8 +4090,8 @@ export const AdminPortal: React.FC = () => {
 
                         if (matchingVendors.length === 0) {
                           return (
-                            <div className="p-3 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-500 font-bold">
-                              No restaurant found matching "{middleTargetVendorSearchQuery}".
+                            <div className="p-2 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-400 font-medium">
+                              No restaurant found.
                             </div>
                           );
                         }
@@ -4156,96 +4108,74 @@ export const AdminPortal: React.FC = () => {
                                 className="p-2.5 hover:bg-rose-50 cursor-pointer transition flex items-center justify-between text-xs"
                               >
                                 <div>
-                                  <div className="flex items-center space-x-1.5">
-                                    <span className="font-extrabold text-slate-900">{v.name}</span>
-                                    <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 font-mono font-bold text-[9px] rounded-md">
-                                      {v.unique_id || v.id}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-500 font-medium">📞 {v.phone} &bull; {v.zone}</span>
+                                  <span className="font-extrabold text-slate-900">{v.name}</span>
+                                  <span className="text-[10px] text-slate-500 font-medium ml-2">({v.zone})</span>
                                 </div>
-                                <span className="px-2 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold">
-                                  Select &rarr;
+                                <span className="px-2 py-0.5 bg-slate-900 text-white rounded-lg text-[10px] font-bold">
+                                  Select
                                 </span>
                               </div>
                             ))}
                           </div>
                         );
                       })()}
-
-                      <div className="pt-1">
-                        <select
-                          value={middleAdTargetVendorId}
-                          onChange={(e) => setMiddleAdTargetVendorId(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
-                        >
-                          <option value="">-- General Ad (Unlinked Offer Banner) --</option>
-                          {vendors.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              🎯 [{v.unique_id || v.id}] {v.name} ({v.phone} - {v.zone})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
                   );
                 })()}
               </div>
 
-              {/* Square Image URL Input */}
-              <div className="space-y-1.5">
+              {/* Middle Banner Image Input */}
+              <div className="space-y-2">
                 <label className="text-slate-700 font-black">
-                  Square Banner Image URL (1:1 Aspect Ratio) *
+                  Banner Image URL *
                 </label>
                 <input
                   type="text"
                   required
                   value={middleAdImageUrl}
                   onChange={(e) => setMiddleAdImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
+                  placeholder="https://..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-xs"
                 />
                 
-                {/* Sample Presets */}
-                <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto scrollbar-none">
-                  <span className="text-[10px] text-slate-400 shrink-0 font-bold">Quick Samples:</span>
-                  {[
-                    { name: '🍔 Burger Deal', url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&auto=format&fit=crop&q=80' },
-                    { name: '🍗 Wings Deal', url: 'https://images.unsplash.com/photo-1527477378408-1bc09766436e?w=600&h=600&auto=format&fit=crop&q=80' },
-                    { name: '🍕 Pizza Deal', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80' },
-                    { name: '🍚 Biryani Deal', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&h=600&auto=format&fit=crop&q=80' },
-                  ].map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => setMiddleAdImageUrl(preset.url)}
-                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer transition border border-slate-200"
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
+                {/* File Upload Option */}
+                <div>
+                  <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-bold cursor-pointer transition border border-slate-200">
+                    <span>📁 Upload from Device</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const res = await uploadVendorImage('middle_banners', file, 'cover');
+                          if (res.url) {
+                            setMiddleAdImageUrl(res.url);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 
-              {/* Square Live Preview */}
-              <div className="p-3 bg-slate-950 rounded-2xl text-white space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
-                  Square 1:1 Live Preview
-                </span>
-                {middleAdImageUrl.trim() ? (
-                  <div className="w-32 h-32 mx-auto rounded-2xl overflow-hidden shadow-md border border-white/10 bg-black">
+              {/* Live Preview */}
+              {middleAdImageUrl.trim() && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Preview:</span>
+                  <div className="w-28 h-36 mx-auto rounded-2xl overflow-hidden shadow-xs border border-slate-200 bg-slate-100">
                     <img 
                       src={middleAdImageUrl.trim()} 
                       alt="Middle Preview" 
                       className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80';
+                      }}
                     />
                   </div>
-                ) : (
-                  <div className="w-32 h-32 mx-auto bg-slate-900 rounded-2xl flex items-center justify-center text-slate-400 text-xs font-bold border border-white/5 text-center p-2">
-                    Enter image URL above to preview square banner
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="pt-2 flex justify-end space-x-2">
                 <button
@@ -4260,7 +4190,7 @@ export const AdminPortal: React.FC = () => {
                   disabled={!middleAdImageUrl.trim()}
                   className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition active:scale-95"
                 >
-                  Publish Middle Square Banner
+                  Publish Banner
                 </button>
               </div>
             </form>

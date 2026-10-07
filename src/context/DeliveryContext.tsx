@@ -465,10 +465,25 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
 
-  // Fetch ad banners from database (Supabase) on mount
+  // Fetch ad banners from backend server and Supabase on mount
   useEffect(() => {
     const fetchAdBanners = async () => {
       let loadedRemote: AdBanner[] = [];
+
+      // 1. Fetch from server backend API
+      try {
+        const res = await fetch('/api/banners');
+        if (res.ok) {
+          const sBanners = await res.json();
+          if (Array.isArray(sBanners) && sBanners.length > 0) {
+            loadedRemote = sBanners;
+          }
+        }
+      } catch (e) {
+        console.warn('Server banners fetch notice:', e);
+      }
+
+      // 2. Fetch from Supabase if configured
       if (isSupabaseConfigured && supabase) {
         try {
           const { data, error } = await supabase
@@ -479,10 +494,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (error) {
             console.error('Error fetching ads from Supabase:', error);
           } else if (data && data.length > 0) {
-            loadedRemote = data.map((d: any) => ({
+            const supaAds = data.map((d: any) => ({
               ...d,
               portal_type: d.portal_type || (d.target_category === 'grocery' ? 'grocery' : 'food')
             })) as AdBanner[];
+            
+            for (const sa of supaAds) {
+              if (!loadedRemote.some(r => r.id === sa.id)) {
+                loadedRemote.push(sa);
+              }
+            }
           }
         } catch (err) {
           console.error('Failed to load ads from database:', err);
@@ -491,99 +512,28 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       const savedAds = safeJsonParse<AdBanner[]>(`${STORAGE_KEY_PREFIX}ad_banners`, []);
       
-      // Combine remote and local ads so newly posted banners never vanish
-      let combined = [...loadedRemote];
+      // Combine remote and local ads (filtering out any legacy dummy/sample banners)
+      let combined = loadedRemote.filter(a => !a.id?.startsWith('ad-top-hero-') && !a.id?.startsWith('ad-middle-') && !a.id?.startsWith('default-'));
+      
       if (Array.isArray(savedAds)) {
         for (const localAd of savedAds) {
+          if (localAd.id?.startsWith('ad-top-hero-') || localAd.id?.startsWith('ad-middle-') || localAd.id?.startsWith('default-')) {
+            continue;
+          }
           if (!combined.some(c => c.id === localAd.id)) {
             combined.push(localAd);
           }
         }
       }
 
-      // Ensure we have both top hero 16:9 banners and middle square banners
-      const hasTop = combined.some(a => a.is_active && a.subtitle !== '__middle__');
-      const hasMiddle = combined.some(a => a.is_active && a.subtitle === '__middle__');
-
-      if (!hasTop || !hasMiddle) {
-        const initialDefaults: AdBanner[] = [
-          {
-            id: 'ad-top-hero-1',
-            title: 'Welcome back!\nEnjoy 35% off &\nfree delivery',
-            subtitle: '',
-            action_text: 'Redeem now',
-            image_url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
-            is_active: true,
-            order_index: 0,
-            portal_type: 'food'
-          },
-          {
-            id: 'ad-top-hero-2',
-            title: 'Hot & Spicy Specials',
-            subtitle: '',
-            action_text: 'Order now',
-            image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
-            is_active: true,
-            order_index: 1,
-            portal_type: 'food'
-          },
-          {
-            id: 'ad-middle-1',
-            title: 'Featured Deal',
-            subtitle: '__middle__',
-            action_text: 'Order now',
-            image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&auto=format&fit=crop&q=80',
-            is_active: true,
-            order_index: 0,
-            portal_type: 'food'
-          },
-          {
-            id: 'ad-middle-2',
-            title: 'Special Pizza Deal',
-            subtitle: '__middle__',
-            action_text: 'Order now',
-            image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80',
-            is_active: true,
-            order_index: 1,
-            portal_type: 'food'
-          }
-        ];
-
-        for (const def of initialDefaults) {
-          if (def.subtitle === '__middle__' && !hasMiddle) {
-            combined.push(def);
-          } else if (def.subtitle !== '__middle__' && !hasTop) {
-            combined.push(def);
-          }
-        }
-      }
-
-      // Sanitize any broken image URLs or legacy video URLs from local cache
-      combined = combined.map(ad => {
-        if (ad.image_url?.includes('youtube.com') || ad.image_url?.includes('youtu.be')) {
-          return {
-            ...ad,
-            image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
-            video_url: undefined
-          };
-        }
-        if (ad.image_url?.includes('photo-1527477378408-1bc09766436e')) {
-          return {
-            ...ad,
-            image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80'
-          };
-        }
-        return ad;
-      });
-
       setAdBanners(combined);
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(combined));
-      } catch {}
+      } catch (e) {}
     };
 
     fetchAdBanners();
-  }, []);
+  }, [isSupabaseConfigured, supabase]);
 
   // Listen for real-time broadcast updates across open browser tabs
   useEffect(() => {
@@ -631,6 +581,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
           return [data.review, ...prev];
         });
+      } else if (data?.type === 'BANNER_SYNC' && Array.isArray(data.banners)) {
+        setAdBanners(data.banners);
       } else if (data?.type === 'CUSTOMER_PROFILE_UPDATED') {
         const { customer } = data;
         if (customer && customer.id) {
@@ -2991,14 +2943,31 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
-    // Always immediately update local state and localStorage so posting never fails
-    setAdBanners(prev => {
-      const next = [newAd, ...prev];
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+    // Always immediately update local state and localStorage
+    const nextBanners = [newAd, ...adBanners];
+    setAdBanners(nextBanners);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(nextBanners));
+    } catch {}
+
+    // Broadcast in realtime to customer site and other tabs
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'BANNER_SYNC',
+        banners: nextBanners
+      });
+    } catch {}
+
+    // Save to backend server API
+    try {
+      await fetch('/api/banners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAd)
+      });
+    } catch (e) {
+      console.warn('Failed to save banner to backend API:', e);
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -3034,13 +3003,30 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateAdBanner = async (id: string, updates: Partial<AdBanner>) => {
-    setAdBanners(prev => {
-      const next = prev.map(a => a.id === id ? { ...a, ...updates } : a);
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+    const nextBanners = adBanners.map(a => a.id === id ? { ...a, ...updates } : a);
+    setAdBanners(nextBanners);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(nextBanners));
+    } catch {}
+
+    // Broadcast in realtime
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'BANNER_SYNC',
+        banners: nextBanners
+      });
+    } catch {}
+
+    // Save to backend server API
+    try {
+      await fetch(`/api/banners/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch (e) {
+      console.warn('Failed to update banner on server API:', e);
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -3062,6 +3048,29 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteAdBanner = async (id: string) => {
+    const nextBanners = adBanners.filter(a => a.id !== id);
+    setAdBanners(nextBanners);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(nextBanners));
+    } catch {}
+
+    // Broadcast in realtime
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'BANNER_SYNC',
+        banners: nextBanners
+      });
+    } catch {}
+
+    // Delete from backend server API
+    try {
+      await fetch(`/api/banners/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.warn('Failed to delete banner on server API:', e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase
@@ -3075,8 +3084,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.error('Failed to delete banner in database:', err);
       }
     }
-
-    setAdBanners(prev => prev.filter(a => a.id !== id));
   };
 
   const toggleAdBannerStatus = async (id: string) => {
@@ -3084,6 +3091,30 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!targetAd) return;
 
     const newStatus = !targetAd.is_active;
+    const nextBanners = adBanners.map(a => a.id === id ? { ...a, is_active: newStatus } : a);
+    setAdBanners(nextBanners);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}ad_banners`, JSON.stringify(nextBanners));
+    } catch {}
+
+    // Broadcast in realtime
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'BANNER_SYNC',
+        banners: nextBanners
+      });
+    } catch {}
+
+    // Update in backend server API
+    try {
+      await fetch(`/api/banners/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: newStatus })
+      });
+    } catch (e) {
+      console.warn('Failed to toggle banner on server API:', e);
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -3098,8 +3129,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.error('Failed to toggle status in database:', err);
       }
     }
-
-    setAdBanners(prev => prev.map(a => a.id === id ? { ...a, is_active: newStatus } : a));
   };
 
   // -------------------------------------------------------------
