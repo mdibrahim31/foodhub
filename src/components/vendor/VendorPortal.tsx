@@ -541,14 +541,6 @@ export const VendorPortal: React.FC = () => {
     if (!customCategories.includes(cat)) {
       setCustomCategories(prev => [...prev, cat]);
     }
-    // Also persist category in database foodCategories if not existing
-    if (!foodCategories.some(c => c.name.toLowerCase() === cat.toLowerCase())) {
-      addFoodCategory({
-        name: cat,
-        is_active: true,
-        category_type: 'food'
-      });
-    }
     setNewCategoryName('');
     setIsAddCategoryOpen(false);
   };
