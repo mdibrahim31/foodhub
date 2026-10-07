@@ -504,21 +504,11 @@ export const CustomerPortal: React.FC = () => {
     }
   }, [activeSlide]);
 
-  // Auto slide every 5 seconds
+  // Reset active slide when slides list changes (Auto slide turned OFF as requested)
   useEffect(() => {
     setActiveSlide(0);
     setPrevSlide(null);
     lastActiveSlideRef.current = 0;
-
-    if (heroSlides.length <= 1) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [heroSlides.length]);
 
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -1865,12 +1855,12 @@ export const CustomerPortal: React.FC = () => {
 
               {/* 
                 ======================================================================
-                TOP 16:9 HERO BANNER AD CAROUSEL (INSIDE THE ORANGE WINDOW - EXACT SCREENSHOT)
+                TOP 16:9 HERO BANNER AD CAROUSEL (INSIDE THE ORANGE WINDOW - EXPANDED)
                 ======================================================================
               */}
               {heroSlides.length > 0 && (
-                <div className="pt-1 space-y-2">
-                  <div className="relative overflow-hidden w-full aspect-[16/9] rounded-3xl border border-white/20 shadow-md bg-black">
+                <div className="pt-1 space-y-2 -mx-2 sm:-mx-3">
+                  <div className="relative overflow-hidden w-full aspect-[16/9] rounded-2xl sm:rounded-3xl border border-white/20 shadow-md bg-black">
                     <div 
                       className="w-full h-full relative"
                       onTouchStart={handleTouchStart}
@@ -1888,14 +1878,14 @@ export const CustomerPortal: React.FC = () => {
                           <div 
                             key={slide.id}
                             style={getSlideStyle(i)}
-                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-3xl bg-black"
+                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-2xl sm:rounded-3xl bg-black"
                           >
                             {ytId && ytEmbedUrl ? (
                               <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
                                 <iframe 
-                                  src={ytEmbedUrl}
+                                  src={`${ytEmbedUrl}&cc_load_policy=0&cc_lang_pref=off`}
                                   title={slide.title || 'Video Banner'}
-                                  className="w-[106%] h-[106%] pointer-events-none border-0 object-cover scale-110"
+                                  className="w-[108%] h-[114%] pointer-events-none border-0 object-cover scale-110 -translate-y-1.5"
                                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                   loading={isActive ? "eager" : "lazy"}
                                 />
@@ -1930,14 +1920,6 @@ export const CustomerPortal: React.FC = () => {
                               className="absolute inset-0 z-20 cursor-pointer bg-transparent"
                               title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
                             />
-
-                            {/* Video LIVE Indicator Badge */}
-                            {(ytId || isDirectVid) && (
-                              <div className="absolute top-3 right-3 z-30 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1.5 shadow-md pointer-events-none">
-                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                <span>LIVE VIDEO</span>
-                              </div>
-                            )}
 
                             {/* Target Restaurant info pill if assigned */}
                             {slide.vendor && (

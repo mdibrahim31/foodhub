@@ -15,7 +15,7 @@ export function getYouTubeVideoId(url: string | undefined | null): string | null
 export function getYouTubeEmbedUrl(url: string | undefined | null): string | null {
   const videoId = getYouTubeVideoId(url);
   if (!videoId) return null;
-  return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0`;
+  return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0&cc_load_policy=0&cc_lang_pref=off`;
 }
 
 /**
