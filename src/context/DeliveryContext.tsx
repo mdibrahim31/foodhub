@@ -508,22 +508,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!hasTop || !hasMiddle) {
         const initialDefaults: AdBanner[] = [
           {
-            id: 'ad-top-hero-yt',
-            title: 'Featured Promo Video',
+            id: 'ad-top-hero-1',
+            title: 'Welcome back!\nEnjoy 35% off &\nfree delivery',
             subtitle: '',
             action_text: 'Redeem now',
-            image_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
-            video_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
+            image_url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
             is_active: true,
             order_index: 0,
             portal_type: 'food'
           },
           {
-            id: 'ad-top-hero-1',
-            title: 'Welcome back! Enjoy 35% off & free delivery',
+            id: 'ad-top-hero-yt',
+            title: 'Special Live Video Ad',
             subtitle: '',
             action_text: 'Redeem now',
-            image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
+            image_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
+            video_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
             is_active: true,
             order_index: 1,
             portal_type: 'food'
@@ -540,10 +540,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           },
           {
             id: 'ad-middle-2',
-            title: 'Special Wings Offer',
+            title: 'Special Pizza Deal',
             subtitle: '__middle__',
             action_text: 'Order now',
-            image_url: 'https://images.unsplash.com/photo-1527477378408-1bc09766436e?w=600&h=600&auto=format&fit=crop&q=80',
+            image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80',
             is_active: true,
             order_index: 1,
             portal_type: 'food'
@@ -558,6 +558,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         }
       }
+
+      // Sanitize any broken image URLs from local cache
+      combined = combined.map(ad => {
+        if (ad.image_url?.includes('photo-1527477378408-1bc09766436e')) {
+          return {
+            ...ad,
+            image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80'
+          };
+        }
+        return ad;
+      });
 
       setAdBanners(combined);
       try {

@@ -1816,272 +1816,271 @@ export const CustomerPortal: React.FC = () => {
         <>
           {/* 
             ========================================================================
-            1. SOLID BRAND HEADER (100% Matching Screenshot_20260930_184203.jpg)
-            Only difference: FoodHub Vibrant Orange (#EA580C / #F97316) instead of Pink
+            1. SOLID BRAND HEADER (100% Matching Screenshot 1 / Screenshot_20261007_182049_Gallery.jpg)
+            Header wrapping Location and Search bar
             ========================================================================
           */}
-          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-5 px-4 rounded-b-[2rem] shadow-sm">
-        <div className="max-w-md mx-auto space-y-3">
-          {/* Top Row: Location Pin + Current Location + Chittagong + Heart */}
-          <div className="flex items-center justify-between">
-            <div 
-              onClick={() => setIsAddressModalOpen(true)}
-              className="flex items-start space-x-2.5 cursor-pointer group"
-            >
-              <MapPin className="w-6 h-6 text-white mt-0.5 fill-transparent stroke-[2.2]" />
-              <div>
-                <div className="flex items-center space-x-1">
-                  <h1 className="text-base font-black tracking-tight text-white leading-tight">
-                    Current Location
-                  </h1>
+          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-5 px-4 rounded-b-[2.5rem] shadow-sm">
+            <div className="max-w-md mx-auto space-y-3">
+              {/* Top Row: Location Pin + Current Location + Chittagong + Heart */}
+              <div className="flex items-center justify-between">
+                <div 
+                  onClick={() => setIsAddressModalOpen(true)}
+                  className="flex items-start space-x-2.5 cursor-pointer group"
+                >
+                  <MapPin className="w-6 h-6 text-white mt-0.5 fill-transparent stroke-[2.2]" />
+                  <div>
+                    <div className="flex items-center space-x-1">
+                      <h1 className="text-base font-black tracking-tight text-white leading-tight">
+                        Current Location
+                      </h1>
+                    </div>
+                    <p className="text-xs text-orange-100 font-medium truncate max-w-[250px]">
+                      {selectedAddress ? `${selectedAddress.address_line}${activeCustomerZone?.name ? ` • ${activeCustomerZone.name}` : ''}` : (activeCustomerZone?.name || 'Chittagong')}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-orange-100 font-medium truncate max-w-[250px]">
-                  {selectedAddress ? `${selectedAddress.address_line}${activeCustomerZone?.name ? ` • ${activeCustomerZone.name}` : ''}` : (activeCustomerZone?.name || 'Chittagong')}
-                </p>
+
+                {/* Right: Heart Icon (Favorites) */}
+                <button 
+                  onClick={() => setIsRating4PlusOnly(prev => !prev)}
+                  className="p-1 text-white hover:text-orange-200 transition"
+                  aria-label="Favorites"
+                >
+                  <Heart className={`w-6 h-6 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
+                </button>
+              </div>
+
+              {/* Search Bar (Inside the Orange Header directly below Location) */}
+              <div className="relative">
+                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search for restaurants and groceries"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
+                />
               </div>
             </div>
+          </header>
 
-            {/* Right: Heart Icon (Favorites) */}
-            <button 
-              onClick={() => setIsRating4PlusOnly(prev => !prev)}
-              className="p-1 text-white hover:text-orange-200 transition"
-              aria-label="Favorites"
-            >
-              <Heart className={`w-6 h-6 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
-            </button>
-          </div>
+          {/* 
+            ========================================================================
+            MAIN BODY: EXACT FEATURES & OPTIONS WHERE THEY ARE IN THE SCREENSHOTS
+            ========================================================================
+          */}
+          <main className="max-w-md mx-auto px-4 py-4 space-y-6">
 
-          {/* Search Bar (Inside the Orange Header directly below Location) */}
-          <div className="relative">
-            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3" />
-            <input
-              type="text"
-              placeholder="Search for restaurants and groceries"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
-            />
-          </div>
-        </div>
-      </header>
+            {/* 
+              ======================================================================
+              TOP 16:9 HERO BANNER AD CAROUSEL (IMAGES & AUTOPLAY YOUTUBE VIDEOS)
+              ======================================================================
+            */}
+            {heroSlides.length > 0 && (
+              <section className="space-y-2 pt-1">
+                <div className="relative overflow-hidden w-full aspect-[16/9] rounded-3xl border border-slate-100 shadow-md bg-slate-950">
+                  <div 
+                    className="w-full h-full relative"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    {heroSlides.map((slide, i) => {
+                      const mediaSource = slide.videoUrl || slide.image;
+                      const ytId = getYouTubeVideoId(mediaSource);
+                      const isDirectVid = isDirectVideoUrl(mediaSource);
+                      const ytEmbedUrl = ytId ? getYouTubeEmbedUrl(mediaSource) : null;
+                      const isActive = i === activeSlide;
 
-      {/* 
-        ========================================================================
-        MAIN BODY: EXACT FEATURES & OPTIONS WHERE THEY ARE IN THE SCREENSHOTS
-        ========================================================================
-      */}
-      <main className="max-w-md mx-auto px-4 py-4 space-y-6">
+                      return (
+                        <div 
+                          key={slide.id}
+                          style={getSlideStyle(i)}
+                          className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-3xl bg-black"
+                        >
+                          {ytId && ytEmbedUrl ? (
+                            <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
+                              <iframe 
+                                src={ytEmbedUrl}
+                                title={slide.title || 'Video Banner'}
+                                className="w-[106%] h-[106%] pointer-events-none border-0 object-cover scale-110"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                loading={isActive ? "eager" : "lazy"}
+                              />
+                            </div>
+                          ) : isDirectVid ? (
+                            <video 
+                              src={mediaSource}
+                              autoPlay 
+                              muted 
+                              loop 
+                              playsInline 
+                              className="w-full h-full object-cover pointer-events-none"
+                            />
+                          ) : (
+                            <img 
+                              src={slide.image} 
+                              alt={slide.title || 'Banner'} 
+                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
+                              }}
+                            />
+                          )}
 
-        {/* POPULAR BRANDS SECTION - REMOVED AS REQUESTED */}
-
-        {/* 
-          ======================================================================
-          TOP 16:9 HERO BANNER AD CAROUSEL (IMAGES & AUTOPLAY YOUTUBE VIDEOS)
-          ======================================================================
-        */}
-        {heroSlides.length > 0 && (
-          <section className="space-y-2 pt-1">
-            <div className="relative overflow-hidden w-full aspect-[16/9] rounded-3xl border border-slate-100 shadow-md bg-slate-950">
-              <div 
-                className="w-full h-full relative"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              >
-                {heroSlides.map((slide, i) => {
-                  const mediaSource = slide.videoUrl || slide.image;
-                  const ytId = getYouTubeVideoId(mediaSource);
-                  const isDirectVid = isDirectVideoUrl(mediaSource);
-                  const ytEmbedUrl = ytId ? getYouTubeEmbedUrl(mediaSource) : null;
-                  const isActive = i === activeSlide;
-
-                  return (
-                    <div 
-                      key={slide.id}
-                      style={getSlideStyle(i)}
-                      className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-3xl bg-black"
-                    >
-                      {/* Media Render: Autoplay YouTube Video OR HTML5 Video OR Image */}
-                      {ytId && ytEmbedUrl ? (
-                        <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
-                          <iframe 
-                            src={ytEmbedUrl}
-                            title={slide.title || 'Video Banner'}
-                            className="w-[106%] h-[106%] pointer-events-none border-0 object-cover scale-110"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            loading={isActive ? "eager" : "lazy"}
+                          {/* Transparent overlay covering video so user cannot stop it and click opens restaurant */}
+                          <div 
+                            onClick={() => {
+                              if (slide.vendor) {
+                                setSelectedVendorForMenu(slide.vendor);
+                              }
+                            }}
+                            className="absolute inset-0 z-20 cursor-pointer bg-transparent"
+                            title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
                           />
-                        </div>
-                      ) : isDirectVid ? (
-                        <video 
-                          src={mediaSource}
-                          autoPlay 
-                          muted 
-                          loop 
-                          playsInline 
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
-                      ) : (
-                        <img 
-                          src={slide.image} 
-                          alt={slide.title || 'Banner'} 
-                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
-                        />
-                      )}
 
-                      {/* 
-                        Transparent Click Overlay:
-                        Covers the entire 16:9 banner so user cannot stop the video, 
-                        and clicking anywhere on the banner directly opens the target restaurant!
-                      */}
-                      <div 
+                          {/* Video LIVE Indicator Badge */}
+                          {(ytId || isDirectVid) && (
+                            <div className="absolute top-3 right-3 z-30 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1.5 shadow-md pointer-events-none">
+                              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                              <span>LIVE VIDEO</span>
+                            </div>
+                          )}
+
+                          {/* Target Restaurant info pill if assigned */}
+                          {slide.vendor && (
+                            <div 
+                              onClick={() => setSelectedVendorForMenu(slide.vendor)}
+                              className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
+                            >
+                              <span>🎯 {slide.vendor.name}</span>
+                              <span className="text-[10px] text-orange-400 font-bold ml-1">View Menu &rarr;</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dots Carousel Indicator */}
+                {heroSlides.length > 1 && (
+                  <div className="flex justify-center space-x-1.5 pt-1">
+                    {heroSlides.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveSlide(idx)}
+                        className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
+                          activeSlide === idx 
+                            ? 'w-6 bg-orange-600' 
+                            : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* 
+              ======================================================================
+              FIRST ROW: RESTAURANT TYPES LIST (Restaurant, Cloud Kitchen, Home Kitchen)
+              ======================================================================
+            */}
+            {activeBottomNav === 'food' && (
+              <section className="space-y-2 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+                    <span>🏪 Restaurant Types</span>
+                  </h3>
+                  {activeRestaurantTypeFilter !== 'All' && (
+                    <button 
+                      onClick={() => setActiveRestaurantTypeFilter('All')} 
+                      className="text-[11px] font-bold text-orange-600 hover:underline cursor-pointer"
+                    >
+                      Clear filter
+                    </button>
+                  )}
+                </div>
+
+                {/* Restaurant Type Filter Cards Grid */}
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: 'All', name: 'All', icon: '🍽️' },
+                    { id: 'restaurant', name: 'Restaurant', icon: '🏬' },
+                    { id: 'cloud_kitchen', name: 'Cloud Kitchen', icon: '🍳' },
+                    { id: 'home_kitchen', name: 'Home Kitchen', icon: '🏠' },
+                  ].map((type) => {
+                    const isSelected = activeRestaurantTypeFilter === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => setActiveRestaurantTypeFilter(isSelected ? 'All' : type.id)}
+                        className={`flex flex-col items-center justify-center py-3 px-1 rounded-2xl border transition-all cursor-pointer select-none ${
+                          isSelected
+                            ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 scale-102 font-black'
+                            : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
+                        }`}
+                      >
+                        <span className="text-xl mb-1">{type.icon}</span>
+                        <span className="text-[10px] leading-tight text-center font-bold">{type.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* 
+              ======================================================================
+              MIDDLE SQUARE BANNER SECTION (NEW)
+              ======================================================================
+            */}
+            {activeMiddleBanners.length > 0 && (
+              <section className="space-y-2 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+                    <span>🔥 Featured Deals</span>
+                  </h3>
+                </div>
+                <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none select-none">
+                  {activeMiddleBanners.map((ad) => {
+                    const targetVendorId = ad.target_vendor_id;
+                    const targetVendor = targetVendorId 
+                      ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
+                      : null;
+                    return (
+                      <button
+                        key={ad.id}
                         onClick={() => {
-                          if (slide.vendor) {
-                            setSelectedVendorForMenu(slide.vendor);
+                          if (targetVendor) {
+                            setSelectedVendorForMenu(targetVendor);
                           }
                         }}
-                        className="absolute inset-0 z-20 cursor-pointer bg-transparent"
-                        title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
-                      />
-
-                      {/* Video indicator badge if YouTube / Video */}
-                      {(ytId || isDirectVid) && (
-                        <div className="absolute top-3 right-3 z-30 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-black text-white flex items-center space-x-1.5 shadow-md pointer-events-none">
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                          <span>LIVE VIDEO</span>
-                        </div>
-                      )}
-
-                      {/* Target Restaurant Link badge if linked */}
-                      {slide.vendor && (
-                        <div 
-                          onClick={() => setSelectedVendorForMenu(slide.vendor)}
-                          className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
-                        >
-                          <span>🎯 {slide.vendor.name}</span>
-                          <span className="text-[10px] text-orange-400 font-bold ml-1">View Menu &rarr;</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Carousel Dot Indicators */}
-            {heroSlides.length > 1 && (
-              <div className="flex justify-center space-x-1.5 pt-1">
-                {heroSlides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveSlide(i)}
-                    className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
-                      activeSlide === i 
-                        ? 'w-6 bg-orange-600' 
-                        : 'w-1.5 bg-slate-300 hover:bg-slate-400'
-                    }`}
-                    aria-label={`Go to slide ${i + 1}`}
-                  />
-                ))}
-              </div>
+                        className="relative w-32 h-32 rounded-3xl overflow-hidden shrink-0 shadow-xs border border-slate-100 hover:scale-102 transition-transform cursor-pointer focus:outline-hidden"
+                      >
+                        <img 
+                          src={ad.image_url} 
+                          alt="Featured Offer" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=600&auto=format&fit=crop&q=80';
+                          }}
+                        />
+                        {/* Tiny target badge if any */}
+                        {targetVendor && (
+                          <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs py-1 px-1.5 rounded-xl text-[9px] font-black text-white text-center truncate">
+                            {targetVendor.name}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             )}
-          </section>
-        )}
-
-        {/* 
-          ======================================================================
-          FIRST ROW: RESTAURANT TYPES LIST (Restaurant, Cloud Kitchen, Home Kitchen)
-          ======================================================================
-        */}
-        {activeBottomNav === 'food' && (
-          <section className="space-y-2 pt-1">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
-                <span>🏪 Restaurant Types</span>
-              </h3>
-              {activeRestaurantTypeFilter !== 'All' && (
-                <button 
-                  onClick={() => setActiveRestaurantTypeFilter('All')} 
-                  className="text-[11px] font-bold text-orange-600 hover:underline cursor-pointer"
-                >
-                  Clear filter
-                </button>
-              )}
-            </div>
-
-            {/* Restaurant Type Filter Cards Grid */}
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { id: 'All', name: 'All', icon: '🍽️' },
-                { id: 'restaurant', name: 'Restaurant', icon: '🏬' },
-                { id: 'cloud_kitchen', name: 'Cloud Kitchen', icon: '🍳' },
-                { id: 'home_kitchen', name: 'Home Kitchen', icon: '🏠' },
-              ].map((type) => {
-                const isSelected = activeRestaurantTypeFilter === type.id;
-                return (
-                  <button
-                    key={type.id}
-                    onClick={() => setActiveRestaurantTypeFilter(isSelected ? 'All' : type.id)}
-                    className={`flex flex-col items-center justify-center py-3 px-1 rounded-2xl border transition-all cursor-pointer select-none ${
-                      isSelected
-                        ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 scale-102 font-black'
-                        : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
-                    }`}
-                  >
-                    <span className="text-xl mb-1">{type.icon}</span>
-                    <span className="text-[10px] leading-tight text-center font-bold">{type.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 
-          ======================================================================
-          MIDDLE SQUARE BANNER SECTION (NEW)
-          ======================================================================
-        */}
-        {activeMiddleBanners.length > 0 && (
-          <section className="space-y-2 pt-1">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
-                <span>🔥 Featured Deals</span>
-              </h3>
-            </div>
-            <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none select-none">
-              {activeMiddleBanners.map((ad) => {
-                const targetVendorId = ad.target_vendor_id;
-                const targetVendor = targetVendorId 
-                  ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
-                  : null;
-                return (
-                  <button
-                    key={ad.id}
-                    onClick={() => {
-                      if (targetVendor) {
-                        setSelectedVendorForMenu(targetVendor);
-                      }
-                    }}
-                    className="relative w-32 h-32 rounded-3xl overflow-hidden shrink-0 shadow-xs border border-slate-100 hover:scale-102 transition-transform cursor-pointer focus:outline-hidden"
-                  >
-                    <img 
-                      src={ad.image_url} 
-                      alt="Featured Offer" 
-                      className="w-full h-full object-cover"
-                    />
-                    {/* Tiny target badge if any */}
-                    {targetVendor && (
-                      <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs py-1 px-1.5 rounded-xl text-[9px] font-black text-white text-center truncate">
-                        {targetVendor.name}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
 
         {/* 
           ======================================================================
