@@ -518,12 +518,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             portal_type: 'food'
           },
           {
-            id: 'ad-top-hero-yt',
-            title: 'Special Live Video Ad',
+            id: 'ad-top-hero-2',
+            title: 'Hot & Spicy Specials',
             subtitle: '',
-            action_text: 'Redeem now',
-            image_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
-            video_url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ',
+            action_text: 'Order now',
+            image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
             is_active: true,
             order_index: 1,
             portal_type: 'food'
@@ -559,8 +558,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
 
-      // Sanitize any broken image URLs from local cache
+      // Sanitize any broken image URLs or legacy video URLs from local cache
       combined = combined.map(ad => {
+        if (ad.image_url?.includes('youtube.com') || ad.image_url?.includes('youtu.be')) {
+          return {
+            ...ad,
+            image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80',
+            video_url: undefined
+          };
+        }
         if (ad.image_url?.includes('photo-1527477378408-1bc09766436e')) {
           return {
             ...ad,

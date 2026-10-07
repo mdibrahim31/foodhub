@@ -3,7 +3,6 @@ import { useDelivery } from '../../context/DeliveryContext';
 import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
 import { DELIVERY_ZONES, DeliveryZone, Vendor, Rider, Order, OrderStatus } from '../../types/database';
-import { getYouTubeVideoId, getYouTubeEmbedUrl } from '../../utils/youtube';
 import { 
   ShieldCheck, 
   Settings, 
@@ -1465,7 +1464,7 @@ export const AdminPortal: React.FC = () => {
                   <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Hero Banner Ads (Top 16:9) ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__').length})</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Manage promotional 16:9 ads & YouTube video banners displayed at the top of the {activeAdPortalTab} home page.
+                  Manage promotional 16:9 image banner ads displayed at the top of the {activeAdPortalTab} home page.
                 </p>
               </div>
 
@@ -1493,7 +1492,6 @@ export const AdminPortal: React.FC = () => {
                   .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
                   .map((ad, idx, sortedArr) => {
                     const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
-                    const ytId = getYouTubeVideoId(ad.image_url);
                     return (
                     <div 
                       key={ad.id} 
@@ -1512,15 +1510,9 @@ export const AdminPortal: React.FC = () => {
                             }`}>
                               {ad.is_active ? `● LIVE (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
                             </span>
-                            {ytId ? (
-                              <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-md bg-red-600 text-white flex items-center space-x-1">
-                                <span>▶ YT VIDEO</span>
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-md bg-black/20 text-white">
-                                16:9 IMAGE
-                              </span>
-                            )}
+                            <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-md bg-black/20 text-white">
+                              16:9 IMAGE
+                            </span>
                             <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
                               ad.is_active ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-700'
                             }`}>
@@ -1543,26 +1535,14 @@ export const AdminPortal: React.FC = () => {
 
                         {/* 16:9 Live Preview Thumbnail */}
                         <div className="relative w-36 aspect-video sm:w-44 rounded-2xl overflow-hidden shrink-0 shadow-md bg-black">
-                          {ytId ? (
-                            <div className="relative w-full h-full">
-                              <img 
-                                src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} 
-                                alt="Video Banner" 
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center shadow-md">
-                                  <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <img 
-                              src={ad.image_url} 
-                              alt={ad.title} 
-                              className="w-full h-full object-cover"
-                            />
-                          )}
+                          <img 
+                            src={ad.image_url} 
+                            alt={ad.title} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1280&h=720&auto=format&fit=crop&q=80';
+                            }}
+                          />
                         </div>
                       </div>
 
@@ -3755,7 +3735,7 @@ export const AdminPortal: React.FC = () => {
       )}
       {/* 
         ========================================================================
-        MODAL: POST NEW 16:9 TOP PROMOTIONAL BANNER AD (IMAGE OR YOUTUBE VIDEO)
+        MODAL: POST NEW 16:9 TOP PROMOTIONAL BANNER AD (IMAGE ONLY)
         ========================================================================
       */}
       {isAddAdOpen && (
@@ -3764,7 +3744,7 @@ export const AdminPortal: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2 text-rose-600">
                 <Sparkles className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">Post Top Banner Ad (16:9 Image or YouTube Video)</h3>
+                <h3 className="font-black text-slate-900 text-base">Post Top Banner Ad (16:9 Image)</h3>
               </div>
               <button onClick={() => setIsAddAdOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
                 <X className="w-5 h-5" />
@@ -3778,13 +3758,11 @@ export const AdminPortal: React.FC = () => {
                 if (!cleanUrl) {
                   return;
                 }
-                const ytId = getYouTubeVideoId(cleanUrl);
                 addAdBanner({
                   title: 'Top Banner Ad',
                   subtitle: '',
                   action_text: 'Order now',
                   image_url: cleanUrl,
-                  video_url: ytId ? cleanUrl : undefined,
                   target_vendor_id: adTargetVendorId || undefined,
                   is_active: true,
                   portal_type: adPortalType
@@ -3944,17 +3922,17 @@ export const AdminPortal: React.FC = () => {
                 })()}
               </div>
 
-              {/* Media URL Input: 16:9 Image OR YouTube Video Link */}
+              {/* Media URL Input: 16:9 Image */}
               <div className="space-y-1.5">
                 <label className="text-slate-700 font-black flex items-center space-x-1.5">
-                  <span>16:9 Image URL or YouTube Video Link *</span>
+                  <span>16:9 Banner Image URL *</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={adImageUrl}
                   onChange={(e) => setAdImageUrl(e.target.value)}
-                  placeholder="Paste 16:9 image URL or YouTube link (e.g. https://www.youtube.com/watch?v=... or https://youtu.be/...)"
+                  placeholder="Paste 16:9 image URL (e.g. https://images.unsplash.com/...)"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
                 />
                 
@@ -3962,7 +3940,6 @@ export const AdminPortal: React.FC = () => {
                 <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto scrollbar-none">
                   <span className="text-[10px] text-slate-400 shrink-0 font-bold">Quick Samples:</span>
                   {[
-                    { name: '🎬 YouTube Video Ad', url: 'https://www.youtube.com/watch?v=1La4QzGeaaQ' },
                     { name: '🍗 Fried Chicken (16:9)', url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80' },
                     { name: '🍚 Dum Biryani (16:9)', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=1280&h=720&auto=format&fit=crop&q=80' },
                     { name: '🍕 Pizza (16:9)', url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1280&h=720&auto=format&fit=crop&q=80' },
@@ -3986,38 +3963,22 @@ export const AdminPortal: React.FC = () => {
                   <span className="text-[9px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
                     16:9 Live Banner Preview
                   </span>
-                  {getYouTubeVideoId(adImageUrl) && (
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-red-600 px-2 py-0.5 rounded-md text-white">
-                      ▶ Autoplay YouTube Video
-                    </span>
-                  )}
                 </div>
 
                 {adImageUrl.trim() ? (
                   <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md border border-white/10 bg-black flex items-center justify-center">
-                    {(() => {
-                      const ytId = getYouTubeVideoId(adImageUrl);
-                      if (ytId) {
-                        return (
-                          <iframe 
-                            src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&loop=1&playlist=${ytId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`}
-                            title="Preview Video"
-                            className="w-full h-full border-0 pointer-events-none scale-105"
-                          />
-                        );
-                      }
-                      return (
-                        <img 
-                          src={adImageUrl.trim()} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover" 
-                        />
-                      );
-                    })()}
+                    <img 
+                      src={adImageUrl.trim()} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
+                      }}
+                    />
                   </div>
                 ) : (
                   <div className="w-full aspect-video bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold border border-white/5">
-                    Enter image URL or YouTube link above to preview 16:9 banner
+                    Enter image URL above to preview 16:9 banner
                   </div>
                 )}
               </div>

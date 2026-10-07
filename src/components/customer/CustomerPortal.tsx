@@ -5,7 +5,6 @@ import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
 import { CustomerRestaurantReviewsModal } from './CustomerRestaurantReviewsModal';
 import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone, parseGoogleMapsLinkOrCoords } from '../../utils/geo';
-import { getYouTubeVideoId, getYouTubeEmbedUrl, isDirectVideoUrl } from '../../utils/youtube';
 import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
   MapPin, 
@@ -1868,63 +1867,33 @@ export const CustomerPortal: React.FC = () => {
                       onTouchEnd={handleTouchEnd}
                     >
                       {heroSlides.map((slide, i) => {
-                        const mediaSource = slide.videoUrl || slide.image;
-                        const ytId = getYouTubeVideoId(mediaSource);
-                        const isDirectVid = isDirectVideoUrl(mediaSource);
-                        const ytEmbedUrl = ytId ? getYouTubeEmbedUrl(mediaSource) : null;
-                        const isActive = i === activeSlide;
-
                         return (
                           <div 
                             key={slide.id}
                             style={getSlideStyle(i)}
-                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-2xl sm:rounded-3xl bg-black"
+                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-2xl sm:rounded-3xl bg-black cursor-pointer"
+                            onClick={() => {
+                              if (slide.vendor) {
+                                setSelectedVendorForMenu(slide.vendor);
+                              }
+                            }}
                           >
-                            {ytId && ytEmbedUrl ? (
-                              <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
-                                <iframe 
-                                  src={`${ytEmbedUrl}&cc_load_policy=0&cc_lang_pref=off`}
-                                  title={slide.title || 'Video Banner'}
-                                  className="w-[108%] h-[114%] pointer-events-none border-0 object-cover scale-110 -translate-y-1.5"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                  loading={isActive ? "eager" : "lazy"}
-                                />
-                              </div>
-                            ) : isDirectVid ? (
-                              <video 
-                                src={mediaSource}
-                                autoPlay 
-                                muted 
-                                loop 
-                                playsInline 
-                                className="w-full h-full object-cover pointer-events-none"
-                              />
-                            ) : (
-                              <img 
-                                src={slide.image} 
-                                alt={slide.title || 'Banner'} 
-                                className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
-                                }}
-                              />
-                            )}
-
-                            {/* Transparent overlay covering video so user cannot stop it and click opens restaurant */}
-                            <div 
-                              onClick={() => {
-                                if (slide.vendor) {
-                                  setSelectedVendorForMenu(slide.vendor);
-                                }
+                            <img 
+                              src={slide.image} 
+                              alt={slide.title || 'Banner'} 
+                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-102"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
                               }}
-                              className="absolute inset-0 z-20 cursor-pointer bg-transparent"
-                              title={slide.vendor ? `Open ${slide.vendor.name}` : undefined}
                             />
 
                             {/* Target Restaurant info pill if assigned */}
                             {slide.vendor && (
                               <div 
-                                onClick={() => setSelectedVendorForMenu(slide.vendor)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedVendorForMenu(slide.vendor!);
+                                }}
                                 className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
                               >
                                 <span>🎯 {slide.vendor.name}</span>
