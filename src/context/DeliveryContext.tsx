@@ -262,6 +262,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const portalQuery = params.get('portal') as PortalRole;
       if (['customer', 'vendor', 'rider', 'admin'].includes(portalQuery)) return portalQuery;
 
+      // Persist active portal from logged in user role if they are logged in
+      const savedUser = safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
+      if (savedUser && ['customer', 'vendor', 'rider', 'admin'].includes(savedUser.role)) {
+        return savedUser.role;
+      }
+
       const rawHash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
       if (['customer', 'vendor', 'rider', 'admin'].includes(rawHash)) return rawHash;
     }

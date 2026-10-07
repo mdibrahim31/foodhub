@@ -61,11 +61,16 @@ function CustomerSiteLayout() {
       return;
     }
 
+    if (currentUser && ['customer', 'vendor', 'rider', 'admin'].includes(currentUser.role)) {
+      setRole(currentUser.role);
+      return;
+    }
+
     const hash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
     if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) {
       setRole(hash);
     }
-  }, [setRole]);
+  }, [setRole, currentUser]);
 
   useEffect(() => {
     const handleHashChange = () => {

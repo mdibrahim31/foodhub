@@ -451,8 +451,13 @@ export const CustomerPortal: React.FC = () => {
   // Hero Carousel Slides & Swipe state
   // Dynamically build slides from Admin Ad Banners & Boosted Vendors
   const activeAdBanners = [...(adBanners || [])]
-    .filter(a => a.is_active && (activeBottomNav === 'food' || activeBottomNav === 'grocery' ? (a.portal_type || 'food') === activeBottomNav : true))
+    .filter(a => a.is_active && a.subtitle !== '__middle__' && (activeBottomNav === 'food' || activeBottomNav === 'grocery' ? (a.portal_type || 'food') === activeBottomNav : true))
     .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
+  const activeMiddleBanners = [...(adBanners || [])]
+    .filter(a => a.is_active && a.subtitle === '__middle__' && (activeBottomNav === 'food' || activeBottomNav === 'grocery' ? (a.portal_type || 'food') === activeBottomNav : true))
+    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
   const boostedVendors = vendors.filter(v => v.is_boosted);
 
   const heroSlides = activeAdBanners.map((ad) => {
@@ -1968,6 +1973,52 @@ export const CustomerPortal: React.FC = () => {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {/* 
+          ======================================================================
+          MIDDLE SQUARE BANNER SECTION (NEW)
+          ======================================================================
+        */}
+        {activeMiddleBanners.length > 0 && (
+          <section className="space-y-2 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+                <span>🔥 Featured Deals</span>
+              </h3>
+            </div>
+            <div className="flex items-center space-x-3.5 overflow-x-auto pb-2 scrollbar-none select-none">
+              {activeMiddleBanners.map((ad) => {
+                const targetVendorId = ad.target_vendor_id;
+                const targetVendor = targetVendorId 
+                  ? vendors.find(v => v.id === targetVendorId || (v.unique_id && v.unique_id.toLowerCase() === targetVendorId.toLowerCase())) 
+                  : null;
+                return (
+                  <button
+                    key={ad.id}
+                    onClick={() => {
+                      if (targetVendor) {
+                        setSelectedVendorForMenu(targetVendor);
+                      }
+                    }}
+                    className="relative w-32 h-32 rounded-3xl overflow-hidden shrink-0 shadow-xs border border-slate-100 hover:scale-102 transition-transform cursor-pointer focus:outline-hidden"
+                  >
+                    <img 
+                      src={ad.image_url} 
+                      alt="Featured Offer" 
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Tiny target badge if any */}
+                    {targetVendor && (
+                      <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs py-1 px-1.5 rounded-xl text-[9px] font-black text-white text-center truncate">
+                        {targetVendor.name}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </section>
         )}
 

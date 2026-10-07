@@ -218,6 +218,12 @@ export const AdminPortal: React.FC = () => {
     return 'food';
   });
 
+  // Middle Ad Banner Form State (NEW)
+  const [isAddMiddleAdOpen, setIsAddMiddleAdOpen] = useState(false);
+  const [middleAdImageUrl, setMiddleAdImageUrl] = useState('');
+  const [middleAdTargetVendorId, setMiddleAdTargetVendorId] = useState('');
+  const [middleTargetVendorSearchQuery, setMiddleTargetVendorSearchQuery] = useState('');
+
   const setActiveAdPortalTab = (tab: 'food' | 'grocery') => {
     setActiveAdPortalTabState(tab);
     if (typeof window !== 'undefined') {
@@ -1441,7 +1447,7 @@ export const AdminPortal: React.FC = () => {
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-rose-600" />
-                  <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Hero Banner Ads ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab).length})</span>
+                  <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Hero Banner Ads ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__').length})</span>
                 </h3>
                 <p className="text-xs text-slate-500">
                   Manage promotional ads & banners displayed at the top of the {activeAdPortalTab} home page.
@@ -1462,13 +1468,13 @@ export const AdminPortal: React.FC = () => {
 
             {/* List of Current Ads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab).length === 0 ? (
+              {adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__').length === 0 ? (
                 <div className="col-span-2 p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs">
                   No {activeAdPortalTab} promotional banner ads running yet. Click "Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Ad" above to create one.
                 </div>
               ) : (
                 [...adBanners]
-                  .filter(a => (a.portal_type || 'food') === activeAdPortalTab)
+                  .filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle !== '__middle__')
                   .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
                   .map((ad, idx, sortedArr) => {
                     const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
@@ -1584,6 +1590,148 @@ export const AdminPortal: React.FC = () => {
                     </div>
                   );
                 })
+              )}
+            </div>
+
+            {/* Middle Square Banners Section (NEW) */}
+            <div className="bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-8">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-rose-600" />
+                  <span>{activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Middle Square Banners ({adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle === '__middle__').length})</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Manage promotional square-shaped banners displayed in the middle of the customer home page.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setAdPortalType(activeAdPortalTab);
+                  setIsAddMiddleAdOpen(true);
+                }}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl transition flex items-center space-x-1.5 shadow-md cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Middle Banner</span>
+              </button>
+            </div>
+
+            {/* List of Current Middle Ads */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {adBanners.filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle === '__middle__').length === 0 ? (
+                <div className="col-span-2 p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 font-bold text-xs">
+                  No {activeAdPortalTab} promotional middle square banners running yet. Click "Post New {activeAdPortalTab === 'food' ? 'Food' : 'Grocery'} Middle Banner" above to create one.
+                </div>
+              ) : (
+                [...adBanners]
+                  .filter(a => (a.portal_type || 'food') === activeAdPortalTab && a.subtitle === '__middle__')
+                  .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                  .map((ad, idx, sortedArr) => {
+                    const targetVendor = ad.target_vendor_id ? vendors.find(v => v.id === ad.target_vendor_id) : null;
+                    return (
+                    <div 
+                      key={ad.id} 
+                      className={`border rounded-3xl p-4 shadow-xs space-y-3 transition-all ${
+                        ad.is_active 
+                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-indigo-400' 
+                          : 'bg-slate-100 text-slate-600 border-slate-300 opacity-75'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-1 max-w-[220px]">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
+                              ad.is_active ? 'bg-white/20 text-white' : 'bg-slate-300 text-slate-700'
+                            }`}>
+                              {ad.is_active ? `● LIVE (Order: ${ad.order_index || 0})` : `INACTIVE (Order: ${ad.order_index || 0})`}
+                            </span>
+                            <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${
+                              ad.is_active ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-700'
+                            }`}>
+                              {ad.portal_type || 'food'}
+                            </span>
+                          </div>
+                          <h4 className="font-black text-base leading-tight tracking-tight">
+                            Middle Square Banner
+                          </h4>
+                          {targetVendor ? (
+                            <p className="text-[11px] font-medium opacity-90 truncate">Linked: {targetVendor.name}</p>
+                          ) : (
+                            <p className="text-[11px] font-medium opacity-90">Unlinked Banner</p>
+                          )}
+                        </div>
+
+                        <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0 shadow-md bg-white">
+                          <img 
+                            src={ad.image_url} 
+                            alt="Middle Banner" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Control Footer */}
+                      <div className="pt-3 border-t border-white/20 flex items-center justify-between text-xs font-bold">
+                        <div className="text-[11px]">
+                          {targetVendor ? (
+                            <span>Linked Vendor: <strong className="underline">{targetVendor.name}</strong></span>
+                          ) : (
+                            <span>General Offer Ad</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => toggleAdBannerStatus(ad.id)}
+                            className={`px-3 py-1 rounded-xl text-[11px] font-extrabold cursor-pointer transition ${
+                              ad.is_active 
+                                ? 'bg-white text-indigo-700 hover:bg-slate-100' 
+                                : 'bg-slate-800 text-white hover:bg-black'
+                            }`}
+                          >
+                            {ad.is_active ? 'Pause Ad' : 'Activate Ad'}
+                          </button>
+
+                          <button
+                            onClick={() => handleMoveAdBanner(ad.id, 'up')}
+                            disabled={idx === 0}
+                            className={`p-1.5 rounded-xl transition cursor-pointer ${
+                              idx === 0 
+                                ? 'bg-white/10 text-white/40 cursor-not-allowed' 
+                                : 'bg-black/30 hover:bg-black/50 text-white'
+                            }`}
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={() => handleMoveAdBanner(ad.id, 'down')}
+                            disabled={idx === sortedArr.length - 1}
+                            className={`p-1.5 rounded-xl transition cursor-pointer ${
+                              idx === sortedArr.length - 1 
+                                ? 'bg-white/10 text-white/40 cursor-not-allowed' 
+                                : 'bg-black/30 hover:bg-black/50 text-white'
+                            }`}
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this middle square banner?')) {
+                                deleteAdBanner(ad.id);
+                              }
+                            }}
+                            className="p-1.5 bg-black/30 hover:bg-black/50 text-white rounded-xl transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    );
+                  })
               )}
             </div>
           </div>
@@ -3848,6 +3996,249 @@ export const AdminPortal: React.FC = () => {
                   className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
                 >
                   Publish Banner Ad
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: POST NEW MIDDLE PROMOTIONAL SQUARE BANNER AD (NEW)
+        ========================================================================
+      */}
+      {isAddMiddleAdOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <Sparkles className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">Post Middle Square Banner Ad</h3>
+              </div>
+              <button onClick={() => setIsAddMiddleAdOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!middleAdImageUrl.trim()) {
+                  alert('Please enter banner image URL');
+                  return;
+                }
+                addAdBanner({
+                  title: 'Featured Deal',
+                  subtitle: '__middle__',
+                  action_text: 'Order now',
+                  image_url: middleAdImageUrl.trim(),
+                  target_vendor_id: middleAdTargetVendorId || undefined,
+                  is_active: true,
+                  portal_type: adPortalType
+                });
+                setIsAddMiddleAdOpen(false);
+                setMiddleAdImageUrl('');
+                setMiddleAdTargetVendorId('');
+                setMiddleTargetVendorSearchQuery('');
+                alert('New Middle Square Banner Ad Published Successfully! 🎉');
+              }}
+              className="space-y-3.5 text-xs font-bold"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-600">Display on Page *</label>
+                <select
+                  value={adPortalType}
+                  onChange={(e) => setAdPortalType(e.target.value as 'food' | 'grocery')}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500"
+                >
+                  <option value="food">Food Page</option>
+                  <option value="grocery">Grocery Page</option>
+                </select>
+              </div>
+
+              {/* Target Restaurant Search & ID Selection Box */}
+              <div className="space-y-2 bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-700 font-extrabold flex items-center space-x-1.5">
+                    <Store className="w-4 h-4 text-rose-600" />
+                    <span>Target Restaurant Search & Selection</span>
+                  </label>
+                  {middleAdTargetVendorId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMiddleAdTargetVendorId('');
+                        setMiddleTargetVendorSearchQuery('');
+                      }}
+                      className="text-[10px] text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-md cursor-pointer"
+                    >
+                      Clear Link (✕)
+                    </button>
+                  )}
+                </div>
+
+                {/* If a restaurant is already selected */}
+                {(() => {
+                  const selectedVendorObj = middleAdTargetVendorId 
+                    ? vendors.find(v => v.id === middleAdTargetVendorId || (v.unique_id && v.unique_id.toLowerCase() === middleAdTargetVendorId.toLowerCase()))
+                    : null;
+
+                  if (selectedVendorObj) {
+                    return (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className="p-1.5 bg-emerald-600 text-white rounded-lg shrink-0">
+                            <Store className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="font-black text-xs truncate">{selectedVendorObj.name}</span>
+                              <span className="px-1.5 py-0.2 bg-emerald-200 text-emerald-800 font-mono font-bold text-[10px] rounded-md shrink-0">
+                                {selectedVendorObj.unique_id || selectedVendorObj.id}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-emerald-700 font-medium truncate">
+                              📞 {selectedVendorObj.phone} &bull; {selectedVendorObj.zone}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-extrabold bg-emerald-600 text-white px-2 py-1 rounded-lg shrink-0">
+                          ✓ Linked
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {/* Search Bar Input */}
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="text"
+                          value={middleTargetVendorSearchQuery}
+                          onChange={(e) => {
+                            setMiddleTargetVendorSearchQuery(e.target.value);
+                            setMiddleAdTargetVendorId(e.target.value.trim());
+                          }}
+                          placeholder="Search restaurant by Name, ID (VND-1001), or Phone..."
+                          className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-slate-900 text-xs focus:outline-hidden focus:border-rose-500 font-bold"
+                        />
+                      </div>
+
+                      {/* Matching Restaurants Dropdown Results */}
+                      {middleTargetVendorSearchQuery.trim().length > 0 && (() => {
+                        const q = middleTargetVendorSearchQuery.toLowerCase().trim();
+                        const matchingVendors = vendors.filter(v => 
+                          v.name.toLowerCase().includes(q) ||
+                          v.phone.includes(q) ||
+                          v.id.toLowerCase().includes(q) ||
+                          (v.unique_id && v.unique_id.toLowerCase().includes(q))
+                        );
+
+                        if (matchingVendors.length === 0) {
+                          return (
+                            <div className="p-3 text-center bg-white border border-dashed border-slate-200 rounded-xl text-[11px] text-slate-500 font-bold">
+                              No restaurant found matching "{middleTargetVendorSearchQuery}". Enter valid Vendor ID or search name.
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 shadow-md">
+                            {matchingVendors.map((v) => (
+                              <div
+                                key={v.id}
+                                onClick={() => {
+                                  setMiddleAdTargetVendorId(v.id);
+                                  setMiddleTargetVendorSearchQuery('');
+                                }}
+                                className="p-2.5 hover:bg-rose-50 cursor-pointer transition flex items-center justify-between text-xs"
+                              >
+                                <div>
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="font-extrabold text-slate-900">{v.name}</span>
+                                    <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 font-mono font-bold text-[9px] rounded-md">
+                                      {v.unique_id || v.id}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 font-medium">📞 {v.phone} &bull; {v.zone}</span>
+                                </div>
+                                <span className="px-2 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold">
+                                  Select &rarr;
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Dropdown Quick Select Fallback */}
+                      <div className="pt-1">
+                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Or select directly from registered partners list:</span>
+                        <select
+                          value={middleAdTargetVendorId}
+                          onChange={(e) => setMiddleAdTargetVendorId(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
+                        >
+                          <option value="">-- General Ad (Unlinked Offer Banner) --</option>
+                          {vendors.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              🎯 [{v.unique_id || v.id}] {v.name} ({v.phone} - {v.zone})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-600">Middle Banner Image URL (Square aspect ratio recommended)*</label>
+                <input
+                  type="url"
+                  required
+                  value={middleAdImageUrl}
+                  onChange={(e) => setMiddleAdImageUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
+                />
+                
+                {/* Preset Image Options */}
+                <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
+                  <span className="text-[10px] text-slate-400 shrink-0">Sample Images:</span>
+                  {[
+                    { name: 'Deals Banner 1', url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop&q=80' },
+                    { name: 'Deals Banner 2', url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop&q=80' },
+                    { name: 'Deals Banner 3', url: 'https://images.unsplash.com/photo-1473093290046-b94874820293?w=400&h=400&fit=crop&q=80' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setMiddleAdImageUrl(preset.url)}
+                      className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-md text-[10px] font-bold shrink-0 cursor-pointer"
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddMiddleAdOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                >
+                  Publish Middle Banner Ad
                 </button>
               </div>
             </form>
