@@ -96,8 +96,13 @@ interface DeliveryContextType {
   uploadVendorImage: (
     vendorName: string, 
     file: File, 
-    type: 'logo' | 'cover'
+    type: 'logo' | 'cover',
+    oldUrl?: string
   ) => Promise<{ success: boolean; url?: string; message?: string }>;
+  deleteVendorImage: (
+    vendorId: string,
+    type: 'logo' | 'cover'
+  ) => Promise<{ success: boolean; message?: string }>;
   toggleVendorPause: (id: string) => void;
   deleteVendor: (id: string) => void;
   
@@ -2892,11 +2897,70 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const deleteVendorImageFile = async (imageUrl?: string) => {
+    if (!imageUrl) return;
+    try {
+      // 1. If stored in Supabase storage bucket 'images'
+      if (isSupabaseConfigured && supabase && imageUrl.includes('/storage/v1/object/public/images/')) {
+        const parts = imageUrl.split('/storage/v1/object/public/images/');
+        if (parts[1]) {
+          const filePath = decodeURIComponent(parts[1]);
+          await supabase.storage.from('images').remove([filePath]);
+          console.log('[Supabase Storage] Deleted previous image file:', filePath);
+        }
+      }
+      // 2. If stored on Express server upload directory
+      if (imageUrl.startsWith('/uploads/images/')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: imageUrl })
+        });
+        console.log('[Server Storage] Deleted previous image file:', imageUrl);
+      }
+    } catch (err) {
+      console.warn('Error deleting old image file:', err);
+    }
+  };
+
+  const deleteVendorImage = async (
+    vendorId: string, 
+    type: 'logo' | 'cover'
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const targetVendor = vendors.find(v => v.id === vendorId) || currentVendor;
+      const oldUrl = type === 'logo' ? targetVendor?.logo_url : targetVendor?.cover_image;
+      
+      // Delete old file from storage/filesystem
+      if (oldUrl) {
+        await deleteVendorImageFile(oldUrl);
+      }
+
+      // Update database and local state to clear image url
+      const updateData = type === 'logo' ? { logo_url: '' } : { cover_image: '' };
+      await updateVendor(vendorId, updateData);
+
+      return { 
+        success: true, 
+        message: `${type === 'logo' ? 'Profile photo' : 'Cover photo'} deleted from database successfully.` 
+      };
+    } catch (err: any) {
+      console.error('Delete vendor image error:', err);
+      return { success: false, message: err?.message || 'Failed to delete image.' };
+    }
+  };
+
   const uploadVendorImage = async (
     vendorName: string, 
     file: File, 
-    type: 'logo' | 'cover'
+    type: 'logo' | 'cover',
+    oldUrl?: string
   ): Promise<{ success: boolean; url?: string; message?: string }> => {
+    // Delete prior image from storage if changing
+    if (oldUrl) {
+      await deleteVendorImageFile(oldUrl);
+    }
+
     const folderName = (vendorName || 'vendor')
       .toLowerCase()
       .trim()
@@ -4626,6 +4690,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         adminRegisterVendor,
         updateVendor,
         uploadVendorImage,
+        deleteVendorImage,
         toggleVendorPause,
         deleteVendor,
         menuItems,

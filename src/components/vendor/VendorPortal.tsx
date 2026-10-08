@@ -51,7 +51,10 @@ import {
   Building2,
   Image,
   Upload,
-  Camera
+  Camera,
+  Lock,
+  Phone,
+  Utensils
 } from 'lucide-react';
 
 export const VendorPortal: React.FC = () => {
@@ -61,6 +64,7 @@ export const VendorPortal: React.FC = () => {
     setCurrentVendor, 
     updateVendor,
     uploadVendorImage,
+    deleteVendorImage,
     menuItems, 
     addMenuItem, 
     updateMenuItem,
@@ -157,26 +161,17 @@ export const VendorPortal: React.FC = () => {
   const [isStoreBrandingOpen, setIsStoreBrandingOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isDeletingLogo, setIsDeletingLogo] = useState(false);
+  const [isDeletingCover, setIsDeletingCover] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
-  // Vendor Profile Edit State
-  const [profileName, setProfileName] = useState('');
-  const [profilePhone, setProfilePhone] = useState('');
-  const [profileAddress, setProfileAddress] = useState('');
-  const [profileCuisine, setProfileCuisine] = useState('');
-  const [profileZone, setProfileZone] = useState('');
+  // Direct Web Image URL Inputs (optional)
   const [profileLogoUrlInput, setProfileLogoUrlInput] = useState('');
   const [profileCoverUrlInput, setProfileCoverUrlInput] = useState('');
   const [isUrlInputMode, setIsUrlInputMode] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const openVendorProfileModal = () => {
     if (currentVendor) {
-      setProfileName(currentVendor.name || '');
-      setProfilePhone(currentVendor.phone || '');
-      setProfileAddress(currentVendor.address || '');
-      setProfileCuisine(currentVendor.cuisine || '');
-      setProfileZone(currentVendor.zone || '');
       setProfileLogoUrlInput(currentVendor.logo_url || '');
       setProfileCoverUrlInput(currentVendor.cover_image || '');
       setUploadFeedback(null);
@@ -184,27 +179,43 @@ export const VendorPortal: React.FC = () => {
     setIsStoreBrandingOpen(true);
   };
 
-  const handleSaveProfileDetails = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleApplyWebUrls = async () => {
     if (!currentVendor) return;
-    setIsSavingProfile(true);
     setUploadFeedback(null);
     try {
-      const updates: Partial<Vendor> = {
-        name: profileName.trim() || currentVendor.name,
-        phone: profilePhone.trim() || currentVendor.phone,
-        address: profileAddress.trim() || currentVendor.address,
-        cuisine: profileCuisine.trim() || currentVendor.cuisine,
-        zone: profileZone.trim() || currentVendor.zone,
-        logo_url: profileLogoUrlInput.trim() || currentVendor.logo_url,
-        cover_image: profileCoverUrlInput.trim() || currentVendor.cover_image,
-      };
-      await updateVendor(currentVendor.id, updates);
-      setUploadFeedback({ type: 'success', message: '✅ Profile updated successfully!' });
+      const trimmedLogo = profileLogoUrlInput.trim();
+      const trimmedCover = profileCoverUrlInput.trim();
+
+      // Logo URL change
+      if (trimmedLogo !== (currentVendor.logo_url || '')) {
+        if (!trimmedLogo) {
+          await deleteVendorImage(currentVendor.id, 'logo');
+        } else {
+          if (currentVendor.logo_url) {
+            await deleteVendorImage(currentVendor.id, 'logo');
+          }
+          await updateVendor(currentVendor.id, { logo_url: trimmedLogo });
+        }
+      }
+
+      // Cover URL change
+      if (trimmedCover !== (currentVendor.cover_image || '')) {
+        if (!trimmedCover) {
+          await deleteVendorImage(currentVendor.id, 'cover');
+        } else {
+          if (currentVendor.cover_image) {
+            await deleteVendorImage(currentVendor.id, 'cover');
+          }
+          await updateVendor(currentVendor.id, { cover_image: trimmedCover });
+        }
+      }
+
+      setUploadFeedback({ 
+        type: 'success', 
+        message: '✅ ছবির লিংক ডাটাবেসে সফলভাবে আপডেট করা হয়েছে!' 
+      });
     } catch {
-      setUploadFeedback({ type: 'error', message: 'Failed to update profile.' });
-    } finally {
-      setIsSavingProfile(false);
+      setUploadFeedback({ type: 'error', message: 'Failed to update image URLs.' });
     }
   };
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
@@ -2264,7 +2275,7 @@ export const VendorPortal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: VENDOR PROFILE WINDOW (PROFILE PHOTO & COVER PHOTO ADD/CHANGE)
+        MODAL: VENDOR PROFILE WINDOW (VIEW-ONLY INFO, PROFILE & COVER IMAGES EDIT)
         ========================================================================
       */}
       {isStoreBrandingOpen && currentVendor && (
@@ -2282,7 +2293,7 @@ export const VendorPortal: React.FC = () => {
                     Vendor Profile
                   </h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Add & change store profile photo, cover banner and info
+                    Profile & Cover Image Management
                   </p>
                 </div>
               </div>
@@ -2299,14 +2310,20 @@ export const VendorPortal: React.FC = () => {
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
               {uploadFeedback && (
                 <div
-                  className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between ${
+                  className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between animate-in fade-in ${
                     uploadFeedback.type === 'success'
                       ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                       : 'bg-rose-50 text-rose-800 border border-rose-200'
                   }`}
                 >
-                  <span>{uploadFeedback.message}</span>
-                  <button onClick={() => setUploadFeedback(null)} className="text-slate-400 hover:text-slate-700">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{uploadFeedback.message}</span>
+                  </div>
+                  <button 
+                    onClick={() => setUploadFeedback(null)} 
+                    className="p-1 hover:bg-black/5 rounded-lg text-slate-500 transition cursor-pointer"
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -2333,24 +2350,30 @@ export const VendorPortal: React.FC = () => {
 
                   {/* Top Overlay Buttons for Cover */}
                   <div className="absolute top-3 right-3 flex items-center space-x-2">
-                    <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-xl text-xs font-bold backdrop-blur-md cursor-pointer transition shadow-md">
+                    {/* Add / Change Cover Photo Button */}
+                    <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-xl text-xs font-bold backdrop-blur-md cursor-pointer transition shadow-md active:scale-95">
                       <Camera className="w-3.5 h-3.5 text-orange-400" />
                       <span>{isUploadingCover ? 'Uploading...' : currentVendor.cover_image ? 'Change Cover' : 'Add Cover'}</span>
                       <input
                         type="file"
                         accept="image/*"
-                        disabled={isUploadingCover}
+                        disabled={isUploadingCover || isDeletingCover}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file || !currentVendor) return;
                           setIsUploadingCover(true);
                           setUploadFeedback(null);
-                          const res = await uploadVendorImage(currentVendor.name, file, 'cover');
+                          const oldCoverUrl = currentVendor.cover_image;
+                          // uploadVendorImage automatically deletes previous image from storage
+                          const res = await uploadVendorImage(currentVendor.name, file, 'cover', oldCoverUrl);
                           setIsUploadingCover(false);
                           if (res.success && res.url) {
-                            updateVendor(currentVendor.id, { cover_image: res.url });
+                            await updateVendor(currentVendor.id, { cover_image: res.url });
                             setProfileCoverUrlInput(res.url);
-                            setUploadFeedback({ type: 'success', message: '✅ Cover photo updated successfully!' });
+                            setUploadFeedback({ 
+                              type: 'success', 
+                              message: '✅ পূর্বের কভার ছবি ডাটাবেস ও স্টোরেজ থেকে ডিলিট করে নতুন কভার ছবি সফলভাবে সেভ করা হয়েছে!' 
+                            });
                           } else {
                             setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload cover photo.' });
                           }
@@ -2359,19 +2382,33 @@ export const VendorPortal: React.FC = () => {
                       />
                     </label>
 
+                    {/* Delete Cover Photo Button */}
                     {currentVendor.cover_image && (
                       <button
-                        onClick={() => {
-                          if (confirm('Remove cover photo?')) {
-                            updateVendor(currentVendor.id, { cover_image: '' });
-                            setProfileCoverUrlInput('');
-                            setUploadFeedback({ type: 'success', message: 'Cover photo removed.' });
+                        disabled={isDeletingCover || isUploadingCover}
+                        onClick={async () => {
+                          if (!currentVendor) return;
+                          if (confirm('কভার ছবি ডাটাবেস থেকে ডিলিট করতে চান?\n(Delete cover photo from database and storage?)')) {
+                            setIsDeletingCover(true);
+                            setUploadFeedback(null);
+                            const res = await deleteVendorImage(currentVendor.id, 'cover');
+                            setIsDeletingCover(false);
+                            if (res.success) {
+                              setProfileCoverUrlInput('');
+                              setUploadFeedback({ 
+                                type: 'success', 
+                                message: '✅ কভার ছবি ডাটাবেস ও স্টোরেজ থেকে সফলভাবে ডিলিট করা হয়েছে।' 
+                              });
+                            } else {
+                              setUploadFeedback({ type: 'error', message: res.message || 'Failed to delete cover photo.' });
+                            }
                           }
                         }}
-                        className="p-1.5 bg-black/60 hover:bg-rose-600 text-white rounded-xl text-xs backdrop-blur-md transition shadow-md cursor-pointer"
-                        title="Remove Cover Photo"
+                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-rose-600/90 hover:bg-rose-700 text-white rounded-xl text-xs font-bold backdrop-blur-md transition shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
+                        title="Delete Cover Photo from Database"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{isDeletingCover ? 'Deleting...' : 'Delete Cover'}</span>
                       </button>
                     )}
                   </div>
@@ -2394,24 +2431,29 @@ export const VendorPortal: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Camera Badge to Upload Profile Photo */}
-                      <label className="absolute bottom-0.5 right-0.5 w-8 h-8 rounded-full bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center shadow-md cursor-pointer transition border-2 border-white">
+                      {/* Camera Badge to Upload/Change Profile Photo */}
+                      <label className="absolute bottom-0.5 right-0.5 w-8 h-8 rounded-full bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center shadow-md cursor-pointer transition border-2 border-white active:scale-95">
                         <Camera className="w-4 h-4" />
                         <input
                           type="file"
                           accept="image/*"
-                          disabled={isUploadingLogo}
+                          disabled={isUploadingLogo || isDeletingLogo}
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file || !currentVendor) return;
                             setIsUploadingLogo(true);
                             setUploadFeedback(null);
-                            const res = await uploadVendorImage(currentVendor.name, file, 'logo');
+                            const oldLogoUrl = currentVendor.logo_url;
+                            // uploadVendorImage automatically deletes previous image from storage
+                            const res = await uploadVendorImage(currentVendor.name, file, 'logo', oldLogoUrl);
                             setIsUploadingLogo(false);
                             if (res.success && res.url) {
-                              updateVendor(currentVendor.id, { logo_url: res.url });
+                              await updateVendor(currentVendor.id, { logo_url: res.url });
                               setProfileLogoUrlInput(res.url);
-                              setUploadFeedback({ type: 'success', message: '✅ Profile photo updated successfully!' });
+                              setUploadFeedback({ 
+                                type: 'success', 
+                                message: '✅ পূর্বের প্রোফাইল ছবি ডাটাবেস ও স্টোরেজ থেকে ডিলিট করে নতুন প্রোফাইল ছবি সফলভাবে সেভ করা হয়েছে!' 
+                              });
                             } else {
                               setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload profile photo.' });
                             }
@@ -2431,26 +2473,32 @@ export const VendorPortal: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Profile Photo Buttons */}
+                  {/* Profile Photo Action Buttons */}
                   <div className="flex items-center space-x-2 w-full sm:w-auto">
-                    <label className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-xs">
+                    {/* Add / Change Photo */}
+                    <label className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-xs active:scale-95">
                       <Upload className="w-3.5 h-3.5" />
                       <span>{isUploadingLogo ? 'Uploading...' : currentVendor.logo_url ? 'Change Photo' : 'Add Photo'}</span>
                       <input
                         type="file"
                         accept="image/*"
-                        disabled={isUploadingLogo}
+                        disabled={isUploadingLogo || isDeletingLogo}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file || !currentVendor) return;
                           setIsUploadingLogo(true);
                           setUploadFeedback(null);
-                          const res = await uploadVendorImage(currentVendor.name, file, 'logo');
+                          const oldLogoUrl = currentVendor.logo_url;
+                          // uploadVendorImage automatically deletes previous image from storage
+                          const res = await uploadVendorImage(currentVendor.name, file, 'logo', oldLogoUrl);
                           setIsUploadingLogo(false);
                           if (res.success && res.url) {
-                            updateVendor(currentVendor.id, { logo_url: res.url });
+                            await updateVendor(currentVendor.id, { logo_url: res.url });
                             setProfileLogoUrlInput(res.url);
-                            setUploadFeedback({ type: 'success', message: '✅ Profile photo updated successfully!' });
+                            setUploadFeedback({ 
+                              type: 'success', 
+                              message: '✅ পূর্বের প্রোফাইল ছবি ডাটাবেস ও স্টোরেজ থেকে ডিলিট করে নতুন প্রোফাইল ছবি সফলভাবে সেভ করা হয়েছে!' 
+                            });
                           } else {
                             setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload profile photo.' });
                           }
@@ -2459,19 +2507,33 @@ export const VendorPortal: React.FC = () => {
                       />
                     </label>
 
+                    {/* Delete Photo Button */}
                     {currentVendor.logo_url && (
                       <button
-                        onClick={() => {
-                          if (confirm('Remove profile photo?')) {
-                            updateVendor(currentVendor.id, { logo_url: '' });
-                            setProfileLogoUrlInput('');
-                            setUploadFeedback({ type: 'success', message: 'Profile photo removed.' });
+                        disabled={isDeletingLogo || isUploadingLogo}
+                        onClick={async () => {
+                          if (!currentVendor) return;
+                          if (confirm('প্রোফাইল ছবি ডাটাবেস থেকে ডিলিট করতে চান?\n(Delete profile photo from database and storage?)')) {
+                            setIsDeletingLogo(true);
+                            setUploadFeedback(null);
+                            const res = await deleteVendorImage(currentVendor.id, 'logo');
+                            setIsDeletingLogo(false);
+                            if (res.success) {
+                              setProfileLogoUrlInput('');
+                              setUploadFeedback({ 
+                                type: 'success', 
+                                message: '✅ প্রোফাইল ছবি ডাটাবেস ও স্টোরেজ থেকে সফলভাবে ডিলিট করা হয়েছে।' 
+                              });
+                            } else {
+                              setUploadFeedback({ type: 'error', message: res.message || 'Failed to delete profile photo.' });
+                            }
                           }
                         }}
-                        className="p-2 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-xl transition cursor-pointer"
-                        title="Remove Profile Photo"
+                        className="inline-flex items-center space-x-1 px-3 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
+                        title="Delete Profile Photo from Database"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
+                        <span>{isDeletingLogo ? 'Deleting...' : 'Delete Photo'}</span>
                       </button>
                     )}
                   </div>
@@ -2497,7 +2559,18 @@ export const VendorPortal: React.FC = () => {
                 {isUrlInputMode && (
                   <div className="space-y-3 mt-3 pt-3 border-t border-slate-200 text-xs">
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Profile Photo (Logo) URL:</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-slate-600">Profile Photo (Logo) URL:</label>
+                        {profileLogoUrlInput && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileLogoUrlInput('')}
+                            className="text-[10px] text-rose-600 hover:underline font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="url"
                         value={profileLogoUrlInput}
@@ -2507,7 +2580,18 @@ export const VendorPortal: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Cover Banner URL:</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-slate-600">Cover Banner URL:</label>
+                        {profileCoverUrlInput && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileCoverUrlInput('')}
+                            className="text-[10px] text-rose-600 hover:underline font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="url"
                         value={profileCoverUrlInput}
@@ -2516,99 +2600,112 @@ export const VendorPortal: React.FC = () => {
                         className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-800 text-xs focus:outline-hidden focus:border-orange-500 font-mono"
                       />
                     </div>
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={handleApplyWebUrls}
+                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        Apply URLs
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* VENDOR DETAILS FORM */}
-              <form onSubmit={handleSaveProfileDetails} className="space-y-4 text-xs font-bold">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider flex items-center space-x-1.5">
-                    <Store className="w-3.5 h-3.5 text-orange-600" />
-                    <span>Restaurant Information</span>
-                  </h4>
-                  <span className="text-[10px] text-slate-400 font-normal">Editable</span>
+              {/* RESTAURANT INFORMATION (VIEW ONLY - CANNOT BE EDITED BY VENDOR) */}
+              <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-4 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+                      <Store className="w-3.5 h-3.5" />
+                    </div>
+                    <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider">
+                      Restaurant Information
+                    </h4>
+                  </div>
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-full text-[10px] font-bold">
+                    <Lock className="w-3 h-3 text-amber-600" />
+                    <span>View Only</span>
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-slate-600 text-[11px]">Restaurant Name</label>
-                    <input
-                      type="text"
-                      value={profileName}
-                      onChange={(e) => setProfileName(e.target.value)}
-                      required
-                      placeholder="e.g. Sultan's Dine"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-xs font-bold"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Restaurant Name */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Store className="w-3 h-3 text-slate-400" />
+                      <span>Restaurant Name</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm truncate">
+                      {currentVendor.name || '—'}
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-slate-600 text-[11px]">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={profilePhone}
-                      onChange={(e) => setProfilePhone(e.target.value)}
-                      required
-                      placeholder="e.g. 01711122233"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-xs font-mono font-bold"
-                    />
+                  {/* Phone Number */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Phone className="w-3 h-3 text-slate-400" />
+                      <span>Phone Number</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm font-mono truncate">
+                      {currentVendor.phone || '—'}
+                    </div>
+                  </div>
+
+                  {/* Store Address */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs sm:col-span-2">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      <span>Store Address / Branch</span>
+                    </div>
+                    <div className="font-semibold text-slate-800 text-xs">
+                      {currentVendor.address || 'No specific address provided'}
+                    </div>
+                  </div>
+
+                  {/* Cuisine */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Utensils className="w-3 h-3 text-slate-400" />
+                      <span>Cuisine / Category</span>
+                    </div>
+                    <div className="font-semibold text-slate-800 text-xs truncate">
+                      {currentVendor.cuisine || 'Fast Food & Restaurant'}
+                    </div>
+                  </div>
+
+                  {/* Zone */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Building2 className="w-3 h-3 text-slate-400" />
+                      <span>Zone / City</span>
+                    </div>
+                    <div className="font-semibold text-slate-800 text-xs truncate">
+                      {currentVendor.zone || 'Chittagong / Dhaka'}
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-slate-600 text-[11px]">Store Address / Branch</label>
-                  <input
-                    type="text"
-                    value={profileAddress}
-                    onChange={(e) => setProfileAddress(e.target.value)}
-                    placeholder="e.g. House 12, Road 4, Banani, Dhaka"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-xs font-normal"
-                  />
+                {/* Information Notice */}
+                <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] text-amber-900 flex items-start space-x-2">
+                  <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="leading-snug">
+                    এই তথ্যগুলো ভেন্ডর শুধুমাত্র দেখতে পারবেন কিন্তু পরিবর্তন বা এডিট করতে পারবেন না। ভেন্ডর শুধুমাত্র প্রোফাইল ছবি ও কভার ছবি পরিবর্তন বা ডিলিট করতে পারবেন। রেস্টুরেন্টের তথ্য পরিবর্তনের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।
+                  </p>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-slate-600 text-[11px]">Cuisine / Category</label>
-                    <input
-                      type="text"
-                      value={profileCuisine}
-                      onChange={(e) => setProfileCuisine(e.target.value)}
-                      placeholder="e.g. Burgers, Pizza, Fast Food"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-xs font-normal"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-slate-600 text-[11px]">Zone / City</label>
-                    <input
-                      type="text"
-                      value={profileZone}
-                      onChange={(e) => setProfileZone(e.target.value)}
-                      placeholder="e.g. Chittagong / Dhaka"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-xs font-normal"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-3 flex items-center justify-between gap-3 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setIsStoreBrandingOpen(false)}
-                    className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
-                  >
-                    Done
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isSavingProfile}
-                    className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs rounded-xl shadow-md shadow-orange-600/20 transition cursor-pointer disabled:opacity-50"
-                  >
-                    {isSavingProfile ? 'Saving...' : 'Save Profile Changes'}
-                  </button>
-                </div>
-              </form>
+              {/* Modal Footer */}
+              <div className="pt-2 flex items-center justify-end border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsStoreBrandingOpen(false)}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>

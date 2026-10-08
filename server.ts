@@ -583,6 +583,30 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
+// Delete uploaded image endpoint
+app.post('/api/upload/delete', (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, message: 'Missing url' });
+    if (typeof url === 'string' && url.startsWith('/uploads/images/')) {
+      const relPath = url.replace(/^\/uploads\/images\//, '');
+      const filePath = path.resolve(process.cwd(), 'data', 'uploads', 'images', relPath);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`[API] Deleted physical file: ${filePath}`);
+        } catch (unlinkErr) {
+          console.warn('[API] Could not delete physical file:', unlinkErr);
+        }
+      }
+    }
+    res.json({ success: true, message: 'File deleted from server storage' });
+  } catch (err) {
+    console.error('Delete upload endpoint error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete file' });
+  }
+});
+
 // 7. Customer Cart API (Saved to database per individual customer account)
 app.get('/api/cart/:customerId', (req, res) => {
   const { customerId } = req.params;
