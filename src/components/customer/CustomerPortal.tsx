@@ -2389,28 +2389,10 @@ export const CustomerPortal: React.FC = () => {
                   </button>
                 </div>
               </div>
-
-              {/* Floating Logo with Scroll Animation */}
-              <motion.div 
-                animate={{ 
-                  scale: headerScrollOpacity,
-                  opacity: headerScrollOpacity,
-                  y: (1 - headerScrollOpacity) * 20
-                }}
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
-              >
-                <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
-                  <img 
-                    src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image} 
-                    alt="Logo"
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                </div>
-              </motion.div>
             </div>
 
             {/* 2. Restaurant Info Section */}
-            <div className="pt-10 px-6 pb-4 text-center space-y-1">
+            <div className="pt-4 px-6 pb-4 text-center space-y-1">
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 {selectedVendorForMenu.name}
               </h3>
