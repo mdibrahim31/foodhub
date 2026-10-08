@@ -38,6 +38,7 @@ interface ServerState {
   addresses: any[];
   customerCarts: Record<string, { items: any[]; vendor: any; updatedAt: string }>;
   reviews?: any[];
+  favorites?: any[];
   updatedAt: string;
 }
 
@@ -52,6 +53,7 @@ const INITIAL_SERVER_STATE: ServerState = {
   addresses: [],
   customerCarts: {},
   reviews: [],
+  favorites: [],
   zones: [
     {
       id: 'zone-001',
@@ -935,6 +937,83 @@ app.post('/api/reviews', (req, res) => {
   saveState(serverState);
   res.json({ success: true, review: newReview });
 });
+
+// 11. Customer Favorites API
+app.get('/api/favorites/:customerIdentifier', (req, res) => {
+  const { customerIdentifier } = req.params;
+  const cleanId = (customerIdentifier || '').replace(/\D/g, '');
+  if (!serverState.favorites) serverState.favorites = [];
+
+  const userFavs = serverState.favorites.filter((f: any) => {
+    const fPhoneClean = (f.customer_phone || '').replace(/\D/g, '');
+    return (cleanId && fPhoneClean && cleanId === fPhoneClean) ||
+           f.customer_phone === customerIdentifier ||
+           f.customer_id === customerIdentifier ||
+           (cleanId === '' && customerIdentifier === 'guest' && (!f.customer_phone || f.customer_phone === 'guest'));
+  });
+
+  const vendorIds = userFavs.map((f: any) => f.vendor_id).filter(Boolean);
+  res.json({ success: true, favorites: vendorIds, details: userFavs });
+});
+
+app.post('/api/favorites/:customerIdentifier', (req, res) => {
+  const { customerIdentifier } = req.params;
+  const { vendor_id, customer_id } = req.body;
+  if (!vendor_id) return res.status(400).json({ success: false, message: 'vendor_id required' });
+  if (!serverState.favorites) serverState.favorites = [];
+
+  const cleanId = (customerIdentifier || '').replace(/\D/g, '');
+  const existingIdx = serverState.favorites.findIndex((f: any) => {
+    const fPhoneClean = (f.customer_phone || '').replace(/\D/g, '');
+    const isSameCust = (cleanId && fPhoneClean && cleanId === fPhoneClean) ||
+                       f.customer_phone === customerIdentifier ||
+                       f.customer_id === customerIdentifier ||
+                       (cleanId === '' && customerIdentifier === 'guest');
+    return isSameCust && f.vendor_id === vendor_id;
+  });
+
+  if (existingIdx < 0) {
+    serverState.favorites.push({
+      id: `fav-${Date.now()}`,
+      vendor_id,
+      customer_phone: customerIdentifier,
+      customer_id: customer_id || null,
+      created_at: new Date().toISOString()
+    });
+    saveState(serverState);
+  }
+
+  const userFavs = serverState.favorites.filter((f: any) => {
+    const fPhoneClean = (f.customer_phone || '').replace(/\D/g, '');
+    return (cleanId && fPhoneClean && cleanId === fPhoneClean) ||
+           f.customer_phone === customerIdentifier ||
+           f.customer_id === customerIdentifier ||
+           (cleanId === '' && customerIdentifier === 'guest');
+  }).map(f => f.vendor_id);
+
+  res.json({ success: true, favorites: userFavs });
+});
+
+app.delete('/api/favorites/:customerIdentifier', (req, res) => {
+  const { customerIdentifier } = req.params;
+  const { vendor_id } = req.body;
+  if (!vendor_id) return res.status(400).json({ success: false, message: 'vendor_id required' });
+  if (!serverState.favorites) serverState.favorites = [];
+
+  const cleanId = (customerIdentifier || '').replace(/\D/g, '');
+  serverState.favorites = serverState.favorites.filter((f: any) => {
+    const fPhoneClean = (f.customer_phone || '').replace(/\D/g, '');
+    const isSameCust = (cleanId && fPhoneClean && cleanId === fPhoneClean) ||
+                       f.customer_phone === customerIdentifier ||
+                       f.customer_id === customerIdentifier ||
+                       (cleanId === '' && customerIdentifier === 'guest');
+    return !(isSameCust && f.vendor_id === vendor_id);
+  });
+
+  saveState(serverState);
+  res.json({ success: true });
+});
+
 
 // -------------------------------------------------------------
 // VITE DEV SERVER OR PRODUCTION STATIC SERVING

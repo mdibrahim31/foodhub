@@ -69,7 +69,9 @@ export const CustomerPortal: React.FC = () => {
     registerCustomer,
     zones,
     reviews,
-    addOrderReview
+    addOrderReview,
+    favorites,
+    toggleFavorite
   } = useDelivery();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -554,8 +556,7 @@ export const CustomerPortal: React.FC = () => {
     }
   };
 
-  // Checkout & Favorites
-  const [favorites, setFavorites] = useState<string[]>(['a0000002-0000-0000-0000-000000000002']);
+  // Checkout
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderInstructions, setOrderInstructions] = useState('');
 
@@ -578,13 +579,6 @@ export const CustomerPortal: React.FC = () => {
     // Customer pinned outside all configured delivery zones (e.g. pinned in Dhaka when only CTG zone exists) -> return null
     return null;
   }, [selectedAddress?.zone, customerLat, customerLng, zones]);
-
-  const toggleFavorite = (vendorId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setFavorites(prev => 
-      prev.includes(vendorId) ? prev.filter(id => id !== vendorId) : [...prev, vendorId]
-    );
-  };
 
   // Filtered and Sorted Vendors (Strictly filtered by Customer Zone Boundary)
   const filteredVendors = vendors.filter((v) => {

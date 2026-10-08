@@ -130,6 +130,12 @@ interface DeliveryContextType {
   updateAddress: (id: string, updates: Partial<CustomerAddress>) => void;
   deleteAddress: (id: string) => void;
   
+  // Customer Favorites
+  favorites: string[];
+  toggleFavorite: (vendorId: string, e?: React.MouseEvent) => Promise<void>;
+  isFavorite: (vendorId: string) => boolean;
+
+  
   // Riders & Fleet Management
   riders: Rider[];
   currentRider: Rider | null;
@@ -399,6 +405,74 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.setItem(`${STORAGE_KEY_PREFIX}addresses`, JSON.stringify(allAddresses));
     } catch {}
   }, [allAddresses]);
+
+  // Customer Favorites State (Isolated per customer, supports guest)
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    const custPhone = currentUser?.phone || 'guest';
+    const custId = currentUser?.id || '';
+    const cleanIdentifier = (custPhone || '').replace(/\D/g, '') || custId || 'guest';
+    const local = safeJsonParse<string[]>(`${STORAGE_KEY_PREFIX}favorites_${cleanIdentifier}`, []);
+    return Array.isArray(local) ? local : [];
+  });
+
+  // Load favorites for active customer from local storage, server API & Supabase
+  useEffect(() => {
+    const custPhone = (currentUser?.phone || '').replace(/\D/g, '') || 'guest';
+    const custId = currentUser?.id || '';
+    const cleanIdentifier = custPhone !== 'guest' ? custPhone : (custId || 'guest');
+
+    // 1. Load from local cache immediately
+    try {
+      const saved = safeJsonParse<string[]>(`${STORAGE_KEY_PREFIX}favorites_${cleanIdentifier}`, []);
+      if (Array.isArray(saved) && saved.length > 0) {
+        setFavorites(saved);
+      }
+    } catch {}
+
+    // 2. Fetch from backend server API
+    fetch(`/api/favorites/${encodeURIComponent(cleanIdentifier)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.favorites && Array.isArray(data.favorites)) {
+          setFavorites(data.favorites);
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}favorites_${cleanIdentifier}`, JSON.stringify(data.favorites));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    // 3. Fetch from Supabase favorites table
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          let query = supabase.from('favorites').select('vendor_id');
+          if (cleanIdentifier !== 'guest') {
+            const orConditions = [`customer_phone.eq.${cleanIdentifier}`];
+            if (currentUser?.phone) orConditions.push(`customer_phone.eq.${currentUser.phone}`);
+            if (custId && isValidUUID(custId)) orConditions.push(`customer_id.eq.${custId}`);
+            query = query.or(orConditions.join(','));
+          } else {
+            query = query.eq('customer_phone', 'guest');
+          }
+
+          const { data, error } = await query;
+          if (!error && data && Array.isArray(data)) {
+            const list = data.map((d: any) => d.vendor_id).filter(Boolean);
+            if (list.length > 0) {
+              setFavorites(list);
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}favorites_${cleanIdentifier}`, JSON.stringify(list));
+              } catch {}
+            }
+          }
+        } catch (err) {
+          console.warn('Supabase fetch favorites error:', err);
+        }
+      })();
+    }
+  }, [currentUser?.id, currentUser?.phone, isSupabaseConfigured]);
+
 
   // Strict user-isolated vendor sync (Ensure vendor account only loads logged-in vendor data)
   useEffect(() => {
@@ -2238,9 +2312,27 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    let favCount = 0;
+    for (const vId of favorites) {
+      try {
+        const payload: Record<string, any> = {
+          id: generateUUID(),
+          vendor_id: vId,
+          customer_phone: (currentUser?.phone || '').replace(/\D/g, '') || 'guest'
+        };
+        if (currentUser?.id && isValidUUID(currentUser.id)) {
+          payload.customer_id = currentUser.id;
+        }
+        const { error } = await supabase.from('favorites').upsert([payload]);
+        if (!error) favCount++;
+      } catch (err) {
+        console.warn('Sync favorite error:', err);
+      }
+    }
+
     return { 
       success: true, 
-      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, and ${addrCount} addresses!`, 
+      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, ${addrCount} addresses, and ${favCount} favorites!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };
@@ -3551,6 +3643,91 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // -------------------------------------------------------------
+  // CUSTOMER FAVORITES MANAGEMENT
+  // -------------------------------------------------------------
+  const toggleFavorite = async (vendorId: string, e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    if (!vendorId) return;
+
+    const custPhone = (currentUser?.phone || '').replace(/\D/g, '') || 'guest';
+    const custId = currentUser?.id || '';
+    const cleanIdentifier = custPhone !== 'guest' ? custPhone : (custId || 'guest');
+
+    const isFav = favorites.includes(vendorId);
+    const updated = isFav 
+      ? favorites.filter(id => id !== vendorId) 
+      : [...favorites, vendorId];
+
+    // Optimistically update state and local cache
+    setFavorites(updated);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}favorites_${cleanIdentifier}`, JSON.stringify(updated));
+    } catch {}
+
+    // 1. Sync with backend API
+    fetch(`/api/favorites/${encodeURIComponent(cleanIdentifier)}`, {
+      method: isFav ? 'DELETE' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vendor_id: vendorId })
+    }).catch(() => {});
+
+    // 2. Sync with Supabase favorites table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        if (isFav) {
+          // DELETE from favorites
+          let delQuery = supabase.from('favorites').delete().eq('vendor_id', vendorId);
+          if (cleanIdentifier !== 'guest') {
+            const orConditions = [`customer_phone.eq.${cleanIdentifier}`];
+            if (currentUser?.phone) orConditions.push(`customer_phone.eq.${currentUser.phone}`);
+            if (custId && isValidUUID(custId)) orConditions.push(`customer_id.eq.${custId}`);
+            delQuery = delQuery.or(orConditions.join(','));
+          } else {
+            delQuery = delQuery.eq('customer_phone', 'guest');
+          }
+          const { error: delErr } = await delQuery;
+          if (delErr) {
+            console.warn('Supabase delete favorite error:', delErr);
+          }
+        } else {
+          // INSERT into favorites
+          const favPayload: Record<string, any> = {
+            id: generateUUID(),
+            vendor_id: vendorId,
+            customer_phone: cleanIdentifier !== 'guest' ? (currentUser?.phone || cleanIdentifier) : 'guest'
+          };
+          if (custId && isValidUUID(custId)) {
+            favPayload.customer_id = custId;
+          }
+
+          let { error: insErr } = await supabase.from('favorites').insert([favPayload]);
+          
+          // If customer_id foreign key failed, retry without customer_id
+          if (insErr && insErr.code === '23503' && favPayload.customer_id) {
+            delete favPayload.customer_id;
+            const retryRes = await supabase.from('favorites').insert([favPayload]);
+            insErr = retryRes.error;
+          }
+
+          // If duplicate unique constraint (23505), try upsert
+          if (insErr && insErr.code === '23505') {
+            await supabase.from('favorites').upsert([favPayload]);
+          } else if (insErr) {
+            console.warn('Supabase insert favorite error:', insErr);
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase favorite toggle exception:', err);
+      }
+    }
+  };
+
+  const isFavorite = (vendorId: string) => favorites.includes(vendorId);
+
+
+  // -------------------------------------------------------------
   // RIDER GPS & LOCATION UPDATES
   // -------------------------------------------------------------
   const updateRiderLocation = async (riderId: string, lat: number, lng: number) => {
@@ -4472,6 +4649,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addAddress,
         updateAddress,
         deleteAddress,
+        favorites,
+        toggleFavorite,
+        isFavorite,
         riders,
         currentRider,
         setCurrentRider,
