@@ -2470,6 +2470,9 @@ export const VendorPortal: React.FC = () => {
                       <p className="text-xs text-slate-500 font-medium">
                         {currentVendor.cuisine || 'Fast Food & Restaurant'}
                       </p>
+                      <span className="inline-block mt-1 text-[10px] bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded-md">
+                        সুপারিশকৃত সাইজ: 1:1 স্কয়ার (500×500 px)
+                      </span>
                     </div>
                   </div>
 

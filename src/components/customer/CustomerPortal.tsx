@@ -2399,11 +2399,11 @@ export const CustomerPortal: React.FC = () => {
                 }}
                 className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
               >
-                <div className="w-20 h-20 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-xl border border-slate-100 flex items-center justify-center overflow-hidden">
                   <img 
                     src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image} 
                     alt="Logo"
-                    className="w-full h-full object-contain rounded-xl"
+                    className="w-full h-full object-cover rounded-xl"
                   />
                 </div>
               </motion.div>
