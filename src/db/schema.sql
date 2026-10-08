@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS customer_users (
 -- 8. CUSTOMER ADDRESSES TABLE
 CREATE TABLE IF NOT EXISTS customer_addresses (
   id VARCHAR(255) PRIMARY KEY,
+  customer_id VARCHAR(255),
   customer_phone VARCHAR(50) NOT NULL,
   customer_name VARCHAR(255) NOT NULL,
   label VARCHAR(50) NOT NULL DEFAULT 'Home',
@@ -146,7 +147,19 @@ CREATE TABLE IF NOT EXISTS customer_addresses (
 );
 
 -- Migration for existing database instances:
+ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS customer_id VARCHAR(255);
 ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'inactive';
+ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT FALSE;
+ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS label VARCHAR(50) DEFAULT 'Home';
+ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS zone VARCHAR(100);
+ALTER TABLE customer_addresses ADD COLUMN IF NOT EXISTS details TEXT;
+-- Ensure customer_id does not block guest/unauthenticated addresses:
+DO $$
+BEGIN
+  ALTER TABLE customer_addresses ALTER COLUMN customer_id DROP NOT NULL;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
 
 -- 9. ORDERS TABLE
 CREATE TABLE IF NOT EXISTS orders (

@@ -880,6 +880,45 @@ export const AdminPortal: React.FC = () => {
                 SAVE GLOBAL RATES
               </button>
             </form>
+
+            {/* Supabase Database Connection Card */}
+            <div className="pt-6 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <Layers className="w-5 h-5 text-emerald-600" />
+                  <h4 className="text-base font-black text-slate-900">Supabase Cloud Database</h4>
+                </div>
+                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+                  isSupabaseConfigured ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                }`}>
+                  {isSupabaseConfigured ? 'Connected' : 'Not Connected'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">
+                Connect your Supabase project to persist customer address books, orders, banners, and menus across all devices and browsers.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-db-modal'))}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Configure Supabase Credentials
+                </button>
+                {isSupabaseConfigured && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await syncAllToSupabase();
+                      alert(res.message);
+                    }}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  >
+                    Sync All Local Data to Supabase
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

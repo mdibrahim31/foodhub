@@ -116,7 +116,8 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     updateAddress, 
     deleteAddress,
     zones,
-    currentUser
+    currentUser,
+    isSupabaseConfigured
   } = useDelivery();
 
   // Navigation sub-views:
@@ -360,8 +361,8 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
       });
     } else {
       addAddress({
-        customer_name: currentUser?.name || '',
-        customer_phone: customerPhone.trim() || currentUser?.phone || '',
+        customer_name: currentUser?.name || 'Customer',
+        customer_phone: customerPhone.trim() || currentUser?.phone || 'guest',
         label,
         address_line: addressLine.trim(),
         details: noteToRider.trim() || cityField,
@@ -410,6 +411,20 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* DB Connection Status Banner */}
+            {!isSupabaseConfigured && (
+              <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 py-2 flex items-center justify-between text-[11px] text-amber-800 font-bold shrink-0">
+                <span>⚠️ Database is not connected in this browser.</span>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-db-modal'))}
+                  className="px-2 py-0.5 bg-amber-200/70 hover:bg-amber-300 text-amber-900 rounded-md transition cursor-pointer text-[10px] font-black uppercase tracking-wider"
+                >
+                  Connect DB
+                </button>
+              </div>
+            )}
 
             {/* Address List */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100">

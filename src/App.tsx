@@ -36,9 +36,14 @@ function CustomerSiteLayout() {
   const [dbKey, setDbKey] = useState(supabaseConfig.anonKey || '');
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Only show switcher in development/preview environments (not on production github.io)
-  const isPreview = typeof window !== 'undefined' && 
-    !window.location.hostname.includes('github.io');
+  // Enable switcher and DB setup across all environments (including GitHub Pages)
+  const isPreview = true;
+
+  useEffect(() => {
+    const handleOpenDb = () => setIsDbModalOpen(true);
+    window.addEventListener('open-db-modal', handleOpenDb);
+    return () => window.removeEventListener('open-db-modal', handleOpenDb);
+  }, []);
 
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault();

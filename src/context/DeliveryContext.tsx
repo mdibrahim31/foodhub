@@ -249,6 +249,21 @@ function safeJsonParse<T>(key: string, fallback: T): T {
   }
 }
 
+const isValidUUID = (str?: string): boolean => {
+  return Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str));
+};
+
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Core State
   // Persistent Role: checks URL hash, query param, and localStorage so refreshing never resets to home
@@ -337,7 +352,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [allAddresses, setAllAddresses] = useState<CustomerAddress[]>(() => {
     const parsed = safeJsonParse<CustomerAddress[]>(`${STORAGE_KEY_PREFIX}addresses`, []);
-    return Array.isArray(parsed) ? parsed : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    return list.map(item => ({
+      ...item,
+      id: isValidUUID(item.id) ? item.id : generateUUID(),
+      status: item.status || (item.is_default ? 'active' : 'inactive')
+    }));
   });
 
   const [reviews, setReviews] = useState<VendorReview[]>(() => {
@@ -2192,9 +2212,35 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    let addrCount = 0;
+    for (const a of allAddresses) {
+      try {
+        const payload: Record<string, any> = {
+          id: isValidUUID(a.id) ? a.id : generateUUID(),
+          customer_phone: a.customer_phone || 'guest',
+          customer_name: a.customer_name || 'Customer',
+          label: a.label || 'Home',
+          address_line: a.address_line,
+          details: a.details || null,
+          latitude: Number(a.latitude) || 22.3705,
+          longitude: Number(a.longitude) || 91.8215,
+          zone: a.zone || null,
+          is_default: a.is_default ?? false,
+          status: a.status || (a.is_default ? 'active' : 'inactive')
+        };
+        if (a.customer_id && isValidUUID(a.customer_id)) {
+          payload.customer_id = a.customer_id;
+        }
+        const { error } = await supabase.from('customer_addresses').upsert([payload]);
+        if (!error) addrCount++;
+      } catch (err) {
+        console.warn('Sync address error:', err);
+      }
+    }
+
     return { 
       success: true, 
-      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, and ${custCount} customers!`, 
+      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, and ${addrCount} addresses!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };
@@ -3267,10 +3313,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .update({ status: 'inactive', is_default: false })
             .or(`customer_phone.eq.${custPhone},customer_phone.eq.${cleanIdentifier}`);
         }
-        await supabase
-          .from('customer_addresses')
-          .update({ status: 'active', is_default: true })
-          .eq('id', id);
+        if (isValidUUID(id)) {
+          await supabase
+            .from('customer_addresses')
+            .update({ status: 'active', is_default: true })
+            .eq('id', id);
+        }
       } catch (err) {
         console.warn('Supabase activate address error:', err);
       }
@@ -3302,7 +3350,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Auto-detect zone if not specified
     const detectedZone = addr.zone || findZoneForPoint(addr.latitude, addr.longitude, zones)?.name || '';
 
-    const newId = `addr-${Date.now()}`;
+    // Generate valid UUID for compatibility with Postgres UUID primary key
+    const newId = generateUUID();
     const newAddr: CustomerAddress = { 
       ...addr, 
       id: newId,
@@ -3353,19 +3402,62 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               .update({ status: 'inactive', is_default: false })
               .or(`customer_phone.eq.${custPhone},customer_phone.eq.${cleanIdentifier}`);
           }
-          await supabase.from('customer_addresses').upsert([{
+
+          const payload: Record<string, any> = {
             id: newAddr.id,
-            customer_phone: newAddr.customer_phone,
-            customer_name: newAddr.customer_name,
-            label: newAddr.label,
+            customer_phone: newAddr.customer_phone || custPhone || 'guest',
+            customer_name: newAddr.customer_name || custName || 'Customer',
+            label: newAddr.label || 'Home',
             address_line: newAddr.address_line,
             details: newAddr.details || null,
-            latitude: newAddr.latitude,
-            longitude: newAddr.longitude,
+            latitude: Number(newAddr.latitude) || 22.3705,
+            longitude: Number(newAddr.longitude) || 91.8215,
             zone: newAddr.zone || null,
             is_default: true,
             status: 'active'
-          }]);
+          };
+
+          // Verify customer_id exists in Supabase customers table to prevent foreign key violation
+          if (custId && isValidUUID(custId)) {
+            try {
+              const { data: cRow } = await supabase.from('customers').select('id').eq('id', custId).maybeSingle();
+              if (cRow?.id) {
+                payload.customer_id = cRow.id;
+              }
+            } catch {}
+          }
+
+          console.log('[Supabase] Attempting to insert address:', payload);
+          let { error: insertErr } = await supabase.from('customer_addresses').upsert([payload]);
+          if (insertErr) {
+            console.warn('[Supabase] Upsert notice, trying direct insert:', insertErr);
+            const res = await supabase.from('customer_addresses').insert([payload]);
+            insertErr = res.error;
+          }
+
+          // If error occurs (e.g. status column missing in Supabase or foreign key violation)
+          if (insertErr) {
+            console.warn('[Supabase] Primary insert failed, trying clean fallback payload:', insertErr);
+            const fallbackPayload: Record<string, any> = {
+              id: newAddr.id,
+              customer_phone: newAddr.customer_phone || custPhone || 'guest',
+              customer_name: newAddr.customer_name || custName || 'Customer',
+              label: newAddr.label || 'Home',
+              address_line: newAddr.address_line,
+              details: newAddr.details || null,
+              latitude: Number(newAddr.latitude) || 22.3705,
+              longitude: Number(newAddr.longitude) || 91.8215,
+              is_default: true
+            };
+            const fbRes = await supabase.from('customer_addresses').insert([fallbackPayload]);
+            if (fbRes.error) {
+              console.error('❌ [Supabase] Fallback address insert error:', fbRes.error);
+            } else {
+              console.log('✅ [Supabase] Address inserted with fallback payload!');
+            }
+          } else {
+            console.log('✅ [Supabase] Address inserted successfully!');
+          }
         } catch (supaErr) {
           console.warn('Supabase addAddress error:', supaErr);
         }
@@ -3412,19 +3504,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }).catch(() => {});
 
       if (isSupabaseConfigured && supabase) {
-        supabase.from('customer_addresses').upsert([{
-          id: merged.id,
+        const payload: Record<string, any> = {
+          id: isValidUUID(merged.id) ? merged.id : generateUUID(),
           customer_phone: merged.customer_phone,
           customer_name: merged.customer_name,
           label: merged.label,
           address_line: merged.address_line,
           details: merged.details || null,
-          latitude: merged.latitude,
-          longitude: merged.longitude,
+          latitude: Number(merged.latitude) || 22.3705,
+          longitude: Number(merged.longitude) || 91.8215,
           zone: merged.zone || null,
           is_default: merged.is_default,
           status: merged.status || 'active'
-        }]).then();
+        };
+        if (custId && isValidUUID(custId)) {
+          payload.customer_id = custId;
+        }
+        supabase.from('customer_addresses').upsert([payload]).then();
       }
     }
   };
@@ -3449,7 +3545,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       method: 'DELETE'
     }).catch(() => {});
 
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabase && isValidUUID(id)) {
       supabase.from('customer_addresses').delete().eq('id', id).then();
     }
   };
