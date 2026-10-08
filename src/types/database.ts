@@ -285,3 +285,12 @@ export interface VendorReview {
     disputed_at: string;
   };
 }
+
+export interface FavoriteVendor {
+  id: string;
+  customer_id?: string;
+  customer_phone?: string;
+  vendor_id: string;
+  created_at?: string;
+}
+

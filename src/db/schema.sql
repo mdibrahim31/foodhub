@@ -219,8 +219,20 @@ CREATE TABLE IF NOT EXISTS reviews (
   CONSTRAINT unique_order_review UNIQUE (order_code)
 );
 
--- INDEXES FOR FAST QUERYING
-CREATE INDEX IF NOT EXISTS idx_vendors_zone ON vendors(zone);
+-- 12. FAVORITES TABLE (Customer Favorite Vendors)
+CREATE TABLE IF NOT EXISTS favorites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id VARCHAR(255),
+  customer_phone VARCHAR(50),
+  vendor_id VARCHAR(255) NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_customer_vendor_favorite UNIQUE (customer_phone, vendor_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_customer_phone ON favorites(customer_phone);
+CREATE INDEX IF NOT EXISTS idx_favorites_customer_id ON favorites(customer_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_vendor_id ON favorites(vendor_id);
+
 CREATE INDEX IF NOT EXISTS idx_riders_zone ON riders(zone);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_vendor ON orders(vendor_id);
