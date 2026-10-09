@@ -519,272 +519,141 @@ export const VendorOrdersTerminal: React.FC = () => {
               onClick={() => setIsDrawerOpen(false)}
             />
 
-            {/* Side-emerging Window docked to the left edge */}
+            {/* Side-emerging Window docked to the left edge - 100% Matching Example Image */}
             <aside
               onClick={(e) => e.stopPropagation()}
-              className="fixed inset-y-0 left-0 w-[86vw] max-w-sm sm:max-w-md bg-[#f8f9fa] h-full shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-left duration-300 ease-out border-r border-slate-200"
+              className="fixed inset-y-0 left-0 w-[72vw] max-w-[290px] bg-white h-full shadow-2xl flex flex-col z-50 animate-in slide-in-from-left duration-300 ease-out border-r border-slate-200 select-none overflow-y-auto px-6 sm:px-7 pt-10 pb-8"
             >
-              {/* Top Bar / Store Pill & Circular Close Button (Matching Sample) */}
-              <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-4 pt-5 pb-3.5 flex items-center justify-between border-b border-slate-100 shadow-2xs shrink-0">
-                <div
-                  className="flex-1 max-w-[84%] flex items-center space-x-2.5 px-4 py-2.5 rounded-full border border-slate-200/90 bg-white shadow-2xs text-slate-900 transition text-left"
+              {/* Header Title: Your Restaurant */}
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-8">
+                Your Restaurant
+              </h2>
+
+              {/* Group 1 */}
+              <div className="space-y-6 text-[16px] sm:text-[17px] font-semibold text-slate-900">
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    setActiveTab('all');
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
                 >
-                  <Building2 className="w-4 h-4 text-slate-800 shrink-0 stroke-[2]" />
-                  <span className="font-bold text-sm truncate">
-                    {activeVendor.name} {activeVendor.unique_id ? `(${activeVendor.unique_id})` : '(LWTL)'}
-                  </span>
-                </div>
+                  Orders overview
+                </button>
 
                 <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="w-10 h-10 rounded-full border border-slate-200 bg-white shadow-2xs flex items-center justify-center text-slate-600 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition cursor-pointer ml-3 shrink-0 active:scale-95"
-                  title="Close Menu"
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    setIsOrderHistoryModalOpen(true);
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
                 >
-                  <X className="w-5 h-5 stroke-[2.5]" />
+                  Recent orders
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    setIsPerformanceModalOpen(true);
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Performance
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    openVendorProfileModal();
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Menu
+                </button>
+
+                <button
+                  onClick={() => {
+                    alert('Request a rider: Rider dispatch requested for available orders.');
+                  }}
+                  className="w-full flex items-center justify-between text-left hover:text-black transition cursor-pointer"
+                >
+                  <span>Request a rider</span>
+                  <ChevronDown className="w-4 h-4 text-slate-700 stroke-[2]" />
                 </button>
               </div>
 
-              {/* Scrollable 3-dot Menu Content */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Section 1: Monitor your performance */}
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
-                    Monitor your performance
-                  </h2>
-                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        alert('Top Restaurant Program: Your restaurant is currently in the Top Tier Performance category with fast preparation time!');
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Trophy className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Top Restaurant Program</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+              {/* Gap */}
+              <div className="my-7" />
 
-                    <button
-                      onClick={() => setIsPerformanceModalOpen(true)}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <BarChart2 className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Performance</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+              {/* Group 2 */}
+              <div className="space-y-6 text-[16px] sm:text-[17px] font-semibold text-slate-900">
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    alert('Inbox: No new notifications.');
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Inbox
+                </button>
 
-                    <button
-                      onClick={() => setIsOrderHistoryModalOpen(true)}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <History className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Order history</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    alert('Tutorial:\n1. Keep this terminal open for incoming orders.\n2. Audio alert chimes on new order.\n3. Tap Accept and prep food.\n4. Tap Mark Food Ready for pickup.');
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Tutorial
+                </button>
 
-                    <button
-                      onClick={() => {
-                        alert(`Reviews: ${activeVendor.name} has a 4.8★ average rating based on customer feedback.`);
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Star className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Reviews</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+                <button
+                  onClick={() => {
+                    playNewOrderSound();
+                    alert('🔔 Test order sound alert triggered successfully!');
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Send Test Order
+                </button>
+              </div>
 
-                    <button
-                      onClick={() => {
-                        alert('Invoices: Statements and invoices are generated automatically at the end of each billing cycle.');
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Receipt className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Invoices</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+              {/* Gap */}
+              <div className="my-7" />
 
-                    <button
-                      onClick={() => {
-                        alert(`Reports: Daily report for ${activeVendor.name} - Total Orders: ${completedOrders.length}, Sales: ৳${todayEarnings}`);
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <FileSpreadsheet className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Reports</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </div>
-                </div>
+              {/* Group 3 */}
+              <div className="space-y-6 text-[16px] sm:text-[17px] font-semibold text-slate-900">
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    setIsOpeningTimesModalOpen(true);
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Settings
+                </button>
 
-                {/* Section 2: Grow your business */}
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
-                    Grow your business
-                  </h2>
-                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        alert('Advertising: Boost your store visibility in search results and customer feeds.');
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Megaphone className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Advertising</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    setIsHelpModalOpen(true);
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Help Center
+                </button>
 
-                    <button
-                      onClick={() => {
-                        alert('Promotions: Create discounts, buy-1-get-1, and free delivery vouchers for customers.');
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Tag className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Promotions</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Section 3: Manage your business */}
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
-                    Manage your business
-                  </h2>
-                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        alert(`Payments: Next payout will be deposited to the registered bank account for ${activeVendor.name}.`);
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Landmark className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Payments</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-
-                    <button
-                      onClick={() => setIsOpeningTimesModalOpen(true)}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Clock className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Opening times</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsDrawerOpen(false);
-                        openVendorProfileModal();
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Settings className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Settings</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 
-                  ========================================================================
-                  Section 4: About panda partner
-                  "scroll korle help center er niche logout button thakbe"
-                  ========================================================================
-                */}
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
-                    About panda partner
-                  </h2>
-                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-                    {/* 1. Help Center */}
-                    <button
-                      onClick={() => setIsHelpModalOpen(true)}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <HelpCircle className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Help Center</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-
-                    {/* 2. Logout Button DIRECTLY below Help Center as requested */}
-                    <button
-                      onClick={() => {
-                        if (confirm('Are you sure you want to log out from this terminal?')) {
-                          setIsDrawerOpen(false);
-                          logoutUser();
-                        }
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-rose-50/70 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <LogOut className="w-5 h-5 text-rose-600 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-rose-600">
-                          Logout
-                        </span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-rose-400 stroke-[2.5] group-hover:text-rose-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-
-                    {/* 3. Language */}
-                    <button
-                      onClick={() => setCurrentLanguage(prev => prev === 'English' ? 'বাংলা' : 'English')}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <Globe className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Language</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-slate-500">
-                        <span className="text-sm font-semibold text-slate-600">{currentLanguage}</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5]" />
-                      </div>
-                    </button>
-
-                    {/* 4. Send us feedback */}
-                    <button
-                      onClick={() => {
-                        alert('Thank you for your feedback! Our partner support team will review your comments.');
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <MessageSquareQuote className="w-5 h-5 text-slate-800 stroke-[2]" />
-                        <span className="text-[15px] font-bold text-slate-900">Send us feedback</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Version Footer (Matching Sample) */}
-                <div className="text-center py-4 text-xs font-medium text-slate-400">
-                  Version 3.60.0
-                </div>
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to log out from this terminal?')) {
+                      setIsDrawerOpen(false);
+                      logoutUser();
+                    }
+                  }}
+                  className="block w-full text-left text-rose-600 hover:text-rose-700 transition cursor-pointer"
+                >
+                  Logout
+                </button>
               </div>
             </aside>
           </div>
