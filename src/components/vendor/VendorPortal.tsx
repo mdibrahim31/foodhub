@@ -1245,6 +1245,27 @@ export const VendorPortal: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>
 
+                {/* Logout Button directly under Help Center */}
+                <button
+                  onClick={() => {
+                    if (currentUser && currentUser.role === 'vendor') {
+                      setIsLogoutConfirmOpen(true);
+                    } else {
+                      setVendorAuthMode('login');
+                      setIsVendorAuthModalOpen(true);
+                    }
+                  }}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-rose-50/60 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <LogOut className="w-5 h-5 text-rose-600 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-rose-600">
+                      {currentUser && currentUser.role === 'vendor' ? 'Logout' : 'Partner Login'}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-rose-400 stroke-[2.5] group-hover:text-rose-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
                 <button
                   onClick={() => setCurrentLanguage(prev => prev === 'English' ? 'বাংলা' : 'English')}
                   className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
@@ -1270,26 +1291,6 @@ export const VendorPortal: React.FC = () => {
                   <div className="flex items-center space-x-3.5">
                     <MessageSquareQuote className="w-5 h-5 text-slate-800 stroke-[2]" />
                     <span className="text-[15px] font-bold text-slate-900">Send us feedback</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (currentUser && currentUser.role === 'vendor') {
-                      setIsLogoutConfirmOpen(true);
-                    } else {
-                      setVendorAuthMode('login');
-                      setIsVendorAuthModalOpen(true);
-                    }
-                  }}
-                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <LogOut className="w-5 h-5 text-slate-800 stroke-[2]" />
-                    <span className="text-[15px] font-bold text-slate-900">
-                      {currentUser && currentUser.role === 'vendor' ? 'Logout' : 'Partner Login'}
-                    </span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>

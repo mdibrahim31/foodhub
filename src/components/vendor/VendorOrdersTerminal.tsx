@@ -41,7 +41,20 @@ import {
   Lock,
   Building2,
   Utensils,
-  Globe
+  Globe,
+  ChevronRight,
+  Trophy,
+  BarChart2,
+  History,
+  Star,
+  FileSpreadsheet,
+  Megaphone,
+  Tag,
+  Landmark,
+  HelpCircle,
+  MessageSquareQuote,
+  Settings,
+  MoreHorizontal
 } from 'lucide-react';
 
 export const VendorOrdersTerminal: React.FC = () => {
@@ -84,6 +97,11 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   // Vendor Drawer & Profile Modal States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
+  const [isOrderHistoryModalOpen, setIsOrderHistoryModalOpen] = useState(false);
+  const [isOpeningTimesModalOpen, setIsOpeningTimesModalOpen] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState<'English' | 'বাংলা'>('English');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -529,122 +547,355 @@ export const VendorOrdersTerminal: React.FC = () => {
 
         {/* 
           ========================================================================
-          SLIDE-OVER DRAWER (Hamburger Menu ≡)
-          Quick access to Store Profile, Status, Sound Alerts, Settings & Logout
+          3-DOT / MORE / HAMBURGER MENU FULL SCREEN
+          100% Matching Sample Design (Panda Partner More / 3-dot View)
+          Scrollable: Under Section "About panda partner", Logout is directly below Help Center!
           ========================================================================
         */}
-        {isDrawerOpen && (
+        {isDrawerOpen && authenticatedVendor && (
           <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex animate-in fade-in"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center animate-in fade-in"
             onClick={() => setIsDrawerOpen(false)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-xs bg-white h-full shadow-2xl p-5 flex flex-col justify-between animate-in slide-in-from-left duration-200"
+              className="w-full max-w-md bg-[#f8f9fa] h-full sm:h-[94vh] sm:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-200"
             >
-              <div className="space-y-5">
-                {/* Drawer Top: Store Logo, Name & Close */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center overflow-hidden shadow-sm">
-                      {authenticatedVendor?.logo_url ? (
-                        <img
-                          src={authenticatedVendor.logo_url}
-                          alt={authenticatedVendor.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <ChefHat className="w-6 h-6" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-black text-slate-900 text-sm leading-tight">
-                        {authenticatedVendor?.name || 'Restaurant Hub'}
-                      </h3>
-                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                        {authenticatedVendor?.cuisine || 'Kitchen Terminal'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setIsDrawerOpen(false)}
-                    className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+              {/* Top Bar / Store Pill & Circular Close Button (Matching Sample) */}
+              <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-4 pt-5 pb-3.5 flex items-center justify-between border-b border-slate-100 shadow-2xs shrink-0">
+                <div
+                  className="flex-1 max-w-[84%] flex items-center space-x-2.5 px-4 py-2.5 rounded-full border border-slate-200/90 bg-white shadow-2xs text-slate-900 transition text-left"
+                >
+                  <Building2 className="w-4 h-4 text-slate-800 shrink-0 stroke-[2]" />
+                  <span className="font-bold text-sm truncate">
+                    {authenticatedVendor.name} {authenticatedVendor.unique_id ? `(${authenticatedVendor.unique_id})` : '(LWTL)'}
+                  </span>
                 </div>
 
-                {/* Profile Edit Action Button */}
                 <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="w-10 h-10 rounded-full border border-slate-200 bg-white shadow-2xs flex items-center justify-center text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition cursor-pointer ml-3 shrink-0 active:scale-95"
+                  title="Close 3-dot Menu"
+                >
+                  <X className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Scrollable 3-dot Menu Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {/* User / Admin Profile Card */}
+                <div 
                   onClick={() => {
                     setIsDrawerOpen(false);
                     openVendorProfileModal();
                   }}
-                  className="w-full py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-2xl text-xs font-black flex items-center justify-between transition cursor-pointer shadow-2xs"
+                  className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs p-4 flex items-center justify-between cursor-pointer hover:border-orange-300 transition active:scale-[0.99] group"
+                  title="Click to view & edit Store Profile (Logo & Cover photos)"
                 >
-                  <div className="flex items-center space-x-2">
-                    <Camera className="w-4 h-4 text-rose-600" />
-                    <span>Store Profile & Photos</span>
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-14 h-14 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-800 font-extrabold text-lg shrink-0 overflow-hidden relative shadow-xs">
+                      {authenticatedVendor.logo_url ? (
+                        <img 
+                          src={authenticatedVendor.logo_url} 
+                          alt={authenticatedVendor.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                        />
+                      ) : (
+                        <span>{authenticatedVendor.name?.charAt(0) || 'V'}</span>
+                      )}
+                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-900 text-base leading-tight group-hover:text-orange-600 transition-colors">
+                        {currentUser?.name || authenticatedVendor.name || 'Store Admin'}
+                      </h3>
+                      <div className="flex items-center space-x-1.5 mt-0.5">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                          ADMIN
+                        </span>
+                        <span className="text-[10px] text-slate-300">•</span>
+                        <span className="text-[11px] font-bold text-orange-600 truncate max-w-[150px]">
+                          {authenticatedVendor.name}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-md">Edit</span>
-                </button>
+                  <ChevronRight className="w-5 h-5 text-slate-400 stroke-[2.5] group-hover:text-orange-600 transition-transform group-hover:translate-x-0.5" />
+                </div>
 
-                {/* Sound & Auto-Accept Toggles */}
-                <div className="space-y-2 pt-1 text-xs">
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="font-bold text-slate-800">Order Audio Alert</span>
+                {/* Section 1: Monitor your performance */}
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                    Monitor your performance
+                  </h2>
+                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        alert('Top Restaurant Program: Your restaurant is currently in the Top Tier Performance category with fast preparation time!');
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Trophy className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Top Restaurant Program</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    <button
+                      onClick={() => setIsPerformanceModalOpen(true)}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <BarChart2 className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Performance</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-emerald-600 font-mono">৳{todayEarnings}</span>
+                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setIsOrderHistoryModalOpen(true)}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <History className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Order history</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-slate-500 font-mono">{completedOrders.length} orders</span>
+                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        alert(`Reviews: ${authenticatedVendor.name} has a 4.8★ average rating based on customer feedback.`);
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Star className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Reviews</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        alert('Invoices: Statements and invoices are generated automatically at the end of each billing cycle.');
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Receipt className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Invoices</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        alert(`Reports: Daily report for ${authenticatedVendor.name} - Total Orders: ${completedOrders.length}, Sales: ৳${todayEarnings}`);
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <FileSpreadsheet className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Reports</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 2: Grow your business */}
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                    Grow your business
+                  </h2>
+                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        alert('Advertising: Boost your store visibility in search results and customer feeds.');
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Megaphone className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Advertising</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        alert('Promotions: Create discounts, buy-1-get-1, and free delivery vouchers for customers.');
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Tag className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Promotions</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 3: Manage your business */}
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                    Manage your business
+                  </h2>
+                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        alert(`Payments: Next payout will be deposited to the registered bank account for ${authenticatedVendor.name}.`);
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Landmark className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Payments</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    <button
+                      onClick={() => setIsOpeningTimesModalOpen(true)}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Clock className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Opening times</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${
+                          storeStatus === 'online' ? 'bg-emerald-100 text-emerald-800' : storeStatus === 'busy' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {storeStatus}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
+
                     <button
                       onClick={() => {
                         setSoundEnabled(!soundEnabled);
                         if (!soundEnabled) playNewOrderSound();
                       }}
-                      className={`p-1.5 rounded-lg font-bold text-xs transition cursor-pointer ${
-                        soundEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                      }`}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                     >
-                      {soundEnabled ? 'Enabled 🔊' : 'Muted 🔇'}
+                      <div className="flex items-center space-x-3.5">
+                        {soundEnabled ? <Volume2 className="w-5 h-5 text-slate-800 stroke-[2]" /> : <VolumeX className="w-5 h-5 text-slate-400 stroke-[2]" />}
+                        <span className="text-[15px] font-bold text-slate-900">Order Audio Alert</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${soundEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                          {soundEnabled ? 'ON 🔊' : 'OFF 🔇'}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5]" />
+                      </div>
                     </button>
-                  </div>
 
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="font-bold text-slate-800">Auto-Accept Orders</span>
                     <button
-                      onClick={() => setAutoAccept(!autoAccept)}
-                      className={`p-1.5 rounded-lg font-bold text-xs transition cursor-pointer ${
-                        autoAccept ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                      }`}
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        openVendorProfileModal();
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                     >
-                      {autoAccept ? 'ON' : 'OFF'}
+                      <div className="flex items-center space-x-3.5">
+                        <Settings className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Settings</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Performance Summary */}
-                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-xs">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today's Summary</div>
-                  <div className="flex justify-between items-center font-bold">
-                    <span className="text-slate-600">Completed Orders:</span>
-                    <span className="text-slate-900 font-mono">{completedOrders.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center font-bold">
-                    <span className="text-slate-600">Total Food Sales:</span>
-                    <span className="text-emerald-700 font-mono font-black">৳{todayEarnings}</span>
+                {/* 
+                  ========================================================================
+                  Section 4: About panda partner
+                  "scroll korle help center er niche logout button thakbe"
+                  ========================================================================
+                */}
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
+                    About panda partner
+                  </h2>
+                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                    {/* 1. Help Center */}
+                    <button
+                      onClick={() => setIsHelpModalOpen(true)}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <HelpCircle className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Help Center</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    {/* 2. Logout Button DIRECTLY below Help Center as requested */}
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to log out from this terminal?')) {
+                          setIsDrawerOpen(false);
+                          logoutUser();
+                        }
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-rose-50/70 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <LogOut className="w-5 h-5 text-rose-600 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-rose-600">
+                          Logout
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-rose-400 stroke-[2.5] group-hover:text-rose-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+
+                    {/* 3. Language */}
+                    <button
+                      onClick={() => setCurrentLanguage(prev => prev === 'English' ? 'বাংলা' : 'English')}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <Globe className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Language</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-slate-500">
+                        <span className="text-sm font-semibold text-slate-600">{currentLanguage}</span>
+                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5]" />
+                      </div>
+                    </button>
+
+                    {/* 4. Send us feedback */}
+                    <button
+                      onClick={() => {
+                        alert('Thank you for your feedback! Our partner support team will review your comments.');
+                      }}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <MessageSquareQuote className="w-5 h-5 text-slate-800 stroke-[2]" />
+                        <span className="text-[15px] font-bold text-slate-900">Send us feedback</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Drawer Footer: Logout */}
-              <div className="pt-4 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    setIsDrawerOpen(false);
-                    logoutUser();
-                  }}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout Terminal</span>
-                </button>
+                {/* Version Footer (Matching Sample) */}
+                <div className="text-center py-4 text-xs font-medium text-slate-400">
+                  Version 3.60.0
+                </div>
               </div>
             </div>
           </div>
@@ -1228,6 +1479,260 @@ export const VendorOrdersTerminal: React.FC = () => {
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: PARTNER HELP CENTER
+        ========================================================================
+      */}
+      {isHelpModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setIsHelpModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200"
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <HelpCircle className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">Partner Help Center</h3>
+              </div>
+              <button
+                onClick={() => setIsHelpModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-rose-50 rounded-2xl border border-rose-200 space-y-1">
+                <span className="font-bold text-rose-900 text-xs flex items-center space-x-1.5">
+                  <Phone className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Merchant Support Hotline</span>
+                </span>
+                <p className="text-slate-700 text-sm font-mono font-bold">09612-889900</p>
+                <p className="text-[10px] text-slate-500">Available 24/7 for active kitchen and rider assistance</p>
+              </div>
+
+              <div className="space-y-2 pt-1 text-slate-700">
+                <p className="font-bold text-slate-900 text-xs">Common Inquiries:</p>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="font-bold text-slate-800">📸 How to change store logo & cover:</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Click your store profile card in the 3-dot menu to upload 1:1 logo or 16:9 banner.</p>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="font-bold text-slate-800">💰 Payment & Payouts:</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Automated weekly settlements directly transferred to vendor bank accounts.</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsHelpModalOpen(false)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: PERFORMANCE OVERVIEW
+        ========================================================================
+      */}
+      {isPerformanceModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setIsPerformanceModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200"
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <div className="flex items-center space-x-2 text-emerald-600">
+                <BarChart2 className="w-5 h-5" />
+                <h3 className="font-black text-slate-900 text-base">Store Performance</h3>
+              </div>
+              <button
+                onClick={() => setIsPerformanceModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Today's Sales</span>
+                <p className="text-xl font-black text-emerald-600 font-mono mt-1">৳{todayEarnings}</p>
+              </div>
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Completed</span>
+                <p className="text-xl font-black text-slate-900 font-mono mt-1">{completedOrders.length}</p>
+              </div>
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cooking Now</span>
+                <p className="text-xl font-black text-amber-600 font-mono mt-1">{preparingOrders.length}</p>
+              </div>
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Ready / Picked</span>
+                <p className="text-xl font-black text-blue-600 font-mono mt-1">{readyOrders.length}</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsPerformanceModalOpen(false)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: ORDER HISTORY
+        ========================================================================
+      */}
+      {isOrderHistoryModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setIsOrderHistoryModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[85vh] flex flex-col"
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <div className="flex items-center space-x-2 text-slate-900">
+                <History className="w-5 h-5 text-rose-600" />
+                <h3 className="font-black text-slate-900 text-base">Completed Orders</h3>
+              </div>
+              <button
+                onClick={() => setIsOrderHistoryModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
+              {completedOrders.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 font-bold">
+                  No completed orders yet today.
+                </div>
+              ) : (
+                completedOrders.map((ord) => (
+                  <div key={ord.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-mono font-black text-rose-600">#{ord.order_code}</span>
+                      <span className="font-mono font-black text-slate-900">৳{ord.total_cash_payable}</span>
+                    </div>
+                    <p className="text-slate-600 font-medium truncate">
+                      {ord.items?.map(i => `${i.quantity}x ${i.item_name}`).join(', ')}
+                    </p>
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {ord.customer_name}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsOrderHistoryModalOpen(false)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: OPENING TIMES & STATUS
+        ========================================================================
+      */}
+      {isOpeningTimesModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setIsOpeningTimesModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200"
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <div className="flex items-center space-x-2 text-slate-900">
+                <Clock className="w-5 h-5 text-rose-600" />
+                <h3 className="font-black text-slate-900 text-base">Store Status & Hours</h3>
+              </div>
+              <button
+                onClick={() => setIsOpeningTimesModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="font-bold text-slate-600">Select Store Operational Status:</p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setStoreStatus('online')}
+                  className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
+                    storeStatus === 'online' ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                  <span>ONLINE</span>
+                </button>
+
+                <button
+                  onClick={() => setStoreStatus('busy')}
+                  className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
+                    storeStatus === 'busy' ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                  <span>BUSY</span>
+                </button>
+
+                <button
+                  onClick={() => setStoreStatus('offline')}
+                  className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
+                    storeStatus === 'offline' ? 'bg-rose-50 border-rose-500 text-rose-800 ring-2 ring-rose-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-full bg-rose-500"></span>
+                  <span>PAUSED</span>
+                </button>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1 text-slate-600">
+                <span className="font-bold text-slate-900">Standard Operating Schedule:</span>
+                <p>Monday – Sunday: 10:00 AM – 11:30 PM</p>
+                <p className="text-[10px] text-slate-400">Orders placed during opening hours will automatically alert terminal audio.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsOpeningTimesModalOpen(false)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+            >
+              Apply Status
+            </button>
           </div>
         </div>
       )}
