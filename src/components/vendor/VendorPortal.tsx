@@ -1585,42 +1585,6 @@ export const VendorPortal: React.FC = () => {
               )}
             </section>
 
-            {/* Smart Actions */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center space-x-1.5">
-                  <Sparkles className="w-4 h-4 text-orange-500" />
-                  <span>Smart actions</span>
-                </h3>
-                <button 
-                  onClick={() => alert('Smart Actions: Accept orders quickly and keep your menu up to date to increase ranking.')}
-                  className="text-xs font-bold text-slate-500 hover:text-orange-600 transition flex items-center"
-                >
-                  <span>More</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                </button>
-              </div>
-
-              <div className="p-4 bg-orange-50/70 border border-orange-100 rounded-2xl space-y-2">
-                <h4 className="font-extrabold text-xs text-slate-900 leading-snug">
-                  Customers couldn't order from you for 367 hours recently
-                </h4>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  92% of all restaurants have better availability
-                </p>
-                <button 
-                  onClick={() => {
-                    setIsStoreOnline(true);
-                    alert('Store availability updated to 100% active!');
-                  }}
-                  className="text-xs font-black text-orange-600 hover:text-orange-700 transition inline-flex items-center space-x-1 pt-1"
-                >
-                  <span>Get started</span>
-                  <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-              </div>
-            </section>
-
             {/* Reviews */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
