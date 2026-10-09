@@ -54,7 +54,8 @@ import {
   HelpCircle,
   MessageSquareQuote,
   Settings,
-  MoreHorizontal
+  MoreHorizontal,
+  MoreVertical
 } from 'lucide-react';
 
 export const VendorOrdersTerminal: React.FC = () => {
@@ -344,14 +345,23 @@ export const VendorOrdersTerminal: React.FC = () => {
           ========================================================================
         */}
         <header className="px-5 pt-6 pb-4 flex items-center justify-between bg-white shrink-0">
-          {/* Left: Hamburger menu icon */}
-          <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer active:scale-95"
-            title="Open Menu & Store Settings"
-          >
-            <Menu className="w-7 h-7 stroke-[2.2]" />
-          </button>
+          {/* Left: Hamburger menu & 3-dot trigger icons */}
+          <div className="flex items-center space-x-1.5">
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer active:scale-95"
+              title="Open Menu / Window"
+            >
+              <Menu className="w-7 h-7 stroke-[2.2]" />
+            </button>
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className="p-1 text-slate-400 hover:text-slate-800 transition cursor-pointer active:scale-95"
+              title="3-dot Menu"
+            >
+              <MoreVertical className="w-5 h-5 stroke-[2.2]" />
+            </button>
+          </div>
 
           {/* Right Group: Store icon with clock + Status Pill */}
           <div className="flex items-center space-x-3.5">
@@ -547,19 +557,25 @@ export const VendorOrdersTerminal: React.FC = () => {
 
         {/* 
           ========================================================================
-          3-DOT / MORE / HAMBURGER MENU FULL SCREEN
-          100% Matching Sample Design (Panda Partner More / 3-dot View)
-          Scrollable: Under Section "About panda partner", Logout is directly below Help Center!
+          SIDE-SLIDING WINDOW (DRAWER / 3-DOT MENU)
+          "example image er moto same design koro.page na window ber hobe side theke"
+          - Darkened backdrop overlay
+          - Window emerges/slides smoothly from the left side (fixed inset-y-0 left-0)
+          - Scrollable: Logout is positioned directly below Help Center
           ========================================================================
         */}
         {isDrawerOpen && authenticatedVendor && (
-          <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center animate-in fade-in"
-            onClick={() => setIsDrawerOpen(false)}
-          >
+          <div className="fixed inset-0 z-50 overflow-hidden">
+            {/* Dimmed backdrop overlay */}
             <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-300"
+              onClick={() => setIsDrawerOpen(false)}
+            />
+
+            {/* Side-emerging Window docked to the left edge */}
+            <aside
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-[#f8f9fa] h-full sm:h-[94vh] sm:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-200"
+              className="fixed inset-y-0 left-0 w-[86vw] max-w-sm sm:max-w-md bg-[#f8f9fa] h-full shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-left duration-300 ease-out border-r border-slate-200"
             >
               {/* Top Bar / Store Pill & Circular Close Button (Matching Sample) */}
               <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-4 pt-5 pb-3.5 flex items-center justify-between border-b border-slate-100 shadow-2xs shrink-0">
@@ -897,7 +913,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                   Version 3.60.0
                 </div>
               </div>
-            </div>
+            </aside>
           </div>
         )}
 
