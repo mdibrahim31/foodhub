@@ -1044,45 +1044,6 @@ export const VendorPortal: React.FC = () => {
           </div>
 
           <div className="p-4 space-y-6">
-            {/* User / Admin Profile Card (Matching Screenshot 1) */}
-            <div 
-              onClick={() => openVendorProfileModal()}
-              className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs p-4 flex items-center justify-between cursor-pointer hover:border-orange-300 transition active:scale-[0.99] group"
-              title="Click to open Vendor Profile (logo, cover photo & store settings)"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="w-14 h-14 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-800 font-extrabold text-lg shrink-0 overflow-hidden relative shadow-xs">
-                  {currentVendor.logo_url ? (
-                    <img 
-                      src={currentVendor.logo_url} 
-                      alt={currentVendor.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                    />
-                  ) : (
-                    <span>{getUserInitials(currentUser?.name || currentVendor.name || 'Farid Ullah')}</span>
-                  )}
-                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                    <Camera className="w-4 h-4" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900 text-base leading-tight group-hover:text-orange-600 transition-colors">
-                    {currentUser?.name || currentVendor.name || 'Farid Ullah'}
-                  </h3>
-                  <div className="flex items-center space-x-1.5 mt-0.5">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                      ADMIN
-                    </span>
-                    <span className="text-[10px] text-slate-300">•</span>
-                    <span className="text-[11px] font-bold text-orange-600 truncate max-w-[150px]">
-                      {currentVendor.name}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-slate-400 stroke-[2.5] group-hover:text-orange-600 transition-transform group-hover:translate-x-0.5" />
-            </div>
-
             {/* Section 1: Monitor your performance */}
             <div>
               <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">

@@ -114,26 +114,26 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const openVendorProfileModal = () => {
-    if (!authenticatedVendor) return;
-    setProfileLogoUrlInput(authenticatedVendor.logo_url || '');
-    setProfileCoverUrlInput(authenticatedVendor.cover_image || '');
+    if (!activeVendor) return;
+    setProfileLogoUrlInput(activeVendor.logo_url || '');
+    setProfileCoverUrlInput(activeVendor.cover_image || '');
     setIsUrlInputMode(false);
     setUploadFeedback(null);
     setIsProfileModalOpen(true);
   };
 
   const handleApplyWebUrls = async () => {
-    if (!authenticatedVendor) return;
+    if (!activeVendor) return;
     setUploadFeedback(null);
     const updates: Partial<Vendor> = {};
-    if (profileLogoUrlInput.trim() !== (authenticatedVendor.logo_url || '')) {
+    if (profileLogoUrlInput.trim() !== (activeVendor.logo_url || '')) {
       updates.logo_url = profileLogoUrlInput.trim();
     }
-    if (profileCoverUrlInput.trim() !== (authenticatedVendor.cover_image || '')) {
+    if (profileCoverUrlInput.trim() !== (activeVendor.cover_image || '')) {
       updates.cover_image = profileCoverUrlInput.trim();
     }
     if (Object.keys(updates).length > 0) {
-      await updateVendor(authenticatedVendor.id, updates);
+      await updateVendor(activeVendor.id, updates);
       setUploadFeedback({ type: 'success', message: '✅ ছবির লিংক ডাটাবেসে সফলভাবে আপডেট হয়েছে!' });
     } else {
       setUploadFeedback({ type: 'error', message: 'কোনো নতুন লিংক পরিবর্তন করা হয়নি।' });
@@ -143,15 +143,17 @@ export const VendorOrdersTerminal: React.FC = () => {
   // Audio Ref tracking previous pending count
   const prevPendingCountRef = useRef<number>(0);
 
-  // Strictly matched to logged-in vendor user only — SWITCHING TO OTHER STORES IS DISABLED
+  // Active vendor: logged in vendor, currentVendor, or fallback to first vendor so terminal is always ready
   const authenticatedVendor = (currentUser && currentUser.role === 'vendor')
     ? (vendors.find(v => v.id === currentUser.reference_id || v.phone.replace(/\D/g, '') === currentUser.phone.replace(/\D/g, '')) || currentVendor)
     : null;
 
+  const activeVendor = authenticatedVendor || currentVendor || vendors[0];
+
   const isAuthenticated = Boolean(currentUser && currentUser.role === 'vendor' && authenticatedVendor);
 
-  // Filter orders strictly for THIS restaurant only
-  const vendorOrders = authenticatedVendor ? orders.filter((o) => o.vendor_id === authenticatedVendor.id) : [];
+  // Filter orders strictly for active restaurant
+  const vendorOrders = activeVendor ? orders.filter((o) => o.vendor_id === activeVendor.id) : [];
 
   const pendingOrders = vendorOrders.filter((o) => o.status === 'pending');
   const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
@@ -271,72 +273,17 @@ export const VendorOrdersTerminal: React.FC = () => {
   // Total earnings today for this restaurant
   const todayEarnings = completedOrders.reduce((sum, o) => sum + o.food_total, 0);
 
-  // 🔒 STRICT AUTH GATE: Login required to enter the terminal!
-  if (!isAuthenticated || !authenticatedVendor) {
+  if (!activeVendor) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
-        <div className="bg-slate-800 text-slate-100 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-700">
-          
-          <div className="text-center space-y-2">
-            <div className="w-14 h-14 bg-rose-600/20 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-md">
-              <Store className="w-7 h-7 stroke-[2.5]" />
-            </div>
-            <h2 className="text-2xl font-black tracking-tight text-white">
-              foodiplace Orders Terminal
-            </h2>
-            <p className="text-xs text-slate-400 font-bold">
-              Vendor Partner Login
-            </p>
-          </div>
-
-          {authError && (
-            <div className="p-3.5 bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-bold rounded-2xl animate-in fade-in">
-              {authError}
-            </div>
-          )}
-
-          <form onSubmit={handleVendorLoginSubmit} className="space-y-4 text-xs font-bold">
-            <div className="space-y-1">
-              <label className="text-slate-400 uppercase tracking-wider text-[10px]">Registered Phone Number</label>
-              <input
-                type="tel"
-                value={authPhone}
-                onChange={(e) => setAuthPhone(e.target.value)}
-                placeholder="e.g. 01711122233"
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl font-mono text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-slate-400 uppercase tracking-wider text-[10px]">Password</label>
-              <input
-                type="password"
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-hidden focus:border-rose-500 text-sm"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
-            >
-              Login to Orders Terminal
-            </button>
-          </form>
-
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 text-slate-500 font-bold">
+        Loading restaurant terminal...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#fed9de] sm:py-6 flex flex-col justify-start items-center font-sans antialiased selection:bg-rose-500 selection:text-white">
-      {/* Mobile Device Frame matching Sample Image 2 */}
-      <div className="w-full max-w-md bg-white sm:rounded-[2.5rem] shadow-xl min-h-screen sm:min-h-[92vh] flex flex-col overflow-hidden relative border-x border-pink-200/50">
+    <div className="min-h-screen bg-[#f8f9fa] flex flex-col items-center justify-start font-sans antialiased selection:bg-[#d70f64] selection:text-white">
+      <div className="w-full max-w-lg min-h-screen bg-white sm:shadow-md sm:border-x sm:border-slate-100 flex flex-col overflow-hidden relative">
         
         {/* 
           ========================================================================
@@ -416,7 +363,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div>
               <div className="flex items-center space-x-1.5 mb-2.5">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">New</h2>
-                <span className="text-2xl sm:text-3xl font-black text-rose-600">{pendingOrders.length}</span>
+                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{pendingOrders.length}</span>
               </div>
 
               {pendingOrders.length === 0 ? (
@@ -461,7 +408,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div>
               <div className="flex items-center space-x-1.5 mb-2.5">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Upcoming</h2>
-                <span className="text-2xl sm:text-3xl font-black text-rose-600">{readyOrders.length}</span>
+                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{readyOrders.length}</span>
               </div>
 
               {readyOrders.length === 0 ? (
@@ -504,7 +451,7 @@ export const VendorOrdersTerminal: React.FC = () => {
           <div className="mt-8 sm:mt-10">
             <div className="flex items-center space-x-1.5 mb-2.5">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Accepted</h2>
-              <span className="text-2xl sm:text-3xl font-black text-rose-600">{preparingOrders.length}</span>
+              <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{preparingOrders.length}</span>
             </div>
 
             {preparingOrders.length === 0 ? (
@@ -564,7 +511,7 @@ export const VendorOrdersTerminal: React.FC = () => {
           - Scrollable: Logout is positioned directly below Help Center
           ========================================================================
         */}
-        {isDrawerOpen && authenticatedVendor && (
+        {isDrawerOpen && activeVendor && (
           <div className="fixed inset-0 z-50 overflow-hidden">
             {/* Dimmed backdrop overlay */}
             <div
@@ -584,14 +531,14 @@ export const VendorOrdersTerminal: React.FC = () => {
                 >
                   <Building2 className="w-4 h-4 text-slate-800 shrink-0 stroke-[2]" />
                   <span className="font-bold text-sm truncate">
-                    {authenticatedVendor.name} {authenticatedVendor.unique_id ? `(${authenticatedVendor.unique_id})` : '(LWTL)'}
+                    {activeVendor.name} {activeVendor.unique_id ? `(${activeVendor.unique_id})` : '(LWTL)'}
                   </span>
                 </div>
 
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="w-10 h-10 rounded-full border border-slate-200 bg-white shadow-2xs flex items-center justify-center text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition cursor-pointer ml-3 shrink-0 active:scale-95"
-                  title="Close 3-dot Menu"
+                  className="w-10 h-10 rounded-full border border-slate-200 bg-white shadow-2xs flex items-center justify-center text-slate-600 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition cursor-pointer ml-3 shrink-0 active:scale-95"
+                  title="Close Menu"
                 >
                   <X className="w-5 h-5 stroke-[2.5]" />
                 </button>
@@ -599,48 +546,6 @@ export const VendorOrdersTerminal: React.FC = () => {
 
               {/* Scrollable 3-dot Menu Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* User / Admin Profile Card */}
-                <div 
-                  onClick={() => {
-                    setIsDrawerOpen(false);
-                    openVendorProfileModal();
-                  }}
-                  className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs p-4 flex items-center justify-between cursor-pointer hover:border-orange-300 transition active:scale-[0.99] group"
-                  title="Click to view & edit Store Profile (Logo & Cover photos)"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <div className="w-14 h-14 rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-800 font-extrabold text-lg shrink-0 overflow-hidden relative shadow-xs">
-                      {authenticatedVendor.logo_url ? (
-                        <img 
-                          src={authenticatedVendor.logo_url} 
-                          alt={authenticatedVendor.name} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                        />
-                      ) : (
-                        <span>{authenticatedVendor.name?.charAt(0) || 'V'}</span>
-                      )}
-                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                        <Camera className="w-4 h-4" />
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-black text-slate-900 text-base leading-tight group-hover:text-orange-600 transition-colors">
-                        {currentUser?.name || authenticatedVendor.name || 'Store Admin'}
-                      </h3>
-                      <div className="flex items-center space-x-1.5 mt-0.5">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                          ADMIN
-                        </span>
-                        <span className="text-[10px] text-slate-300">•</span>
-                        <span className="text-[11px] font-bold text-orange-600 truncate max-w-[150px]">
-                          {authenticatedVendor.name}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400 stroke-[2.5] group-hover:text-orange-600 transition-transform group-hover:translate-x-0.5" />
-                </div>
-
                 {/* Section 1: Monitor your performance */}
                 <div>
                   <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-3">
@@ -684,7 +589,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                     <button
                       onClick={() => {
-                        alert(`Reviews: ${authenticatedVendor.name} has a 4.8★ average rating based on customer feedback.`);
+                        alert(`Reviews: ${activeVendor.name} has a 4.8★ average rating based on customer feedback.`);
                       }}
                       className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                     >
@@ -710,7 +615,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                     <button
                       onClick={() => {
-                        alert(`Reports: Daily report for ${authenticatedVendor.name} - Total Orders: ${completedOrders.length}, Sales: ৳${todayEarnings}`);
+                        alert(`Reports: Daily report for ${activeVendor.name} - Total Orders: ${completedOrders.length}, Sales: ৳${todayEarnings}`);
                       }}
                       className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                     >
@@ -765,7 +670,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                   <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
                     <button
                       onClick={() => {
-                        alert(`Payments: Next payout will be deposited to the registered bank account for ${authenticatedVendor.name}.`);
+                        alert(`Payments: Next payout will be deposited to the registered bank account for ${activeVendor.name}.`);
                       }}
                       className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                     >
@@ -958,9 +863,9 @@ export const VendorOrdersTerminal: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white text-slate-950 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl font-mono text-xs border border-slate-200">
             <div className="text-center border-b border-dashed border-slate-300 pb-3 space-y-1">
-              <h2 className="text-base font-black uppercase tracking-wider">{authenticatedVendor?.name}</h2>
-              <p className="text-[10px] text-slate-500">{authenticatedVendor?.address}</p>
-              <p className="text-[10px] text-slate-500">Tel: {authenticatedVendor?.phone}</p>
+              <h2 className="text-base font-black uppercase tracking-wider">{activeVendor?.name}</h2>
+              <p className="text-[10px] text-slate-500">{activeVendor?.address}</p>
+              <p className="text-[10px] text-slate-500">Tel: {activeVendor?.phone}</p>
               <div className="font-bold text-sm text-slate-900 pt-1">
                 KITCHEN DOCKET #{printModalOrder.order_code}
               </div>
@@ -1032,7 +937,7 @@ export const VendorOrdersTerminal: React.FC = () => {
         MODAL: VENDOR PROFILE WINDOW (VIEW-ONLY INFO, PROFILE & COVER IMAGES EDIT)
         ========================================================================
       */}
-      {isProfileModalOpen && authenticatedVendor && (
+      {isProfileModalOpen && activeVendor && (
         <div 
           className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
           onClick={() => setIsProfileModalOpen(false)}
@@ -1088,9 +993,9 @@ export const VendorOrdersTerminal: React.FC = () => {
               <div className="bg-slate-50 rounded-3xl border border-slate-200/90 overflow-hidden shadow-2xs">
                 {/* 1. Cover Banner Section */}
                 <div className="relative h-36 sm:h-44 bg-gradient-to-r from-rose-500 via-orange-500 to-pink-500 group overflow-hidden">
-                  {authenticatedVendor.cover_image ? (
+                  {activeVendor.cover_image ? (
                     <img
-                      src={authenticatedVendor.cover_image}
+                      src={activeVendor.cover_image}
                       alt="Store Cover Banner"
                       className="w-full h-full object-cover"
                     />
@@ -1107,21 +1012,21 @@ export const VendorOrdersTerminal: React.FC = () => {
                     {/* Add / Change Cover Photo Button */}
                     <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-xl text-xs font-bold backdrop-blur-md cursor-pointer transition shadow-md active:scale-95">
                       <Camera className="w-3.5 h-3.5 text-rose-400" />
-                      <span>{isUploadingCover ? 'Uploading...' : authenticatedVendor.cover_image ? 'Change Cover' : 'Add Cover'}</span>
+                      <span>{isUploadingCover ? 'Uploading...' : activeVendor.cover_image ? 'Change Cover' : 'Add Cover'}</span>
                       <input
                         type="file"
                         accept="image/*"
                         disabled={isUploadingCover || isDeletingCover}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (!file || !authenticatedVendor) return;
+                          if (!file || !activeVendor) return;
                           setIsUploadingCover(true);
                           setUploadFeedback(null);
-                          const oldCoverUrl = authenticatedVendor.cover_image;
-                          const res = await uploadVendorImage(authenticatedVendor.name, file, 'cover', oldCoverUrl);
+                          const oldCoverUrl = activeVendor.cover_image;
+                          const res = await uploadVendorImage(activeVendor.name, file, 'cover', oldCoverUrl);
                           setIsUploadingCover(false);
                           if (res.success && res.url) {
-                            await updateVendor(authenticatedVendor.id, { cover_image: res.url });
+                            await updateVendor(activeVendor.id, { cover_image: res.url });
                             setProfileCoverUrlInput(res.url);
                             setUploadFeedback({ 
                               type: 'success', 
@@ -1136,15 +1041,15 @@ export const VendorOrdersTerminal: React.FC = () => {
                     </label>
 
                     {/* Delete Cover Photo Button */}
-                    {authenticatedVendor.cover_image && (
+                    {activeVendor.cover_image && (
                       <button
                         disabled={isDeletingCover || isUploadingCover}
                         onClick={async () => {
-                          if (!authenticatedVendor) return;
+                          if (!activeVendor) return;
                           if (confirm('কভার ছবি ডাটাবেস থেকে ডিলিট করতে চান?\n(Delete cover photo from database?)')) {
                             setIsDeletingCover(true);
                             setUploadFeedback(null);
-                            const res = await deleteVendorImage(authenticatedVendor.id, 'cover');
+                            const res = await deleteVendorImage(activeVendor.id, 'cover');
                             setIsDeletingCover(false);
                             if (res.success) {
                               setProfileCoverUrlInput('');
@@ -1173,14 +1078,14 @@ export const VendorOrdersTerminal: React.FC = () => {
                     {/* Avatar Circle */}
                     <div className="relative group/avatar shrink-0">
                       <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white bg-slate-100 shadow-lg overflow-hidden flex items-center justify-center text-slate-800 font-black text-xl">
-                        {authenticatedVendor.logo_url ? (
+                        {activeVendor.logo_url ? (
                           <img
-                            src={authenticatedVendor.logo_url}
+                            src={activeVendor.logo_url}
                             alt="Store Logo"
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <span>{authenticatedVendor.name?.charAt(0) || 'V'}</span>
+                          <span>{activeVendor.name?.charAt(0) || 'V'}</span>
                         )}
                       </div>
 
@@ -1193,14 +1098,14 @@ export const VendorOrdersTerminal: React.FC = () => {
                           disabled={isUploadingLogo || isDeletingLogo}
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (!file || !authenticatedVendor) return;
+                            if (!file || !activeVendor) return;
                             setIsUploadingLogo(true);
                             setUploadFeedback(null);
-                            const oldLogoUrl = authenticatedVendor.logo_url;
-                            const res = await uploadVendorImage(authenticatedVendor.name, file, 'logo', oldLogoUrl);
+                            const oldLogoUrl = activeVendor.logo_url;
+                            const res = await uploadVendorImage(activeVendor.name, file, 'logo', oldLogoUrl);
                             setIsUploadingLogo(false);
                             if (res.success && res.url) {
-                              await updateVendor(authenticatedVendor.id, { logo_url: res.url });
+                              await updateVendor(activeVendor.id, { logo_url: res.url });
                               setProfileLogoUrlInput(res.url);
                               setUploadFeedback({ 
                                 type: 'success', 
@@ -1217,10 +1122,10 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                     <div className="mb-1">
                       <h4 className="font-black text-base text-slate-900 leading-tight">
-                        {authenticatedVendor.name}
+                        {activeVendor.name}
                       </h4>
                       <p className="text-xs text-slate-500 font-medium">
-                        {authenticatedVendor.cuisine || 'Fast Food & Restaurant'}
+                        {activeVendor.cuisine || 'Fast Food & Restaurant'}
                       </p>
                       <span className="inline-block mt-1 text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-md">
                         সুপারিশকৃত সাইজ: 1:1 স্কয়ার (500×500 px)
@@ -1233,21 +1138,21 @@ export const VendorOrdersTerminal: React.FC = () => {
                     {/* Add / Change Photo */}
                     <label className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-xs active:scale-95">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>{isUploadingLogo ? 'Uploading...' : authenticatedVendor.logo_url ? 'Change Photo' : 'Add Photo'}</span>
+                      <span>{isUploadingLogo ? 'Uploading...' : activeVendor.logo_url ? 'Change Photo' : 'Add Photo'}</span>
                       <input
                         type="file"
                         accept="image/*"
                         disabled={isUploadingLogo || isDeletingLogo}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (!file || !authenticatedVendor) return;
+                          if (!file || !activeVendor) return;
                           setIsUploadingLogo(true);
                           setUploadFeedback(null);
-                          const oldLogoUrl = authenticatedVendor.logo_url;
-                          const res = await uploadVendorImage(authenticatedVendor.name, file, 'logo', oldLogoUrl);
+                          const oldLogoUrl = activeVendor.logo_url;
+                          const res = await uploadVendorImage(activeVendor.name, file, 'logo', oldLogoUrl);
                           setIsUploadingLogo(false);
                           if (res.success && res.url) {
-                            await updateVendor(authenticatedVendor.id, { logo_url: res.url });
+                            await updateVendor(activeVendor.id, { logo_url: res.url });
                             setProfileLogoUrlInput(res.url);
                             setUploadFeedback({ 
                               type: 'success', 
@@ -1262,15 +1167,15 @@ export const VendorOrdersTerminal: React.FC = () => {
                     </label>
 
                     {/* Delete Photo Button */}
-                    {authenticatedVendor.logo_url && (
+                    {activeVendor.logo_url && (
                       <button
                         disabled={isDeletingLogo || isUploadingLogo}
                         onClick={async () => {
-                          if (!authenticatedVendor) return;
+                          if (!activeVendor) return;
                           if (confirm('প্রোফাইল ছবি ডাটাবেস থেকে ডিলিট করতে চান?\n(Delete profile photo from database?)')) {
                             setIsDeletingLogo(true);
                             setUploadFeedback(null);
-                            const res = await deleteVendorImage(authenticatedVendor.id, 'logo');
+                            const res = await deleteVendorImage(activeVendor.id, 'logo');
                             setIsDeletingLogo(false);
                             if (res.success) {
                               setProfileLogoUrlInput('');
@@ -1392,7 +1297,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                       <span>Restaurant Name</span>
                     </div>
                     <div className="font-bold text-slate-900 text-sm truncate">
-                      {authenticatedVendor.name || '—'}
+                      {activeVendor.name || '—'}
                     </div>
                   </div>
 
@@ -1403,7 +1308,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                       <span>Phone Number</span>
                     </div>
                     <div className="font-bold text-slate-900 text-sm font-mono truncate">
-                      {authenticatedVendor.phone || '—'}
+                      {activeVendor.phone || '—'}
                     </div>
                   </div>
 
@@ -1414,7 +1319,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                       <span>Store Address</span>
                     </div>
                     <div className="font-bold text-slate-900 text-xs leading-relaxed">
-                      {authenticatedVendor.address || '—'}
+                      {activeVendor.address || '—'}
                     </div>
                   </div>
 
@@ -1425,7 +1330,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                       <span>Cuisine Type</span>
                     </div>
                     <div className="font-bold text-slate-900 text-xs">
-                      {authenticatedVendor.cuisine || 'Restaurant & Fast Food'}
+                      {activeVendor.cuisine || 'Restaurant & Fast Food'}
                     </div>
                   </div>
 
@@ -1438,7 +1343,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                     <div className="font-bold text-slate-900 text-xs flex items-center space-x-2">
                       <span className="w-2 h-2 rounded-full bg-rose-500"></span>
                       <span>
-                        {authenticatedVendor.zone || 'Chittagong Central Zone'}
+                        {activeVendor.zone || 'Chittagong Central Zone'}
                       </span>
                     </div>
                   </div>
