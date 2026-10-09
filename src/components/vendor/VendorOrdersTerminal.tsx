@@ -33,6 +33,7 @@ import {
   Square,
   KeyRound,
   LogOut,
+  Menu,
   Camera,
   Image,
   Upload,
@@ -81,7 +82,8 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
 
-  // Vendor Profile Modal States
+  // Vendor Drawer & Profile Modal States
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -313,622 +315,342 @@ export const VendorOrdersTerminal: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans select-none antialiased">
-      {/* 
-        ========================================================================
-        1. RESTAURANT ORDERS HEADER BAR (Customer-Site Clean White Theme)
-        ========================================================================
-      */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3 sm:px-6 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          
-          {/* Left: Brand + Logged-in Store Name (Clickable Profile Modal Button) */}
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={openVendorProfileModal}
-              className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30 overflow-hidden cursor-pointer hover:opacity-90 transition shrink-0"
-              title="Click to view & change Store Profile"
-            >
-              {authenticatedVendor.logo_url ? (
-                <img
-                  src={authenticatedVendor.logo_url}
-                  alt={authenticatedVendor.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <ChefHat className="w-6 h-6" />
-              )}
-            </button>
+    <div className="min-h-screen bg-[#fed9de] sm:py-6 flex flex-col justify-start items-center font-sans antialiased selection:bg-rose-500 selection:text-white">
+      {/* Mobile Device Frame matching Sample Image 2 */}
+      <div className="w-full max-w-md bg-white sm:rounded-[2.5rem] shadow-xl min-h-screen sm:min-h-[92vh] flex flex-col overflow-hidden relative border-x border-pink-200/50">
+        
+        {/* 
+          ========================================================================
+          TOP HEADER (100% Matching Sample Image 2)
+          Hamburger Menu ≡ (left) | Storefront with Clock + ● OPEN Pill (right)
+          ========================================================================
+        */}
+        <header className="px-5 pt-6 pb-4 flex items-center justify-between bg-white shrink-0">
+          {/* Left: Hamburger menu icon */}
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer active:scale-95"
+            title="Open Menu & Store Settings"
+          >
+            <Menu className="w-7 h-7 stroke-[2.2]" />
+          </button>
 
+          {/* Right Group: Store icon with clock + Status Pill */}
+          <div className="flex items-center space-x-3.5">
+            {/* Storefront with Clock Badge */}
             <button
               onClick={openVendorProfileModal}
-              className="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 text-left px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-xs cursor-pointer transition group"
-              title="Click to open vendor profile (Logo & Cover Photo)"
+              className="relative text-slate-800 hover:text-black transition cursor-pointer active:scale-95"
+              title="Click to view & edit Store Profile (Logo & Cover)"
             >
-              <div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant Terminal</span>
-                  <span className={`w-2 h-2 rounded-full ${
-                    storeStatus === 'online' ? 'bg-emerald-500 animate-pulse' :
-                    storeStatus === 'busy' ? 'bg-amber-500' : 'bg-rose-500'
-                  }`} />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[150px] sm:max-w-xs group-hover:text-rose-600 transition">
-                    {authenticatedVendor.name}
-                  </h1>
-                  <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-lg group-hover:bg-rose-200 transition shrink-0">
-                    Profile ⚙️
-                  </span>
-                </div>
+              <Store className="w-6 h-6 stroke-[1.8]" />
+              <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-2xs">
+                <Clock className="w-3.5 h-3.5 stroke-[2.2] text-slate-800" />
               </div>
             </button>
-          </div>
 
-          {/* Center: Live Order Counter Pills */}
-          <div className="hidden lg:flex items-center space-x-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'pending'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Bell className="w-3.5 h-3.5 text-rose-200" />
-              <span>New Requests</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                pendingOrders.length > 0 ? 'bg-white text-rose-600' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {pendingOrders.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('preparing')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'preparing'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Flame className="w-3.5 h-3.5 text-amber-200" />
-              <span>Cooking ({preparingOrders.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ready')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'ready'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Bike className="w-3.5 h-3.5 text-blue-200" />
-              <span>Rider Pickup ({readyOrders.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('completed')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'completed'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
-              <span>Done ({completedOrders.length})</span>
-            </button>
-          </div>
-
-          {/* Right: Sound, Auto-Accept & Store Controls */}
-          <div className="flex items-center space-x-2.5">
-            {/* Audio Toggle */}
+            {/* Status Pill: ● OPEN matching Sample Image 2 */}
             <button
               onClick={() => {
-                setSoundEnabled(!soundEnabled);
-                if (!soundEnabled) playNewOrderSound();
+                setStoreStatus((prev) => (prev === 'online' ? 'busy' : prev === 'busy' ? 'offline' : 'online'));
               }}
-              className={`p-2.5 rounded-xl border transition ${
-                soundEnabled
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-slate-100 text-slate-400 border-slate-200'
-              }`}
-              title={soundEnabled ? 'Order Audio Chime Enabled' : 'Audio Muted'}
+              className="bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs rounded-full px-3.5 py-1.5 flex items-center space-x-2 transition cursor-pointer active:scale-95"
+              title="Click to toggle store status (Open / Busy / Paused)"
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-
-            {/* Auto Accept Switch */}
-            <button
-              onClick={() => setAutoAccept(!autoAccept)}
-              className={`hidden sm:flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition ${
-                autoAccept
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
-              }`}
-              title="Automatically accept all incoming orders immediately"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Auto-Accept {autoAccept ? 'ON' : 'OFF'}</span>
-            </button>
-
-            {/* Store Status Toggle */}
-            <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-0.5">
-              <button
-                onClick={() => setStoreStatus('online')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  storeStatus === 'online' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  storeStatus === 'online'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : storeStatus === 'busy'
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500'
                 }`}
-              >
-                Open
-              </button>
-              <button
-                onClick={() => setStoreStatus('busy')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  storeStatus === 'busy' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Busy
-              </button>
-              <button
-                onClick={() => setStoreStatus('offline')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  storeStatus === 'offline' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Pause
-              </button>
-            </div>
-
-            {/* Logout Button */}
-            <button
-              onClick={logoutUser}
-              className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
-              title="Logout Partner"
-            >
-              <LogOut className="w-4 h-4 stroke-[2.5]" />
+              />
+              <span className="text-xs font-black tracking-wider text-slate-900 uppercase">
+                {storeStatus === 'online' ? 'OPEN' : storeStatus === 'busy' ? 'BUSY' : 'PAUSED'}
+              </span>
             </button>
           </div>
+        </header>
 
-        </div>
-      </header>
-
-      {/* 
-        ========================================================================
-        2. SECONDARY CONTROLS & METRICS STRIP
-        ========================================================================
-      */}
-      <div className="bg-white border-b border-slate-200/90 px-4 py-3 sm:px-6 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          
-          {/* Mobile Tab Pills */}
-          <div className="flex lg:hidden w-full overflow-x-auto gap-2 pb-1 text-xs">
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'pending' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              New ({pendingOrders.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('preparing')}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'preparing' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              Cooking ({preparingOrders.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('ready')}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'ready' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              Pickup ({readyOrders.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('completed')}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'completed' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              Delivered ({completedOrders.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${
-                activeTab === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              All ({vendorOrders.length})
-            </button>
-          </div>
-
-          {/* Search Box */}
-          <div className="w-full sm:w-80 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search Order #, Customer, or Food Item..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-rose-500"
-            />
-          </div>
-
-          {/* Today's Restaurant Sales Badge */}
-          <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-4 text-xs font-medium">
-            <div className="text-slate-500">
-              Completed Today: <span className="text-slate-900 font-bold">{completedOrders.length} orders</span>
-            </div>
-            <div className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-emerald-800 font-bold flex items-center space-x-1.5 shadow-2xs">
-              <span>Today's Food Sales:</span>
-              <span className="font-mono text-emerald-700 text-sm font-black">৳{todayEarnings}</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 
-        ========================================================================
-        3. MAIN ORDER CARDS CONTAINER
-        ========================================================================
-      */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        
-        {/* High Priority Banner for Incoming Orders */}
-        {pendingOrders.length > 0 && (
-          <div className="bg-rose-50 border-2 border-rose-500 rounded-3xl p-4 sm:p-5 shadow-md flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
-            <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                <Bell className="w-6 h-6 animate-bounce" />
+        {/* 
+          ========================================================================
+          MAIN ORDER DASHBOARD (100% Matching Sample Image 2)
+          Row 1: [ New 0 ] | [ Upcoming 0 ]
+          Row 2: [ Accepted 0 ]
+          ========================================================================
+        */}
+        <main className="flex-1 px-5 pt-4 pb-12 overflow-y-auto">
+          {/* Row 1: Two Column Grid (New & Upcoming) */}
+          <div className="grid grid-cols-2 gap-4">
+            
+            {/* 1. New Orders Column */}
+            <div>
+              <div className="flex items-center space-x-1.5 mb-2.5">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">New</h2>
+                <span className="text-2xl sm:text-3xl font-black text-rose-600">{pendingOrders.length}</span>
               </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-rose-950">
-                  🔔 {pendingOrders.length} New Order{pendingOrders.length > 1 ? 's' : ''} Requiring Instant Acceptance!
-                </h2>
-                <p className="text-xs text-rose-700">
-                  Accept with cooking time to send confirmation to customer screen.
-                </p>
-              </div>
-            </div>
 
-            <div className="flex items-center space-x-3 w-full md:w-auto">
-              <button
-                onClick={() => setActiveTab('pending')}
-                className="w-full md:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center justify-center space-x-1.5 cursor-pointer"
-              >
-                <span>View & Accept Now</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {displayedOrders.length === 0 && (
-          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3 shadow-xs">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-              <ShoppingBag className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">No Orders in this Section</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              {activeTab === 'pending'
-                ? 'All incoming orders have been accepted! Keep this tab open; new customer orders will ring here in real time.'
-                : 'There are no active orders matching this filter right now.'}
-            </p>
-          </div>
-        )}
-
-        {/* Orders Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {displayedOrders.map((order) => {
-            const isPending = order.status === 'pending';
-            const isPreparing = order.status === 'vendor_accepted' || order.status === 'food_preparing';
-            const isReady = order.status === 'ready_for_pickup';
-            const isPickedUp = order.status === 'food_picked_up' || order.status === 'rider_on_way_to_customer';
-            const isDelivered = order.status === 'delivered';
-            const isCancelled = order.status === 'cancelled';
-
-            const assignedRider = riders.find((r) => r.id === order.rider_id);
-            const selectedPrepMinutes = prepTimeSelection[order.id] || order.vendor_prep_minutes || 15;
-
-            return (
-              <div
-                key={order.id}
-                className={`flex flex-col justify-between rounded-3xl p-5 border transition-all duration-200 shadow-xs hover:shadow-md bg-white ${
-                  isPending
-                    ? 'border-rose-400 ring-2 ring-rose-500/20 shadow-rose-100'
-                    : isPreparing
-                    ? 'border-amber-300 shadow-amber-50'
-                    : isReady
-                    ? 'border-blue-300 shadow-blue-50'
-                    : 'border-slate-200'
-                }`}
-              >
-                {/* Header: Order ID + Status Pill + Print Button */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-xs font-black text-rose-600 uppercase">
-                          {order.order_code}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-900 mt-0.5 flex items-center space-x-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{order.customer_name}</span>
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center space-x-1.5">
-                      {/* Print Ticket Button */}
-                      <button
-                        onClick={() => setPrintModalOrder(order)}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-                        title="Print Kitchen Docket / Thermal Receipt"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Status Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        isPending ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                        isPreparing ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                        isReady ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                        isPickedUp ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
-                        isDelivered ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                        'bg-slate-100 text-slate-500'
-                      }`}>
-                        {isPending ? 'New Request' :
-                         order.status === 'vendor_accepted' ? 'Waiting Customer' :
-                         order.status === 'food_preparing' ? 'Cooking' :
-                         isReady ? 'Ready for Rider' :
-                         isPickedUp ? 'Rider on the way' :
-                         isDelivered ? 'Delivered' : 'Cancelled'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Customer Phone & Delivery Address */}
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs text-slate-700">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600 flex items-center space-x-1">
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        <span className="font-mono font-bold">{order.customer_phone}</span>
-                      </span>
-                      <a
-                        href={`tel:${order.customer_phone}`}
-                        className="text-[11px] font-bold text-rose-600 hover:underline"
-                      >
-                        Call
-                      </a>
-                    </div>
-                    <div className="flex items-start space-x-1.5 text-[11px] text-slate-500 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                      <span className="truncate">{order.delivery_address}</span>
-                    </div>
-                  </div>
-
-                  {/* Item List (With Kitchen Prep Checklist) */}
-                  <div className="space-y-2 pt-1">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                      <span>Kitchen Items ({order.items?.reduce((s, i) => s + i.quantity, 0) || 0})</span>
-                      {order.status === 'food_preparing' && <span className="text-[10px] text-amber-700 font-bold">Tap item to check off</span>}
-                    </div>
-
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                      {order.items?.map((item, idx) => {
-                        const isChecked = checkedItems[order.id]?.[idx] || false;
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => order.status === 'food_preparing' && toggleItemCheck(order.id, idx)}
-                            className={`flex items-start justify-between p-2 rounded-xl text-xs transition ${
-                              order.status === 'food_preparing' ? 'cursor-pointer hover:bg-slate-100' : ''
-                            } ${isChecked ? 'bg-emerald-50 border border-emerald-200 text-slate-500' : 'bg-slate-50 border border-slate-200'}`}
-                          >
-                            <div className="flex items-start space-x-2">
-                              {order.status === 'food_preparing' && (
-                                <button className="mt-0.5 text-slate-400">
-                                  {isChecked ? (
-                                    <CheckSquare className="w-4 h-4 text-emerald-600" />
-                                  ) : (
-                                    <Square className="w-4 h-4 text-slate-400" />
-                                  )}
-                                </button>
-                              )}
-                              <div>
-                                <div className={`font-bold ${isChecked ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                                  <span className="text-rose-600 font-mono mr-1.5">{item.quantity}x</span>
-                                  {item.item_name}
-                                </div>
-                                {item.selected_variations && item.selected_variations.length > 0 && (
-                                  <div className="text-[11px] font-semibold text-orange-700 bg-orange-50 rounded-md px-1.5 py-0.5 mt-0.5 border border-orange-100">
-                                    {item.selected_variations.join(' • ')}
-                                  </div>
-                                )}
-                                {item.special_instructions && (
-                                  <div className="text-[11px] italic text-slate-500 mt-0.5">
-                                    Note: "{item.special_instructions}"
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <span className="font-mono font-bold text-slate-700">
-                              ৳{item.subtotal}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Payment & Amount Summary */}
-                  <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Payment Method</span>
-                      <span className="font-bold text-slate-800 flex items-center space-x-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>Cash on Delivery (COD)</span>
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-400 block text-[10px]">Food Bill</span>
-                      <span className="text-base font-black text-rose-600 font-mono">
-                        ৳{order.food_total}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Rider Info if assigned */}
-                  {assignedRider && (
-                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-700 font-bold flex items-center space-x-1">
-                          <Bike className="w-3.5 h-3.5 text-pink-600" />
-                          <span>Rider: {assignedRider.name}</span>
-                        </span>
-                        <a
-                          href={`tel:${assignedRider.phone}`}
-                          className="text-[11px] font-bold text-pink-600 hover:underline"
-                        >
-                          📞 {assignedRider.phone}
-                        </a>
-                      </div>
-                      <p className="text-[10px] text-slate-500">
-                        Status: {order.status === 'ready_for_pickup' ? '🛵 Rider on way to kitchen' : '⚡ En route to customer'}
-                      </p>
-                    </div>
-                  )}
+              {pendingOrders.length === 0 ? (
+                <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[95px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
+                  <span className="text-sm font-bold text-slate-800">No new orders</span>
                 </div>
-
-                {/* 
-                  ==============================================================
-                  ACTION BUTTONS ACCORDING TO STAGE
-                  ==============================================================
-                */}
-                <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                  
-                  {/* CASE 1: INCOMING ORDER (ACCEPT / REJECT) */}
-                  {isPending && (
-                    <div className="space-y-2">
-                      {/* Prep Time Selector */}
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 text-[11px] font-bold">Prep Time:</span>
-                        <div className="flex items-center space-x-1">
-                          {[10, 15, 20, 30].map((mins) => (
-                            <button
-                              key={mins}
-                              onClick={() => setPrepTimeSelection(prev => ({ ...prev, [order.id]: mins }))}
-                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition ${
-                                selectedPrepMinutes === mins
-                                  ? 'bg-rose-600 text-white'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                              }`}
-                            >
-                              {mins}m
-                            </button>
-                          ))}
-                        </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="bg-white border-2 border-rose-500 rounded-2xl p-3.5 shadow-md space-y-2.5 animate-pulse"
+                    >
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-mono font-black text-rose-600">#{order.order_code}</span>
+                        <span className="font-black text-slate-900">৳{order.total_cash_payable}</span>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="text-xs text-slate-700 font-medium leading-snug">
+                        {order.items?.map((it) => `${it.quantity}x ${it.item_name}`).join(', ')}
+                      </div>
+                      <div className="flex gap-1.5 pt-1">
                         <button
                           onClick={() => setRejectModalOrder(order)}
-                          className="py-2.5 px-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer border border-slate-200"
+                          className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
                         >
-                          <X className="w-4 h-4" />
-                          <span>Reject</span>
+                          Decline
                         </button>
-
                         <button
-                          onClick={() => vendorAcceptOrderWithPrepTime(order.id, selectedPrepMinutes)}
-                          className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-md shadow-emerald-600/30 cursor-pointer"
+                          onClick={() => vendorAcceptOrderWithPrepTime(order.id, 15)}
+                          className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl transition shadow-xs cursor-pointer"
                         >
-                          <Check className="w-4 h-4 stroke-[3]" />
-                          <span>Accept ({selectedPrepMinutes}m)</span>
+                          Accept
                         </button>
                       </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
+            </div>
 
-                  {/* CASE 1.5: WAITING FOR CUSTOMER CONFIRMATION */}
-                  {order.status === 'vendor_accepted' && !order.customer_confirmed_prep && (
-                    <div className="bg-amber-50 border border-amber-300 p-3 rounded-2xl text-center space-y-1 animate-pulse">
-                      <p className="text-xs font-bold text-amber-800 flex items-center justify-center space-x-1.5">
-                        <Clock className="w-4 h-4 text-amber-600" />
-                        <span>Waiting for customer confirmation</span>
-                      </p>
-                      <p className="text-[11px] text-amber-700">
-                        Proposed {order.vendor_prep_minutes || 15} mins cooking time sent to customer's screen.
-                      </p>
-                    </div>
-                  )}
+            {/* 2. Upcoming Orders Column */}
+            <div>
+              <div className="flex items-center space-x-1.5 mb-2.5">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Upcoming</h2>
+                <span className="text-2xl sm:text-3xl font-black text-rose-600">{readyOrders.length}</span>
+              </div>
 
-                  {/* CASE 2: PREPARING IN KITCHEN (MARK READY) */}
-                  {order.status === 'food_preparing' && (
-                    <div className="space-y-2">
-                      <div className="bg-amber-50 border border-amber-200 p-2 rounded-xl flex items-center justify-between text-xs text-amber-800 font-bold">
-                        <span className="flex items-center space-x-1">
-                          <Flame className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Customer Approved! Cooking</span>
+              {readyOrders.length === 0 ? (
+                <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[95px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
+                  <span className="text-sm font-bold text-slate-800 leading-snug">
+                    No upcoming<br />orders
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {readyOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="bg-white border border-blue-200 rounded-2xl p-3.5 shadow-2xs space-y-2"
+                    >
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-mono font-bold text-blue-600">#{order.order_code}</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                          Rider Pickup
                         </span>
-                        <span>{order.vendor_prep_minutes || 15}m prep</span>
                       </div>
-
-                      <button
-                        onClick={() => vendorMarkFoodReady(order.id)}
-                        className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-md shadow-rose-600/30 cursor-pointer"
-                      >
-                        <ChefHat className="w-4 h-4" />
-                        <span>Food Ready & Search Zone Rider</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* CASE 3: READY FOR PICKUP (HANDOVER TO RIDER) */}
-                  {isReady && (
-                    <div className="space-y-2">
+                      <div className="text-xs text-slate-700 font-medium leading-snug">
+                        {order.items?.map((it) => `${it.quantity}x ${it.item_name}`).join(', ')}
+                      </div>
                       <button
                         onClick={() => handleConfirmHandover(order.id)}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-md shadow-blue-600/30 cursor-pointer"
+                        className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
                       >
-                        <Bike className="w-4 h-4" />
-                        <span>Handover Food to Rider</span>
+                        Handover
                       </button>
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
+            </div>
 
-                  {/* CASE 4: PICKED UP (IN TRANSIT) */}
-                  {isPickedUp && (
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-2.5 text-center text-xs text-indigo-700 font-bold flex items-center justify-center space-x-1.5">
-                      <Bike className="w-4 h-4 text-indigo-600 animate-bounce" />
-                      <span>Rider is delivering to customer</span>
+          </div>
+
+          {/* Row 2: Accepted Orders Section (Matching Sample Image 2) */}
+          <div className="mt-8 sm:mt-10">
+            <div className="flex items-center space-x-1.5 mb-2.5">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Accepted</h2>
+              <span className="text-2xl sm:text-3xl font-black text-rose-600">{preparingOrders.length}</span>
+            </div>
+
+            {preparingOrders.length === 0 ? (
+              <div className="bg-slate-50/90 rounded-2xl p-5 sm:p-6 min-h-[100px] flex items-center justify-center text-center border border-slate-100 shadow-2xs mt-3">
+                <span className="text-sm font-bold text-slate-800">No accepted orders</span>
+              </div>
+            ) : (
+              <div className="space-y-3 mt-3">
+                {preparingOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3"
+                  >
+                    <div className="flex justify-between items-start text-xs">
+                      <div>
+                        <span className="font-mono font-black text-amber-700 text-sm">#{order.order_code}</span>
+                        <p className="font-bold text-slate-900 mt-0.5">{order.customer_name}</p>
+                      </div>
+                      <button
+                        onClick={() => setPrintModalOrder(order)}
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition cursor-pointer"
+                        title="Print Kitchen Docket"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
                     </div>
-                  )}
 
-                  {/* CASE 5: DELIVERED */}
-                  {isDelivered && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-2.5 text-center text-xs text-emerald-800 font-bold flex items-center justify-center space-x-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Order Delivered Successfully (COD Settled)</span>
+                    <div className="space-y-1 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      {order.items?.map((it, idx) => (
+                        <div key={idx} className="flex justify-between font-medium">
+                          <span>{it.quantity}x {it.item_name}</span>
+                          <span className="font-mono">৳{it.subtotal}</span>
+                        </div>
+                      ))}
                     </div>
-                  )}
 
+                    <button
+                      onClick={() => vendorMarkFoodReady(order.id)}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Mark Food Ready</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* 
+          ========================================================================
+          SLIDE-OVER DRAWER (Hamburger Menu ≡)
+          Quick access to Store Profile, Status, Sound Alerts, Settings & Logout
+          ========================================================================
+        */}
+        {isDrawerOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex animate-in fade-in"
+            onClick={() => setIsDrawerOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xs bg-white h-full shadow-2xl p-5 flex flex-col justify-between animate-in slide-in-from-left duration-200"
+            >
+              <div className="space-y-5">
+                {/* Drawer Top: Store Logo, Name & Close */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center overflow-hidden shadow-sm">
+                      {authenticatedVendor?.logo_url ? (
+                        <img
+                          src={authenticatedVendor.logo_url}
+                          alt={authenticatedVendor.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ChefHat className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-900 text-sm leading-tight">
+                        {authenticatedVendor?.name || 'Restaurant Hub'}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        {authenticatedVendor?.cuisine || 'Kitchen Terminal'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsDrawerOpen(false)}
+                    className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Profile Edit Action Button */}
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    openVendorProfileModal();
+                  }}
+                  className="w-full py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-2xl text-xs font-black flex items-center justify-between transition cursor-pointer shadow-2xs"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Camera className="w-4 h-4 text-rose-600" />
+                    <span>Store Profile & Photos</span>
+                  </div>
+                  <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-md">Edit</span>
+                </button>
+
+                {/* Sound & Auto-Accept Toggles */}
+                <div className="space-y-2 pt-1 text-xs">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="font-bold text-slate-800">Order Audio Alert</span>
+                    <button
+                      onClick={() => {
+                        setSoundEnabled(!soundEnabled);
+                        if (!soundEnabled) playNewOrderSound();
+                      }}
+                      className={`p-1.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                        soundEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {soundEnabled ? 'Enabled 🔊' : 'Muted 🔇'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="font-bold text-slate-800">Auto-Accept Orders</span>
+                    <button
+                      onClick={() => setAutoAccept(!autoAccept)}
+                      className={`p-1.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                        autoAccept ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {autoAccept ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Performance Summary */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today's Summary</div>
+                  <div className="flex justify-between items-center font-bold">
+                    <span className="text-slate-600">Completed Orders:</span>
+                    <span className="text-slate-900 font-mono">{completedOrders.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center font-bold">
+                    <span className="text-slate-600">Total Food Sales:</span>
+                    <span className="text-emerald-700 font-mono font-black">৳{todayEarnings}</span>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-      </main>
+              {/* Drawer Footer: Logout */}
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    logoutUser();
+                  }}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout Terminal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
 
       {/* 
         ========================================================================

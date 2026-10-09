@@ -2,18 +2,14 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { DeliveryProvider } from './context/DeliveryContext';
-import { VendorPortal } from './components/vendor/VendorPortal';
+import { VendorOrdersTerminal } from './components/vendor/VendorOrdersTerminal';
 import './index.css';
 
 const StandaloneOrdersApp: React.FC = () => {
   return (
     <AppErrorBoundary>
       <DeliveryProvider>
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-          <main className="flex-1">
-            <VendorPortal />
-          </main>
-        </div>
+        <VendorOrdersTerminal />
       </DeliveryProvider>
     </AppErrorBoundary>
   );
