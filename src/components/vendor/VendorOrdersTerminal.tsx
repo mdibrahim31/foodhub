@@ -668,10 +668,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                         <BarChart2 className="w-5 h-5 text-slate-800 stroke-[2]" />
                         <span className="text-[15px] font-bold text-slate-900">Performance</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold text-emerald-600 font-mono">৳{todayEarnings}</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                     </button>
 
                     <button
@@ -682,10 +679,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                         <History className="w-5 h-5 text-slate-800 stroke-[2]" />
                         <span className="text-[15px] font-bold text-slate-900">Order history</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold text-slate-500 font-mono">{completedOrders.length} orders</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                     </button>
 
                     <button
@@ -790,33 +784,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                         <Clock className="w-5 h-5 text-slate-800 stroke-[2]" />
                         <span className="text-[15px] font-bold text-slate-900">Opening times</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${
-                          storeStatus === 'online' ? 'bg-emerald-100 text-emerald-800' : storeStatus === 'busy' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {storeStatus}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setSoundEnabled(!soundEnabled);
-                        if (!soundEnabled) playNewOrderSound();
-                      }}
-                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        {soundEnabled ? <Volume2 className="w-5 h-5 text-slate-800 stroke-[2]" /> : <VolumeX className="w-5 h-5 text-slate-400 stroke-[2]" />}
-                        <span className="text-[15px] font-bold text-slate-900">Order Audio Alert</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${soundEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                          {soundEnabled ? 'ON 🔊' : 'OFF 🔇'}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5]" />
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                     </button>
 
                     <button
