@@ -32,7 +32,15 @@ import {
   CheckSquare,
   Square,
   KeyRound,
-  LogOut
+  LogOut,
+  Camera,
+  Image,
+  Upload,
+  Trash2,
+  Lock,
+  Building2,
+  Utensils,
+  Globe
 } from 'lucide-react';
 
 export const VendorOrdersTerminal: React.FC = () => {
@@ -40,6 +48,10 @@ export const VendorOrdersTerminal: React.FC = () => {
     vendors,
     currentVendor,
     setCurrentVendor,
+    updateVendor,
+    uploadVendorImage,
+    deleteVendorImage,
+    zones,
     orders,
     updateOrderStatus,
     vendorAcceptOrderWithPrepTime,
@@ -68,6 +80,44 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [printModalOrder, setPrintModalOrder] = useState<Order | null>(null);
   const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
+
+  // Vendor Profile Modal States
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isDeletingLogo, setIsDeletingLogo] = useState(false);
+  const [isDeletingCover, setIsDeletingCover] = useState(false);
+  const [profileLogoUrlInput, setProfileLogoUrlInput] = useState('');
+  const [profileCoverUrlInput, setProfileCoverUrlInput] = useState('');
+  const [isUrlInputMode, setIsUrlInputMode] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const openVendorProfileModal = () => {
+    if (!authenticatedVendor) return;
+    setProfileLogoUrlInput(authenticatedVendor.logo_url || '');
+    setProfileCoverUrlInput(authenticatedVendor.cover_image || '');
+    setIsUrlInputMode(false);
+    setUploadFeedback(null);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleApplyWebUrls = async () => {
+    if (!authenticatedVendor) return;
+    setUploadFeedback(null);
+    const updates: Partial<Vendor> = {};
+    if (profileLogoUrlInput.trim() !== (authenticatedVendor.logo_url || '')) {
+      updates.logo_url = profileLogoUrlInput.trim();
+    }
+    if (profileCoverUrlInput.trim() !== (authenticatedVendor.cover_image || '')) {
+      updates.cover_image = profileCoverUrlInput.trim();
+    }
+    if (Object.keys(updates).length > 0) {
+      await updateVendor(authenticatedVendor.id, updates);
+      setUploadFeedback({ type: 'success', message: '✅ ছবির লিংক ডাটাবেসে সফলভাবে আপডেট হয়েছে!' });
+    } else {
+      setUploadFeedback({ type: 'error', message: 'কোনো নতুন লিংক পরিবর্তন করা হয়নি।' });
+    }
+  };
 
   // Audio Ref tracking previous pending count
   const prevPendingCountRef = useRef<number>(0);
@@ -272,13 +322,29 @@ export const VendorOrdersTerminal: React.FC = () => {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3 sm:px-6 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           
-          {/* Left: Brand + Logged-in Store Name (Strictly Single Profile - No Switching) */}
+          {/* Left: Brand + Logged-in Store Name (Clickable Profile Modal Button) */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30">
-              <ChefHat className="w-6 h-6" />
-            </div>
+            <button
+              onClick={openVendorProfileModal}
+              className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30 overflow-hidden cursor-pointer hover:opacity-90 transition shrink-0"
+              title="Click to view & change Store Profile"
+            >
+              {authenticatedVendor.logo_url ? (
+                <img
+                  src={authenticatedVendor.logo_url}
+                  alt={authenticatedVendor.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <ChefHat className="w-6 h-6" />
+              )}
+            </button>
 
-            <div className="flex items-center space-x-2 bg-slate-50 text-left px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-xs">
+            <button
+              onClick={openVendorProfileModal}
+              className="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 text-left px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-xs cursor-pointer transition group"
+              title="Click to open vendor profile (Logo & Cover Photo)"
+            >
               <div>
                 <div className="flex items-center space-x-1.5">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant Terminal</span>
@@ -287,11 +353,16 @@ export const VendorOrdersTerminal: React.FC = () => {
                     storeStatus === 'busy' ? 'bg-amber-500' : 'bg-rose-500'
                   }`} />
                 </div>
-                <h1 className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[180px] sm:max-w-xs">
-                  {authenticatedVendor.name}
-                </h1>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[150px] sm:max-w-xs group-hover:text-rose-600 transition">
+                    {authenticatedVendor.name}
+                  </h1>
+                  <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-lg group-hover:bg-rose-200 transition shrink-0">
+                    Profile ⚙️
+                  </span>
+                </div>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Center: Live Order Counter Pills */}
@@ -993,6 +1064,446 @@ export const VendorOrdersTerminal: React.FC = () => {
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Ticket</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: VENDOR PROFILE WINDOW (VIEW-ONLY INFO, PROFILE & COVER IMAGES EDIT)
+        ========================================================================
+      */}
+      {isProfileModalOpen && authenticatedVendor && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
+          onClick={() => setIsProfileModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col"
+          >
+            {/* Modal Top Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div>
+                <h3 className="font-black text-base text-slate-900 flex items-center space-x-2">
+                  <Store className="w-5 h-5 text-rose-600" />
+                  <span>Vendor Store Profile</span>
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  View store info & manage profile and cover banner photos
+                </p>
+              </div>
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition border border-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-5 flex-1">
+              {/* Feedback Alert if any */}
+              {uploadFeedback && (
+                <div 
+                  className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between ${
+                    uploadFeedback.type === 'success' 
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{uploadFeedback.message}</span>
+                  </div>
+                  <button 
+                    onClick={() => setUploadFeedback(null)} 
+                    className="p-1 hover:bg-black/5 rounded-lg text-slate-500 transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* COVER & PROFILE PHOTO CARD */}
+              <div className="bg-slate-50 rounded-3xl border border-slate-200/90 overflow-hidden shadow-2xs">
+                {/* 1. Cover Banner Section */}
+                <div className="relative h-36 sm:h-44 bg-gradient-to-r from-rose-500 via-orange-500 to-pink-500 group overflow-hidden">
+                  {authenticatedVendor.cover_image ? (
+                    <img
+                      src={authenticatedVendor.cover_image}
+                      alt="Store Cover Banner"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-white/90 bg-slate-900/40">
+                      <Image className="w-8 h-8 stroke-[1.8] mb-1" />
+                      <span className="text-xs font-bold">No Cover Photo Set</span>
+                      <span className="text-[10px] text-white/70">Recommended: 16:9 ratio</span>
+                    </div>
+                  )}
+
+                  {/* Top Overlay Buttons for Cover */}
+                  <div className="absolute top-3 right-3 flex items-center space-x-2">
+                    {/* Add / Change Cover Photo Button */}
+                    <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-xl text-xs font-bold backdrop-blur-md cursor-pointer transition shadow-md active:scale-95">
+                      <Camera className="w-3.5 h-3.5 text-rose-400" />
+                      <span>{isUploadingCover ? 'Uploading...' : authenticatedVendor.cover_image ? 'Change Cover' : 'Add Cover'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingCover || isDeletingCover}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !authenticatedVendor) return;
+                          setIsUploadingCover(true);
+                          setUploadFeedback(null);
+                          const oldCoverUrl = authenticatedVendor.cover_image;
+                          const res = await uploadVendorImage(authenticatedVendor.name, file, 'cover', oldCoverUrl);
+                          setIsUploadingCover(false);
+                          if (res.success && res.url) {
+                            await updateVendor(authenticatedVendor.id, { cover_image: res.url });
+                            setProfileCoverUrlInput(res.url);
+                            setUploadFeedback({ 
+                              type: 'success', 
+                              message: '✅ পূর্বের কভার ছবি মুছে নতুন কভার ছবি সফলভাবে সেভ করা হয়েছে!' 
+                            });
+                          } else {
+                            setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload cover photo.' });
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Delete Cover Photo Button */}
+                    {authenticatedVendor.cover_image && (
+                      <button
+                        disabled={isDeletingCover || isUploadingCover}
+                        onClick={async () => {
+                          if (!authenticatedVendor) return;
+                          if (confirm('কভার ছবি ডাটাবেস থেকে ডিলিট করতে চান?\n(Delete cover photo from database?)')) {
+                            setIsDeletingCover(true);
+                            setUploadFeedback(null);
+                            const res = await deleteVendorImage(authenticatedVendor.id, 'cover');
+                            setIsDeletingCover(false);
+                            if (res.success) {
+                              setProfileCoverUrlInput('');
+                              setUploadFeedback({ 
+                                type: 'success', 
+                                message: '✅ কভার ছবি সফলভাবে ডিলিট করা হয়েছে।' 
+                              });
+                            } else {
+                              setUploadFeedback({ type: 'error', message: res.message || 'Failed to delete cover photo.' });
+                            }
+                          }
+                        }}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-rose-600/90 hover:bg-rose-700 text-white rounded-xl text-xs font-bold backdrop-blur-md transition shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
+                        title="Delete Cover Photo from Database"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{isDeletingCover ? 'Deleting...' : 'Delete Cover'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Profile Photo / Avatar Section */}
+                <div className="px-5 pt-0 pb-5 -mt-12 sm:-mt-14 relative flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+                  <div className="flex items-end space-x-3.5">
+                    {/* Avatar Circle */}
+                    <div className="relative group/avatar shrink-0">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white bg-slate-100 shadow-lg overflow-hidden flex items-center justify-center text-slate-800 font-black text-xl">
+                        {authenticatedVendor.logo_url ? (
+                          <img
+                            src={authenticatedVendor.logo_url}
+                            alt="Store Logo"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{authenticatedVendor.name?.charAt(0) || 'V'}</span>
+                        )}
+                      </div>
+
+                      {/* Camera Badge to Upload/Change Profile Photo */}
+                      <label className="absolute bottom-0.5 right-0.5 w-8 h-8 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-md cursor-pointer transition border-2 border-white active:scale-95">
+                        <Camera className="w-4 h-4" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingLogo || isDeletingLogo}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !authenticatedVendor) return;
+                            setIsUploadingLogo(true);
+                            setUploadFeedback(null);
+                            const oldLogoUrl = authenticatedVendor.logo_url;
+                            const res = await uploadVendorImage(authenticatedVendor.name, file, 'logo', oldLogoUrl);
+                            setIsUploadingLogo(false);
+                            if (res.success && res.url) {
+                              await updateVendor(authenticatedVendor.id, { logo_url: res.url });
+                              setProfileLogoUrlInput(res.url);
+                              setUploadFeedback({ 
+                                type: 'success', 
+                                message: '✅ পূর্বের প্রোফাইল ছবি মুছে নতুন ছবি সফলভাবে সেভ করা হয়েছে!' 
+                              });
+                            } else {
+                              setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload profile photo.' });
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="mb-1">
+                      <h4 className="font-black text-base text-slate-900 leading-tight">
+                        {authenticatedVendor.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 font-medium">
+                        {authenticatedVendor.cuisine || 'Fast Food & Restaurant'}
+                      </p>
+                      <span className="inline-block mt-1 text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-md">
+                        সুপারিশকৃত সাইজ: 1:1 স্কয়ার (500×500 px)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Profile Photo Action Buttons */}
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    {/* Add / Change Photo */}
+                    <label className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-xs active:scale-95">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isUploadingLogo ? 'Uploading...' : authenticatedVendor.logo_url ? 'Change Photo' : 'Add Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingLogo || isDeletingLogo}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !authenticatedVendor) return;
+                          setIsUploadingLogo(true);
+                          setUploadFeedback(null);
+                          const oldLogoUrl = authenticatedVendor.logo_url;
+                          const res = await uploadVendorImage(authenticatedVendor.name, file, 'logo', oldLogoUrl);
+                          setIsUploadingLogo(false);
+                          if (res.success && res.url) {
+                            await updateVendor(authenticatedVendor.id, { logo_url: res.url });
+                            setProfileLogoUrlInput(res.url);
+                            setUploadFeedback({ 
+                              type: 'success', 
+                              message: '✅ পূর্বের প্রোফাইল ছবি মুছে নতুন ছবি সফলভাবে সেভ করা হয়েছে!' 
+                            });
+                          } else {
+                            setUploadFeedback({ type: 'error', message: res.message || 'Failed to upload profile photo.' });
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Delete Photo Button */}
+                    {authenticatedVendor.logo_url && (
+                      <button
+                        disabled={isDeletingLogo || isUploadingLogo}
+                        onClick={async () => {
+                          if (!authenticatedVendor) return;
+                          if (confirm('প্রোফাইল ছবি ডাটাবেস থেকে ডিলিট করতে চান?\n(Delete profile photo from database?)')) {
+                            setIsDeletingLogo(true);
+                            setUploadFeedback(null);
+                            const res = await deleteVendorImage(authenticatedVendor.id, 'logo');
+                            setIsDeletingLogo(false);
+                            if (res.success) {
+                              setProfileLogoUrlInput('');
+                              setUploadFeedback({ 
+                                type: 'success', 
+                                message: '✅ প্রোফাইল ছবি সফলভাবে ডিলিট করা হয়েছে।' 
+                              });
+                            } else {
+                              setUploadFeedback({ type: 'error', message: res.message || 'Failed to delete profile photo.' });
+                            }
+                          }
+                        }}
+                        className="inline-flex items-center space-x-1 px-3 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
+                        title="Delete Profile Photo from Database"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{isDeletingLogo ? 'Deleting...' : 'Delete Photo'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* URL Option Toggle */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setIsUrlInputMode(!isUrlInputMode)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-slate-700 hover:text-rose-600 transition cursor-pointer"
+                >
+                  <span className="flex items-center space-x-1.5">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Or enter web image URL directly</span>
+                  </span>
+                  <span className="text-[11px] text-rose-600 underline">
+                    {isUrlInputMode ? 'Hide URL inputs' : 'Show URL inputs'}
+                  </span>
+                </button>
+
+                {isUrlInputMode && (
+                  <div className="space-y-3 mt-3 pt-3 border-t border-slate-200 text-xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-slate-600">Profile Photo (Logo) URL:</label>
+                        {profileLogoUrlInput && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileLogoUrlInput('')}
+                            className="text-[10px] text-rose-600 hover:underline font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="url"
+                        value={profileLogoUrlInput}
+                        onChange={(e) => setProfileLogoUrlInput(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-800 text-xs focus:outline-hidden focus:border-rose-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-slate-600">Cover Banner URL:</label>
+                        {profileCoverUrlInput && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileCoverUrlInput('')}
+                            className="text-[10px] text-rose-600 hover:underline font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="url"
+                        value={profileCoverUrlInput}
+                        onChange={(e) => setProfileCoverUrlInput(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-800 text-xs focus:outline-hidden focus:border-rose-500 font-mono"
+                      />
+                    </div>
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={handleApplyWebUrls}
+                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        Apply URLs
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* RESTAURANT INFORMATION (VIEW ONLY - CANNOT BE EDITED BY VENDOR) */}
+              <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-4 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                      <Store className="w-3.5 h-3.5" />
+                    </div>
+                    <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider">
+                      Restaurant Information
+                    </h4>
+                  </div>
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-full text-[10px] font-bold">
+                    <Lock className="w-3 h-3 text-amber-600" />
+                    <span>View Only</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Restaurant Name */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Store className="w-3 h-3 text-slate-400" />
+                      <span>Restaurant Name</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm truncate">
+                      {authenticatedVendor.name || '—'}
+                    </div>
+                  </div>
+
+                  {/* Phone Number */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Phone className="w-3 h-3 text-slate-400" />
+                      <span>Phone Number</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm font-mono truncate">
+                      {authenticatedVendor.phone || '—'}
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      <span>Store Address</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-xs leading-relaxed">
+                      {authenticatedVendor.address || '—'}
+                    </div>
+                  </div>
+
+                  {/* Cuisine */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Utensils className="w-3 h-3 text-slate-400" />
+                      <span>Cuisine Type</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-xs">
+                      {authenticatedVendor.cuisine || 'Restaurant & Fast Food'}
+                    </div>
+                  </div>
+
+                  {/* Zone */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs sm:col-span-2">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                      <Building2 className="w-3 h-3 text-slate-400" />
+                      <span>Assigned Delivery Zone</span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-xs flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                      <span>
+                        {authenticatedVendor.zone || 'Chittagong Central Zone'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl flex items-start space-x-2.5">
+                  <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+                    নিরাপত্তার স্বার্থে রেস্টুরেন্টের নাম, ঠিকানা, ফোন ও জোন তথ্য শুধুমাত্র দেখার জন্য সংরক্ষিত। পরিবর্তন প্রয়োজন হলে অ্যাডমিনের সাথে যোগাযোগ করুন।
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3.5 border-t border-slate-100 flex justify-end bg-slate-50/80">
+              <button
+                type="button"
+                onClick={() => setIsProfileModalOpen(false)}
+                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer shadow-md"
+              >
+                Done
               </button>
             </div>
           </div>
