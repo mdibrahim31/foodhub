@@ -94,7 +94,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   // Modal States
   const [rejectModalOrder, setRejectModalOrder] = useState<Order | null>(null);
-  const [rejectReason, setRejectReason] = useState('Out of key ingredients');
+  const [rejectReason, setRejectReason] = useState('Vendor closed');
   const [printModalOrder, setPrintModalOrder] = useState<Order | null>(null);
   const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
@@ -303,11 +303,13 @@ export const VendorOrdersTerminal: React.FC = () => {
     setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'delivered' } : o));
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = (customReason?: string) => {
     if (!rejectModalOrder) return;
-    updateOrderStatus(rejectModalOrder.id, 'cancelled', { cancellation_reason: rejectReason });
+    const finalReason = customReason || rejectReason;
+    updateOrderStatus(rejectModalOrder.id, 'cancelled', { cancellation_reason: finalReason });
     setDummyOrders(prev => prev.filter(o => o.id !== rejectModalOrder.id));
     setRejectModalOrder(null);
+    setSelectedAcceptOrder(null);
   };
 
   // Toggle item in kitchen prep checklist
@@ -889,47 +891,17 @@ export const VendorOrdersTerminal: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. Customer & Delivery Info */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-2.5 text-xs">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">
-                Delivery Details
-              </h3>
-              <div className="flex justify-between py-1 border-b border-slate-50 text-slate-700">
-                <span className="font-semibold text-slate-500">Customer</span>
-                <span className="font-bold text-slate-900">{selectedAcceptOrder.customer_name}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50 text-slate-700">
-                <span className="font-semibold text-slate-500">Phone</span>
-                <span className="font-mono font-bold text-slate-900">{selectedAcceptOrder.customer_phone}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50 text-slate-700">
-                <span className="font-semibold text-slate-500">Delivery Address</span>
-                <span className="font-medium text-slate-900 text-right max-w-[200px] truncate">{selectedAcceptOrder.delivery_address}</span>
-              </div>
-              <div className="flex justify-between py-1 text-slate-700">
-                <span className="font-semibold text-slate-500">Payment Status</span>
-                <span className="font-bold text-emerald-600">Paid Online</span>
-              </div>
-            </div>
           </main>
 
-          {/* Sticky Bottom Acceptance Bar (Foodpanda Pink button) */}
+          {/* Sticky Bottom Acceptance Bar (Full width Green button) */}
           <footer className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl">
-            <div className="max-w-xl mx-auto flex gap-3">
-              <button
-                type="button"
-                onClick={() => handleDeclineOrder(selectedAcceptOrder)}
-                className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl transition cursor-pointer"
-              >
-                Decline
-              </button>
-
+            <div className="max-w-xl mx-auto">
               <button
                 type="button"
                 onClick={() => handleAcceptOrder(selectedAcceptOrder.id, selectedPrepMinutes)}
-                className="flex-1 py-3.5 bg-[#d70f64] hover:bg-[#b80c54] active:scale-[0.99] text-white font-black text-base sm:text-lg rounded-2xl transition shadow-md flex items-center justify-center space-x-2 cursor-pointer"
+                className="w-full py-4 bg-[#008a05] hover:bg-[#007404] active:scale-[0.99] text-white font-black text-base sm:text-lg rounded-2xl transition shadow-md flex items-center justify-center space-x-2 cursor-pointer"
               >
-                <Check className="w-5 h-5 stroke-[2.5]" />
+                <Check className="w-5 h-5 stroke-[2.8]" />
                 <span>Accept order ({selectedPrepMinutes} mins)</span>
               </button>
             </div>
@@ -942,60 +914,106 @@ export const VendorOrdersTerminal: React.FC = () => {
         MODAL: REJECT ORDER WITH REASON
         ========================================================================
       */}
+      {/* 
+        ========================================================================
+        PAGE / MODAL: DECLINE ORDER (100% Matching Screenshot_20261010_142637_YouTube.jpg)
+        - "Sad to see you decline."
+        - "Select your reason for declining."
+        - Options: Vendor closed, Too busy, Item unavailable
+        ========================================================================
+      */}
       {rejectModalOrder && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center space-x-2 text-rose-600">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-black text-slate-900 text-base">Decline Order #{rejectModalOrder.order_code}</h3>
+        <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto animate-in fade-in duration-200 select-none">
+          {/* Header */}
+          <header className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-20">
+            <button
+              type="button"
+              onClick={() => setRejectModalOrder(null)}
+              className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer"
+              title="Back"
+            >
+              <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setRejectModalOrder(null)}
+              className="text-[#d70f64] hover:text-[#b8004f] font-bold text-base tracking-wide cursor-pointer transition"
+            >
+              Cancel
+            </button>
+          </header>
+
+          {/* Main Decline Content */}
+          <main className="max-w-md w-full mx-auto p-6 sm:p-8 flex-1 flex flex-col justify-start">
+            <div className="pt-2 pb-6">
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight">
+                Sad to see you<br />decline.
+              </h1>
+              <p className="text-sm sm:text-base font-bold text-slate-700 mt-3">
+                Select your reason for declining.
+              </p>
             </div>
 
-            <p className="text-xs text-slate-600">
-              Please select a reason for declining this order. The customer will be informed immediately.
-            </p>
-
-            <div className="space-y-2 text-xs">
-              {[
-                'Out of key ingredients',
-                'Kitchen is at max capacity / Overloaded',
-                'Restaurant is closing soon',
-                'Item unavailable / Power outage'
-              ].map((r) => (
-                <label
-                  key={r}
-                  className={`flex items-center space-x-2 p-2.5 rounded-xl border cursor-pointer transition ${
-                    rejectReason === r
-                      ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="reject_reason"
-                    checked={rejectReason === r}
-                    onChange={() => setRejectReason(r)}
-                    className="text-rose-600 focus:ring-rose-500"
-                  />
-                  <span>{r}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="pt-2 flex space-x-2 text-xs">
+            {/* Reason Options List */}
+            <div className="space-y-4">
+              {/* 1. Vendor closed */}
               <button
-                onClick={() => setRejectModalOrder(null)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+                type="button"
+                onClick={() => {
+                  setRejectReason('Vendor closed');
+                  handleConfirmReject('Vendor closed');
+                }}
+                className={`w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left shadow-sm ${
+                  rejectReason === 'Vendor closed'
+                    ? 'bg-[#d0d3d8] text-slate-950 ring-1 ring-slate-400/40'
+                    : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-900'
+                }`}
               >
-                Back
+                <div className="w-10 h-10 rounded-full bg-slate-200/90 flex items-center justify-center mr-4 shrink-0 text-slate-800">
+                  <X className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <span className="text-base sm:text-lg font-black tracking-tight">Vendor closed</span>
               </button>
+
+              {/* 2. Too busy */}
               <button
-                onClick={handleConfirmReject}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl transition shadow-md shadow-rose-600/30"
+                type="button"
+                onClick={() => {
+                  setRejectReason('Too busy');
+                  handleConfirmReject('Too busy');
+                }}
+                className={`w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left shadow-sm ${
+                  rejectReason === 'Too busy'
+                    ? 'bg-[#d0d3d8] text-slate-950 ring-1 ring-slate-400/40'
+                    : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-900'
+                }`}
               >
-                Confirm Decline
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-4 shrink-0 text-slate-800">
+                  <Clock className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-base sm:text-lg font-black tracking-tight">Too busy</span>
+              </button>
+
+              {/* 3. Item unavailable */}
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectReason('Item unavailable');
+                  handleConfirmReject('Item unavailable');
+                }}
+                className={`w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left shadow-sm ${
+                  rejectReason === 'Item unavailable'
+                    ? 'bg-[#d0d3d8] text-slate-950 ring-1 ring-slate-400/40'
+                    : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-900'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-4 shrink-0 text-slate-800">
+                  <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <span className="text-base sm:text-lg font-black tracking-tight">Item unavailable</span>
               </button>
             </div>
-          </div>
+          </main>
         </div>
       )}
 
