@@ -16,6 +16,7 @@ export default defineConfig(() => {
       rollupOptions: {
         input: {
           main: path.resolve(import.meta.dirname, 'index.html'),
+          customer: path.resolve(import.meta.dirname, 'customer.html'),
           vendor: path.resolve(import.meta.dirname, 'vendor.html'),
           orders: path.resolve(import.meta.dirname, 'orders.html'),
           order: path.resolve(import.meta.dirname, 'order.html'),

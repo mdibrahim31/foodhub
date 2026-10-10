@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 interface MultiAppDockProps {
-  currentApp: 'customer' | 'vendor' | 'rider' | 'admin';
+  currentApp: 'customer' | 'vendor' | 'rider' | 'admin' | 'orders' | 'subadmin';
 }
 
 export const MultiAppDock: React.FC<MultiAppDockProps> = ({ currentApp }) => {
@@ -19,42 +19,62 @@ export const MultiAppDock: React.FC<MultiAppDockProps> = ({ currentApp }) => {
   const apps = [
     {
       id: 'customer',
-      title: '1. FoodHub Customer Ordering',
-      desc: 'Browse restaurants, set map pin, Cash On Delivery checkout & tracking',
-      url: './index.html',
+      title: '1. Customer Ordering App',
+      desc: 'Browse restaurants, food cart, Cash On Delivery & live tracking',
+      url: './customer.html',
       hashUrl: './#customer',
       icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
-      badge: 'Public Food Store',
+      badge: 'Customer App',
       theme: 'border-orange-200 hover:border-orange-400 bg-orange-50/50',
     },
     {
       id: 'vendor',
       title: '2. Restaurant / Vendor Hub',
-      desc: 'Kitchen display queue, menu management & cash collection receipt',
+      desc: 'Kitchen display queue, menu management & live store operations',
       url: './vendor.html',
       hashUrl: './#vendor',
-      icon: <Store className="w-5 h-5 text-orange-500" />,
+      icon: <Store className="w-5 h-5 text-emerald-500" />,
       badge: 'Merchant Portal',
-      theme: 'border-orange-200 hover:border-orange-400 bg-orange-50/50',
-    },
-    {
-      id: 'rider',
-      title: '3. Rider / Delivery App',
-      desc: '5-second live GPS beacon, proximity dispatch radar & COD cash float',
-      url: './rider.html',
-      hashUrl: './#rider',
-      icon: <Bike className="w-5 h-5 text-emerald-500" />,
-      badge: 'Delivery Partner',
       theme: 'border-emerald-200 hover:border-emerald-400 bg-emerald-50/50',
     },
     {
+      id: 'orders',
+      title: '3. Kitchen Live Orders Terminal',
+      desc: 'Dedicated sound alerts and order processing screen for kitchen staff',
+      url: './orders.html',
+      hashUrl: './#orders',
+      icon: <ShoppingBag className="w-5 h-5 text-rose-500" />,
+      badge: 'Live Kitchen',
+      theme: 'border-rose-200 hover:border-rose-400 bg-rose-50/50',
+    },
+    {
+      id: 'rider',
+      title: '4. Rider / Delivery App',
+      desc: 'Live GPS beacon, proximity dispatch radar & COD cash collection',
+      url: './rider.html',
+      hashUrl: './#rider',
+      icon: <Bike className="w-5 h-5 text-amber-500" />,
+      badge: 'Delivery Partner',
+      theme: 'border-amber-200 hover:border-amber-400 bg-amber-50/50',
+    },
+    {
       id: 'admin',
-      title: '4. Admin Control Center',
-      desc: 'Per-km pricing, rider dispatch radius, vendor map link & Supabase SQL',
+      title: '5. Super Admin Control Center',
+      desc: 'Per-km pricing, rider dispatch radius, vendor zones & database control',
       url: './admin.html',
       hashUrl: './#admin',
-      icon: <ShieldCheck className="w-5 h-5 text-indigo-500" />,
+      icon: <ShieldCheck className="w-5 h-5 text-rose-600" />,
       badge: 'Super Admin',
+      theme: 'border-rose-200 hover:border-rose-400 bg-rose-50/50',
+    },
+    {
+      id: 'subadmin',
+      title: '6. Sub-Admin Operations Hub',
+      desc: 'Daily order monitoring, vendor pause/resume, and rider fleet dispatch',
+      url: './subadmin.html',
+      hashUrl: './#subadmin',
+      icon: <ShieldCheck className="w-5 h-5 text-indigo-500" />,
+      badge: 'Operations Desk',
       theme: 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/50',
     },
   ];
