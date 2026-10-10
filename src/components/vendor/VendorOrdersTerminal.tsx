@@ -101,6 +101,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   // Accept Order Page State & Dummy Test Orders
   const [selectedAcceptOrder, setSelectedAcceptOrder] = useState<Order | null>(null);
+  const [selectedReadyOrder, setSelectedReadyOrder] = useState<Order | null>(null);
   const [selectedPrepMinutes, setSelectedPrepMinutes] = useState<number>(9);
   const [dummyOrders, setDummyOrders] = useState<Order[]>([]);
 
@@ -296,6 +297,7 @@ export const VendorOrdersTerminal: React.FC = () => {
   const handleMarkFoodReady = (orderId: string) => {
     vendorMarkFoodReady(orderId);
     setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready_for_pickup' } : o));
+    setSelectedReadyOrder(null);
   };
 
   const handleConfirmHandover = (orderId: string) => {
@@ -531,43 +533,46 @@ export const VendorOrdersTerminal: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3 mt-3">
-                {preparingOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3"
-                  >
-                    <div className="flex justify-between items-start text-xs">
-                      <div>
-                        <span className="font-mono font-black text-amber-700 text-sm">#{order.order_code}</span>
-                        <p className="font-bold text-slate-900 mt-0.5">{order.customer_name}</p>
-                      </div>
-                      <button
-                        onClick={() => setPrintModalOrder(order)}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition cursor-pointer"
-                        title="Print Kitchen Docket"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
-                    </div>
+                {preparingOrders.map((order) => {
+                  const totalItems = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 1;
+                  const itemLabel = `${totalItems} item${totalItems > 1 ? 's' : ''}`;
+                  const isTest = order.id.startsWith('test-') || order.order_code === '00' || order.order_code === '01';
 
-                    <div className="space-y-1 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      {order.items?.map((it, idx) => (
-                        <div key={idx} className="flex justify-between font-medium">
-                          <span>{it.quantity}x {it.item_name}</span>
-                          <span className="font-mono">৳{it.subtotal}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => handleMarkFoodReady(order.id)}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer"
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => setSelectedReadyOrder(order)}
+                      className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100/90 hover:shadow-md transition-all cursor-pointer select-none space-y-3"
                     >
-                      <Check className="w-4 h-4" />
-                      <span>Mark Food Ready</span>
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          {/* Vertical pink bar */}
+                          <div className="w-1.5 h-10 bg-[#d70f64] rounded-full shrink-0" />
+                          <div>
+                            <h3 className="text-2xl font-black text-slate-950 tracking-tight font-sans leading-none">
+                              #{order.order_code}
+                            </h3>
+                            <p className="text-sm font-bold text-slate-800 mt-1.5">
+                              {order.customer_phone || 'XXXX-1234'} • {itemLabel}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Badge */}
+                        <span className="bg-rose-50 text-[#d70f64] font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-md uppercase tracking-wider">
+                          {isTest ? 'TEST ORDER' : 'DELIVERY'}
+                        </span>
+                      </div>
+
+                      {/* Bottom Right: Prep Time */}
+                      <div className="flex justify-end pt-1">
+                        <span className="text-base font-bold text-slate-900">
+                          {order.vendor_prep_minutes || 9} mins
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -903,6 +908,165 @@ export const VendorOrdersTerminal: React.FC = () => {
               >
                 <Check className="w-5 h-5 stroke-[2.8]" />
                 <span>Accept order ({selectedPrepMinutes} mins)</span>
+              </button>
+            </div>
+          </footer>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        READY ORDER PAGE (100% Matching Screenshot_20261010_142603_YouTube.jpg)
+        - Opens when clicking an accepted order card
+        - Header with #00 - XXXX-1234 and Printer icon
+        - Order title with 9 mins and TEST ORDER badge
+        - Customer section (Max)
+        - Gray items card (1 x Pizza Salami, ** the tomatoes should be fresh, 0 x large)
+        - Floating pink (?) help button
+        - Bottom full-width Blue button "Ready for delivery" with item count
+        ========================================================================
+      */}
+      {selectedReadyOrder && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto animate-in fade-in duration-200 select-none">
+          {/* Top Header Bar */}
+          <header className="sticky top-0 z-20 bg-white border-b border-slate-100 px-4 py-3.5 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setSelectedReadyOrder(null)}
+              className="p-1.5 -ml-1 text-slate-800 hover:text-black hover:bg-slate-50 rounded-full transition cursor-pointer"
+              title="Back"
+            >
+              <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+            </button>
+
+            <span className="text-base sm:text-lg font-black text-slate-950 font-sans tracking-tight">
+              #{selectedReadyOrder.order_code} - {selectedReadyOrder.customer_phone || 'XXXX-1234'}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setPrintModalOrder(selectedReadyOrder)}
+              className="p-1.5 text-slate-400 hover:text-slate-800 transition cursor-pointer"
+              title="Print Kitchen Docket"
+            >
+              <Printer className="w-5 h-5 stroke-[2]" />
+            </button>
+          </header>
+
+          {/* Body Content */}
+          <main className="flex-1 max-w-xl w-full mx-auto px-5 pt-4 pb-28 space-y-5">
+            {/* Restaurant Badge & Order Title */}
+            <div>
+              <div className="flex items-center space-x-1.5 mb-1.5">
+                <div className="w-5 h-5 rounded-full bg-[#d70f64] text-white flex items-center justify-center text-[10px] font-black">
+                  🐼
+                </div>
+                <span className="text-xs font-bold text-[#d70f64]">
+                  {activeVendor?.name || 'Test restaurant'}
+                </span>
+              </div>
+
+              <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight font-sans leading-none">
+                    Order #{selectedReadyOrder.order_code}
+                  </h1>
+                  <p className="text-base font-bold text-slate-800 mt-1">
+                    {selectedReadyOrder.customer_phone || 'XXXX-1234'}
+                  </p>
+                  <span className="bg-rose-50 text-[#d70f64] font-black text-[10px] px-2.5 py-1 rounded-md inline-block uppercase tracking-wider mt-2.5">
+                    {selectedReadyOrder.id.startsWith('test-') || selectedReadyOrder.order_code === '00' || selectedReadyOrder.order_code === '01' ? 'TEST ORDER' : 'DELIVERY'}
+                  </span>
+                </div>
+
+                <span className="text-base sm:text-lg font-bold text-slate-900 pt-1">
+                  {selectedReadyOrder.vendor_prep_minutes || 9} mins
+                </span>
+              </div>
+            </div>
+
+            {/* Customer Section */}
+            <div className="border-t border-slate-100 pt-4 flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                <User className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-[#d70f64] block leading-none">
+                  Customer
+                </span>
+                <span className="text-base font-black text-slate-950 block leading-tight mt-0.5">
+                  {selectedReadyOrder.customer_name || 'Max'}
+                </span>
+              </div>
+            </div>
+
+            {/* Gray Items Card Container */}
+            <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4">
+              {selectedReadyOrder.items?.map((item, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start">
+                      <span className="text-base font-black text-[#d70f64] mr-2">
+                        {item.quantity} x
+                      </span>
+                      <span className="text-base font-black text-slate-950">
+                        {item.item_name}
+                      </span>
+                    </div>
+                    <span className="text-base font-bold text-slate-400 font-mono">--</span>
+                  </div>
+
+                  {/* Special instruction in pink */}
+                  {(item.special_instructions || selectedReadyOrder.special_instructions) && (
+                    <p className="text-xs font-bold text-[#d70f64] pl-6 leading-tight">
+                      {item.special_instructions || selectedReadyOrder.special_instructions}
+                    </p>
+                  )}
+
+                  {/* Variations */}
+                  {item.selected_variations && item.selected_variations.map((v, vIdx) => (
+                    <div key={vIdx} className="flex justify-between items-center text-xs font-bold text-slate-800 pl-6">
+                      <span>{v}</span>
+                      <span className="text-slate-400 font-mono">--</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+              {/* Subtotal */}
+              <div className="border-t border-slate-200/60 pt-3 flex justify-between items-center font-black text-base text-slate-950">
+                <span>Subtotal</span>
+                <span className="text-slate-400 font-mono">--</span>
+              </div>
+            </div>
+          </main>
+
+          {/* Floating Pink Help (?) Button */}
+          <div className="fixed bottom-24 right-5 sm:right-8 z-30">
+            <button
+              type="button"
+              onClick={() => setIsHelpModalOpen(true)}
+              className="w-11 h-11 rounded-full bg-[#d70f64] hover:bg-[#b8004f] text-white shadow-lg flex items-center justify-center font-black text-lg transition active:scale-95 cursor-pointer"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
+
+          {/* Sticky Bottom Action Bar (Blue Button: Ready for delivery) */}
+          <footer className="sticky bottom-0 z-20 bg-white border-t border-slate-100 p-4 shadow-xl">
+            <div className="max-w-xl mx-auto">
+              <button
+                type="button"
+                onClick={() => handleMarkFoodReady(selectedReadyOrder.id)}
+                className="w-full py-4 px-6 bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-black rounded-2xl transition shadow-md flex items-center justify-between cursor-pointer"
+              >
+                <span className="text-base sm:text-lg font-black text-white">
+                  Ready for delivery
+                </span>
+                <span className="text-sm font-bold text-white/95">
+                  {selectedReadyOrder.items?.reduce((s, it) => s + (it.quantity || 1), 0) || 1} item
+                </span>
               </button>
             </div>
           </footer>
