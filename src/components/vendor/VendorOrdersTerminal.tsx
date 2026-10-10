@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AuthModal } from '../common/AuthModal';
-import { Order, OrderStatus, Vendor, MenuItem } from '../../types/database';
+import { Order, OrderStatus, Vendor, MenuItem, DaySchedule, WeeklySchedule } from '../../types/database';
 import {
   Bell,
   Volume2,
@@ -58,8 +58,49 @@ import {
   MessageSquareQuote,
   Settings,
   MoreHorizontal,
-  MoreVertical
+  MoreVertical,
+  Calendar,
+  Power,
+  CheckCircle,
+  Save
 } from 'lucide-react';
+
+const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
+  monday: { day: 'monday', day_label: 'Monday', day_label_bn: 'সোমবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  tuesday: { day: 'tuesday', day_label: 'Tuesday', day_label_bn: 'মঙ্গলবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  wednesday: { day: 'wednesday', day_label: 'Wednesday', day_label_bn: 'বুধবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  thursday: { day: 'thursday', day_label: 'Thursday', day_label_bn: 'বৃহস্পতিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  friday: { day: 'friday', day_label: 'Friday', day_label_bn: 'শুক্রবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  saturday: { day: 'saturday', day_label: 'Saturday', day_label_bn: 'শনিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  sunday: { day: 'sunday', day_label: 'Sunday', day_label_bn: 'রবিবার', is_open: true, open_time: '10:00', close_time: '23:30' }
+};
+
+const DAYS_ORDER: Array<DaySchedule['day']> = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+// Helper to check if vendor is within scheduled open hours at given date
+export const isVendorOpenBySchedule = (schedule?: WeeklySchedule): boolean => {
+  if (!schedule) return true;
+  const now = new Date();
+  const dayNames: Array<DaySchedule['day']> = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const todayKey = dayNames[now.getDay()];
+  const todayRule = schedule[todayKey];
+  if (!todayRule || !todayRule.is_open) return false;
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const [openH, openM] = (todayRule.open_time || '10:00').split(':').map(Number);
+  const [closeH, closeM] = (todayRule.close_time || '23:30').split(':').map(Number);
+
+  const startMinutes = (openH || 0) * 60 + (openM || 0);
+  const endMinutes = (closeH || 0) * 60 + (closeM || 0);
+
+  if (startMinutes <= endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  } else {
+    // Cross midnight e.g. 18:00 to 02:00
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+};
 
 export const VendorOrdersTerminal: React.FC = () => {
   const {
@@ -92,7 +133,44 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoAccept, setAutoAccept] = useState(false);
-  const [storeStatus, setStoreStatus] = useState<'online' | 'busy' | 'offline'>('online');
+
+  // Vendor Auto-Close & Auto-Reopen Timer State
+  // "vendor close dile 1day er jonno vendor close hoye jabe.too busy dile 1hour er jonno vendor close hoye jabe.1hour por auto open hoye jabe"
+  const [vendorCloseInfo, setVendorCloseInfo] = useState<{
+    reason: 'vendor_closed' | 'too_busy';
+    closedUntil: number;
+    durationMs: number;
+    label: string;
+    initiatedAt: number;
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_close_info');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.closedUntil > Date.now()) {
+          return parsed;
+        } else {
+          localStorage.removeItem('foodiplace_vendor_close_info');
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  const [storeStatus, setStoreStatus] = useState<'online' | 'busy' | 'offline'>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_close_info');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.closedUntil > Date.now()) {
+          return parsed.reason === 'too_busy' ? 'busy' : 'offline';
+        }
+      }
+    } catch {}
+    return 'online';
+  });
+
+  const [nowTime, setNowTime] = useState<number>(Date.now());
 
   // Modal States
   const [rejectModalOrder, setRejectModalOrder] = useState<Order | null>(null);
@@ -131,6 +209,10 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
   const [isOrderHistoryModalOpen, setIsOrderHistoryModalOpen] = useState(false);
   const [isOpeningTimesModalOpen, setIsOpeningTimesModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [weeklyScheduleDraft, setWeeklyScheduleDraft] = useState<WeeklySchedule>(DEFAULT_WEEKLY_SCHEDULE);
+  const [isPermanentlyClosed, setIsPermanentlyClosed] = useState<boolean>(false);
+  const [scheduleSaveFeedback, setScheduleSaveFeedback] = useState<string | null>(null);
   const [currentLanguage, setCurrentLanguage] = useState<'English' | 'বাংলা'>('English');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -359,6 +441,216 @@ export const VendorOrdersTerminal: React.FC = () => {
     setDummyOrders(prev => prev.filter(o => o.id !== rejectModalOrder.id));
     setRejectModalOrder(null);
     setSelectedAcceptOrder(null);
+  };
+
+  // Auto-open timer & weekly schedule evaluation:
+  // 1. Checks auto-timer (1 hour for 'Too busy', 24 hours for 'Vendor closed')
+  // 2. Evaluates 1-week opening/closing schedule: auto-opens and auto-closes according to set times
+  // 3. Respects permanent close: if vendor permanently closed, stays closed until manually reopened
+  useEffect(() => {
+    if (activeVendor) {
+      if (activeVendor.opening_schedule) {
+        setWeeklyScheduleDraft(activeVendor.opening_schedule);
+      } else {
+        try {
+          const localSaved = localStorage.getItem(`foodiplace_vendor_schedule_${activeVendor.id}`);
+          if (localSaved) {
+            setWeeklyScheduleDraft(JSON.parse(localSaved));
+          } else {
+            setWeeklyScheduleDraft(DEFAULT_WEEKLY_SCHEDULE);
+          }
+        } catch {
+          setWeeklyScheduleDraft(DEFAULT_WEEKLY_SCHEDULE);
+        }
+      }
+      setIsPermanentlyClosed(Boolean(activeVendor.is_permanently_closed));
+    }
+  }, [activeVendor?.id, activeVendor?.opening_schedule, activeVendor?.is_permanently_closed]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNowTime(current);
+
+      if (!activeVendor) return;
+
+      // Check if timed pause / closure is active
+      if (vendorCloseInfo) {
+        if (current >= vendorCloseInfo.closedUntil) {
+          // Time expired -> Auto open!
+          setVendorCloseInfo(null);
+          try {
+            localStorage.removeItem('foodiplace_vendor_close_info');
+          } catch {}
+          setStoreStatus('online');
+          updateVendor(activeVendor.id, { is_active: true, is_paused: false });
+        }
+        return;
+      }
+
+      // Check if permanent close is toggled on ("jotodin na manually open kortece")
+      if (activeVendor.is_permanently_closed) {
+        if (storeStatus !== 'offline') {
+          setStoreStatus('offline');
+        }
+        return;
+      }
+
+      // Auto open / close according to set weekly schedule data ("then set kora data onujayi auto open and close hobe")
+      const currentSchedule = activeVendor.opening_schedule || weeklyScheduleDraft;
+      const shouldBeOpen = isVendorOpenBySchedule(currentSchedule);
+
+      if (shouldBeOpen) {
+        if (storeStatus === 'offline' && !activeVendor.is_permanently_closed) {
+          setStoreStatus('online');
+          if (!activeVendor.is_active) {
+            updateVendor(activeVendor.id, { is_active: true });
+          }
+        }
+      } else {
+        if (storeStatus === 'online') {
+          setStoreStatus('offline');
+          if (activeVendor.is_active) {
+            updateVendor(activeVendor.id, { is_active: false });
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [vendorCloseInfo, activeVendor, updateVendor, weeklyScheduleDraft, storeStatus]);
+
+  // Handler to open weekly schedule modal
+  const handleOpenScheduleModal = () => {
+    if (activeVendor) {
+      if (activeVendor.opening_schedule) {
+        setWeeklyScheduleDraft(activeVendor.opening_schedule);
+      }
+      setIsPermanentlyClosed(Boolean(activeVendor.is_permanently_closed));
+    }
+    setScheduleSaveFeedback(null);
+    setIsScheduleModalOpen(true);
+  };
+
+  // Handler to save weekly schedule
+  const handleSaveWeeklySchedule = async () => {
+    if (!activeVendor) return;
+    try {
+      localStorage.setItem(`foodiplace_vendor_schedule_${activeVendor.id}`, JSON.stringify(weeklyScheduleDraft));
+    } catch {}
+
+    const shouldBeOpenNow = !isPermanentlyClosed && isVendorOpenBySchedule(weeklyScheduleDraft);
+
+    await updateVendor(activeVendor.id, {
+      opening_schedule: weeklyScheduleDraft,
+      is_permanently_closed: isPermanentlyClosed,
+      is_active: shouldBeOpenNow
+    });
+
+    if (isPermanentlyClosed) {
+      setStoreStatus('offline');
+    } else {
+      setStoreStatus(shouldBeOpenNow ? 'online' : 'offline');
+    }
+
+    setScheduleSaveFeedback('✅ ১ সপ্তাহের শিডিউল সফলভাবে সেভ হয়েছে!');
+    setTimeout(() => {
+      setScheduleSaveFeedback(null);
+      setIsScheduleModalOpen(false);
+    }, 1200);
+  };
+
+  // Handler to toggle permanent close
+  const handleTogglePermanentClose = async (closed: boolean) => {
+    setIsPermanentlyClosed(closed);
+    if (!activeVendor) return;
+
+    if (closed) {
+      setStoreStatus('offline');
+      setVendorCloseInfo(null);
+      try {
+        localStorage.removeItem('foodiplace_vendor_close_info');
+      } catch {}
+      await updateVendor(activeVendor.id, {
+        is_permanently_closed: true,
+        is_active: false
+      });
+    } else {
+      // Reopening manually from permanent close
+      const shouldBeOpen = isVendorOpenBySchedule(weeklyScheduleDraft);
+      setStoreStatus(shouldBeOpen ? 'online' : 'offline');
+      await updateVendor(activeVendor.id, {
+        is_permanently_closed: false,
+        is_active: shouldBeOpen
+      });
+    }
+  };
+
+  // Timed decline handler (1 day for 'Vendor closed', 1 hour for 'Too busy')
+  const handleConfirmDeclineWithTimer = (reason: 'Vendor closed' | 'Too busy') => {
+    const isOneDay = reason === 'Vendor closed';
+    const durationMs = isOneDay ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000; // 1 day vs 1 hour
+    const closedUntil = Date.now() + durationMs;
+
+    const timerData = {
+      reason: isOneDay ? ('vendor_closed' as const) : ('too_busy' as const),
+      closedUntil,
+      durationMs,
+      label: isOneDay ? 'Closed for 1 day (24 hours)' : 'Paused for 1 hour (Too busy)',
+      initiatedAt: Date.now()
+    };
+
+    setVendorCloseInfo(timerData);
+    try {
+      localStorage.setItem('foodiplace_vendor_close_info', JSON.stringify(timerData));
+    } catch {}
+
+    setStoreStatus(isOneDay ? 'offline' : 'busy');
+    if (activeVendor) {
+      updateVendor(activeVendor.id, { is_active: false });
+    }
+
+    handleConfirmReject(reason);
+    setDeclineConfirmModal(null);
+  };
+
+  // Manual reopen helper
+  const handleReopenStoreManually = () => {
+    setVendorCloseInfo(null);
+    try {
+      localStorage.removeItem('foodiplace_vendor_close_info');
+    } catch {}
+    setStoreStatus('online');
+    if (activeVendor) {
+      updateVendor(activeVendor.id, { is_active: true, is_paused: false });
+    }
+  };
+
+  // Formatter for countdown
+  const formatRemainingTime = (ms: number) => {
+    if (ms <= 0) return '0s';
+    const totalSec = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    return `${minutes}m ${seconds}s`;
+  };
+
+  const formatShortCountdown = (ms: number) => {
+    if (ms <= 0) return '0s';
+    const totalSec = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    const seconds = totalSec % 60;
+    return `${minutes}m ${seconds}s`;
   };
 
   // Toggle item in kitchen prep checklist
@@ -656,41 +948,154 @@ export const VendorOrdersTerminal: React.FC = () => {
 
           {/* Right Group: Store icon with clock + Status Pill */}
           <div className="flex items-center space-x-3.5">
-            {/* Storefront with Clock Badge */}
+            {/* Storefront with Clock Badge: Opens 1-week schedule & permanent close modal */}
             <button
-              onClick={openVendorProfileModal}
+              onClick={handleOpenScheduleModal}
               className="relative text-slate-800 hover:text-black transition cursor-pointer active:scale-95"
-              title="Click to view & edit Store Profile (Logo & Cover)"
+              title="Click to view & edit Weekly Opening/Closing Schedule"
             >
               <Store className="w-6 h-6 stroke-[1.8]" />
               <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-2xs">
-                <Clock className="w-3.5 h-3.5 stroke-[2.2] text-slate-800" />
+                <Clock className="w-3.5 h-3.5 stroke-[2.2] text-[#d70f64]" />
               </div>
             </button>
 
-            {/* Status Pill: ● OPEN matching Sample Image 2 */}
-            <button
-              onClick={() => {
-                setStoreStatus((prev) => (prev === 'online' ? 'busy' : prev === 'busy' ? 'offline' : 'online'));
-              }}
-              className="bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs rounded-full px-3.5 py-1.5 flex items-center space-x-2 transition cursor-pointer active:scale-95"
-              title="Click to toggle store status (Open / Busy / Paused)"
-            >
-              <span
-                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                  storeStatus === 'online'
-                    ? 'bg-emerald-500 animate-pulse'
-                    : storeStatus === 'busy'
-                    ? 'bg-amber-500'
-                    : 'bg-rose-500'
+            {/* Status Pill: ● Live countdown, PERMANENT CLOSED, or OPEN / BUSY / PAUSED */}
+            {vendorCloseInfo ? (
+              <button
+                onClick={handleReopenStoreManually}
+                className={`border shadow-2xs rounded-full px-3 py-1.5 flex items-center space-x-1.5 transition cursor-pointer active:scale-95 ${
+                  vendorCloseInfo.reason === 'too_busy'
+                    ? 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
+                    : 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100'
                 }`}
-              />
-              <span className="text-xs font-black tracking-wider text-slate-900 uppercase">
-                {storeStatus === 'online' ? 'OPEN' : storeStatus === 'busy' ? 'BUSY' : 'PAUSED'}
-              </span>
-            </button>
+                title="Store auto-closing active. Click to reopen store immediately"
+              >
+                <span
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                    vendorCloseInfo.reason === 'too_busy' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
+                  }`}
+                />
+                <span className="text-xs font-black tracking-wider uppercase">
+                  {vendorCloseInfo.reason === 'too_busy' ? 'BUSY' : 'CLOSED'}
+                </span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-slate-200 text-slate-800">
+                  {formatShortCountdown(Math.max(0, vendorCloseInfo.closedUntil - nowTime))}
+                </span>
+              </button>
+            ) : isPermanentlyClosed || activeVendor?.is_permanently_closed ? (
+              <button
+                onClick={handleOpenScheduleModal}
+                className="bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-900 shadow-2xs rounded-full px-3 py-1.5 flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+                title="Store permanently closed. Click to change schedule or reopen"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0" />
+                <span className="text-xs font-black tracking-wider uppercase">
+                  PERMANENT CLOSED
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setStoreStatus((prev) => (prev === 'online' ? 'busy' : prev === 'busy' ? 'offline' : 'online'));
+                }}
+                className="bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs rounded-full px-3.5 py-1.5 flex items-center space-x-2 transition cursor-pointer active:scale-95"
+                title="Click to toggle store status (Open / Busy / Paused)"
+              >
+                <span
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                    storeStatus === 'online'
+                      ? 'bg-emerald-500 animate-pulse'
+                      : storeStatus === 'busy'
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500'
+                  }`}
+                />
+                <span className="text-xs font-black tracking-wider text-slate-900 uppercase">
+                  {storeStatus === 'online' ? 'OPEN' : storeStatus === 'busy' ? 'BUSY' : 'PAUSED'}
+                </span>
+              </button>
+            )}
           </div>
         </header>
+
+        {/* Permanent Closed Notice Banner */}
+        {(isPermanentlyClosed || activeVendor?.is_permanently_closed) && !vendorCloseInfo && (
+          <div className="px-4 py-3 bg-rose-50 border-b border-rose-200 text-rose-950 flex items-center justify-between text-xs sm:text-sm animate-in slide-in-from-top duration-200 shrink-0">
+            <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+              <div className="w-8 h-8 rounded-full bg-rose-200 text-rose-900 flex items-center justify-center shrink-0">
+                <Power className="w-4 h-4 stroke-[2.5]" />
+              </div>
+              <div>
+                <p className="font-black text-xs sm:text-sm text-rose-900 leading-tight">
+                  🔒 Vendor Permanently Closed
+                </p>
+                <p className="text-[11px] text-rose-700 mt-0.5 font-medium leading-tight">
+                  ম্যানুয়ালি ওপেন না করা পর্যন্ত স্টোর সম্পূর্ণ বন্ধ থাকবে।
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleTogglePermanentClose(false)}
+              className="px-3 py-1.5 rounded-xl font-black text-xs bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700 active:scale-95 transition shrink-0 cursor-pointer"
+            >
+              Open Store
+            </button>
+          </div>
+        )}
+
+        {/* 
+          Auto-reopen banner when store is closed for 1 day or 1 hour
+          "vendor close dile 1day er jonno vendor close hoye jabe.
+           too busy dile 1hour er jonno vendor close hoye jabe.
+           1hour por auto open hoye jabe"
+        */}
+        {vendorCloseInfo && (
+          <div
+            className={`px-4 py-3 border-b flex items-center justify-between text-xs sm:text-sm animate-in slide-in-from-top duration-200 shrink-0 ${
+              vendorCloseInfo.reason === 'too_busy'
+                ? 'bg-amber-50 border-amber-200 text-amber-950'
+                : 'bg-rose-50 border-rose-200 text-rose-950'
+            }`}
+          >
+            <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  vendorCloseInfo.reason === 'too_busy'
+                    ? 'bg-amber-200/90 text-amber-900'
+                    : 'bg-rose-200/90 text-rose-900'
+                }`}
+              >
+                <Clock className="w-4 h-4 stroke-[2.5]" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-black text-xs sm:text-sm flex items-center space-x-1.5 flex-wrap gap-y-1">
+                  <span>
+                    {vendorCloseInfo.reason === 'too_busy'
+                      ? '⏸️ Store paused for 1 hour'
+                      : '🔒 Store closed for 1 day'}
+                  </span>
+                  <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-white shadow-2xs border border-current font-black">
+                    Auto-reopens in {formatRemainingTime(Math.max(0, vendorCloseInfo.closedUntil - nowTime))}
+                  </span>
+                </div>
+                <p className="text-[11px] opacity-80 mt-0.5 font-medium">
+                  {vendorCloseInfo.reason === 'too_busy'
+                    ? 'Auto-reopening in 1 hour after declining busy order.'
+                    : 'Auto-reopening in 24 hours after declining closed order.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleReopenStoreManually}
+              className="px-3 py-1.5 rounded-xl font-black text-xs bg-white text-slate-900 border border-slate-200 shadow-2xs hover:bg-slate-100 active:scale-95 transition shrink-0 cursor-pointer"
+            >
+              Reopen Now
+            </button>
+          </div>
+        )}
 
         {/* 
           ========================================================================
@@ -968,6 +1373,26 @@ export const VendorOrdersTerminal: React.FC = () => {
 
               {/* Group 3 */}
               <div className="space-y-6 text-[16px] sm:text-[17px] font-semibold text-slate-900">
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    handleOpenScheduleModal();
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Weekly Schedule & Hours
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    openVendorProfileModal();
+                  }}
+                  className="block w-full text-left hover:text-black transition cursor-pointer"
+                >
+                  Restaurant Profile
+                </button>
+
                 <button
                   onClick={() => {
                     setIsDrawerOpen(false);
@@ -2041,6 +2466,9 @@ export const VendorOrdersTerminal: React.FC = () => {
           {/* CONFIRMATION POPUP FOR BUSY & CLOSED OPTIONS                  */}
           {/* "busy and close option a click korle confirm and cencel       */}
           {/*  button popup hobe"                                           */}
+          {/* "vendor close dile 1day er jonno vendor close hoye jabe.      */}
+          {/*  too busy dile 1hour er jonno vendor close hoye jabe.         */}
+          {/*  1hour por auto open hoye jabe"                               */}
           {/* ------------------------------------------------------------- */}
           {declineConfirmModal && (
             <div
@@ -2051,29 +2479,58 @@ export const VendorOrdersTerminal: React.FC = () => {
                 onClick={(e) => e.stopPropagation()}
                 className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl border border-slate-200 text-center animate-in zoom-in-95 duration-150"
               >
-                <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-1">
-                  <AlertTriangle className="w-7 h-7 stroke-[2.2]" />
+                <div
+                  className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-1 ${
+                    declineConfirmModal.reason === 'Vendor closed'
+                      ? 'bg-rose-50 text-rose-600'
+                      : 'bg-amber-50 text-amber-600'
+                  }`}
+                >
+                  {declineConfirmModal.reason === 'Vendor closed' ? (
+                    <AlertTriangle className="w-7 h-7 stroke-[2.2]" />
+                  ) : (
+                    <Clock className="w-7 h-7 stroke-[2.2]" />
+                  )}
                 </div>
 
                 <h3 className="text-xl font-black text-slate-950 tracking-tight">
-                  Decline Order?
+                  {declineConfirmModal.reason === 'Vendor closed' ? 'Vendor Closed' : 'Too Busy'}
                 </h3>
-                <p className="text-sm font-semibold text-slate-600 leading-relaxed">
-                  Are you sure you want to decline this order because{' '}
-                  <span className="font-bold text-slate-900">
-                    {declineConfirmModal.reason === 'Vendor closed' ? 'vendor is closed' : 'you are too busy'}
-                  </span>?
-                </p>
+
+                <div className="text-sm font-semibold text-slate-600 leading-relaxed space-y-2">
+                  {declineConfirmModal.reason === 'Vendor closed' ? (
+                    <>
+                      <p>
+                        Are you sure you want to decline this order because the vendor is closed?
+                      </p>
+                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 text-xs font-bold leading-normal">
+                        🔒 Your store will be closed for <span className="font-black underline">1 day (24 hours)</span> and will automatically reopen tomorrow.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        Are you sure you want to decline this order because you are too busy?
+                      </p>
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs font-bold leading-normal">
+                        ⏸️ Your store will be paused for <span className="font-black underline">1 hour</span> and will <span className="font-black text-emerald-800">automatically reopen after 1 hour</span>.
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <div className="pt-2 space-y-2.5">
                   <button
                     type="button"
                     onClick={() => {
                       const reason = declineConfirmModal.reason;
-                      setDeclineConfirmModal(null);
-                      handleConfirmReject(reason);
+                      handleConfirmDeclineWithTimer(reason);
                     }}
-                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-black text-sm rounded-2xl transition shadow-md cursor-pointer"
+                    className={`w-full py-3.5 active:scale-[0.99] text-white font-black text-sm rounded-2xl transition shadow-md cursor-pointer ${
+                      declineConfirmModal.reason === 'Vendor closed'
+                        ? 'bg-rose-600 hover:bg-rose-700'
+                        : 'bg-[#d70f64] hover:bg-[#b8004f]'
+                    }`}
                   >
                     Confirm
                   </button>
@@ -2817,7 +3274,7 @@ export const VendorOrdersTerminal: React.FC = () => {
               <p className="font-bold text-slate-600">Select Store Operational Status:</p>
               <div className="grid grid-cols-3 gap-2">
                 <button
-                  onClick={() => setStoreStatus('online')}
+                  onClick={() => handleReopenStoreManually()}
                   className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
                     storeStatus === 'online' ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
                   }`}
@@ -2847,19 +3304,334 @@ export const VendorOrdersTerminal: React.FC = () => {
                 </button>
               </div>
 
+              {vendorCloseInfo && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-1 text-amber-900">
+                  <div className="font-black flex items-center justify-between">
+                    <span>⏳ Auto-Timer Active:</span>
+                    <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-300">
+                      {formatRemainingTime(Math.max(0, vendorCloseInfo.closedUntil - nowTime))}
+                    </span>
+                  </div>
+                  <p className="text-[11px] opacity-80">
+                    {vendorCloseInfo.reason === 'too_busy'
+                      ? 'Closed for 1 hour (Too busy). Automatically reopens when time finishes.'
+                      : 'Closed for 1 day (Vendor closed). Automatically reopens tomorrow.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleReopenStoreManually}
+                    className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition text-center cursor-pointer shadow-xs"
+                  >
+                    Reopen Store Now
+                  </button>
+                </div>
+              )}
+
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1 text-slate-600">
-                <span className="font-bold text-slate-900">Standard Operating Schedule:</span>
-                <p>Monday – Sunday: 10:00 AM – 11:30 PM</p>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">Weekly Operating Schedule:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpeningTimesModalOpen(false);
+                      handleOpenScheduleModal();
+                    }}
+                    className="text-[11px] font-black text-[#d70f64] hover:underline"
+                  >
+                    Edit 1-Week Schedule →
+                  </button>
+                </div>
+                <p>Configured daily opening and closing schedule with automated open/close.</p>
                 <p className="text-[10px] text-slate-400">Orders placed during opening hours will automatically alert terminal audio.</p>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsOpeningTimesModalOpen(false)}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
-            >
-              Apply Status
-            </button>
+            <div className="flex space-x-2 pt-1">
+              <button
+                onClick={() => {
+                  setIsOpeningTimesModalOpen(false);
+                  handleOpenScheduleModal();
+                }}
+                className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 text-[#d70f64] font-bold text-xs rounded-xl transition border border-rose-200"
+              >
+                Weekly Schedule
+              </button>
+              <button
+                onClick={() => setIsOpeningTimesModalOpen(false)}
+                className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+              >
+                Apply Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: 1-WEEK SCHEDULE & PERMANENT CLOSE LIST PAGE
+        "Ei option a click korle vendor er 1week er shedule list page open hobe.
+         proti din er opening and closing time set korte parbe then set kora 
+         data onujayi auto open and close hobe.vendor chaile parmanent close 
+         korte parbe jotodin na manually open kortece"
+        ========================================================================
+      */}
+      {isScheduleModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in select-none"
+          onClick={() => setIsScheduleModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-rose-100 text-[#d70f64] flex items-center justify-center shadow-2xs">
+                  <Calendar className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg leading-tight">
+                    Weekly Schedule & Operating Hours
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    ১ সপ্তাহের শিডিউল ও স্বয়ংক্রিয় ওপেন/ক্লোজ কন্ট্রোল
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+              
+              {/* Permanent Close Control Card */}
+              {/* "vendor chaile parmanent close korte parbe jotodin na manually open kortece" */}
+              <div className={`rounded-2xl p-4 border transition-all ${
+                isPermanentlyClosed 
+                  ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-500/20' 
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3 pr-2">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      isPermanentlyClosed ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      <Power className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-black text-slate-900 text-sm">
+                          Permanent Close (স্থায়ীভাবে বন্ধ)
+                        </span>
+                        {isPermanentlyClosed && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white uppercase tracking-wider">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                        {isPermanentlyClosed
+                          ? 'স্টোর বর্তমানে স্থায়ীভাবে বন্ধ আছে। পুনরায় ম্যানুয়ালি ওপেন না করা পর্যন্ত বন্ধ থাকবে।'
+                          : 'সুইচ অন করলে শিডিউল উপেক্ষা করে স্টোর সম্পূর্ণ বন্ধ থাকবে যতক্ষণ না ম্যানুয়ালি ওপেন করবেন।'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePermanentClose(!isPermanentlyClosed)}
+                    className={`px-3.5 py-2 rounded-xl font-black text-xs transition cursor-pointer shrink-0 shadow-2xs active:scale-95 ${
+                      isPermanentlyClosed
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-rose-600 hover:bg-rose-700 text-white'
+                    }`}
+                  >
+                    {isPermanentlyClosed ? 'Reopen Store' : 'Close Permanently'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Indicator */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-[#d70f64]" />
+                  <span className="font-bold text-slate-800 text-xs">
+                    বর্তমান অবস্থা: {isPermanentlyClosed ? '🔒 বন্ধ (Permanent Closed)' : isVendorOpenBySchedule(weeklyScheduleDraft) ? '● খোলা (Schedule Open)' : '○ বন্ধ (Schedule Closed)'}
+                  </span>
+                </div>
+                <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-full ${
+                  isPermanentlyClosed
+                    ? 'bg-rose-100 text-rose-800'
+                    : isVendorOpenBySchedule(weeklyScheduleDraft)
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {isPermanentlyClosed ? 'PERMANENT CLOSED' : isVendorOpenBySchedule(weeklyScheduleDraft) ? 'ONLINE' : 'CLOSED'}
+                </span>
+              </div>
+
+              {/* Weekly Schedule Title */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-black text-slate-900 text-sm">
+                    ১ সপ্তাহের শিডিউল লিস্ট (7-Day Schedule List)
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Auto Open & Close Time
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mb-3 font-normal">
+                  প্রতিদিনের Opening এবং Closing সময় সেট করুন। সেট করা ডাটা অনুযায়ী স্বয়ংক্রিয়ভাবে ওপেন ও ক্লোজ হবে।
+                </p>
+
+                {/* 7 Days Schedule List */}
+                <div className="space-y-2.5">
+                  {DAYS_ORDER.map((dayKey) => {
+                    const rule = weeklyScheduleDraft[dayKey] || DEFAULT_WEEKLY_SCHEDULE[dayKey];
+
+                    return (
+                      <div
+                        key={dayKey}
+                        className={`p-3 rounded-2xl border transition-all ${
+                          rule.is_open
+                            ? 'bg-white border-slate-200 shadow-2xs hover:border-slate-300'
+                            : 'bg-slate-50 border-slate-200/80 opacity-75'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          {/* Left: Day Label & On/Off Toggle */}
+                          <div className="flex items-center space-x-2.5 min-w-[130px]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWeeklyScheduleDraft(prev => ({
+                                  ...prev,
+                                  [dayKey]: {
+                                    ...rule,
+                                    is_open: !rule.is_open
+                                  }
+                                }));
+                              }}
+                              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                                rule.is_open ? 'bg-[#d70f64]' : 'bg-slate-300'
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full bg-white transition-transform transform shadow-xs absolute top-0.5 ${
+                                  rule.is_open ? 'translate-x-4 left-0.5' : 'translate-x-0.5 left-0.5'
+                                }`}
+                              />
+                            </button>
+                            <div>
+                              <div className="font-black text-slate-900 text-xs sm:text-sm">
+                                {rule.day_label}
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                {rule.day_label_bn} {rule.is_open ? '• Open' : '• Off Day'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Opening and Closing Time pickers */}
+                          {rule.is_open ? (
+                            <div className="flex items-center space-x-2 flex-wrap">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Open:</span>
+                                <input
+                                  type="time"
+                                  value={rule.open_time || '10:00'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setWeeklyScheduleDraft(prev => ({
+                                      ...prev,
+                                      [dayKey]: {
+                                        ...rule,
+                                        open_time: val
+                                      }
+                                    }));
+                                  }}
+                                  className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900 focus:outline-rose-500 focus:bg-white"
+                                />
+                              </div>
+
+                              <span className="text-slate-400 font-black">—</span>
+
+                              <div className="flex items-center space-x-1">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Close:</span>
+                                <input
+                                  type="time"
+                                  value={rule.close_time || '23:30'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setWeeklyScheduleDraft(prev => ({
+                                      ...prev,
+                                      [dayKey]: {
+                                        ...rule,
+                                        close_time: val
+                                      }
+                                    }));
+                                  }}
+                                  className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900 focus:outline-rose-500 focus:bg-white"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] font-bold text-slate-400 italic">
+                              সারাদিন বন্ধ থাকবে (Closed whole day)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Feedback Alert */}
+              {scheduleSaveFeedback && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-center font-bold text-xs animate-in fade-in">
+                  {scheduleSaveFeedback}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer with Actions */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setWeeklyScheduleDraft(DEFAULT_WEEKLY_SCHEDULE);
+                }}
+                className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-bold text-xs text-slate-700 transition cursor-pointer"
+              >
+                Reset Default
+              </button>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-bold text-xs text-slate-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveWeeklySchedule}
+                  className="px-6 py-2.5 rounded-xl bg-[#d70f64] hover:bg-[#b8004f] text-white font-black text-xs transition cursor-pointer shadow-md flex items-center space-x-1.5 active:scale-95"
+                >
+                  <Save className="w-3.5 h-3.5 stroke-[2.2]" />
+                  <span>Save Schedule</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

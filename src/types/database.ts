@@ -71,8 +71,21 @@ export interface Vendor {
   password?: string;
   vendor_type?: 'restaurant' | 'shop'; // Categorize vendor as restaurant or grocery shop
   restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen'; // Sub-type for restaurant (Restaurant, Cloud Kitchen, Home Kitchen)
+  opening_schedule?: WeeklySchedule; // 1-week opening/closing schedule
+  is_permanently_closed?: boolean; // Manual permanent close toggle (until vendor manually reopens)
   created_at?: string;
 }
+
+export interface DaySchedule {
+  day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  day_label: string;
+  day_label_bn: string;
+  is_open: boolean;
+  open_time: string; // "09:00" in 24hr format
+  close_time: string; // "23:00" in 24hr format
+}
+
+export type WeeklySchedule = Record<DaySchedule['day'], DaySchedule>;
 
 export interface FoodCategory {
   id: string;
