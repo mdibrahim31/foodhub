@@ -11,6 +11,8 @@ import {
   ChefHat,
   Bike,
   Check,
+  Plus,
+  Minus,
   X,
   AlertTriangle,
   Phone,
@@ -23,6 +25,7 @@ import {
   Filter,
   Flame,
   ArrowRight,
+  ArrowLeft,
   Receipt,
   User,
   MapPin,
@@ -96,6 +99,11 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
 
+  // Accept Order Page State & Dummy Test Orders
+  const [selectedAcceptOrder, setSelectedAcceptOrder] = useState<Order | null>(null);
+  const [selectedPrepMinutes, setSelectedPrepMinutes] = useState<number>(9);
+  const [dummyOrders, setDummyOrders] = useState<Order[]>([]);
+
   // Vendor Drawer & Profile Modal States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -152,13 +160,68 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   const isAuthenticated = Boolean(currentUser && currentUser.role === 'vendor' && authenticatedVendor);
 
-  // Filter orders strictly for active restaurant
-  const vendorOrders = activeVendor ? orders.filter((o) => o.vendor_id === activeVendor.id) : [];
+  // Filter orders strictly for active restaurant (including dummy test orders)
+  const allOrdersList = [...dummyOrders, ...orders];
+  const vendorOrders = activeVendor ? allOrdersList.filter((o) => o.vendor_id === activeVendor.id) : [];
 
   const pendingOrders = vendorOrders.filter((o) => o.status === 'pending');
   const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
   const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
   const completedOrders = vendorOrders.filter((o) => o.status === 'delivered');
+
+  const handleAcceptOrder = (orderId: string, prepMinutes: number = 9) => {
+    vendorAcceptOrderWithPrepTime(orderId, prepMinutes);
+    setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'food_preparing', vendor_prep_minutes: prepMinutes } : o));
+    setSelectedAcceptOrder(null);
+  };
+
+  const handleDeclineOrder = (order: Order) => {
+    setRejectModalOrder(order);
+    setSelectedAcceptOrder(null);
+  };
+
+  const handleSendTestOrder = () => {
+    if (!activeVendor) return;
+    const testOrderId = `test-${Date.now()}`;
+    const newTestOrder: Order = {
+      id: testOrderId,
+      order_code: '00',
+      customer_id: 'test-cust',
+      customer_name: 'Test Customer',
+      customer_phone: 'XXXX-1234',
+      vendor_id: activeVendor.id,
+      delivery_address: 'Central Zone, Test Address',
+      delivery_latitude: activeVendor.latitude || 22.3569,
+      delivery_longitude: activeVendor.longitude || 91.7832,
+      food_total: 0,
+      delivery_distance_km: 1.2,
+      delivery_fee: 0,
+      total_cash_payable: 0,
+      food_cash_paid_to_vendor: false,
+      food_and_delivery_cash_collected_from_customer: false,
+      status: 'pending',
+      vendor_prep_minutes: 9,
+      special_instructions: '** the tomatoes should be fresh',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      items: [
+        {
+          id: `item-${Date.now()}`,
+          order_id: testOrderId,
+          item_name: 'Pizza Salami',
+          item_price: 0,
+          quantity: 1,
+          subtotal: 0,
+          selected_variations: ['0 x large'],
+          special_instructions: '** the tomatoes should be fresh'
+        }
+      ]
+    };
+
+    setDummyOrders(prev => [newTestOrder, ...prev]);
+    setIsDrawerOpen(false);
+    playNewOrderSound();
+  };
 
   // Auth Handler (Login Only)
   const handleVendorLoginSubmit = (e: React.FormEvent) => {
@@ -228,13 +291,20 @@ export const VendorOrdersTerminal: React.FC = () => {
     }
   }, [autoAccept, pendingOrders]);
 
+  const handleMarkFoodReady = (orderId: string) => {
+    vendorMarkFoodReady(orderId);
+    setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready_for_pickup' } : o));
+  };
+
   const handleConfirmHandover = (orderId: string) => {
     updateOrderStatus(orderId, 'food_picked_up');
+    setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'delivered' } : o));
   };
 
   const handleConfirmReject = () => {
     if (!rejectModalOrder) return;
     updateOrderStatus(rejectModalOrder.id, 'cancelled', { cancellation_reason: rejectReason });
+    setDummyOrders(prev => prev.filter(o => o.id !== rejectModalOrder.id));
     setRejectModalOrder(null);
   };
 
@@ -375,28 +445,58 @@ export const VendorOrdersTerminal: React.FC = () => {
                   {pendingOrders.map((order) => (
                     <div
                       key={order.id}
-                      className="bg-white border-2 border-rose-500 rounded-2xl p-3.5 shadow-md space-y-2.5 animate-pulse"
+                      onClick={() => {
+                        setSelectedAcceptOrder(order);
+                        setSelectedPrepMinutes(order.vendor_prep_minutes || 9);
+                      }}
+                      className="bg-white border-2 border-[#d70f64] rounded-2xl p-4 shadow-md hover:shadow-lg transition-all cursor-pointer space-y-3 select-none active:scale-[0.98] group relative overflow-hidden"
                     >
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-mono font-black text-rose-600">#{order.order_code}</span>
-                        <span className="font-black text-slate-900">৳{order.total_cash_payable}</span>
+                      {/* Top Bar: Order Code & Delivery Badge */}
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-baseline space-x-1.5">
+                          <span className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight font-mono">
+                            #{order.order_code}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="bg-rose-50 text-[#d70f64] px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <Bike className="w-3.5 h-3.5 stroke-[2.5]" />
+                            Delivery
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-700 font-medium leading-snug">
-                        {order.items?.map((it) => `${it.quantity}x ${it.item_name}`).join(', ')}
+
+                      {/* Items Preview */}
+                      <div className="space-y-1">
+                        {order.items?.map((it, idx) => (
+                          <div key={idx} className="text-xs sm:text-sm text-slate-900 font-bold leading-snug">
+                            <span>{it.quantity} x {it.item_name}</span>
+                            {it.selected_variations && it.selected_variations.length > 0 && (
+                              <p className="text-[11px] text-slate-500 font-medium pl-4">
+                                {it.selected_variations.join(' • ')}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex gap-1.5 pt-1">
-                        <button
-                          onClick={() => setRejectModalOrder(order)}
-                          className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
-                        >
-                          Decline
-                        </button>
-                        <button
-                          onClick={() => vendorAcceptOrderWithPrepTime(order.id, 15)}
-                          className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl transition shadow-xs cursor-pointer"
-                        >
-                          Accept
-                        </button>
+
+                      {/* Special Instructions Note Tag */}
+                      {order.special_instructions && (
+                        <div className="bg-amber-50 border border-amber-200/90 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-xs text-amber-900 font-semibold">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="truncate">{order.special_instructions}</span>
+                        </div>
+                      )}
+
+                      {/* Footer: Tap to accept CTA */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-xs font-black text-[#d70f64] group-hover:underline flex items-center gap-1">
+                          Tap to view & accept
+                          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                        <span className="text-xs font-bold text-slate-400">
+                          Just now
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -489,7 +589,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => vendorMarkFoodReady(order.id)}
+                      onClick={() => handleMarkFoodReady(order.id)}
                       className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer"
                     >
                       <Check className="w-4 h-4" />
@@ -609,8 +709,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                 <button
                   onClick={() => {
-                    playNewOrderSound();
-                    alert('🔔 Test order sound alert triggered successfully!');
+                    handleSendTestOrder();
                   }}
                   className="block w-full text-left hover:text-black transition cursor-pointer"
                 >
@@ -660,6 +759,214 @@ export const VendorOrdersTerminal: React.FC = () => {
         )}
 
       </div>
+
+      {/* 
+        ========================================================================
+        ACCEPT ORDER PAGE (Matching Foodpanda Partner Accept Order Screen)
+        - "then click korle accept page open hobe same example image er moto design koro"
+        ========================================================================
+      */}
+      {selectedAcceptOrder && (
+        <div className="fixed inset-0 z-50 bg-[#f8fafc] flex flex-col overflow-y-auto animate-in fade-in duration-200 select-none">
+          {/* Header */}
+          <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-xs">
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={() => setSelectedAcceptOrder(null)}
+                className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-full transition cursor-pointer"
+                title="Back to orders"
+              >
+                <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-black text-slate-950 tracking-tight leading-tight">
+                  Order #{selectedAcceptOrder.order_code}
+                </h1>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                  <Bike className="w-3.5 h-3.5 text-[#d70f64]" /> Foodpanda delivery
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleDeclineOrder(selectedAcceptOrder)}
+              className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+            >
+              Decline
+            </button>
+          </header>
+
+          {/* Body Content */}
+          <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-5 space-y-4 pb-28">
+            {/* 1. Preparation Time Section (Matching signature foodpanda design) */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Select preparation time
+                </span>
+                <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-[#d70f64]" /> Estimated
+                </span>
+              </div>
+
+              {/* Big Stepper */}
+              <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrepMinutes((prev) => Math.max(5, prev - 1))}
+                  className="w-12 h-12 rounded-xl bg-white text-slate-900 hover:bg-slate-200 active:scale-95 font-black text-2xl shadow-2xs border border-slate-200 flex items-center justify-center transition cursor-pointer"
+                  title="Decrease minutes"
+                >
+                  <Minus className="w-5 h-5 stroke-[2.5]" />
+                </button>
+
+                <div className="text-center px-4">
+                  <div className="text-3xl sm:text-4xl font-black text-slate-950 font-mono tracking-tight">
+                    {selectedPrepMinutes} <span className="text-base sm:text-lg font-bold text-slate-500 font-sans">mins</span>
+                  </div>
+                  <p className="text-[11px] font-bold text-slate-400">Rider dispatch timing is synced</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrepMinutes((prev) => Math.min(60, prev + 1))}
+                  className="w-12 h-12 rounded-xl bg-white text-slate-900 hover:bg-slate-200 active:scale-95 font-black text-2xl shadow-2xs border border-slate-200 flex items-center justify-center transition cursor-pointer"
+                  title="Increase minutes"
+                >
+                  <Plus className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="grid grid-cols-5 gap-1.5 pt-1">
+                {[5, 9, 15, 20, 30].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setSelectedPrepMinutes(mins)}
+                    className={`py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                      selectedPrepMinutes === mins
+                        ? 'bg-[#d70f64] text-white shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {mins}m
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Customer Special Instructions Banner */}
+            {selectedAcceptOrder.special_instructions && (
+              <div className="bg-amber-50 border border-amber-200/90 rounded-3xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
+                <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
+                    Customer Note / Special Request
+                  </h4>
+                  <p className="text-sm sm:text-base font-bold text-amber-950 mt-0.5 leading-snug">
+                    {selectedAcceptOrder.special_instructions}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Items List Card */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                  Order Items ({selectedAcceptOrder.items?.reduce((s, it) => s + it.quantity, 0) || 1})
+                </h3>
+                <span className="text-xs font-bold text-slate-400">
+                  {selectedAcceptOrder.order_code === '00' ? 'Dummy Test Order' : 'Live Order'}
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {selectedAcceptOrder.items?.map((item, idx) => (
+                  <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3">
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-900 font-black text-xs rounded-lg">
+                          {item.quantity}x
+                        </span>
+                        <div>
+                          <h4 className="text-base font-black text-slate-900 leading-snug">
+                            {item.item_name}
+                          </h4>
+                          {item.selected_variations && item.selected_variations.length > 0 && (
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              {item.selected_variations.join(' • ')}
+                            </p>
+                          )}
+                          {item.special_instructions && (
+                            <p className="text-xs text-amber-700 font-semibold mt-1 flex items-center gap-1">
+                              <span>•</span> {item.special_instructions}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="text-sm font-black text-slate-900 font-mono">
+                        ৳{item.subtotal || 0}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Customer & Delivery Info */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-2.5 text-xs">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">
+                Delivery Details
+              </h3>
+              <div className="flex justify-between py-1 border-b border-slate-50 text-slate-700">
+                <span className="font-semibold text-slate-500">Customer</span>
+                <span className="font-bold text-slate-900">{selectedAcceptOrder.customer_name}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50 text-slate-700">
+                <span className="font-semibold text-slate-500">Phone</span>
+                <span className="font-mono font-bold text-slate-900">{selectedAcceptOrder.customer_phone}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50 text-slate-700">
+                <span className="font-semibold text-slate-500">Delivery Address</span>
+                <span className="font-medium text-slate-900 text-right max-w-[200px] truncate">{selectedAcceptOrder.delivery_address}</span>
+              </div>
+              <div className="flex justify-between py-1 text-slate-700">
+                <span className="font-semibold text-slate-500">Payment Status</span>
+                <span className="font-bold text-emerald-600">Paid Online</span>
+              </div>
+            </div>
+          </main>
+
+          {/* Sticky Bottom Acceptance Bar (Foodpanda Pink button) */}
+          <footer className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl">
+            <div className="max-w-xl mx-auto flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleDeclineOrder(selectedAcceptOrder)}
+                className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl transition cursor-pointer"
+              >
+                Decline
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAcceptOrder(selectedAcceptOrder.id, selectedPrepMinutes)}
+                className="flex-1 py-3.5 bg-[#d70f64] hover:bg-[#b80c54] active:scale-[0.99] text-white font-black text-base sm:text-lg rounded-2xl transition shadow-md flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <Check className="w-5 h-5 stroke-[2.5]" />
+                <span>Accept order ({selectedPrepMinutes} mins)</span>
+              </button>
+            </div>
+          </footer>
+        </div>
+      )}
 
       {/* 
         ========================================================================
