@@ -2334,24 +2334,15 @@ export const CustomerPortal: React.FC = () => {
             className="flex-1 overflow-y-auto scrollbar-none pb-36"
           >
             {/* 1. Header Cover Area */}
-            <div className="relative h-52 overflow-hidden bg-slate-900">
-              <motion.img 
-                initial={false}
-                animate={{ 
-                  scale: 1 + (1 - headerScrollOpacity) * 0.3,
-                  y: (1 - headerScrollOpacity) * 30,
-                  filter: `brightness(${0.6 + headerScrollOpacity * 0.4})`
-                }}
+            <div className="relative h-44 sm:h-48 overflow-hidden bg-slate-100">
+              <img 
                 src={selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'} 
                 alt={selectedVendorForMenu.name}
                 className="w-full h-full object-cover"
               />
-              
-              {/* Overlay for better readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
               {/* Top Navigation Overlay */}
-              <div className="absolute top-4 inset-x-4 flex items-center justify-between z-40">
+              <div className="absolute top-3.5 inset-x-4 flex items-center justify-between z-40">
                 <button 
                   onClick={() => setSelectedVendorForMenu(null)}
                   className="w-9 h-9 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md text-slate-900 active:scale-90 transition-transform cursor-pointer"
@@ -2391,21 +2382,38 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Restaurant Info Section */}
-            <div className="pt-4 px-6 pb-4 text-center space-y-1">
+            {/* 2. Restaurant Info Section with Overlapping Vendor Profile Photo */}
+            <div className="relative px-6 pb-4 text-center">
+              {/* Overlapping Profile Photo (Exact same position as example image) */}
+              <div className="relative -mt-9 sm:-mt-10 flex justify-center z-20 mb-2">
+                <div className="w-[72px] h-[72px] rounded-2xl overflow-hidden bg-white p-0.5 shadow-md border-2 border-white ring-1 ring-slate-200/60 shrink-0">
+                  <img
+                    src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300'}
+                    alt={selectedVendorForMenu.name}
+                    className="w-full h-full object-cover rounded-[14px]"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (selectedVendorForMenu.cover_image && img.src !== selectedVendorForMenu.cover_image) {
+                        img.src = selectedVendorForMenu.cover_image;
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 {selectedVendorForMenu.name}
               </h3>
               <div 
                 onClick={() => setIsRestaurantReviewsOpen(true)}
-                className="inline-flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600 cursor-pointer hover:opacity-85 transition group active:scale-95 py-0.5 px-2 rounded-full hover:bg-slate-50 select-none"
+                className="inline-flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600 cursor-pointer hover:opacity-85 transition group active:scale-95 py-0.5 px-2 rounded-full hover:bg-slate-50 select-none mt-1"
                 title="View Ratings & Reviews"
               >
                 <Star className="w-4 h-4 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
                 <span className="text-slate-900 font-black">
                   {selectedVendorForMenu.rating ? selectedVendorForMenu.rating.toFixed(1) : '5.0'}
                 </span>
-                <span className="text-slate-500 font-semibold">(2k+ ratings)</span>
+                <span className="text-slate-500 font-semibold">(500+ ratings)</span>
               </div>
             </div>
 
