@@ -42,7 +42,9 @@ import {
   ArrowLeft,
   Info,
   Share2,
-  Trash2
+  Trash2,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -148,6 +150,37 @@ export const CustomerPortal: React.FC = () => {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    const docEl = document.documentElement as any;
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      }
+    } else {
+      const doc = document as any;
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {});
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen();
+      }
+    }
+  };
 
   // Foodpanda Style Menu Item Modal States
   const [selectedMenuItemForModal, setSelectedMenuItemForModal] = useState<MenuItem | null>(null);
@@ -1789,35 +1822,49 @@ export const CustomerPortal: React.FC = () => {
             Header wrapping Location and Search bar
             ========================================================================
           */}
-          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-3 pb-6 px-4 rounded-b-[2.5rem] shadow-sm">
+          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-[max(env(safe-area-inset-top),0.75rem)] pb-6 px-4 rounded-b-[2.5rem] shadow-sm">
             <div className="max-w-md mx-auto space-y-3">
-              {/* Top Row: Location Pin + Current Location + Chittagong + Heart */}
+              {/* Top Row: Location Pin + Current Location + Chittagong + Fullscreen + Heart */}
               <div className="flex items-center justify-between">
                 <div 
                   onClick={() => setIsAddressModalOpen(true)}
-                  className="flex items-start space-x-2.5 cursor-pointer group"
+                  className="flex items-start space-x-2.5 cursor-pointer group flex-1 min-w-0 pr-2"
                 >
-                  <MapPin className="w-6 h-6 text-white mt-0.5 fill-transparent stroke-[2.2]" />
-                  <div>
+                  <MapPin className="w-6 h-6 text-white mt-0.5 fill-transparent stroke-[2.2] shrink-0" />
+                  <div className="min-w-0">
                     <div className="flex items-center space-x-1">
                       <h1 className="text-base font-black tracking-tight text-white leading-tight">
                         Current Location
                       </h1>
                     </div>
-                    <p className="text-xs text-orange-100 font-medium truncate max-w-[250px]">
+                    <p className="text-xs text-orange-100 font-medium truncate max-w-[200px] sm:max-w-[250px]">
                       {selectedAddress ? `${selectedAddress.address_line}${activeCustomerZone?.name ? ` • ${activeCustomerZone.name}` : ''}` : (activeCustomerZone?.name || 'Chittagong')}
                     </p>
                   </div>
                 </div>
 
-                {/* Right: Heart Icon (Favorites) */}
-                <button 
-                  onClick={() => setIsRating4PlusOnly(prev => !prev)}
-                  className="p-1 text-white hover:text-orange-200 transition"
-                  aria-label="Favorites"
-                >
-                  <Heart className={`w-6 h-6 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
-                </button>
+                {/* Right: Fullscreen Toggle + Heart Icon (Favorites) */}
+                <div className="flex items-center space-x-1 shrink-0">
+                  <button 
+                    onClick={toggleFullscreen}
+                    className="p-1.5 text-white/90 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer active:scale-95"
+                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View (ফুলস্ক্রিন ভিউ)"}
+                    aria-label="Toggle Fullscreen"
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="w-5 h-5 stroke-[2.2]" />
+                    ) : (
+                      <Maximize2 className="w-5 h-5 stroke-[2.2]" />
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => setIsRating4PlusOnly(prev => !prev)}
+                    className="p-1 text-white hover:text-orange-200 transition cursor-pointer active:scale-95"
+                    aria-label="Favorites"
+                  >
+                    <Heart className={`w-6 h-6 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               {/* Search Bar (Inside the Orange Header directly below Location) */}
