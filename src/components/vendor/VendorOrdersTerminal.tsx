@@ -66,16 +66,16 @@ import {
 } from 'lucide-react';
 
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
+  saturday: { day: 'saturday', day_label: 'Saturday', day_label_bn: 'শনিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
+  sunday: { day: 'sunday', day_label: 'Sunday', day_label_bn: 'রবিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
   monday: { day: 'monday', day_label: 'Monday', day_label_bn: 'সোমবার', is_open: true, open_time: '10:00', close_time: '23:30' },
   tuesday: { day: 'tuesday', day_label: 'Tuesday', day_label_bn: 'মঙ্গলবার', is_open: true, open_time: '10:00', close_time: '23:30' },
   wednesday: { day: 'wednesday', day_label: 'Wednesday', day_label_bn: 'বুধবার', is_open: true, open_time: '10:00', close_time: '23:30' },
   thursday: { day: 'thursday', day_label: 'Thursday', day_label_bn: 'বৃহস্পতিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
-  friday: { day: 'friday', day_label: 'Friday', day_label_bn: 'শুক্রবার', is_open: true, open_time: '10:00', close_time: '23:30' },
-  saturday: { day: 'saturday', day_label: 'Saturday', day_label_bn: 'শনিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
-  sunday: { day: 'sunday', day_label: 'Sunday', day_label_bn: 'রবিবার', is_open: true, open_time: '10:00', close_time: '23:30' }
+  friday: { day: 'friday', day_label: 'Friday', day_label_bn: 'শুক্রবার', is_open: true, open_time: '10:00', close_time: '23:30' }
 };
 
-const DAYS_ORDER: Array<DaySchedule['day']> = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAYS_ORDER: Array<DaySchedule['day']> = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
 // Helper to check if vendor is within scheduled open hours at given date
 export const isVendorOpenBySchedule = (schedule?: WeeklySchedule): boolean => {
