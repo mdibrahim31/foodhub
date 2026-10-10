@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { AuthModal } from '../common/AuthModal';
-import { Order, OrderStatus, Vendor } from '../../types/database';
+import { Order, OrderStatus, Vendor, MenuItem } from '../../types/database';
 import {
   Bell,
   Volume2,
@@ -77,7 +77,9 @@ export const VendorOrdersTerminal: React.FC = () => {
     riders,
     currentUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    menuItems,
+    updateMenuItem
   } = useDelivery();
 
   // 1. Auth Form States (Only Login)
@@ -104,6 +106,21 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [selectedReadyOrder, setSelectedReadyOrder] = useState<Order | null>(null);
   const [selectedPrepMinutes, setSelectedPrepMinutes] = useState<number>(9);
   const [dummyOrders, setDummyOrders] = useState<Order[]>([]);
+
+  // Menu Category & Item Availability States (Matching Foodpanda Partner App)
+  const [isMenuViewOpen, setIsMenuViewOpen] = useState(false);
+  const [selectedMenuCategory, setSelectedMenuCategory] = useState<string | null>(null);
+  const [availabilityModalItem, setAvailabilityModalItem] = useState<MenuItem | null>(null);
+  const [selectedAvailabilityOption, setSelectedAvailabilityOption] = useState<'available' | 'sold_out_today' | 'sold_out_indefinite'>('available');
+  const [itemAvailabilityMap, setItemAvailabilityMap] = useState<Record<string, 'available' | 'sold_out_today' | 'sold_out_indefinite'>>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_item_availability');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
   // Vendor Drawer & Profile Modal States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -348,6 +365,227 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   // Total earnings today for this restaurant
   const todayEarnings = completedOrders.reduce((sum, o) => sum + o.food_total, 0);
+
+  // Default menu items list to guarantee realistic food categories & items
+  const defaultMenuItemsList: MenuItem[] = [
+    // 1. Pizza
+    {
+      id: 'item-pizza-1',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Pizza Salami',
+      description: 'Hand-tossed crust, spiced beef salami slices, marinara sauce & mozzarella cheese',
+      price: 12.00,
+      category: 'Pizza',
+      image_url: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-pizza-2',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Margherita Classic',
+      description: 'San Marzano tomato sauce, fresh fragrant basil leaves & melted mozzarella',
+      price: 10.50,
+      category: 'Pizza',
+      image_url: 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-pizza-3',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'BBQ Chicken Supreme',
+      description: 'Smoked pulled chicken, tangy hickory BBQ sauce drizzle & red onions',
+      price: 13.50,
+      category: 'Pizza',
+      image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-pizza-4',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Garden Fresh Veggie',
+      description: 'Bell peppers, sliced black olives, sweet corn, mushrooms & melted mozzarella',
+      price: 11.00,
+      category: 'Pizza',
+      image_url: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+
+    // 2. Burgers
+    {
+      id: 'item-burger-1',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Classic Smash Beef Burger',
+      description: 'Juicy smashed beef patty, melted cheddar cheese, pickles & signature sauce',
+      price: 9.50,
+      category: 'Burgers',
+      image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-burger-2',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Crispy Zinger Chicken',
+      description: 'Crispy seasoned chicken breast fillet, iceberg lettuce & spiced mayonnaise',
+      price: 8.99,
+      category: 'Burgers',
+      image_url: 'https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-burger-3',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Smokey BBQ Cheeseburger',
+      description: 'Grilled Angus beef patty, smoky beef bacon, melted cheese & barbecue glaze',
+      price: 10.99,
+      category: 'Burgers',
+      image_url: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+
+    // 3. Pasta
+    {
+      id: 'item-pasta-1',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Creamy Chicken Alfredo',
+      description: 'Fettuccine pasta in rich garlic parmesan cream with sliced grilled chicken',
+      price: 11.50,
+      category: 'Pasta',
+      image_url: 'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-pasta-2',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Penne all’Arrabbiata',
+      description: 'Fiery Italian chili flakes, garlic, tomato sauce & fresh parsley',
+      price: 9.80,
+      category: 'Pasta',
+      image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+
+    // 4. Sides & Snacks
+    {
+      id: 'item-side-1',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Cheesy Loaded Fries',
+      description: 'Crispy golden fries topped with warm melted cheese and seasoning',
+      price: 5.50,
+      category: 'Sides & Snacks',
+      image_url: 'https://images.unsplash.com/photo-1585109649139-366815a0d713?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-side-2',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Buffalo Chicken Wings',
+      description: '6 pcs crispy wings tossed in spicy tangy buffalo sauce',
+      price: 7.20,
+      category: 'Sides & Snacks',
+      image_url: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-side-3',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Toasted Garlic Cheese Bread',
+      description: 'Crunchy French bread slices topped with roasted garlic butter and mozzarella',
+      price: 4.50,
+      category: 'Sides & Snacks',
+      image_url: 'https://images.unsplash.com/photo-1619895092538-128341789043?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+
+    // 5. Beverages
+    {
+      id: 'item-drink-1',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Coca-Cola (Can 330ml)',
+      description: 'Classic refreshing ice-cold cola',
+      price: 2.00,
+      category: 'Beverages',
+      image_url: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+    {
+      id: 'item-drink-2',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Fresh Mint Lemonade',
+      description: 'Fresh squeezed lime juice, crushed mint leaves & chilled soda splash',
+      price: 3.50,
+      category: 'Beverages',
+      image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    },
+
+    // 6. Desserts
+    {
+      id: 'item-dessert-1',
+      vendor_id: activeVendor?.id || 'v-1',
+      name: 'Warm Fudge Brownie',
+      description: 'Rich dark chocolate brownie served with molten center',
+      price: 4.90,
+      category: 'Desserts',
+      image_url: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=400&h=400&q=80',
+      is_available: true
+    }
+  ];
+
+  // Effective vendor menu items
+  const effectiveMenuItems = React.useMemo(() => {
+    const contextItems = menuItems.filter(m => m.vendor_id === activeVendor?.id);
+    if (contextItems.length > 0) {
+      return contextItems;
+    }
+    return defaultMenuItemsList;
+  }, [menuItems, activeVendor?.id]);
+
+  // Group into categories
+  const vendorCategoriesList = React.useMemo(() => {
+    const map = new Map<string, MenuItem[]>();
+    for (const item of effectiveMenuItems) {
+      const c = item.category || 'General';
+      if (!map.has(c)) {
+        map.set(c, []);
+      }
+      map.get(c)!.push(item);
+    }
+    return Array.from(map.entries()).map(([catName, items]) => ({
+      name: catName,
+      items,
+      count: items.length,
+      image: items[0]?.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=120&h=120&q=80'
+    }));
+  }, [effectiveMenuItems]);
+
+  const getItemEffectiveStatus = (item: MenuItem): 'available' | 'sold_out_today' | 'sold_out_indefinite' => {
+    if (itemAvailabilityMap[item.id]) {
+      return itemAvailabilityMap[item.id];
+    }
+    return item.is_available ? 'available' : 'sold_out_indefinite';
+  };
+
+  const openAvailabilityModal = (item: MenuItem) => {
+    const current = getItemEffectiveStatus(item);
+    setSelectedAvailabilityOption(current);
+    setAvailabilityModalItem(item);
+  };
+
+  const handleApplyAvailability = () => {
+    if (!availabilityModalItem) return;
+    const isAvail = selectedAvailabilityOption === 'available';
+
+    setItemAvailabilityMap(prev => {
+      const nextMap = { ...prev, [availabilityModalItem.id]: selectedAvailabilityOption };
+      try {
+        localStorage.setItem('foodiplace_vendor_item_availability', JSON.stringify(nextMap));
+      } catch {}
+      return nextMap;
+    });
+
+    updateMenuItem(availabilityModalItem.id, { is_available: isAvail });
+    setAvailabilityModalItem(null);
+  };
 
   if (!activeVendor) {
     return (
@@ -640,7 +878,9 @@ export const VendorOrdersTerminal: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsDrawerOpen(false);
-                    openVendorProfileModal();
+                    setIsMenuViewOpen(true);
+                    setSelectedMenuCategory(null);
+                    setMenuSearchQuery('');
                   }}
                   className="block w-full text-left hover:text-black transition cursor-pointer"
                 >
@@ -1075,9 +1315,421 @@ export const VendorOrdersTerminal: React.FC = () => {
 
       {/* 
         ========================================================================
-        MODAL: REJECT ORDER WITH REASON
+        MENU MANAGEMENT VIEWS (Matching Foodpanda Partner App)
+        1. 3dot window te thaka menu option a click korle all category list show hobe
+        2. then category te click korle category te thaka all item list page show hobe
+        3. then item list a thaka 3dot a click korle availability er window popup hobe
         ========================================================================
       */}
+      {isMenuViewOpen && (
+        <div className="fixed inset-0 z-50 bg-[#f8fafc] flex flex-col overflow-y-auto animate-in fade-in duration-200 select-none">
+          {/* View 1: All Categories List View */}
+          {selectedMenuCategory === null ? (
+            <div className="min-h-full flex flex-col">
+              {/* Header */}
+              <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuViewOpen(false)}
+                    className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-full transition cursor-pointer"
+                    title="Back to terminal"
+                  >
+                    <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+                  </button>
+                  <div>
+                    <h1 className="text-lg sm:text-xl font-black text-slate-950 tracking-tight leading-tight">
+                      Menu
+                    </h1>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                      <Store className="w-3.5 h-3.5 text-[#d70f64]" /> {activeVendor?.name || 'Restaurant'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                    {vendorCategoriesList.length} Categories
+                  </span>
+                </div>
+              </header>
+
+              {/* Search Bar */}
+              <div className="p-4 sm:p-5 max-w-xl w-full mx-auto pb-0">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    placeholder="Search categories..."
+                    className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold placeholder:text-slate-400 focus:outline-none focus:border-[#d70f64] focus:ring-2 focus:ring-[#d70f64]/10 transition shadow-2xs"
+                  />
+                  {menuSearchQuery && (
+                    <button
+                      onClick={() => setMenuSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Categories List */}
+              <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-5 space-y-2.5 pb-20">
+                {vendorCategoriesList
+                  .filter((cat) => !menuSearchQuery || cat.name.toLowerCase().includes(menuSearchQuery.toLowerCase()))
+                  .map((category) => (
+                    <div
+                      key={category.name}
+                      onClick={() => {
+                        setSelectedMenuCategory(category.name);
+                        setMenuSearchQuery('');
+                      }}
+                      className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs hover:border-slate-300 hover:shadow-xs active:scale-[0.99] transition cursor-pointer flex items-center justify-between group"
+                    >
+                      <div className="flex items-center space-x-3.5">
+                        <img
+                          src={category.image}
+                          alt={category.name}
+                          className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-2xs shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120';
+                          }}
+                        />
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-[15px] sm:text-base group-hover:text-[#d70f64] transition">
+                            {category.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            {category.count} {category.count === 1 ? 'item' : 'items'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition" />
+                      </div>
+                    </div>
+                  ))}
+
+                {vendorCategoriesList.filter((cat) => !menuSearchQuery || cat.name.toLowerCase().includes(menuSearchQuery.toLowerCase())).length === 0 && (
+                  <div className="py-12 text-center text-slate-400 font-bold text-sm bg-white rounded-2xl border border-slate-200">
+                    No categories found matching "{menuSearchQuery}"
+                  </div>
+                )}
+              </main>
+            </div>
+          ) : (
+            /* View 2: Category Item List Page */
+            <div className="min-h-full flex flex-col">
+              {/* Header */}
+              <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMenuCategory(null);
+                      setMenuSearchQuery('');
+                    }}
+                    className="p-2 -ml-1 text-slate-700 hover:text-black hover:bg-slate-100 rounded-full transition cursor-pointer"
+                    title="Back to categories"
+                  >
+                    <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+                  </button>
+                  <div>
+                    <h1 className="text-lg sm:text-xl font-black text-slate-950 tracking-tight leading-tight">
+                      {selectedMenuCategory}
+                    </h1>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {vendorCategoriesList.find(c => c.name === selectedMenuCategory)?.count || 0} items in this category
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMenuCategory(null);
+                    setMenuSearchQuery('');
+                  }}
+                  className="text-xs font-bold text-[#d70f64] hover:underline cursor-pointer"
+                >
+                  All categories
+                </button>
+              </header>
+
+              {/* Search Within Category */}
+              <div className="p-4 sm:p-5 max-w-xl w-full mx-auto pb-0">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    placeholder={`Search in ${selectedMenuCategory}...`}
+                    className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold placeholder:text-slate-400 focus:outline-none focus:border-[#d70f64] focus:ring-2 focus:ring-[#d70f64]/10 transition shadow-2xs"
+                  />
+                  {menuSearchQuery && (
+                    <button
+                      onClick={() => setMenuSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Items List */}
+              <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-5 space-y-3 pb-24">
+                {(vendorCategoriesList.find(c => c.name === selectedMenuCategory)?.items || [])
+                  .filter((item) => {
+                    if (!menuSearchQuery) return true;
+                    const q = menuSearchQuery.toLowerCase();
+                    return item.name.toLowerCase().includes(q) || (item.description && item.description.toLowerCase().includes(q));
+                  })
+                  .map((item) => {
+                    const status = getItemEffectiveStatus(item);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs hover:shadow-xs transition flex items-start justify-between gap-3 relative"
+                      >
+                        {/* Left Details */}
+                        <div className="flex-1 pr-2 min-w-0">
+                          <h4 className="font-bold text-slate-900 text-[15px] sm:text-base leading-snug">
+                            {item.name}
+                          </h4>
+                          {item.description && (
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                              {item.description}
+                            </p>
+                          )}
+                          <div className="mt-2.5 flex items-center space-x-2">
+                            <span className="font-mono font-black text-slate-900 text-sm">
+                              ৳{item.price.toFixed(2)}
+                            </span>
+                          </div>
+
+                          {/* Availability Badge */}
+                          <div className="mt-2">
+                            {status === 'available' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Available
+                              </span>
+                            )}
+                            {status === 'sold_out_today' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                Sold out for today
+                              </span>
+                            )}
+                            {status === 'sold_out_indefinite' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                                Sold out indefinitely
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Item Image & 3-dot Button */}
+                        <div className="flex flex-col items-end space-y-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openAvailabilityModal(item);
+                            }}
+                            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center justify-center transition cursor-pointer"
+                            title="Item availability settings"
+                          >
+                            <MoreVertical className="w-4 h-4 stroke-[2.4]" />
+                          </button>
+
+                          {item.image_url && (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-slate-100 shadow-2xs"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=160';
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </main>
+            </div>
+          )}
+
+          {/* 
+            ========================================================================
+            AVAILABILITY WINDOW POPUP (100% Matching Foodpanda Partner App Popup)
+            - "then item list a thaka 3dot a click korle availability er window popup hobe"
+            - Radio button options: Available, Sold out for today, Sold out indefinitely
+            - Apply & Cancel buttons
+            ========================================================================
+          */}
+          {availabilityModalItem && (
+            <div
+              className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+              onClick={() => setAvailabilityModalItem(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white text-slate-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl border border-slate-200 animate-in slide-in-from-bottom duration-200 max-h-[90vh] flex flex-col"
+              >
+                {/* Mobile drag handle */}
+                <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto -mt-2 mb-1 sm:hidden" />
+
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="font-black text-slate-900 text-lg sm:text-xl tracking-tight">
+                      Item availability
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      {availabilityModalItem.name} • ৳{availabilityModalItem.price.toFixed(2)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setAvailabilityModalItem(null)}
+                    className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Radio Options */}
+                <div className="space-y-3 py-1 text-xs sm:text-sm">
+                  {/* Option 1: Available */}
+                  <label
+                    onClick={() => setSelectedAvailabilityOption('available')}
+                    className={`flex items-start p-3.5 rounded-2xl border transition cursor-pointer ${
+                      selectedAvailabilityOption === 'available'
+                        ? 'border-[#d70f64] bg-pink-50/40 ring-2 ring-[#d70f64]/15'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="mt-0.5 mr-3 shrink-0">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                          selectedAvailabilityOption === 'available'
+                            ? 'border-[#d70f64] bg-[#d70f64]'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {selectedAvailabilityOption === 'available' && (
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">
+                        Available
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        This item will appear on the menu and customers can order it right now.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Option 2: Sold out for today */}
+                  <label
+                    onClick={() => setSelectedAvailabilityOption('sold_out_today')}
+                    className={`flex items-start p-3.5 rounded-2xl border transition cursor-pointer ${
+                      selectedAvailabilityOption === 'sold_out_today'
+                        ? 'border-[#d70f64] bg-pink-50/40 ring-2 ring-[#d70f64]/15'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="mt-0.5 mr-3 shrink-0">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                          selectedAvailabilityOption === 'sold_out_today'
+                            ? 'border-[#d70f64] bg-[#d70f64]'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {selectedAvailabilityOption === 'sold_out_today' && (
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">
+                        Sold out for today
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        This item will be unavailable today and will automatically turn back on tomorrow morning.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Option 3: Sold out indefinitely */}
+                  <label
+                    onClick={() => setSelectedAvailabilityOption('sold_out_indefinite')}
+                    className={`flex items-start p-3.5 rounded-2xl border transition cursor-pointer ${
+                      selectedAvailabilityOption === 'sold_out_indefinite'
+                        ? 'border-[#d70f64] bg-pink-50/40 ring-2 ring-[#d70f64]/15'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="mt-0.5 mr-3 shrink-0">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                          selectedAvailabilityOption === 'sold_out_indefinite'
+                            ? 'border-[#d70f64] bg-[#d70f64]'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {selectedAvailabilityOption === 'sold_out_indefinite' && (
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">
+                        Sold out indefinitely
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        This item will remain unavailable until you manually turn it back on.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Bottom Action Buttons */}
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleApplyAvailability}
+                    className="w-full py-3.5 bg-[#d70f64] hover:bg-[#b8004f] active:scale-[0.99] text-white font-black text-sm rounded-2xl transition shadow-md flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Apply changes</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAvailabilityModalItem(null)}
+                    className="w-full py-2.5 text-center text-slate-500 hover:text-slate-800 font-bold text-xs transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {/* 
         ========================================================================
         PAGE / MODAL: DECLINE ORDER (100% Matching Screenshot_20261010_142637_YouTube.jpg)
