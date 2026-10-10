@@ -97,6 +97,9 @@ export const VendorOrdersTerminal: React.FC = () => {
   // Modal States
   const [rejectModalOrder, setRejectModalOrder] = useState<Order | null>(null);
   const [rejectReason, setRejectReason] = useState('Vendor closed');
+  const [declineSubStep, setDeclineSubStep] = useState<'reasons' | 'unavailable_items' | 'save_order'>('reasons');
+  const [declineConfirmModal, setDeclineConfirmModal] = useState<{ isOpen: boolean; reason: 'Vendor closed' | 'Too busy' } | null>(null);
+  const [selectedUnavailableItems, setSelectedUnavailableItems] = useState<string[]>([]);
   const [printModalOrder, setPrintModalOrder] = useState<Order | null>(null);
   const [prepTimeSelection, setPrepTimeSelection] = useState<Record<string, number>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, Record<number, boolean>>>({});
@@ -195,7 +198,34 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   const handleDeclineOrder = (order: Order) => {
     setRejectModalOrder(order);
+    setDeclineSubStep('reasons');
+    setDeclineConfirmModal(null);
+    setSelectedUnavailableItems([]);
     setSelectedAcceptOrder(null);
+  };
+
+  const toggleUnavailableItem = (itemName: string) => {
+    setSelectedUnavailableItems(prev =>
+      prev.includes(itemName) ? prev.filter(n => n !== itemName) : [...prev, itemName]
+    );
+  };
+
+  const handleContinueUnavailableItems = () => {
+    if (selectedUnavailableItems.length === 0) return;
+    for (const itemName of selectedUnavailableItems) {
+      const matched = effectiveMenuItems.find(m => m.name.toLowerCase() === itemName.toLowerCase());
+      if (matched) {
+        setItemAvailabilityMap(prev => {
+          const next = { ...prev, [matched.id]: 'sold_out_today' as const };
+          try {
+            localStorage.setItem('foodiplace_vendor_item_availability', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+        updateMenuItem(matched.id, { is_available: false });
+      }
+    }
+    setDeclineSubStep('save_order');
   };
 
   const handleSendTestOrder = () => {
@@ -1732,104 +1762,333 @@ export const VendorOrdersTerminal: React.FC = () => {
       )}
       {/* 
         ========================================================================
-        PAGE / MODAL: DECLINE ORDER (100% Matching Screenshot_20261010_142637_YouTube.jpg)
-        - "Sad to see you decline."
-        - "Select your reason for declining."
-        - Options: Vendor closed, Too busy, Item unavailable
+        PAGE / MODAL: DECLINE ORDER
+        - Step 1: "Sad to see you decline." (Reasons page)
+          - "Vendor closed" & "Too busy" trigger Confirm and Cancel popup
+          - "Item unavailable" navigates to "Which items are unavailable?"
+        - Step 2: "Which items are unavailable?" (Screenshot_20261010_182014_YouTube.jpg)
+        - Step 3: "Let's save the order!" (Screenshot_20261010_182031_YouTube.jpg)
         ========================================================================
       */}
       {rejectModalOrder && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto animate-in fade-in duration-200 select-none">
-          {/* Header */}
-          <header className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-20">
-            <button
-              type="button"
-              onClick={() => setRejectModalOrder(null)}
-              className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer"
-              title="Back"
-            >
-              <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setRejectModalOrder(null)}
-              className="text-[#d70f64] hover:text-[#b8004f] font-bold text-base tracking-wide cursor-pointer transition"
-            >
-              Cancel
-            </button>
-          </header>
+          {/* ------------------------------------------------------------- */}
+          {/* SUB-STEP 1: SELECT REASON (Sad to see you decline)            */}
+          {/* ------------------------------------------------------------- */}
+          {declineSubStep === 'reasons' && (
+            <div className="min-h-full flex flex-col">
+              {/* Header */}
+              <header className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-20">
+                <button
+                  type="button"
+                  onClick={() => setRejectModalOrder(null)}
+                  className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer"
+                  title="Back"
+                >
+                  <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRejectModalOrder(null)}
+                  className="text-[#d70f64] hover:text-[#b8004f] font-bold text-base tracking-wide cursor-pointer transition"
+                >
+                  Cancel
+                </button>
+              </header>
 
-          {/* Main Decline Content */}
-          <main className="max-w-md w-full mx-auto p-6 sm:p-8 flex-1 flex flex-col justify-start">
-            <div className="pt-2 pb-6">
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight">
-                Sad to see you<br />decline.
-              </h1>
-              <p className="text-sm sm:text-base font-bold text-slate-700 mt-3">
-                Select your reason for declining.
-              </p>
+              {/* Main Decline Content */}
+              <main className="max-w-md w-full mx-auto p-6 sm:p-8 flex-1 flex flex-col justify-start">
+                <div className="pt-2 pb-6">
+                  <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight">
+                    Sad to see you<br />decline.
+                  </h1>
+                  <p className="text-sm sm:text-base font-bold text-slate-700 mt-3">
+                    Select your reason for declining.
+                  </p>
+                </div>
+
+                {/* Reason Options List */}
+                <div className="space-y-4">
+                  {/* 1. Vendor closed -> opens Confirm/Cancel popup */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRejectReason('Vendor closed');
+                      setDeclineConfirmModal({ isOpen: true, reason: 'Vendor closed' });
+                    }}
+                    className="w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left bg-white hover:bg-slate-50 border border-slate-100 text-slate-900 shadow-sm active:scale-[0.99]"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-200/90 flex items-center justify-center mr-4 shrink-0 text-slate-800">
+                      <X className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <span className="text-base sm:text-lg font-black tracking-tight">Vendor closed</span>
+                  </button>
+
+                  {/* 2. Too busy -> opens Confirm/Cancel popup */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRejectReason('Too busy');
+                      setDeclineConfirmModal({ isOpen: true, reason: 'Too busy' });
+                    }}
+                    className="w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left bg-white hover:bg-slate-50 border border-slate-100 text-slate-900 shadow-sm active:scale-[0.99]"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-4 shrink-0 text-slate-800">
+                      <Clock className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <span className="text-base sm:text-lg font-black tracking-tight">Too busy</span>
+                  </button>
+
+                  {/* 3. Item unavailable -> navigates to Which items are unavailable? */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRejectReason('Item unavailable');
+                      setSelectedUnavailableItems([]);
+                      setDeclineSubStep('unavailable_items');
+                    }}
+                    className="w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left bg-white hover:bg-slate-50 border border-slate-100 text-slate-900 shadow-sm active:scale-[0.99]"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-4 shrink-0 text-slate-800">
+                      <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <span className="text-base sm:text-lg font-black tracking-tight">Item unavailable</span>
+                  </button>
+                </div>
+              </main>
             </div>
+          )}
 
-            {/* Reason Options List */}
-            <div className="space-y-4">
-              {/* 1. Vendor closed */}
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectReason('Vendor closed');
-                  handleConfirmReject('Vendor closed');
-                }}
-                className={`w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left shadow-sm ${
-                  rejectReason === 'Vendor closed'
-                    ? 'bg-[#d0d3d8] text-slate-950 ring-1 ring-slate-400/40'
-                    : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-900'
-                }`}
-              >
-                <div className="w-10 h-10 rounded-full bg-slate-200/90 flex items-center justify-center mr-4 shrink-0 text-slate-800">
-                  <X className="w-5 h-5 stroke-[2.5]" />
-                </div>
-                <span className="text-base sm:text-lg font-black tracking-tight">Vendor closed</span>
-              </button>
+          {/* ------------------------------------------------------------- */}
+          {/* SUB-STEP 2: WHICH ITEMS ARE UNAVAILABLE?                      */}
+          {/* (100% Matching Screenshot_20261010_182014_YouTube.jpg)        */}
+          {/* ------------------------------------------------------------- */}
+          {declineSubStep === 'unavailable_items' && (
+            <div className="min-h-full flex flex-col">
+              {/* Header */}
+              <header className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-20">
+                <button
+                  type="button"
+                  onClick={() => setDeclineSubStep('reasons')}
+                  className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer"
+                  title="Back"
+                >
+                  <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectModalOrder(null);
+                    setDeclineSubStep('reasons');
+                  }}
+                  className="text-[#d70f64] hover:text-[#b8004f] font-bold text-base tracking-wide cursor-pointer transition"
+                >
+                  Cancel
+                </button>
+              </header>
 
-              {/* 2. Too busy */}
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectReason('Too busy');
-                  handleConfirmReject('Too busy');
-                }}
-                className={`w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left shadow-sm ${
-                  rejectReason === 'Too busy'
-                    ? 'bg-[#d0d3d8] text-slate-950 ring-1 ring-slate-400/40'
-                    : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-900'
-                }`}
-              >
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-4 shrink-0 text-slate-800">
-                  <Clock className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <span className="text-base sm:text-lg font-black tracking-tight">Too busy</span>
-              </button>
+              <main className="max-w-md w-full mx-auto p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight pt-2">
+                    Which items are<br />unavailable?
+                  </h1>
+                  <p className="text-sm sm:text-base font-semibold text-slate-700 mt-3 leading-relaxed">
+                    These items will be set to unavailable for the rest of the day.
+                  </p>
 
-              {/* 3. Item unavailable */}
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectReason('Item unavailable');
-                  handleConfirmReject('Item unavailable');
-                }}
-                className={`w-full p-5 rounded-2xl flex items-center transition cursor-pointer text-left shadow-sm ${
-                  rejectReason === 'Item unavailable'
-                    ? 'bg-[#d0d3d8] text-slate-950 ring-1 ring-slate-400/40'
-                    : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-900'
-                }`}
-              >
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-4 shrink-0 text-slate-800">
-                  <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+                  {/* Unavailable Items Container */}
+                  <div className="bg-[#f8f9fa] rounded-2xl p-5 mt-6 border border-slate-100 space-y-3">
+                    {((rejectModalOrder.items && rejectModalOrder.items.length > 0)
+                      ? rejectModalOrder.items
+                      : [{ id: 'item-fallback', item_name: 'Pizza Salami', quantity: 1 }]
+                    ).map((item, idx) => {
+                      const itemName = item.item_name || 'Pizza Salami';
+                      const isChecked = selectedUnavailableItems.includes(itemName);
+
+                      return (
+                        <div
+                          key={item.id || idx}
+                          onClick={() => toggleUnavailableItem(itemName)}
+                          className="flex items-center space-x-3.5 cursor-pointer py-1 select-none"
+                        >
+                          <div
+                            className={`w-5 h-5 rounded-xs border-2 transition flex items-center justify-center shrink-0 ${
+                              isChecked
+                                ? 'border-[#d70f64] bg-[#d70f64]'
+                                : 'border-[#d70f64] bg-white'
+                            }`}
+                          >
+                            {isChecked && (
+                              <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />
+                            )}
+                          </div>
+                          <span className="font-bold text-slate-900 text-base sm:text-lg">
+                            {itemName}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <span className="text-base sm:text-lg font-black tracking-tight">Item unavailable</span>
-              </button>
+
+                {/* Bottom Continue Button */}
+                <div className="pt-8 pb-4">
+                  {selectedUnavailableItems.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleContinueUnavailableItems}
+                      className="w-full py-4 text-center font-bold text-base sm:text-lg rounded-xl bg-[#d70f64] hover:bg-[#b8004f] active:scale-[0.99] text-white transition shadow-sm cursor-pointer"
+                    >
+                      Continue
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-4 text-center font-bold text-base sm:text-lg rounded-xl bg-[#e2e4e8] text-white cursor-not-allowed"
+                    >
+                      Continue
+                    </button>
+                  )}
+                </div>
+              </main>
             </div>
-          </main>
+          )}
+
+          {/* ------------------------------------------------------------- */}
+          {/* SUB-STEP 3: LET'S SAVE THE ORDER!                             */}
+          {/* (100% Matching Screenshot_20261010_182031_YouTube.jpg)        */}
+          {/* ------------------------------------------------------------- */}
+          {declineSubStep === 'save_order' && (
+            <div className="min-h-full flex flex-col">
+              {/* Header */}
+              <header className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-20">
+                <button
+                  type="button"
+                  onClick={() => setDeclineSubStep('unavailable_items')}
+                  className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer"
+                  title="Back"
+                >
+                  <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectModalOrder(null);
+                    setDeclineSubStep('reasons');
+                  }}
+                  className="text-[#d70f64] hover:text-[#b8004f] font-bold text-base tracking-wide cursor-pointer transition"
+                >
+                  Cancel
+                </button>
+              </header>
+
+              <main className="max-w-md w-full mx-auto p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight pt-2">
+                    Let's save the order!
+                  </h1>
+                  <p className="text-sm sm:text-base font-semibold text-slate-700 mt-3 leading-relaxed">
+                    Try calling the customer and offering an alternative item of similar value
+                  </p>
+
+                  {/* Customer Card */}
+                  <div className="bg-[#f8f9fa] rounded-2xl p-5 mt-6 border border-slate-100 flex items-center space-x-4 shadow-2xs">
+                    <div className="w-11 h-11 rounded-full bg-slate-200/60 flex items-center justify-center shrink-0 text-slate-700">
+                      <User className="w-6 h-6 stroke-[1.8]" />
+                    </div>
+                    <div>
+                      <span className="text-[#d70f64] font-bold text-xs uppercase tracking-wide block">
+                        {rejectModalOrder.customer_name || 'Max'}
+                      </span>
+                      <span className="text-base sm:text-lg font-bold text-slate-900 font-sans block mt-0.5">
+                        {rejectModalOrder.customer_phone || '+49123456789'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Actions: Accept Order (Green) & Decline Order (Pink link) */}
+                <div className="pt-8 pb-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAcceptOrder(rejectModalOrder.id, rejectModalOrder.vendor_prep_minutes || 9);
+                      setRejectModalOrder(null);
+                      setDeclineSubStep('reasons');
+                    }}
+                    className="w-full py-4 bg-[#1ea855] hover:bg-[#188e47] active:scale-[0.99] text-white font-bold text-base sm:text-lg rounded-xl shadow-xs transition cursor-pointer text-center"
+                  >
+                    Accept Order
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleConfirmReject('Item unavailable');
+                      setDeclineSubStep('reasons');
+                    }}
+                    className="w-full py-3 text-center text-[#d70f64] hover:text-[#b8004f] font-bold text-base transition cursor-pointer"
+                  >
+                    Decline Order
+                  </button>
+                </div>
+              </main>
+            </div>
+          )}
+
+          {/* ------------------------------------------------------------- */}
+          {/* CONFIRMATION POPUP FOR BUSY & CLOSED OPTIONS                  */}
+          {/* "busy and close option a click korle confirm and cencel       */}
+          {/*  button popup hobe"                                           */}
+          {/* ------------------------------------------------------------- */}
+          {declineConfirmModal && (
+            <div
+              className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+              onClick={() => setDeclineConfirmModal(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl border border-slate-200 text-center animate-in zoom-in-95 duration-150"
+              >
+                <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-1">
+                  <AlertTriangle className="w-7 h-7 stroke-[2.2]" />
+                </div>
+
+                <h3 className="text-xl font-black text-slate-950 tracking-tight">
+                  Decline Order?
+                </h3>
+                <p className="text-sm font-semibold text-slate-600 leading-relaxed">
+                  Are you sure you want to decline this order because{' '}
+                  <span className="font-bold text-slate-900">
+                    {declineConfirmModal.reason === 'Vendor closed' ? 'vendor is closed' : 'you are too busy'}
+                  </span>?
+                </p>
+
+                <div className="pt-2 space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reason = declineConfirmModal.reason;
+                      setDeclineConfirmModal(null);
+                      handleConfirmReject(reason);
+                    }}
+                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-black text-sm rounded-2xl transition shadow-md cursor-pointer"
+                  >
+                    Confirm
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeclineConfirmModal(null)}
+                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-700 font-bold text-sm rounded-2xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
