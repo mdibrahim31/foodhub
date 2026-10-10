@@ -1,4 +1,4 @@
-export type PortalRole = 'customer' | 'vendor' | 'rider' | 'admin';
+export type PortalRole = 'customer' | 'vendor' | 'rider' | 'admin' | 'subadmin';
 
 export interface SystemSettings {
   id: string;

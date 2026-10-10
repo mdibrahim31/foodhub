@@ -9,6 +9,7 @@ const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal')
 const VendorPortal = lazy(() => import('./components/vendor/VendorPortal').then(m => ({ default: m.VendorPortal })));
 const RiderPortal = lazy(() => import('./components/rider/RiderPortal').then(m => ({ default: m.RiderPortal })));
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then(m => ({ default: m.AdminPortal })));
+const SubAdminPortal = lazy(() => import('./components/admin/SubAdminPortal').then(m => ({ default: m.SubAdminPortal })));
 
 function PortalIcon({ id, className }: { id: PortalRole, className?: string }) {
   switch (id) {
@@ -16,6 +17,7 @@ function PortalIcon({ id, className }: { id: PortalRole, className?: string }) {
     case 'vendor': return <Store className={className} />;
     case 'rider': return <Bike className={className} />;
     case 'admin': return <ShieldCheck className={className} />;
+    case 'subadmin': return <ShieldCheck className={className} />;
     default: return <User className={className} />;
   }
 }
@@ -61,18 +63,18 @@ function CustomerSiteLayout() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const portalQuery = params.get('portal') as PortalRole;
-    if (['customer', 'vendor', 'rider', 'admin'].includes(portalQuery)) {
+    if (['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(portalQuery)) {
       setRole(portalQuery);
       return;
     }
 
-    if (currentUser && ['customer', 'vendor', 'rider', 'admin'].includes(currentUser.role)) {
+    if (currentUser && ['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(currentUser.role)) {
       setRole(currentUser.role);
       return;
     }
 
     const hash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
-    if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) {
+    if (['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(hash)) {
       setRole(hash);
     }
   }, [setRole, currentUser]);
@@ -80,7 +82,7 @@ function CustomerSiteLayout() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
-      if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) {
+      if (['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(hash)) {
         setRole(hash);
       }
     };
@@ -105,6 +107,7 @@ function CustomerSiteLayout() {
                 { id: 'vendor' as PortalRole, label: 'Vendor', activeBg: 'bg-emerald-600 text-white', inactiveText: 'text-slate-500' },
                 { id: 'rider' as PortalRole, label: 'Rider', activeBg: 'bg-amber-500 text-white', inactiveText: 'text-slate-500' },
                 { id: 'admin' as PortalRole, label: 'Admin', activeBg: 'bg-rose-600 text-white', inactiveText: 'text-slate-500' },
+                { id: 'subadmin' as PortalRole, label: 'Sub-Admin', activeBg: 'bg-indigo-600 text-white', inactiveText: 'text-slate-500' },
               ].map((site) => (
                 <button
                   key={site.id}
@@ -255,6 +258,7 @@ function CustomerSiteLayout() {
           {role === 'vendor' && <VendorPortal />}
           {role === 'rider' && <RiderPortal />}
           {role === 'admin' && <AdminPortal />}
+          {role === 'subadmin' && <SubAdminPortal />}
         </Suspense>
       </main>
     </div>
