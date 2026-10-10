@@ -182,10 +182,12 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   const handleSendTestOrder = () => {
     if (!activeVendor) return;
+    const serialNum = dummyOrders.length + 1;
+    const serialCode = String(serialNum).padStart(2, '0');
     const testOrderId = `test-${Date.now()}`;
     const newTestOrder: Order = {
       id: testOrderId,
-      order_code: '00',
+      order_code: serialCode,
       customer_id: 'test-cust',
       customer_name: 'Test Customer',
       customer_phone: 'XXXX-1234',
@@ -437,69 +439,36 @@ export const VendorOrdersTerminal: React.FC = () => {
               </div>
 
               {pendingOrders.length === 0 ? (
-                <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[95px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
+                <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[140px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
                   <span className="text-sm font-bold text-slate-800">No new orders</span>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pendingOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      onClick={() => {
-                        setSelectedAcceptOrder(order);
-                        setSelectedPrepMinutes(order.vendor_prep_minutes || 9);
-                      }}
-                      className="bg-white border-2 border-[#d70f64] rounded-2xl p-4 shadow-md hover:shadow-lg transition-all cursor-pointer space-y-3 select-none active:scale-[0.98] group relative overflow-hidden"
-                    >
-                      {/* Top Bar: Order Code & Delivery Badge */}
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-baseline space-x-1.5">
-                          <span className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight font-mono">
-                            #{order.order_code}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-1.5">
-                          <span className="bg-rose-50 text-[#d70f64] px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1">
-                            <Bike className="w-3.5 h-3.5 stroke-[2.5]" />
-                            Delivery
-                          </span>
-                        </div>
-                      </div>
+                  {pendingOrders.map((order, idx) => {
+                    const serialNumber = (order.order_code && order.order_code !== '00')
+                      ? order.order_code
+                      : String(idx + 1).padStart(2, '0');
+                    const itemCount = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 1;
+                    const itemLabel = `${itemCount} item${itemCount > 1 ? 's' : ''}`;
 
-                      {/* Items Preview */}
-                      <div className="space-y-1">
-                        {order.items?.map((it, idx) => (
-                          <div key={idx} className="text-xs sm:text-sm text-slate-900 font-bold leading-snug">
-                            <span>{it.quantity} x {it.item_name}</span>
-                            {it.selected_variations && it.selected_variations.length > 0 && (
-                              <p className="text-[11px] text-slate-500 font-medium pl-4">
-                                {it.selected_variations.join(' • ')}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Special Instructions Note Tag */}
-                      {order.special_instructions && (
-                        <div className="bg-amber-50 border border-amber-200/90 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-xs text-amber-900 font-semibold">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span className="truncate">{order.special_instructions}</span>
-                        </div>
-                      )}
-
-                      {/* Footer: Tap to accept CTA */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-xs font-black text-[#d70f64] group-hover:underline flex items-center gap-1">
-                          Tap to view & accept
-                          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => {
+                          setSelectedAcceptOrder(order);
+                          setSelectedPrepMinutes(order.vendor_prep_minutes || 9);
+                        }}
+                        className="bg-[#b8004f] hover:bg-[#a30046] active:scale-[0.98] transition-all rounded-2xl p-4 sm:p-5 shadow-xs min-h-[140px] flex flex-col justify-start cursor-pointer select-none text-white border-0"
+                      >
+                        <span className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
+                          #{serialNumber}
                         </span>
-                        <span className="text-xs font-bold text-slate-400">
-                          Just now
+                        <span className="text-base sm:text-lg font-bold text-white/95 mt-2 leading-tight">
+                          {itemLabel}
                         </span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -512,7 +481,7 @@ export const VendorOrdersTerminal: React.FC = () => {
               </div>
 
               {readyOrders.length === 0 ? (
-                <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[95px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
+                <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[140px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
                   <span className="text-sm font-bold text-slate-800 leading-snug">
                     No upcoming<br />orders
                   </span>
@@ -555,7 +524,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             </div>
 
             {preparingOrders.length === 0 ? (
-              <div className="bg-slate-50/90 rounded-2xl p-5 sm:p-6 min-h-[100px] flex items-center justify-center text-center border border-slate-100 shadow-2xs mt-3">
+              <div className="bg-slate-50/90 rounded-2xl p-5 sm:p-6 min-h-[140px] flex items-center justify-center text-center border border-slate-100 shadow-2xs mt-3">
                 <span className="text-sm font-bold text-slate-800">No accepted orders</span>
               </div>
             ) : (
