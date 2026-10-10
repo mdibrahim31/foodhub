@@ -2431,13 +2431,13 @@ export const CustomerPortal: React.FC = () => {
 
             {/* 2. Restaurant Info Section with Overlapping Vendor Profile Photo */}
             <div className="relative px-6 pb-4 text-center">
-              {/* Overlapping Profile Photo (Exact same position as example image) */}
-              <div className="relative -mt-9 sm:-mt-10 flex justify-center z-20 mb-2">
-                <div className="w-[72px] h-[72px] rounded-2xl overflow-hidden bg-white p-0.5 shadow-md border-2 border-white ring-1 ring-slate-200/60 shrink-0">
+              {/* Overlapping Profile Photo (Exact same position as example image with hairline 1px border) */}
+              <div className="relative -mt-9 sm:-mt-10 flex justify-center z-20 mb-3">
+                <div className="w-[72px] h-[72px] rounded-2xl overflow-hidden bg-slate-100 shadow-lg shadow-black/15 border border-white shrink-0">
                   <img
                     src={selectedVendorForMenu.logo_url || selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300'}
                     alt={selectedVendorForMenu.name}
-                    className="w-full h-full object-cover rounded-[14px]"
+                    className="w-full h-full object-cover block"
                     onError={(e) => {
                       const img = e.currentTarget;
                       if (selectedVendorForMenu.cover_image && img.src !== selectedVendorForMenu.cover_image) {
