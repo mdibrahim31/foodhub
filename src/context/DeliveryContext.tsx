@@ -359,9 +359,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return Array.isArray(parsed) ? parsed : [];
   });
 
+  // Customer accounts ONLY load from the database (never hardcoded or persisted to localStorage)
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
-    const parsed = safeJsonParse<CustomerUser[]>(`${STORAGE_KEY_PREFIX}customers`, []);
-    return Array.isArray(parsed) ? parsed : [];
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}customers`);
+        localStorage.removeItem('foodvibe_v3_customers');
+        localStorage.removeItem('foodiplace_customers');
+        localStorage.removeItem('delivery_app_customers');
+      } catch {}
+    }
+    return [];
   });
 
   const [allAddresses, setAllAddresses] = useState<CustomerAddress[]>(() => {
@@ -867,31 +875,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setMenuItems(menuData as MenuItem[]);
           }
 
-          // Fetch customers from Supabase customers table
+          // Fetch customers strictly from Supabase customers table (single source of truth)
           const { data: custData, error: custError } = await supabase
             .from('customers')
             .select('*');
-          if (!custError && custData && isSubscribed && Array.isArray(custData)) {
-            setCustomers(prev => {
-              const map = new Map(prev.map(c => [c.id, c]));
-              let hasChanges = false;
-              custData.forEach((c: any) => {
-                if (c && c.id) {
-                  const existing = map.get(c.id);
-                  if (
-                    !existing ||
-                    existing.name !== c.name ||
-                    existing.phone !== c.phone ||
-                    existing.email !== c.email ||
-                    existing.avatar_url !== c.avatar_url
-                  ) {
-                    map.set(c.id, { ...existing, ...c, addresses: c.addresses || existing?.addresses || [] });
-                    hasChanges = true;
-                  }
-                }
-              });
-              return hasChanges ? Array.from(map.values()) : prev;
-            });
+          if (!custError && isSubscribed) {
+            setCustomers(Array.isArray(custData) ? (custData as CustomerUser[]) : []);
           }
 
           // Fetch orders from Supabase with relational items
@@ -1015,36 +1004,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Ignore offline network error
       }
 
-      // 3. Query backend server database /api/customers for cross-browser synchronization
-      try {
-        const cRes = await fetch('/api/customers');
-        if (cRes.ok) {
-          const cData = await cRes.json();
-          if (Array.isArray(cData) && cData.length > 0 && isSubscribed) {
-            setCustomers(prev => {
-              const map = new Map(prev.map(c => [c.id, c]));
-              let hasChanges = false;
-              cData.forEach((c: CustomerUser) => {
-                if (c && c.id) {
-                  const existing = map.get(c.id);
-                  if (
-                    !existing ||
-                    existing.name !== c.name ||
-                    existing.phone !== c.phone ||
-                    existing.email !== c.email ||
-                    existing.avatar_url !== c.avatar_url
-                  ) {
-                    map.set(c.id, { ...existing, ...c });
-                    hasChanges = true;
-                  }
-                }
-              });
-              return hasChanges ? Array.from(map.values()) : prev;
-            });
+      // 3. Query backend server database /api/customers for cross-browser synchronization when Supabase is not configured
+      if (!isSupabaseConfigured) {
+        try {
+          const cRes = await fetch('/api/customers');
+          if (cRes.ok) {
+            const cData = await cRes.json();
+            if (isSubscribed) {
+              setCustomers(Array.isArray(cData) ? (cData as CustomerUser[]) : []);
+            }
           }
+        } catch {
+          // Ignore offline network error
         }
-      } catch {
-        // Ignore offline network error
       }
 
       if (fetchedRiders && isSubscribed) {
@@ -1101,6 +1073,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               setRiders(prev => [safeNew, ...prev.filter(r => r.id !== safeNew.id)]);
             } else if (payload.eventType === 'DELETE' && payload.old) {
               setRiders(prev => prev.filter(r => r.id !== payload.old.id));
+            }
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
+            if (!isSubscribed) return;
+            if (payload.eventType === 'INSERT' && payload.new) {
+              const cNew = payload.new as CustomerUser;
+              setCustomers(prev => [...prev.filter(c => c.id !== cNew.id), cNew]);
+            } else if (payload.eventType === 'UPDATE' && payload.new) {
+              const cNew = payload.new as CustomerUser;
+              setCustomers(prev => prev.map(c => c.id === cNew.id ? { ...c, ...cNew } : c));
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              setCustomers(prev => prev.filter(c => c.id !== payload.old.id));
             }
           })
           .subscribe();
@@ -1319,9 +1303,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem(`${STORAGE_KEY_PREFIX}rider_messages`, JSON.stringify(riderMessages));
   }, [riderMessages]);
 
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}customers`, JSON.stringify(customers));
-  }, [customers]);
+  // Customer accounts are NOT stored in localStorage - only loaded from database
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}riders`, JSON.stringify(riders));
@@ -1851,8 +1833,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { success: false, message: 'Name, Phone and Password are required.' };
     }
 
-    if (customers.some(c => (c.phone || '').replace(/\D/g, '') === cleanPhoneDigits)) {
-      return { success: false, message: 'This phone number is already registered. Please login.' };
+    // Customer accounts only exist if registered in database (Supabase / server database)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: existingCusts, error: checkErr } = await supabase
+          .from('customers')
+          .select('id, phone');
+        if (!checkErr && Array.isArray(existingCusts) && existingCusts.length > 0) {
+          const alreadyExists = existingCusts.some((c: any) => 
+            (c.phone || '').replace(/\D/g, '') === cleanPhoneDigits || (c.phone || '').trim() === cleanPhone
+          );
+          if (alreadyExists) {
+            return { success: false, message: 'This phone number is already registered. Please login.' };
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase customer verification check:', err);
+      }
+    } else {
+      try {
+        const res = await fetch('/api/customers');
+        if (res.ok) {
+          const dbCusts: CustomerUser[] = await res.json();
+          if (Array.isArray(dbCusts) && dbCusts.some(c => (c.phone || '').replace(/\D/g, '') === cleanPhoneDigits)) {
+            return { success: false, message: 'This phone number is already registered. Please login.' };
+          }
+        }
+      } catch {}
     }
 
     const customerId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -2100,9 +2107,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updated[idx] = { ...updated[idx], ...updatedCustomer };
       } else {
         updated = [...prev, updatedCustomer];
-      }
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}customers`, JSON.stringify(updated));
       }
       return updated;
     });
