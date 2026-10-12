@@ -1869,21 +1869,36 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
         });
 
-    // In accordance with user requirement:
-    // "Otp_sender table a raw insert hobe. id colum a customer er user id boshbe. phone colum a number .baki colum gula khali rakle cholbe ..then auto create howa Otp Ta customer er number a send hobe"
-    const otpPayload = {
+    // In accordance with user requirement and exact schema:
+    // Table: `otp_sender`
+    // Columns: `id` (uuid), `phone_number` (text), `otp` (text - left empty for SMS app)
+    const otpPayload: Record<string, any> = {
       id: customerId,
-      phone: cleanPhone,
       phone_number: cleanPhone
-      // other columns (including otp) left null/empty so the user's SMS app generates it!
     };
 
     // 1. Insert into Supabase `otp_sender` table
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('otp_sender').insert([otpPayload]);
+        const { error } = await supabase.from('otp_sender').insert([{
+          id: customerId,
+          phone_number: cleanPhone
+        }]);
+
         if (error) {
-          console.warn('Supabase otp_sender insert notice:', error.message || error);
+          console.warn('Supabase otp_sender insert error (phone_number):', error.message || error);
+          // Fallback if column happens to be named phone
+          const fallbackRes = await supabase.from('otp_sender').insert([{
+            id: customerId,
+            phone: cleanPhone
+          }]);
+          if (fallbackRes.error) {
+            console.warn('Supabase otp_sender insert fallback error:', fallbackRes.error.message || fallbackRes.error);
+          } else {
+            console.log('Successfully inserted row into otp_sender (phone column)');
+          }
+        } else {
+          console.log('Successfully inserted row into Supabase otp_sender table:', { id: customerId, phone_number: cleanPhone });
         }
       } catch (err) {
         console.warn('Supabase otp_sender insert exception:', err);
@@ -1917,32 +1932,47 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const cleanPhone = (data.phone || '').trim();
     let dbOtp: string | null = null;
 
-    // 1. Read from Supabase `otp_sender` where id = customerId (or phone = cleanPhone)
+    // 1. Read from Supabase `otp_sender` table
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: supaRow, error } = await supabase
+        // Query by id
+        const { data: supaRow } = await supabase
           .from('otp_sender')
           .select('*')
           .eq('id', customerId)
           .maybeSingle();
 
-        if (!error && supaRow && (supaRow.otp || supaRow.Otp || supaRow.OTP)) {
+        if (supaRow && (supaRow.otp || supaRow.Otp || supaRow.OTP)) {
           dbOtp = String(supaRow.otp || supaRow.Otp || supaRow.OTP).trim();
         } else {
-          // If not found by id, query latest row by phone
-          const { data: phoneRow } = await supabase
+          // Query latest row by phone_number
+          const { data: pNumRow } = await supabase
             .from('otp_sender')
             .select('*')
-            .eq('phone', cleanPhone)
+            .eq('phone_number', cleanPhone)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-          if (phoneRow && (phoneRow.otp || phoneRow.Otp || phoneRow.OTP)) {
-            dbOtp = String(phoneRow.otp || phoneRow.Otp || phoneRow.OTP).trim();
+
+          if (pNumRow && (pNumRow.otp || pNumRow.Otp || pNumRow.OTP)) {
+            dbOtp = String(pNumRow.otp || pNumRow.Otp || pNumRow.OTP).trim();
+          } else {
+            // Also check by phone column if exists
+            const { data: phoneRow } = await supabase
+              .from('otp_sender')
+              .select('*')
+              .eq('phone', cleanPhone)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (phoneRow && (phoneRow.otp || phoneRow.Otp || phoneRow.OTP)) {
+              dbOtp = String(phoneRow.otp || phoneRow.Otp || phoneRow.OTP).trim();
+            }
           }
         }
       } catch (e) {
-        console.warn('Supabase otp query notice:', e);
+        console.warn('Supabase otp_sender query notice:', e);
       }
     }
 
