@@ -4,14 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#059669" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#059669" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#059669" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="FoodHub Vendor" />
+    <link rel="manifest" href="./manifest.vendor.json" />
+    <link rel="apple-touch-icon" href="./icons/icon-vendor-192.png" />
+    <link rel="icon" type="image/png" href="./icons/icon-vendor-192.png" />
     <title>foodiplace Vendor Partner Hub</title>
     <meta name="description" content="foodiplace Vendor Portal: Manage food orders, kitchen prep, and menu catalog." />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   </head>
-  <body class="bg-gray-50 antialiased">
+  <body class="bg-gray-50 antialiased selection:bg-emerald-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="./src/vendor-main.tsx"></script>
   </body>

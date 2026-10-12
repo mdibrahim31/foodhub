@@ -9,7 +9,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="FoodHub" />
     <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icons/icon-main-192.png" />
+    <link rel="icon" type="image/png" href="./icons/icon-main-192.png" />
     <title>foodiplace - Food Delivery System</title>
     <meta name="description" content="foodiplace: All-in-one Cash-on-Delivery Food Delivery System with Customer App, Vendor Dashboard, Rider App, and Admin Control." />
     <meta property="og:title" content="foodiplace - Food Delivery System" />
@@ -17,10 +20,41 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script>
+      (function() {
+        try {
+          const hash = (window.location.hash || '').replace('#', '').toLowerCase();
+          const params = new URLSearchParams(window.location.search || '');
+          const portal = (params.get('portal') || hash).split('?')[0];
+
+          // If opened via shortcut with portal hash/query or on GitHub Pages / standalone
+          if (portal === 'vendor') {
+            window.location.replace('./vendor.html' + window.location.search);
+          } else if (portal === 'orders' || portal === 'order' || portal === 'kitchen') {
+            window.location.replace('./orders.html' + window.location.search);
+          } else if (portal === 'rider') {
+            window.location.replace('./rider.html' + window.location.search);
+          } else if (portal === 'admin') {
+            window.location.replace('./admin.html' + window.location.search);
+          } else if (portal === 'subadmin') {
+            window.location.replace('./subadmin.html' + window.location.search);
+          } else if (portal === 'customer') {
+            window.location.replace('./customer.html' + window.location.search);
+          } else if (
+            window.matchMedia('(display-mode: standalone)').matches || 
+            window.navigator.standalone === true ||
+            window.location.hostname.includes('github.io')
+          ) {
+            window.location.replace('./customer.html' + window.location.search);
+          }
+        } catch (e) {
+          console.error('Route error:', e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
-

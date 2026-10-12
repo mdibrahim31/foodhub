@@ -38,8 +38,8 @@ function CustomerSiteLayout() {
   const [dbKey, setDbKey] = useState(supabaseConfig.anonKey || '');
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Enable switcher and DB setup across all environments (including GitHub Pages)
-  const isPreview = true;
+  // Enable switcher and DB setup across preview environments, but hide in standalone shortcut mode
+  const isPreview = typeof window !== 'undefined' && !window.matchMedia?.('(display-mode: standalone)').matches;
 
   useEffect(() => {
     const handleOpenDb = () => setIsDbModalOpen(true);

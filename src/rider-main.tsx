@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { DeliveryProvider } from './context/DeliveryContext';
 import { RiderPortal } from './components/rider/RiderPortal';
+import { MultiAppDock } from './components/common/MultiAppDock';
 import { Bike, RefreshCw } from 'lucide-react';
 import './index.css';
 
@@ -54,10 +55,11 @@ const StandaloneRiderApp: React.FC = () => {
   return (
     <RiderErrorBoundary>
       <DeliveryProvider>
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-gray-50 flex flex-col font-sans relative">
           <main className="flex-1">
             <RiderPortal />
           </main>
+          <MultiAppDock currentApp="rider" positionClass="bottom-4 left-4" />
         </div>
       </DeliveryProvider>
     </RiderErrorBoundary>
