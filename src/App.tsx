@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
 import { PortalRole } from './types/database';
-import { LayoutGrid, User, Store, Bike, ShieldCheck, X, ChevronRight } from 'lucide-react';
+import { LayoutGrid, X } from 'lucide-react';
 
 const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal').then(m => ({ default: m.CustomerPortal })));
 const VendorPortal = lazy(() => import('./components/vendor/VendorPortal').then(m => ({ default: m.VendorPortal })));
@@ -11,19 +11,7 @@ const RiderPortal = lazy(() => import('./components/rider/RiderPortal').then(m =
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then(m => ({ default: m.AdminPortal })));
 const SubAdminPortal = lazy(() => import('./components/admin/SubAdminPortal').then(m => ({ default: m.SubAdminPortal })));
 
-function PortalIcon({ id, className }: { id: PortalRole, className?: string }) {
-  switch (id) {
-    case 'customer': return <User className={className} />;
-    case 'vendor': return <Store className={className} />;
-    case 'rider': return <Bike className={className} />;
-    case 'admin': return <ShieldCheck className={className} />;
-    case 'subadmin': return <ShieldCheck className={className} />;
-    default: return <User className={className} />;
-  }
-}
-
 function CustomerSiteLayout() {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
   const { 
     role, 
@@ -37,9 +25,6 @@ function CustomerSiteLayout() {
   const [dbUrl, setDbUrl] = useState(supabaseConfig.url || '');
   const [dbKey, setDbKey] = useState(supabaseConfig.anonKey || '');
   const [isConnecting, setIsConnecting] = useState(false);
-
-  // Enable switcher and DB setup across preview environments, but hide in standalone shortcut mode
-  const isPreview = typeof window !== 'undefined' && !window.matchMedia?.('(display-mode: standalone)').matches;
 
   useEffect(() => {
     const handleOpenDb = () => setIsDbModalOpen(true);
@@ -92,79 +77,7 @@ function CustomerSiteLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans relative">
-      {/* AI Studio Preview Site Switcher - Pull-out Sidebar Style */}
-      {isPreview && (
-        <>
-          <motion.div 
-            initial={false}
-            animate={{ x: isExpanded ? 0 : -52 }}
-            className="fixed left-0 top-1/2 -translate-y-1/2 z-[9999] flex items-center group pointer-events-none"
-          >
-            {/* Main Sidebar Content */}
-            <div className="flex flex-col bg-white/95 backdrop-blur-md rounded-r-2xl shadow-2xl border-y border-r border-slate-200/60 p-2 gap-2 pointer-events-auto w-[52px]">
-              {[
-                { id: 'customer' as PortalRole, label: 'Customer', activeBg: 'bg-orange-600 text-white', inactiveText: 'text-slate-500' },
-                { id: 'vendor' as PortalRole, label: 'Vendor', activeBg: 'bg-emerald-600 text-white', inactiveText: 'text-slate-500' },
-                { id: 'rider' as PortalRole, label: 'Rider', activeBg: 'bg-amber-500 text-white', inactiveText: 'text-slate-500' },
-                { id: 'admin' as PortalRole, label: 'Admin', activeBg: 'bg-rose-600 text-white', inactiveText: 'text-slate-500' },
-                { id: 'subadmin' as PortalRole, label: 'Sub-Admin', activeBg: 'bg-indigo-600 text-white', inactiveText: 'text-slate-500' },
-              ].map((site) => (
-                <button
-                  key={site.id}
-                  onClick={() => setRole(site.id)}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90 group/btn relative ${
-                    role === site.id 
-                      ? `${site.activeBg} shadow-md shadow-black/10` 
-                      : `hover:bg-slate-100 ${site.inactiveText}`
-                  }`}
-                >
-                  <PortalIcon id={site.id} className="w-5 h-5" />
-                  {/* Tooltip */}
-                  <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-black rounded-lg opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all translate-x-[-10px] group-hover/btn:translate-x-0 whitespace-nowrap z-[10000] shadow-xl">
-                    {site.label} Portal
-                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
-                  </div>
-                </button>
-              ))}
-
-              <div className="mt-1 pt-2 border-t border-slate-100 flex flex-col items-center gap-2">
-                <button 
-                  onClick={() => setIsDbModalOpen(true)}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90 group/db relative ${
-                    isSupabaseConfigured ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400 border border-slate-200'
-                  }`}
-                  title="Database Connection"
-                >
-                  <LayoutGrid className="w-5 h-5" />
-                  <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-[10px] font-black rounded-lg opacity-0 group-hover/db:opacity-100 pointer-events-none transition-all translate-x-[-10px] group-hover/db:translate-x-0 whitespace-nowrap z-[10000] shadow-xl">
-                    {isSupabaseConfigured ? 'DB Connected' : 'Connect Supabase'}
-                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Pull Handle - Tene ber kora tab */}
-            <div className="flex flex-col items-start pointer-events-auto">
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-6 h-24 bg-white/95 backdrop-blur-md border-y border-r border-slate-200/60 rounded-r-2xl shadow-xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-all cursor-pointer group active:scale-95"
-                title={isExpanded ? "Collapse" : "Pull Out Switcher"}
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="w-0.5 h-3 bg-slate-300 rounded-full group-hover:bg-orange-400 transition-colors" />
-                  <div className="w-0.5 h-3 bg-slate-300 rounded-full group-hover:bg-orange-400 transition-colors" />
-                  <div className="w-0.5 h-3 bg-slate-300 rounded-full group-hover:bg-orange-400 transition-colors" />
-                </div>
-                <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-500 ${isExpanded ? 'rotate-180 text-orange-500' : 'animate-pulse'}`} />
-                <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-orange-500 transition-colors">
-                  {isExpanded ? 'CLOSE' : 'PULL'}
-                </span>
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Database Connection Modal */}
+      {/* Database Connection Modal */}
           <AnimatePresence>
             {isDbModalOpen && (
               <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
@@ -245,8 +158,6 @@ function CustomerSiteLayout() {
               </div>
             )}
           </AnimatePresence>
-        </>
-      )}
 
       <main className="flex-1">
         <Suspense fallback={

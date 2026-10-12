@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { DeliveryProvider } from './context/DeliveryContext';
 import { AdminPortal } from './components/admin/AdminPortal';
-import { MultiAppDock } from './components/common/MultiAppDock';
 import './index.css';
 
 console.log('📦 foodiplace: Admin App Initializing...');
@@ -16,7 +15,6 @@ const StandaloneAdminApp: React.FC = () => {
           <main className="flex-1">
             <AdminPortal />
           </main>
-          <MultiAppDock currentApp="admin" positionClass="bottom-4 left-4" />
         </div>
       </DeliveryProvider>
     </AppErrorBoundary>

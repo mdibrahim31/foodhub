@@ -54,6 +54,19 @@ CREATE TABLE IF NOT EXISTS public.customers (
 );
 
 -- ====================================================================
+-- 3B. OTP SENDER TABLE (Customer Signup OTP Verification)
+-- Row inserted with id & phone; external app / trigger generates Otp & sends SMS
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.otp_sender (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    phone VARCHAR(20) NOT NULL,
+    phone_number VARCHAR(20),
+    otp VARCHAR(10),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
 -- 4. VENDORS / RESTAURANTS TABLE (Admin Registered)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.vendors (
@@ -331,3 +344,9 @@ CREATE POLICY "Public manage order items" ON public.order_items FOR ALL USING (t
 
 -- Customer Cart Policies
 CREATE POLICY "Public manage customer carts" ON public.customer_carts FOR ALL USING (true);
+
+-- OTP Sender Policies (Public can insert phone for registration, read OTP for verification, update)
+ALTER TABLE public.otp_sender ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public insert otp_sender" ON public.otp_sender FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public select otp_sender" ON public.otp_sender FOR SELECT USING (true);
+CREATE POLICY "Public update otp_sender" ON public.otp_sender FOR UPDATE USING (true);

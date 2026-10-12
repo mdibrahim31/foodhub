@@ -39,6 +39,7 @@ interface ServerState {
   customerCarts: Record<string, { items: any[]; vendor: any; updatedAt: string }>;
   reviews?: any[];
   favorites?: any[];
+  otpSenders?: any[];
   updatedAt: string;
 }
 
@@ -54,6 +55,7 @@ const INITIAL_SERVER_STATE: ServerState = {
   customerCarts: {},
   reviews: [],
   favorites: [],
+  otpSenders: [],
   zones: [
     {
       id: 'zone-001',
@@ -753,6 +755,103 @@ app.put('/api/customers/:id', (req, res) => {
   serverState.customers.push(newCust);
   saveState(serverState);
   res.json({ success: true, customer: newCust });
+});
+
+// ====================================================================
+// 8B. OTP SENDER API (Customer Signup OTP Verification via external SMS app)
+// Inserts id (customer id) & phone; external SMS app populates `otp` column
+// ====================================================================
+app.get('/api/otp_sender', (_req, res) => {
+  if (!serverState.otpSenders) serverState.otpSenders = [];
+  res.json(serverState.otpSenders);
+});
+
+app.get('/api/otp_sender/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.otpSenders) serverState.otpSenders = [];
+  const cleanPhone = id.replace(/\D/g, '');
+
+  const record = serverState.otpSenders.find(o => 
+    o.id === id || 
+    (cleanPhone && o.phone && o.phone.replace(/\D/g, '') === cleanPhone)
+  );
+
+  if (!record) {
+    return res.status(404).json({ success: false, message: 'OTP record not found' });
+  }
+
+  res.json({ success: true, ...record });
+});
+
+app.post('/api/otp_sender', (req, res) => {
+  const { id, phone, phone_number } = req.body;
+  if (!serverState.otpSenders) serverState.otpSenders = [];
+
+  const rawPhone = phone || phone_number || '';
+  const cleanPhone = rawPhone.replace(/\D/g, '');
+  const recId = id || `otp-${Date.now()}`;
+
+  const existingIdx = serverState.otpSenders.findIndex(o => 
+    o.id === recId || 
+    (cleanPhone && o.phone && o.phone.replace(/\D/g, '') === cleanPhone)
+  );
+
+  // New record with id and phone; otp initially left empty for external app / SMS gateway
+  const newRecord = {
+    id: recId,
+    phone: rawPhone,
+    phone_number: rawPhone,
+    otp: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  if (existingIdx >= 0) {
+    serverState.otpSenders[existingIdx] = {
+      ...serverState.otpSenders[existingIdx],
+      phone: rawPhone,
+      phone_number: rawPhone,
+      updated_at: new Date().toISOString()
+    };
+  } else {
+    serverState.otpSenders.unshift(newRecord);
+  }
+
+  saveState(serverState);
+  console.log(`[API] otp_sender row inserted: ID=${recId}, Phone=${rawPhone} (waiting for SMS app to generate OTP)`);
+
+  // Fallback simulator for offline/dev test: if no external app populates otp within 1.5s, generate 6-digit OTP
+  setTimeout(() => {
+    const r = (serverState.otpSenders || []).find(o => o.id === recId);
+    if (r && !r.otp) {
+      r.otp = Math.floor(100000 + Math.random() * 900000).toString();
+      r.updated_at = new Date().toISOString();
+      saveState(serverState);
+      console.log(`[API] otp_sender auto-fallback OTP generated for dev: ${r.otp} (phone: ${r.phone})`);
+    }
+  }, 1200);
+
+  res.json({ success: true, record: existingIdx >= 0 ? serverState.otpSenders[existingIdx] : newRecord });
+});
+
+app.put('/api/otp_sender/:id', (req, res) => {
+  const { id } = req.params;
+  const { otp } = req.body;
+  if (!serverState.otpSenders) serverState.otpSenders = [];
+
+  const record = serverState.otpSenders.find(o => o.id === id);
+  if (!record) {
+    return res.status(404).json({ success: false, message: 'Record not found' });
+  }
+
+  if (otp) {
+    record.otp = String(otp).trim();
+    record.updated_at = new Date().toISOString();
+  }
+
+  saveState(serverState);
+  console.log(`[API] otp_sender updated: ID=${id}, OTP=${record.otp}`);
+  res.json({ success: true, record });
 });
 
 // 9. Customer Addresses API (Strictly isolated by customer phone/ID & persistent active status)

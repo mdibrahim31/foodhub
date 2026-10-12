@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { PortalRole } from '../../types/database';
 import { 
@@ -14,7 +14,9 @@ import {
   AlertCircle,
   ArrowRight,
   LogOut,
-  Sparkles
+  Sparkles,
+  Smartphone,
+  RotateCcw
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -35,20 +37,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     loginUser,
     setPasswordForUser,
     registerCustomer,
+    requestCustomerSignupOtp,
+    verifyCustomerSignupOtp,
     logoutUser,
     vendors,
     riders
   } = useDelivery();
 
-  const [mode, setMode] = useState<'login' | 'register' | 'set_password'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'otp_verify' | 'set_password'>('login');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [pendingCustomerId, setPendingCustomerId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(60);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    let interval: any;
+    if (mode === 'otp_verify' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [mode, resendTimer]);
 
   if (!isOpen) return null;
 
@@ -108,32 +127,104 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }, 600);
   };
 
-  const handleCustomerRegister = (e: React.FormEvent) => {
+  const handleCustomerRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setSuccessMessage('');
 
     if (!name.trim() || !phone.trim() || !password.trim()) {
       setErrorMessage('Name, Phone, and Password are required');
       return;
     }
 
-    const res = registerCustomer({
-      name: name.trim(),
-      phone: phone.trim(),
-      password: password.trim(),
-      email: email.trim()
-    });
+    setIsLoading(true);
+    try {
+      const res = await requestCustomerSignupOtp({
+        name: name.trim(),
+        phone: phone.trim(),
+        password: password.trim(),
+        email: email.trim()
+      });
 
-    if (!res.success) {
-      setErrorMessage(res.message || 'Registration failed');
+      if (!res.success) {
+        setErrorMessage(res.message || 'Failed to initialize signup OTP');
+        return;
+      }
+
+      setPendingCustomerId(res.customerId || '');
+      setOtpInput('');
+      setResendTimer(60);
+      setMode('otp_verify');
+      setSuccessMessage(`OTP sent to ${phone.trim()} via SMS! Please enter the code below.`);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error sending OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!otpInput.trim()) {
+      setErrorMessage('Please enter the OTP verification code');
       return;
     }
 
-    setSuccessMessage('Registered & logged in successfully!');
-    setTimeout(() => {
-      if (onSuccess) onSuccess();
-      onClose();
-    }, 600);
+    setIsLoading(true);
+    try {
+      const res = await verifyCustomerSignupOtp(pendingCustomerId, otpInput.trim(), {
+        name: name.trim(),
+        phone: phone.trim(),
+        password: password.trim(),
+        email: email.trim()
+      });
+
+      if (!res.success) {
+        setErrorMessage(res.message || 'OTP does not match. Please try again.');
+        return;
+      }
+
+      setSuccessMessage('OTP verified! Account created & logged in successfully.');
+      setTimeout(() => {
+        if (onSuccess) onSuccess();
+        onClose();
+      }, 700);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Verification error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || isLoading) return;
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
+
+    try {
+      const res = await requestCustomerSignupOtp({
+        name: name.trim(),
+        phone: phone.trim(),
+        password: password.trim(),
+        email: email.trim()
+      });
+
+      if (!res.success) {
+        setErrorMessage(res.message || 'Failed to resend OTP');
+        return;
+      }
+
+      setResendTimer(60);
+      setSuccessMessage(`New OTP sent to ${phone.trim()} via SMS!`);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to resend OTP');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const roleTitle = targetRole === 'vendor' 
@@ -474,10 +565,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center space-x-2 shadow-lg cursor-pointer"
+              disabled={isLoading}
+              className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center space-x-2 shadow-lg cursor-pointer disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Create Account & Log In</span>
+              {isLoading ? (
+                <span>Sending OTP...</span>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Send OTP & Create Account</span>
+                </>
+              )}
             </button>
 
             <div className="text-center pt-1">
@@ -487,6 +585,75 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="text-slate-500 font-bold hover:underline"
               >
                 Already registered? Back to Login
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* MODE 4: CUSTOMER OTP VERIFICATION */}
+        {mode === 'otp_verify' && (
+          <form onSubmit={handleVerifyOtp} className="space-y-4 text-xs animate-in fade-in">
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl text-orange-950 space-y-1.5 text-center">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto text-orange-600 mb-1">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <p className="font-black text-sm">Verify Phone Number</p>
+              <p className="text-[11px] text-orange-800 leading-relaxed">
+                An SMS with an OTP code has been sent to <span className="font-bold text-slate-900">{phone}</span>. Please enter the code below to complete signup.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px] text-center">
+                Enter Verification Code (OTP)
+              </label>
+              <input
+                type="text"
+                autoFocus
+                maxLength={8}
+                value={otpInput}
+                onChange={(e) => setOtpInput(e.target.value.replace(/\s/g, ''))}
+                placeholder="• • • • • •"
+                className="w-full px-4 py-3 bg-slate-50 border-2 border-orange-300 rounded-2xl font-black text-xl text-center tracking-[0.4em] text-slate-900 focus:outline-hidden focus:border-orange-500 focus:bg-white transition"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center space-x-2 shadow-lg cursor-pointer disabled:opacity-50"
+            >
+              {isLoading ? (
+                <span>Checking OTP...</span>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Verify OTP & Complete Account</span>
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendTimer > 0 || isLoading}
+                className="font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-400 flex items-center space-x-1 cursor-pointer disabled:cursor-not-allowed"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{resendTimer > 0 ? `Resend Code (${resendTimer}s)` : 'Resend Code'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register');
+                  setErrorMessage('');
+                }}
+                className="text-slate-500 font-bold hover:underline cursor-pointer"
+              >
+                Change Phone / Back
               </button>
             </div>
           </form>

@@ -263,3 +263,15 @@ CREATE TRIGGER trigger_update_vendor_rating
 AFTER INSERT OR UPDATE ON reviews
 FOR EACH ROW
 EXECUTE FUNCTION update_vendor_average_rating();
+
+-- 11. OTP SENDER TABLE (Customer Signup OTP Verification via external SMS app)
+CREATE TABLE IF NOT EXISTS otp_sender (
+  id VARCHAR(255) PRIMARY KEY,
+  phone VARCHAR(50) NOT NULL,
+  phone_number VARCHAR(50),
+  otp VARCHAR(20),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_sender_phone ON otp_sender(phone);

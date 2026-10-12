@@ -60,6 +60,8 @@ interface DeliveryContextType {
   loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; message?: string };
   setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
   registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
+  requestCustomerSignupOtp: (data: { name: string; phone: string; password: string; email?: string }) => Promise<{ success: boolean; customerId?: string; message?: string }>;
+  verifyCustomerSignupOtp: (customerId: string, enteredOtp: string, data: { name: string; phone: string; password: string; email?: string }) => Promise<{ success: boolean; message?: string }>;
   updateCustomerProfile: (data: { name: string; phone: string; email?: string; avatar_url?: string }) => Promise<{ success: boolean; message: string }>;
   deleteCustomer?: (id: string) => void;
   logoutUser: () => void;
@@ -1834,6 +1836,209 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setCurrentUser(customerAccount);
     return { success: true };
+  };
+
+  const requestCustomerSignupOtp = async (data: {
+    name: string;
+    phone: string;
+    password: string;
+    email?: string;
+  }): Promise<{ success: boolean; customerId?: string; message?: string }> => {
+    const cleanPhone = (data.phone || '').trim();
+    const cleanPhoneDigits = cleanPhone.replace(/\D/g, '');
+
+    if (!data.name?.trim() || !cleanPhone || !data.password) {
+      return { success: false, message: 'Name, Phone and Password are required.' };
+    }
+
+    if (customers.some(c => (c.phone || '').replace(/\D/g, '') === cleanPhoneDigits)) {
+      return { success: false, message: 'This phone number is already registered. Please login.' };
+    }
+
+    const customerId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+
+    // In accordance with user requirement:
+    // "Otp_sender table a raw insert hobe. id colum a customer er user id boshbe. phone colum a number .baki colum gula khali rakle cholbe ..then auto create howa Otp Ta customer er number a send hobe"
+    const otpPayload = {
+      id: customerId,
+      phone: cleanPhone,
+      phone_number: cleanPhone
+      // other columns (including otp) left null/empty so the user's SMS app generates it!
+    };
+
+    // 1. Insert into Supabase `otp_sender` table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('otp_sender').insert([otpPayload]);
+        if (error) {
+          console.warn('Supabase otp_sender insert notice:', error.message || error);
+        }
+      } catch (err) {
+        console.warn('Supabase otp_sender insert exception:', err);
+      }
+    }
+
+    // 2. Insert into server database /api/otp_sender
+    try {
+      await fetch('/api/otp_sender', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(otpPayload)
+      });
+    } catch (err) {
+      console.warn('Server /api/otp_sender insert exception:', err);
+    }
+
+    return { success: true, customerId };
+  };
+
+  const verifyCustomerSignupOtp = async (
+    customerId: string,
+    enteredOtp: string,
+    data: { name: string; phone: string; password: string; email?: string }
+  ): Promise<{ success: boolean; message?: string }> => {
+    const cleanInput = (enteredOtp || '').trim();
+    if (!cleanInput) {
+      return { success: false, message: 'Please enter the OTP verification code sent via SMS.' };
+    }
+
+    const cleanPhone = (data.phone || '').trim();
+    let dbOtp: string | null = null;
+
+    // 1. Read from Supabase `otp_sender` where id = customerId (or phone = cleanPhone)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: supaRow, error } = await supabase
+          .from('otp_sender')
+          .select('*')
+          .eq('id', customerId)
+          .maybeSingle();
+
+        if (!error && supaRow && (supaRow.otp || supaRow.Otp || supaRow.OTP)) {
+          dbOtp = String(supaRow.otp || supaRow.Otp || supaRow.OTP).trim();
+        } else {
+          // If not found by id, query latest row by phone
+          const { data: phoneRow } = await supabase
+            .from('otp_sender')
+            .select('*')
+            .eq('phone', cleanPhone)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (phoneRow && (phoneRow.otp || phoneRow.Otp || phoneRow.OTP)) {
+            dbOtp = String(phoneRow.otp || phoneRow.Otp || phoneRow.OTP).trim();
+          }
+        }
+      } catch (e) {
+        console.warn('Supabase otp query notice:', e);
+      }
+    }
+
+    // 2. If not found in Supabase or Supabase unconfigured, query server DB /api/otp_sender/:id
+    if (!dbOtp) {
+      try {
+        const res = await fetch(`/api/otp_sender/${encodeURIComponent(customerId)}`);
+        if (res.ok) {
+          const sRow = await res.json();
+          if (sRow && (sRow.otp || sRow.Otp || sRow.OTP)) {
+            dbOtp = String(sRow.otp || sRow.Otp || sRow.OTP).trim();
+          }
+        }
+      } catch (e) {
+        console.warn('Server /api/otp_sender query notice:', e);
+      }
+    }
+
+    // If OTP column is not yet generated by the external app
+    if (!dbOtp) {
+      return { 
+        success: false, 
+        message: 'OTP is still being generated or dispatched by SMS app. Please wait a few seconds and try again.' 
+      };
+    }
+
+    // Check & Match: "system check and match kore dekbe Otp colum a create howa code er shate customer er privide kora code er mil ace ki na ba match hochche ki na"
+    if (cleanInput !== dbOtp) {
+      return { 
+        success: false, 
+        message: 'Incorrect OTP code. The code you entered does not match the code in SMS.' 
+      };
+    }
+
+    // MATCH SUCCESS: "jodi match hoy tahole customer signup complate hobe then customers table a add hobe"
+    const newCustomer: CustomerUser = {
+      id: customerId,
+      name: data.name.trim(),
+      phone: cleanPhone,
+      password: data.password,
+      email: data.email?.trim(),
+      avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`,
+      addresses: [],
+      created_at: new Date().toISOString()
+    };
+
+    setCustomers(prev => {
+      if (prev.some(c => c.id === customerId)) return prev;
+      return [...prev, newCustomer];
+    });
+
+    const customerAccount: UserAccount = {
+      id: `u-c-${newCustomer.id}`,
+      role: 'customer',
+      name: newCustomer.name,
+      phone: newCustomer.phone,
+      is_password_set: true,
+      reference_id: newCustomer.id
+    };
+
+    // Save directly to Supabase `customers` table
+    if (isSupabaseConfigured && supabase) {
+      const supaCustPayload = {
+        id: newCustomer.id,
+        name: newCustomer.name,
+        phone: newCustomer.phone,
+        password: newCustomer.password || '',
+        email: newCustomer.email || null,
+        avatar_url: newCustomer.avatar_url || null,
+        created_at: newCustomer.created_at
+      };
+      supabase.from('customers').upsert([supaCustPayload]).then(({ error }) => {
+        if (error) console.warn('Supabase customer upsert warning:', error);
+      });
+    }
+
+    // Save to server database (/api/customers)
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer)
+    }).catch(() => {});
+
+    // Migrate any guest cart items to new customer account
+    const guestKey = 'guest';
+    const guestCart = safeJsonParse<CartItem[]>(`${STORAGE_KEY_PREFIX}cart_${guestKey}`, []);
+    const guestVendor = safeJsonParse<Vendor | null>(`${STORAGE_KEY_PREFIX}cart_vendor_${guestKey}`, null);
+    const userKey = getCustomerCartKey(customerAccount);
+    if (guestCart.length > 0) {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_${userKey}`, JSON.stringify(guestCart));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}cart_vendor_${userKey}`, JSON.stringify(guestVendor));
+      fetch(`/api/cart/${encodeURIComponent(userKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: guestCart, vendor: guestVendor })
+      }).catch(() => {});
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_${guestKey}`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}cart_vendor_${guestKey}`);
+      fetch(`/api/cart/${encodeURIComponent(guestKey)}`, { method: 'DELETE' }).catch(() => {});
+    }
+
+    setCurrentUser(customerAccount);
+    return { success: true, message: 'Signup completed successfully!' };
   };
 
   const updateCustomerProfile = async (data: {
@@ -4675,6 +4880,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         loginUser,
         setPasswordForUser,
         registerCustomer,
+        requestCustomerSignupOtp,
+        verifyCustomerSignupOtp,
         updateCustomerProfile,
         deleteCustomer,
         logoutUser,

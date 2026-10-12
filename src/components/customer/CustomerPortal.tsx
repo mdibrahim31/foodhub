@@ -44,7 +44,9 @@ import {
   Share2,
   Trash2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Smartphone,
+  RotateCcw
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -69,6 +71,8 @@ export const CustomerPortal: React.FC = () => {
     logoutUser,
     loginUser,
     registerCustomer,
+    requestCustomerSignupOtp,
+    verifyCustomerSignupOtp,
     zones,
     reviews,
     addOrderReview,
@@ -78,6 +82,23 @@ export const CustomerPortal: React.FC = () => {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+
+  // Customer Signup OTP Flow States
+  const [signupStep, setSignupStep] = useState<'form' | 'otp'>('form');
+  const [pendingSignup, setPendingSignup] = useState<{ id: string; name: string; phone: string; password: string } | null>(null);
+  const [signupOtpInput, setSignupOtpInput] = useState('');
+  const [signupOtpTimer, setSignupOtpTimer] = useState(60);
+  const [isOtpLoading, setIsOtpLoading] = useState(false);
+  const [otpAlert, setOtpAlert] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+
+  // OTP Countdown Timer
+  useEffect(() => {
+    let t: any;
+    if (signupStep === 'otp' && signupOtpTimer > 0) {
+      t = setInterval(() => setSignupOtpTimer(prev => (prev > 0 ? prev - 1 : 0)), 1000);
+    }
+    return () => clearInterval(t);
+  }, [signupStep, signupOtpTimer]);
 
   // Persistent navigation and views so refreshing never resets to home
   const [activeBottomNav, setActiveBottomNavState] = useState<'food' | 'grocery' | 'carts' | 'orders' | 'account'>(() => {
@@ -747,7 +768,7 @@ export const CustomerPortal: React.FC = () => {
     }
   };
 
-  // If user is not logged in, show the Login/Registration page
+  // If user is not logged in, show the Login/Registration/OTP page
   if (!currentUser || currentUser.role !== 'customer') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -755,116 +776,244 @@ export const CustomerPortal: React.FC = () => {
           {/* Header */}
           <div className="bg-orange-600 p-8 text-white text-center">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-inner">
-              <LogIn className="w-8 h-8" />
+              {signupStep === 'otp' ? <Smartphone className="w-8 h-8" /> : <LogIn className="w-8 h-8" />}
             </div>
             <h1 className="text-2xl font-black tracking-tight">FoodHub</h1>
-            <p className="text-orange-100 text-sm font-medium mt-1">Welcome back, food lover!</p>
+            <p className="text-orange-100 text-sm font-medium mt-1">
+              {signupStep === 'otp' ? 'SMS OTP Verification' : 'Welcome back, food lover!'}
+            </p>
           </div>
 
-          {/* Tabs */}
-          <div className="flex border-b border-slate-100">
-            <button 
-              onClick={() => setAuthTab('login')}
-              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'login' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Log In
-            </button>
-            <button 
-              onClick={() => setAuthTab('register')}
-              className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'register' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Sign Up
-            </button>
-          </div>
+          {/* STEP 2: OTP VERIFICATION VIEW */}
+          {signupStep === 'otp' && pendingSignup ? (
+            <div className="p-6 space-y-4 animate-in fade-in">
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl text-center space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full inline-block">
+                  SMS Code Sent
+                </span>
+                <p className="font-black text-sm text-slate-900 mt-1">Verify Your Number</p>
+                <p className="text-xs text-slate-600">
+                  We sent an SMS with OTP code to <strong className="text-slate-900">{pendingSignup.phone}</strong>.
+                </p>
+              </div>
 
-          <div className="p-6">
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const phone = formData.get('phone') as string;
-                const password = formData.get('password') as string;
-                const name = formData.get('name') as string;
-
-                if (!phone || !password) {
-                  alert('Phone and Password are required');
-                  return;
-                }
-
-                if (authTab === 'login') {
-                  const res = loginUser('customer', phone, password);
-                  if (res.success) {
-                    // Success is handled by state change causing re-render
-                  } else {
-                    alert(res.message || 'Login failed');
-                  }
-                } else {
-                  if (!name) {
-                    alert('Name is required for registration');
-                    return;
-                  }
-                  const res = registerCustomer({ name, phone, password });
-                  if (res.success) {
-                    alert('Registration successful!');
-                  } else {
-                    alert(res.message || 'Registration failed');
-                  }
-                }
-              }}
-              className="space-y-4"
-            >
-              {authTab === 'register' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      name="name"
-                      type="text" 
-                      required
-                      placeholder="Enter your name"
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                    />
-                  </div>
+              {otpAlert && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${otpAlert.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}`}>
+                  {otpAlert.text}
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    name="phone"
-                    type="tel" 
-                    required
-                    placeholder="e.g. 01811223344"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Password</label>
-                <div className="relative">
-                  <LogIn className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 opacity-50" />
-                  <input 
-                    name="password"
-                    type="password" 
-                    required
-                    placeholder="Enter password"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit"
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-98 mt-2"
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!signupOtpInput.trim()) {
+                    setOtpAlert({ type: 'error', text: 'Please enter the OTP verification code.' });
+                    return;
+                  }
+                  setIsOtpLoading(true);
+                  setOtpAlert(null);
+                  try {
+                    const vRes = await verifyCustomerSignupOtp(
+                      pendingSignup.id,
+                      signupOtpInput.trim(),
+                      pendingSignup
+                    );
+                    if (!vRes.success) {
+                      setOtpAlert({ type: 'error', text: vRes.message || 'OTP code does not match.' });
+                    } else {
+                      setOtpAlert({ type: 'success', text: '✅ OTP Verified! Welcome to FoodHub.' });
+                      // User is logged in and will automatically transition into customer portal
+                    }
+                  } catch (err: any) {
+                    setOtpAlert({ type: 'error', text: err.message || 'Verification error' });
+                  } finally {
+                    setIsOtpLoading(false);
+                  }
+                }}
+                className="space-y-4"
               >
-                {authTab === 'login' ? 'Log In' : 'Create Account'}
-              </button>
-            </form>
-          </div>
+                <div className="space-y-1 text-center">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider">
+                    Enter Verification Code (OTP)
+                  </label>
+                  <input 
+                    type="text"
+                    autoFocus
+                    maxLength={8}
+                    value={signupOtpInput}
+                    onChange={(e) => setSignupOtpInput(e.target.value.replace(/\s/g, ''))}
+                    placeholder="• • • • • •"
+                    className="w-full py-3.5 bg-slate-50 border-2 border-orange-300 rounded-2xl text-2xl font-black text-center tracking-[0.4em] text-slate-900 focus:outline-hidden focus:border-orange-500 focus:bg-white transition"
+                    required
+                  />
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={isOtpLoading}
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-98 disabled:opacity-50 cursor-pointer"
+                >
+                  {isOtpLoading ? 'Verifying OTP...' : 'Verify OTP & Complete Signup'}
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={signupOtpTimer > 0 || isOtpLoading}
+                    onClick={async () => {
+                      if (signupOtpTimer > 0 || isOtpLoading) return;
+                      setIsOtpLoading(true);
+                      setOtpAlert(null);
+                      try {
+                        const res = await requestCustomerSignupOtp(pendingSignup);
+                        if (res.success) {
+                          setSignupOtpTimer(60);
+                          setOtpAlert({ type: 'success', text: 'New OTP dispatched via SMS!' });
+                        } else {
+                          setOtpAlert({ type: 'error', text: res.message || 'Failed to resend' });
+                        }
+                      } finally {
+                        setIsOtpLoading(false);
+                      }
+                    }}
+                    className="font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-400 flex items-center space-x-1 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{signupOtpTimer > 0 ? `Resend (${signupOtpTimer}s)` : 'Resend Code'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignupStep('form');
+                      setOtpAlert(null);
+                    }}
+                    className="text-slate-500 font-bold hover:underline cursor-pointer"
+                  >
+                    Change Info / Back
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            /* STEP 1: LOGIN / REGISTRATION TABS */
+            <>
+              <div className="flex border-b border-slate-100">
+                <button 
+                  onClick={() => setAuthTab('login')}
+                  className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'login' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Log In
+                </button>
+                <button 
+                  onClick={() => setAuthTab('register')}
+                  className={`flex-1 py-4 text-sm font-black transition-all ${authTab === 'register' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              <div className="p-6">
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const phone = (formData.get('phone') as string || '').trim();
+                    const password = (formData.get('password') as string || '').trim();
+                    const name = (formData.get('name') as string || '').trim();
+
+                    if (!phone || !password) {
+                      alert('Phone and Password are required');
+                      return;
+                    }
+
+                    if (authTab === 'login') {
+                      const res = loginUser('customer', phone, password);
+                      if (!res.success) {
+                        alert(res.message || 'Login failed');
+                      }
+                    } else {
+                      if (!name) {
+                        alert('Name is required for registration');
+                        return;
+                      }
+
+                      setIsOtpLoading(true);
+                      try {
+                        const res = await requestCustomerSignupOtp({ name, phone, password });
+                        if (!res.success) {
+                          alert(res.message || 'Registration failed');
+                        } else {
+                          setPendingSignup({ id: res.customerId!, name, phone, password });
+                          setSignupStep('otp');
+                          setSignupOtpTimer(60);
+                          setSignupOtpInput('');
+                          setOtpAlert({ type: 'success', text: `OTP sent to ${phone} via SMS! Enter code below.` });
+                        }
+                      } catch (err: any) {
+                        alert(err.message || 'Failed to send OTP');
+                      } finally {
+                        setIsOtpLoading(false);
+                      }
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  {authTab === 'register' && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
+                      <div className="relative">
+                        <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input 
+                          name="name"
+                          type="text" 
+                          required
+                          placeholder="Enter your name"
+                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        name="phone"
+                        type="tel" 
+                        required
+                        placeholder="e.g. 01811223344"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Password</label>
+                    <div className="relative">
+                      <LogIn className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 opacity-50" />
+                      <input 
+                        name="password"
+                        type="password" 
+                        required
+                        placeholder="Enter password"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-hidden focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={isOtpLoading}
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-98 mt-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isOtpLoading ? 'Sending OTP...' : authTab === 'login' ? 'Log In' : 'Send OTP & Create Account'}
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -3293,18 +3442,10 @@ export const CustomerPortal: React.FC = () => {
                   return;
                 }
 
-                // If not found, register new customer
-                const regRes = registerCustomer({
-                  name: nameInput.trim() || 'Customer',
-                  phone: phoneInput.trim(),
-                  password: passInput
-                });
-                if (regRes.success) {
-                  alert('✅ Account registered & logged in successfully!');
-                  setIsCustomerLoginModalOpen(false);
-                } else {
-                  alert(regRes.message || res.message || 'Login failed');
-                }
+                // If not registered, redirect to OTP SMS Verification flow
+                alert('Account not found with this password. Opening OTP verification to complete signup.');
+                setIsCustomerLoginModalOpen(false);
+                setIsAuthModalOpen(true);
               }}
               className="space-y-3 pt-2 text-xs"
             >

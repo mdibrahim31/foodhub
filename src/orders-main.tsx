@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { DeliveryProvider } from './context/DeliveryContext';
 import { VendorOrdersTerminal } from './components/vendor/VendorOrdersTerminal';
-import { MultiAppDock } from './components/common/MultiAppDock';
 import './index.css';
 
 const StandaloneOrdersApp: React.FC = () => {
@@ -14,7 +13,6 @@ const StandaloneOrdersApp: React.FC = () => {
           <main className="flex-1">
             <VendorOrdersTerminal />
           </main>
-          <MultiAppDock currentApp="orders" positionClass="bottom-4 left-4" />
         </div>
       </DeliveryProvider>
     </AppErrorBoundary>

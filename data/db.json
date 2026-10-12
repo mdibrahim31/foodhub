@@ -21,6 +21,17 @@
       "created_at": "2026-10-06T10:07:08.590Z"
     }
   ],
+  "favorites": [],
+  "otpSenders": [
+    {
+      "id": "test-uuid-123",
+      "phone": "01811223344",
+      "phone_number": "01811223344",
+      "otp": null,
+      "created_at": "2026-10-12T21:04:20.991Z",
+      "updated_at": "2026-10-12T21:04:20.991Z"
+    }
+  ],
   "zones": [
     {
       "id": "zone-001",
@@ -163,5 +174,5 @@
   "menuItems": [],
   "foodCategories": [],
   "adBanners": [],
-  "updatedAt": "2026-10-06T10:07:08.591Z"
+  "updatedAt": "2026-10-12T21:04:20.991Z"
 }

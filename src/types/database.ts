@@ -307,3 +307,12 @@ export interface FavoriteVendor {
   created_at?: string;
 }
 
+export interface OtpSenderRecord {
+  id: string; // Customer user UUID
+  phone: string;
+  phone_number?: string;
+  otp?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
