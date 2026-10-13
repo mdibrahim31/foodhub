@@ -27,8 +27,7 @@
     "vite": "^8.3.0"
   },
   "devDependencies": {
-    "@bubblewrap/cli": "^1.27.0",
-    "@bubblewrap/core": "^1.27.0",
+
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
