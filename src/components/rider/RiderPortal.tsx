@@ -123,6 +123,74 @@ export const RiderPortal: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [orderCountdown, setOrderCountdown] = useState(60);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [isDownloadingApk, setIsDownloadingApk] = useState(false);
+
+  // Reliable cross-platform APK downloader function
+  const handleDownloadApk = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isDownloadingApk) return;
+    setIsDownloadingApk(true);
+
+    const fileName = 'FoodHub-Rider.apk';
+    // Support relative paths across GitHub Pages sub-directories, custom domains, and AI Studio
+    const apkCandidates = [
+      './FoodHub-Rider.apk',
+      '/download/FoodHub-Rider.apk',
+      '/FoodHub-Rider.apk',
+      'FoodHub-Rider.apk'
+    ];
+
+    let downloaded = false;
+
+    for (const url of apkCandidates) {
+      try {
+        const response = await fetch(url, { method: 'GET' });
+        if (response.ok) {
+          const blob = await response.blob();
+          // Verify we got an actual blob
+          if (blob && blob.size > 1000) {
+            const blobUrl = window.URL.createObjectURL(
+              new Blob([blob], { type: 'application/vnd.android.package-archive' })
+            );
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              window.URL.revokeObjectURL(blobUrl);
+              document.body.removeChild(a);
+            }, 2000);
+            downloaded = true;
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn('Fetch download failed for', url, err);
+      }
+    }
+
+    // Direct browser navigation fallback if blob fetch wasn't successful
+    if (!downloaded) {
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = './FoodHub-Rider.apk';
+      fallbackLink.download = fileName;
+      fallbackLink.target = '_self';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      setTimeout(() => {
+        document.body.removeChild(fallbackLink);
+      }, 1000);
+    }
+
+    setTimeout(() => {
+      setIsDownloadingApk(false);
+    }, 1500);
+  };
 
   // Leaflet references
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -641,9 +709,10 @@ export const RiderPortal: React.FC = () => {
         {/* Direct APK Download Button in Top-Right */}
         <div className="absolute top-4 right-4 z-10">
           <a
-            href="/download/FoodHub-Rider.apk"
+            href="./FoodHub-Rider.apk"
             download="FoodHub-Rider.apk"
-            className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer"
+            onClick={handleDownloadApk}
+            className={`w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer ${isDownloadingApk ? 'opacity-70 animate-pulse' : ''}`}
             title="Download FoodHub Rider App (APK)"
           >
             <Download className="w-5 h-5 stroke-[2.5]" />
@@ -963,9 +1032,10 @@ export const RiderPortal: React.FC = () => {
         {/* Right: Actions (Direct APK Download Button & Circular Headphone Support Button) */}
         <div className="flex items-center space-x-2 pointer-events-auto">
           <a
-            href="/download/FoodHub-Rider.apk"
+            href="./FoodHub-Rider.apk"
             download="FoodHub-Rider.apk"
-            className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer"
+            onClick={handleDownloadApk}
+            className={`w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer ${isDownloadingApk ? 'opacity-70 animate-pulse' : ''}`}
             title="Download FoodHub Rider App (APK)"
           >
             <Download className="w-5 h-5 stroke-[2.5]" />
@@ -1429,9 +1499,12 @@ export const RiderPortal: React.FC = () => {
 
                 {/* Direct APK Download Link */}
                 <a 
-                  href="/download/FoodHub-Rider.apk"
+                  href="./FoodHub-Rider.apk"
                   download="FoodHub-Rider.apk"
-                  onClick={() => setIsMenuDrawerOpen(false)}
+                  onClick={(e) => {
+                    setIsMenuDrawerOpen(false);
+                    handleDownloadApk(e);
+                  }}
                   className="py-3 px-1 rounded-xl flex items-center justify-between cursor-pointer hover:bg-amber-50 hover:text-amber-700 group transition"
                 >
                   <div className="flex items-center space-x-3.5">
