@@ -48,7 +48,7 @@ android {
     namespace "com.foodhub.rider"
     defaultConfig {
         applicationId "com.foodhub.rider"
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion 36
         versionCode 1
         versionName ""
