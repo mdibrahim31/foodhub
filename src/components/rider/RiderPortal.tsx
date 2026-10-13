@@ -884,27 +884,7 @@ export const RiderPortal: React.FC = () => {
             </form>
           )}
 
-          {/* Quick Select Preset Account for Testing */}
-          <div className="pt-4 border-t border-slate-100 text-center space-y-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-              Quick Test Rider Login:
-            </span>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {riders.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    setAuthPhone(r.phone);
-                    setAuthPassword(r.password || '123');
-                    loginUser('rider', r.phone, r.password || '123');
-                  }}
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
-                >
-                  {r.name}
-                </button>
-              ))}
-            </div>
-          </div>
+
 
           {/* Download & Install App / APK Option */}
           <div className="pt-3 border-t border-slate-100">
