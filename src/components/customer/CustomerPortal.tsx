@@ -359,8 +359,8 @@ export const CustomerPortal: React.FC = () => {
 
     const cleanCurrentPhone = trimmedPhone.replace(/\D/g, '');
     const cleanInitialPhone = initialPhone.replace(/\D/g, '');
-    const isPhoneChanged = cleanCurrentPhone !== cleanInitialPhone;
-    const isPasswordChanged = trimmedPassword !== initialPassword && (trimmedPassword.length > 0 || initialPassword.length > 0);
+    const isPhoneChanged = cleanInitialPhone.length > 0 && cleanCurrentPhone !== cleanInitialPhone;
+    const isPasswordChanged = trimmedPassword.length > 0 && trimmedPassword !== initialPassword;
 
     // If Phone or Password changed: OTP IS MANDATORY
     if (isPhoneChanged || isPasswordChanged) {
