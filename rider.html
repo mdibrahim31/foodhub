@@ -17,7 +17,19 @@
     <meta name="description" content="FoodHub Rider App: Live GPS dispatch, proximity orders, and cash delivery." />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   </head>
-  <body class="bg-gray-50 antialiased selection:bg-amber-500 selection:text-white">
+    <div id="apk-download-container" class="hidden fixed bottom-4 left-4 right-4 z-50">
+      <a href="/release-apk/FoodHub-Rider.apk" id="download-apk-link" class="block w-full text-center bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg">
+        মোবাইলে অ্যাপ / APK ইনস্টল করুন
+      </a>
+    </div>
+    <script>
+      // Hide download button if running as PWA/TWA
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        document.getElementById('apk-download-container').style.display = 'none';
+      } else {
+        document.getElementById('apk-download-container').classList.remove('hidden');
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/rider-main.tsx"></script>
   </body>
