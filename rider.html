@@ -17,18 +17,45 @@
     <meta name="description" content="FoodHub Rider App: Live GPS dispatch, proximity orders, and cash delivery." />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   </head>
+    <!-- APK download buttons -->
     <div id="apk-download-container" class="hidden fixed bottom-4 left-4 right-4 z-50">
-      <a href="/release-apk/FoodHub-Rider.apk" id="download-apk-link" class="block w-full text-center bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg">
+      <button id="download-apk-btn" class="block w-full text-center bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg">
         মোবাইলে অ্যাপ / APK ইনস্টল করুন
-      </a>
+      </button>
     </div>
+
     <script>
+      let deferredPrompt;
+      const downloadBtn = document.getElementById('download-apk-btn');
+
       // Hide download button if running as PWA/TWA
       if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
         document.getElementById('apk-download-container').style.display = 'none';
       } else {
         document.getElementById('apk-download-container').classList.remove('hidden');
       }
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+
+      downloadBtn.addEventListener('click', (e) => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            deferredPrompt = null;
+          });
+        } else {
+          // Fallback to direct download
+          const link = document.createElement('a');
+          link.href = '/FoodHub-Rider.apk';
+          link.download = 'FoodHub-Rider.apk';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      });
     </script>
     <div id="root"></div>
     <script type="module" src="/src/rider-main.tsx"></script>
