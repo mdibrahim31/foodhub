@@ -637,7 +637,18 @@ export const RiderPortal: React.FC = () => {
   // Unauthenticated / Logged out state - Display registration and login form
   if (!currentUser || currentUser.role !== 'rider' || !currentRider) {
     return (
-      <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+      <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white relative">
+        {/* Direct APK Download Button in Top-Right */}
+        <div className="absolute top-4 right-4 z-10">
+          <a
+            href="/download/FoodHub-Rider.apk"
+            download="FoodHub-Rider.apk"
+            className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer"
+            title="Download FoodHub Rider App (APK)"
+          >
+            <Download className="w-5 h-5 stroke-[2.5]" />
+          </a>
+        </div>
         <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
           
           <div className="text-center space-y-2">
@@ -949,15 +960,16 @@ export const RiderPortal: React.FC = () => {
           </button>
         </div>
 
-        {/* Right: Actions (App Download & Circular Headphone Support Button) */}
+        {/* Right: Actions (Direct APK Download Button & Circular Headphone Support Button) */}
         <div className="flex items-center space-x-2 pointer-events-auto">
-          <button
-            onClick={() => setIsDownloadModalOpen(true)}
+          <a
+            href="/download/FoodHub-Rider.apk"
+            download="FoodHub-Rider.apk"
             className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer"
-            title="Download / Install Mobile App (APK)"
+            title="Download FoodHub Rider App (APK)"
           >
-            <Smartphone className="w-5 h-5" />
-          </button>
+            <Download className="w-5 h-5 stroke-[2.5]" />
+          </a>
 
           <button
             onClick={() => setIsSupportModalOpen(true)}
@@ -1415,22 +1427,21 @@ export const RiderPortal: React.FC = () => {
                   <span>My profile</span>
                 </div>
 
-                {/* Install / Download App (APK / PWA) */}
-                <div 
-                  onClick={() => {
-                    setIsMenuDrawerOpen(false);
-                    setIsDownloadModalOpen(true);
-                  }}
+                {/* Direct APK Download Link */}
+                <a 
+                  href="/download/FoodHub-Rider.apk"
+                  download="FoodHub-Rider.apk"
+                  onClick={() => setIsMenuDrawerOpen(false)}
                   className="py-3 px-1 rounded-xl flex items-center justify-between cursor-pointer hover:bg-amber-50 hover:text-amber-700 group transition"
                 >
                   <div className="flex items-center space-x-3.5">
-                    <Smartphone className="w-5 h-5 text-amber-600 group-hover:text-amber-700" />
-                    <span className="text-amber-900 font-extrabold">Install / Download App</span>
+                    <Download className="w-5 h-5 text-amber-600 group-hover:text-amber-700" />
+                    <span className="text-amber-900 font-extrabold">Download Rider App</span>
                   </div>
                   <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase">
-                    APK / PWA
+                    APK
                   </span>
-                </div>
+                </a>
               </div>
             </div>
 
@@ -1856,12 +1867,6 @@ export const RiderPortal: React.FC = () => {
           onClose={() => setIsAuthModalOpen(false)}
         />
       )}
-
-      {/* Rider App Download & Install Modal */}
-      <RiderAppDownloadModal
-        isOpen={isDownloadModalOpen}
-        onClose={() => setIsDownloadModalOpen(false)}
-      />
 
     </div>
   );
