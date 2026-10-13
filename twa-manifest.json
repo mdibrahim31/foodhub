@@ -1,0 +1,25 @@
+{
+  "packageId": "com.foodhub.rider",
+  "host": "localhost",
+  "name": "FoodHub Rider",
+  "launcherName": "FoodHub Rider",
+  "themeColor": "#d97706",
+  "navigationColor": "#ffffff",
+  "backgroundColor": "#ffffff",
+  "enableNotifications": true,
+  "startUrl": "/rider.html",
+  "iconUrl": "/icons/icon-rider-512.png",
+  "maskableIconUrl": "/icons/icon-rider-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Active Deliveries",
+      "short_name": "Orders",
+      "url": "/rider.html#orders",
+      "icon": "/icons/icon-rider-192.png"
+    }
+  ],
+  "generatorApp": "foodhub-twa-builder",
+  "webManifestUrl": "/manifest.rider.json"
+}

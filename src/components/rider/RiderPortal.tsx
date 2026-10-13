@@ -39,8 +39,11 @@ import {
   Flame,
   HelpCircle,
   FileText,
-  Pause
+  Pause,
+  Smartphone,
+  Download
 } from 'lucide-react';
+import { RiderAppDownloadModal } from './RiderAppDownloadModal';
 
 export const RiderPortal: React.FC = () => {
   const { 
@@ -119,6 +122,7 @@ export const RiderPortal: React.FC = () => {
   const [rejectedOrderIds, setRejectedOrderIds] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [orderCountdown, setOrderCountdown] = useState(60);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   // Leaflet references
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -822,7 +826,24 @@ export const RiderPortal: React.FC = () => {
             </div>
           </div>
 
+          {/* Download & Install App / APK Option */}
+          <div className="pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsDownloadModalOpen(true)}
+              className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition cursor-pointer"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>মোবাইলে অ্যাপ / APK ইনস্টল করুন</span>
+            </button>
+          </div>
+
         </div>
+
+        <RiderAppDownloadModal 
+          isOpen={isDownloadModalOpen} 
+          onClose={() => setIsDownloadModalOpen(false)} 
+        />
       </div>
     );
   }
@@ -928,14 +949,24 @@ export const RiderPortal: React.FC = () => {
           </button>
         </div>
 
-        {/* Right: Circular Headphone Support Button [ 🎧 ] */}
-        <button
-          onClick={() => setIsSupportModalOpen(true)}
-          className="pointer-events-auto w-12 h-12 rounded-full bg-white text-slate-800 shadow-xl flex items-center justify-center hover:bg-slate-50 transition active:scale-95 border border-slate-100/80 cursor-pointer"
-          aria-label="Support hotline"
-        >
-          <Headphones className="w-6 h-6 stroke-[2]" />
-        </button>
+        {/* Right: Actions (App Download & Circular Headphone Support Button) */}
+        <div className="flex items-center space-x-2 pointer-events-auto">
+          <button
+            onClick={() => setIsDownloadModalOpen(true)}
+            className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer"
+            title="Download / Install Mobile App (APK)"
+          >
+            <Smartphone className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={() => setIsSupportModalOpen(true)}
+            className="w-12 h-12 rounded-full bg-white text-slate-800 shadow-xl flex items-center justify-center hover:bg-slate-50 transition active:scale-95 border border-slate-100/80 cursor-pointer"
+            aria-label="Support hotline"
+          >
+            <Headphones className="w-6 h-6 stroke-[2]" />
+          </button>
+        </div>
       </header>
 
       {/* Paused by Admin Banner Notification */}
@@ -1383,6 +1414,23 @@ export const RiderPortal: React.FC = () => {
                   <User className="w-5 h-5 text-slate-700 group-hover:text-rose-600" />
                   <span>My profile</span>
                 </div>
+
+                {/* Install / Download App (APK / PWA) */}
+                <div 
+                  onClick={() => {
+                    setIsMenuDrawerOpen(false);
+                    setIsDownloadModalOpen(true);
+                  }}
+                  className="py-3 px-1 rounded-xl flex items-center justify-between cursor-pointer hover:bg-amber-50 hover:text-amber-700 group transition"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Smartphone className="w-5 h-5 text-amber-600 group-hover:text-amber-700" />
+                    <span className="text-amber-900 font-extrabold">Install / Download App</span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase">
+                    APK / PWA
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1808,6 +1856,12 @@ export const RiderPortal: React.FC = () => {
           onClose={() => setIsAuthModalOpen(false)}
         />
       )}
+
+      {/* Rider App Download & Install Modal */}
+      <RiderAppDownloadModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+      />
 
     </div>
   );

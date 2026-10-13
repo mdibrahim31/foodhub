@@ -21,6 +21,7 @@ export default defineConfig(() => {
           orders: path.resolve(import.meta.dirname, 'orders.html'),
           order: path.resolve(import.meta.dirname, 'order.html'),
           rider: path.resolve(import.meta.dirname, 'rider.html'),
+          riderApp: path.resolve(import.meta.dirname, 'rider-app.html'),
           admin: path.resolve(import.meta.dirname, 'admin.html'),
           subadmin: path.resolve(import.meta.dirname, 'subadmin.html'),
         },

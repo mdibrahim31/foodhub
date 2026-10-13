@@ -2388,61 +2388,69 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 6. Save directly to Supabase
     if (isSupabaseConfigured && supabase) {
       try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId);
         const candidateTables = ['customers', 'customer_users'];
 
         for (const table of candidateTables) {
           try {
-            // Locate the customer row in this table using select('*')
             let existingRow: any = null;
 
-            // Search 1: by exact customerId (matches UUID in customers table)
-            if (customerId) {
-              const { data: rowById, error: idErr } = await supabase
-                .from(table)
-                .select('*')
-                .eq('id', customerId)
-                .maybeSingle();
-              if (!idErr && rowById) existingRow = rowById;
+            // Search 1: by exact customerId (ONLY if valid UUID format to avoid Postgres syntax error)
+            if (isUuid) {
+              try {
+                const { data: rowById, error: idErr } = await supabase
+                  .from(table)
+                  .select('*')
+                  .eq('id', customerId)
+                  .maybeSingle();
+                if (!idErr && rowById) existingRow = rowById;
+              } catch (e) {
+                console.warn(`[Supabase] Search by ID error on ${table}:`, e);
+              }
             }
 
             // Search 2: by cleanPhone or previousPhone
             if (!existingRow) {
               const phonesToSearch = [cleanPhone, previousPhone].filter(Boolean);
               for (const p of phonesToSearch) {
-                const { data: pRow } = await supabase
-                  .from(table)
-                  .select('*')
-                  .eq('phone', p)
-                  .maybeSingle();
-                if (pRow) {
-                  existingRow = pRow;
-                  break;
-                }
-                const { data: pNumRow } = await supabase
-                  .from(table)
-                  .select('*')
-                  .eq('phone_number', p)
-                  .maybeSingle();
-                if (pNumRow) {
-                  existingRow = pNumRow;
-                  break;
-                }
+                try {
+                  const { data: pRow } = await supabase
+                    .from(table)
+                    .select('*')
+                    .eq('phone', p)
+                    .maybeSingle();
+                  if (pRow) {
+                    existingRow = pRow;
+                    break;
+                  }
+                  const { data: pNumRow } = await supabase
+                    .from(table)
+                    .select('*')
+                    .eq('phone_number', p)
+                    .maybeSingle();
+                  if (pNumRow) {
+                    existingRow = pNumRow;
+                    break;
+                  }
+                } catch {}
               }
             }
 
-            // Search 3: Normalized digits match from recent rows
+            // Search 3: Normalized digits match from table
             if (!existingRow && cleanPhone) {
-              const digits = cleanPhone.replace(/\D/g, '');
-              const { data: recents } = await supabase
-                .from(table)
-                .select('*')
-                .limit(20);
-              if (Array.isArray(recents) && recents.length > 0) {
-                existingRow = recents.find((r: any) => {
-                  const rDig = String(r.phone || r.phone_number || '').replace(/\D/g, '');
-                  return rDig && digits && (rDig === digits || rDig.endsWith(digits) || digits.endsWith(rDig));
-                }) || null;
-              }
+              try {
+                const digits = cleanPhone.replace(/\D/g, '');
+                const { data: recents } = await supabase
+                  .from(table)
+                  .select('*')
+                  .limit(50);
+                if (Array.isArray(recents) && recents.length > 0) {
+                  existingRow = recents.find((r: any) => {
+                    const rDig = String(r.phone || r.phone_number || '').replace(/\D/g, '');
+                    return rDig && digits && (rDig === digits || rDig.endsWith(digits) || digits.endsWith(rDig));
+                  }) || null;
+                }
+              } catch {}
             }
 
             if (existingRow) {
@@ -2488,18 +2496,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
               }
             } else {
-              // Direct fallback: try updating by ID and by phone directly
-              if (customerId) {
-                const { error: idDirectErr } = await supabase
-                  .from(table)
-                  .update({ name: cleanName })
-                  .eq('id', customerId);
-                if (!idDirectErr) {
-                  console.log(`✅ [Supabase] Direct update by ID succeeded in ${table}:`, customerId, cleanName);
-                  break;
-                }
-              }
-              if (cleanPhone) {
+              // Direct fallback: try updating by phone or upserting row if it does not exist yet
+              try {
                 const { error: phoneDirectErr } = await supabase
                   .from(table)
                   .update({ name: cleanName })
@@ -2508,6 +2506,30 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   console.log(`✅ [Supabase] Direct update by phone succeeded in ${table}:`, cleanPhone, cleanName);
                   break;
                 }
+              } catch {}
+
+              // If row was not found in Supabase, upsert it so it is guaranteed to exist
+              try {
+                const newRowId = isUuid ? customerId : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
+                const upsertPayload: Record<string, any> = {
+                  name: cleanName,
+                  phone: cleanPhone,
+                  password: cleanPassword || (targetCustomer?.password || '123456'),
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                if (newRowId) upsertPayload.id = newRowId;
+                if (cleanEmail) upsertPayload.email = cleanEmail;
+
+                const { error: upsertErr } = await supabase
+                  .from(table)
+                  .upsert([upsertPayload]);
+                if (!upsertErr) {
+                  console.log(`✅ [Supabase] Upserted customer successfully in ${table}:`, cleanName, cleanPhone);
+                  break;
+                }
+              } catch (uErr) {
+                console.warn(`[Supabase] Upsert fallback warning in ${table}:`, uErr);
               }
             }
           } catch (tErr) {
