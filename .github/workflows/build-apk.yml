@@ -30,9 +30,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Setup Android Keystore
         run: |
           if [ ! -f "android.keystore" ]; then
@@ -70,14 +67,13 @@ jobs:
           BUBBLEWRAP_KEYSTORE_PASSWORD: password123
           BUBBLEWRAP_KEY_PASSWORD: password123
           JAVA_HOME: ${{ env.JAVA_HOME }}
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
           mkdir -p release-apk
           chmod +x ./gradlew || true
 
-          # Build release APK using gradle directly
+          # Directly compile release APK with auto-license agreement
           echo "Building release APK with gradle assembleRelease..."
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon -Pandroid.builder.sdkDownload=true
             
           # Align and sign gradle output if not already signed
           UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
