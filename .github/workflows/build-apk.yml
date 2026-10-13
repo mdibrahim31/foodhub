@@ -32,8 +32,7 @@ jobs:
 
       - name: Setup Android SDK & Accept Licenses
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platforms;android-34"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses \vert{}\vert{} true$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platforms;android-34"
 
       - name: Setup Android Keystore
         run: |
@@ -82,17 +81,16 @@ jobs:
           echo "Building release APK with gradle assembleRelease..."
           ./gradlew assembleRelease
             
-            # Align and sign gradle output if not already signed
-            UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-            if [ -n "$UNSIGNED_APK" ] && [ -f "$UNSIGNED_APK" ]; then
-              $ANDROID_HOME/build-tools/34.0.0/zipalign -v -p 4 "$UNSIGNED_APK" app-aligned.apk || cp "$UNSIGNED_APK" app-aligned.apk
-              $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
-                --ks android.keystore \
-                --ks-pass pass:password123 \
-                --ks-key-alias foodhub \
-                --key-pass pass:password123 \
-                --out app-release-signed.apk app-aligned.apk || cp app-aligned.apk app-release-signed.apk
-            fi
+          # Align and sign gradle output if not already signed
+          UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -n "$UNSIGNED_APK" ] && [ -f "$UNSIGNED_APK" ]; then
+            $ANDROID_HOME/build-tools/34.0.0/zipalign -v -p 4 "$UNSIGNED_APK" app-aligned.apk \vert{}\vert{} cp "$UNSIGNED_APK" app-aligned.apk
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+              --ks android.keystore \
+              --ks-pass pass:password123 \
+              --ks-key-alias foodhub \
+              --key-pass pass:password123 \
+              --out app-release-signed.apk app-aligned.apk || cp app-aligned.apk app-release-signed.apk
           fi
 
           # Find newly compiled signed APK
