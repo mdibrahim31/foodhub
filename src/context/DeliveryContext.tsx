@@ -62,7 +62,9 @@ interface DeliveryContextType {
   registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
   requestCustomerSignupOtp: (data: { name: string; phone: string; password: string; email?: string }) => Promise<{ success: boolean; customerId?: string; message?: string }>;
   verifyCustomerSignupOtp: (customerId: string, enteredOtp: string, data: { name: string; phone: string; password: string; email?: string }) => Promise<{ success: boolean; message?: string }>;
-  updateCustomerProfile: (data: { name: string; phone: string; email?: string; avatar_url?: string }) => Promise<{ success: boolean; message: string }>;
+  updateCustomerProfile: (data: { name: string; phone: string; email?: string; password?: string; avatar_url?: string }) => Promise<{ success: boolean; message: string }>;
+  requestCustomerProfileOtp: (phone: string) => Promise<{ success: boolean; otpId?: string; message?: string }>;
+  verifyCustomerProfileOtp: (otpId: string, enteredOtp: string, phone: string) => Promise<{ success: boolean; message?: string }>;
   deleteCustomer?: (id: string) => void;
   logoutUser: () => void;
 
@@ -2078,15 +2080,165 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return { success: true, message: 'Signup completed successfully!' };
   };
 
+  const requestCustomerProfileOtp = async (phone: string): Promise<{ success: boolean; otpId?: string; message?: string }> => {
+    const cleanPhone = (phone || '').trim();
+    if (!cleanPhone) {
+      return { success: false, message: 'Valid phone number is required.' };
+    }
+
+    const otpId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+
+    const otpPayload: Record<string, any> = {
+      id: otpId,
+      phone_number: cleanPhone
+    };
+
+    // 1. Insert into Supabase `otp_sender` table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('otp_sender').insert([{
+          id: otpId,
+          phone_number: cleanPhone
+        }]);
+
+        if (error) {
+          console.warn('Supabase otp_sender insert error (phone_number):', error.message || error);
+          const fallbackRes = await supabase.from('otp_sender').insert([{
+            id: otpId,
+            phone: cleanPhone
+          }]);
+          if (fallbackRes.error) {
+            console.warn('Supabase otp_sender insert fallback error:', fallbackRes.error.message || fallbackRes.error);
+          } else {
+            console.log('Successfully inserted row into otp_sender (phone column)');
+          }
+        } else {
+          console.log('Successfully inserted row into Supabase otp_sender table:', { id: otpId, phone_number: cleanPhone });
+        }
+      } catch (err) {
+        console.warn('Supabase otp_sender insert exception:', err);
+      }
+    }
+
+    // 2. Insert into server database /api/otp_sender
+    try {
+      await fetch('/api/otp_sender', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(otpPayload)
+      });
+    } catch (err) {
+      console.warn('Server /api/otp_sender insert exception:', err);
+    }
+
+    return { success: true, otpId };
+  };
+
+  const verifyCustomerProfileOtp = async (
+    otpId: string,
+    enteredOtp: string,
+    phone: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    const cleanInput = (enteredOtp || '').trim();
+    if (!cleanInput) {
+      return { success: false, message: 'Please enter the OTP verification code sent via SMS.' };
+    }
+
+    const cleanPhone = (phone || '').trim();
+    let dbOtp: string | null = null;
+
+    // 1. Read from Supabase `otp_sender` table
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Query by id
+        const { data: supaRow } = await supabase
+          .from('otp_sender')
+          .select('*')
+          .eq('id', otpId)
+          .maybeSingle();
+
+        if (supaRow && (supaRow.otp || supaRow.Otp || supaRow.OTP)) {
+          dbOtp = String(supaRow.otp || supaRow.Otp || supaRow.OTP).trim();
+        } else {
+          // Query latest row by phone_number
+          const { data: pNumRow } = await supabase
+            .from('otp_sender')
+            .select('*')
+            .eq('phone_number', cleanPhone)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pNumRow && (pNumRow.otp || pNumRow.Otp || pNumRow.OTP)) {
+            dbOtp = String(pNumRow.otp || pNumRow.Otp || pNumRow.OTP).trim();
+          } else {
+            // Also check by phone column if exists
+            const { data: phoneRow } = await supabase
+              .from('otp_sender')
+              .select('*')
+              .eq('phone', cleanPhone)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (phoneRow && (phoneRow.otp || phoneRow.Otp || phoneRow.OTP)) {
+              dbOtp = String(phoneRow.otp || phoneRow.Otp || phoneRow.OTP).trim();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Supabase otp_sender query notice:', e);
+      }
+    }
+
+    // 2. If not found in Supabase or Supabase unconfigured, query server DB /api/otp_sender/:id
+    if (!dbOtp) {
+      try {
+        const res = await fetch(`/api/otp_sender/${encodeURIComponent(otpId)}`);
+        if (res.ok) {
+          const sRow = await res.json();
+          if (sRow && (sRow.otp || sRow.Otp || sRow.OTP)) {
+            dbOtp = String(sRow.otp || sRow.Otp || sRow.OTP).trim();
+          }
+        }
+      } catch (e) {
+        console.warn('Server /api/otp_sender query notice:', e);
+      }
+    }
+
+    if (!dbOtp) {
+      return { 
+        success: false, 
+        message: 'OTP is still being generated or dispatched by SMS app. Please wait a few seconds and try again.' 
+      };
+    }
+
+    if (cleanInput !== dbOtp) {
+      return { 
+        success: false, 
+        message: 'Incorrect OTP code. The code you entered does not match the code in SMS.' 
+      };
+    }
+
+    return { success: true };
+  };
+
   const updateCustomerProfile = async (data: {
     name: string;
     phone: string;
     email?: string;
+    password?: string;
     avatar_url?: string;
   }): Promise<{ success: boolean; message: string }> => {
     const cleanPhone = data.phone.trim();
     const cleanName = data.name.trim();
     const cleanEmail = (data.email || '').trim();
+    const cleanPassword = (data.password || '').trim();
 
     if (!cleanName) {
       return { success: false, message: 'Name cannot be empty.' };
@@ -2112,7 +2264,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const updatedCustomer: CustomerUser = {
       ...(targetCustomer || {
         id: customerId,
-        password: '',
+        password: cleanPassword,
         created_at: new Date().toISOString(),
         addresses: []
       }),
@@ -2120,6 +2272,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       name: cleanName,
       phone: cleanPhone,
       email: cleanEmail,
+      ...(cleanPassword ? { password: cleanPassword } : {}),
       avatar_url: data.avatar_url || targetCustomer?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
     };
 
@@ -2256,6 +2409,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 phone: cleanPhone,
                 updated_at: new Date().toISOString()
               };
+              if (cleanPassword) {
+                updateData.password = cleanPassword;
+              }
               if (cleanEmail !== undefined) {
                 updateData.email = cleanEmail || null;
               }
@@ -2282,14 +2438,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               if (isValidUuid) {
                 const { data: byIdRows } = await supabase.from(table).select('id').eq('id', customerId).limit(1);
                 if (byIdRows && byIdRows.length > 0) {
+                  const uuidUpdateData: Record<string, any> = {
+                    name: cleanName,
+                    phone: cleanPhone,
+                    email: cleanEmail || null,
+                    updated_at: new Date().toISOString()
+                  };
+                  if (cleanPassword) {
+                    uuidUpdateData.password = cleanPassword;
+                  }
                   const { error: updErr } = await supabase
                     .from(table)
-                    .update({
-                      name: cleanName,
-                      phone: cleanPhone,
-                      email: cleanEmail || null,
-                      updated_at: new Date().toISOString()
-                    })
+                    .update(uuidUpdateData)
                     .eq('id', customerId);
 
                   if (!updErr) {
@@ -2309,7 +2469,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 id: newUuid,
                 name: cleanName,
                 phone: cleanPhone,
-                password: targetCustomer?.password || '123456',
+                password: cleanPassword || targetCustomer?.password || '123456',
                 email: cleanEmail || null,
                 avatar_url: updatedCustomer.avatar_url || null,
                 created_at: new Date().toISOString(),
@@ -4917,6 +5077,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         requestCustomerSignupOtp,
         verifyCustomerSignupOtp,
         updateCustomerProfile,
+        requestCustomerProfileOtp,
+        verifyCustomerProfileOtp,
         deleteCustomer,
         logoutUser,
         zones,

@@ -46,7 +46,11 @@ import {
   Maximize2,
   Minimize2,
   Smartphone,
-  RotateCcw
+  RotateCcw,
+  Lock,
+  Eye,
+  EyeOff,
+  ShieldCheck
 } from 'lucide-react';
 
 export const CustomerPortal: React.FC = () => {
@@ -67,6 +71,8 @@ export const CustomerPortal: React.FC = () => {
     currentUser,
     currentCustomer,
     updateCustomerProfile,
+    requestCustomerProfileOtp,
+    verifyCustomerProfileOtp,
     customerRespondToPrepTime,
     logoutUser,
     loginUser,
@@ -277,25 +283,61 @@ export const CustomerPortal: React.FC = () => {
 
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
-  const [formEmail, setFormEmail] = useState('');
+  const [formPassword, setFormPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [initialPhone, setInitialPhone] = useState('');
+  const [initialPassword, setInitialPassword] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaveFeedback, setProfileSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
+  // Profile OTP Verification states
+  const [profileOtpStep, setProfileOtpStep] = useState<'idle' | 'otp_required'>('idle');
+  const [profileOtpCode, setProfileOtpCode] = useState('');
+  const [profileOtpId, setProfileOtpId] = useState('');
+  const [profileTargetPhone, setProfileTargetPhone] = useState('');
+  const [profileOtpTimer, setProfileOtpTimer] = useState(0);
+
+  useEffect(() => {
+    if (profileOtpTimer <= 0) return;
+    const interval = setInterval(() => {
+      setProfileOtpTimer(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [profileOtpTimer]);
+
   const accountDisplayName = currentCustomer?.name || currentUser?.name || 'Customer';
 
   const openEditProfile = () => {
-    setFormName(currentCustomer?.name || currentUser?.name || '');
-    setFormPhone(currentCustomer?.phone || currentUser?.phone || '');
-    setFormEmail(currentCustomer?.email || '');
+    const curName = currentCustomer?.name || currentUser?.name || '';
+    const curPhone = currentCustomer?.phone || currentUser?.phone || '';
+    const curPass = currentCustomer?.password || '';
+    setFormName(curName);
+    setFormPhone(curPhone);
+    setFormPassword(curPass);
+    setInitialPhone(curPhone);
+    setInitialPassword(curPass);
+    setShowPassword(false);
+    setProfileOtpStep('idle');
+    setProfileOtpCode('');
+    setProfileOtpId('');
     setProfileSaveFeedback(null);
     setIsEditProfileOpen(true);
   };
 
   const openSettingsModal = () => {
-    setFormName(currentCustomer?.name || currentUser?.name || '');
-    setFormPhone(currentCustomer?.phone || currentUser?.phone || '');
-    setFormEmail(currentCustomer?.email || '');
+    const curName = currentCustomer?.name || currentUser?.name || '';
+    const curPhone = currentCustomer?.phone || currentUser?.phone || '';
+    const curPass = currentCustomer?.password || '';
+    setFormName(curName);
+    setFormPhone(curPhone);
+    setFormPassword(curPass);
+    setInitialPhone(curPhone);
+    setInitialPassword(curPass);
+    setShowPassword(false);
+    setProfileOtpStep('idle');
+    setProfileOtpCode('');
+    setProfileOtpId('');
     setProfileSaveFeedback(null);
     setIsSettingsModalOpen(true);
   };
@@ -304,7 +346,7 @@ export const CustomerPortal: React.FC = () => {
     if (e) e.preventDefault();
     const trimmedName = formName.trim();
     const trimmedPhone = formPhone.trim();
-    const trimmedEmail = formEmail.trim();
+    const trimmedPassword = formPassword.trim();
 
     if (!trimmedName) {
       setProfileSaveFeedback({ type: 'error', message: 'Please enter a valid display name.' });
@@ -315,6 +357,39 @@ export const CustomerPortal: React.FC = () => {
       return;
     }
 
+    const cleanCurrentPhone = trimmedPhone.replace(/\D/g, '');
+    const cleanInitialPhone = initialPhone.replace(/\D/g, '');
+    const isPhoneChanged = cleanCurrentPhone !== cleanInitialPhone;
+    const isPasswordChanged = trimmedPassword !== initialPassword && (trimmedPassword.length > 0 || initialPassword.length > 0);
+
+    // If Phone or Password changed: OTP IS MANDATORY
+    if (isPhoneChanged || isPasswordChanged) {
+      setIsSavingProfile(true);
+      setProfileSaveFeedback(null);
+      // If phone changed, verify the new phone number; otherwise send to current phone
+      const targetPhone = isPhoneChanged ? trimmedPhone : (initialPhone || trimmedPhone);
+
+      try {
+        const otpRes = await requestCustomerProfileOtp(targetPhone);
+        if (otpRes.success && otpRes.otpId) {
+          setProfileOtpId(otpRes.otpId);
+          setProfileTargetPhone(targetPhone);
+          setProfileOtpStep('otp_required');
+          setProfileOtpCode('');
+          setProfileOtpTimer(30);
+          setProfileSaveFeedback(null);
+        } else {
+          setProfileSaveFeedback({ type: 'error', message: otpRes.message || 'Failed to send OTP code to your number. Please try again.' });
+        }
+      } catch (err: any) {
+        setProfileSaveFeedback({ type: 'error', message: err?.message || 'Error requesting OTP.' });
+      } finally {
+        setIsSavingProfile(false);
+      }
+      return;
+    }
+
+    // ONLY Name changed: Update without OTP!
     setIsSavingProfile(true);
     setProfileSaveFeedback(null);
 
@@ -322,21 +397,85 @@ export const CustomerPortal: React.FC = () => {
       const res = await updateCustomerProfile({
         name: trimmedName,
         phone: trimmedPhone,
-        email: trimmedEmail,
+        password: initialPassword || trimmedPassword,
       });
 
       if (res.success) {
-        setProfileSaveFeedback({ type: 'success', message: '✅ Profile updated and saved to database!' });
+        setProfileSaveFeedback({ type: 'success', message: '✅ Name updated successfully!' });
         setTimeout(() => {
           setIsEditProfileOpen(false);
           setIsSettingsModalOpen(false);
           setProfileSaveFeedback(null);
         }, 800);
       } else {
-        setProfileSaveFeedback({ type: 'error', message: res.message || 'Failed to update profile.' });
+        setProfileSaveFeedback({ type: 'error', message: res.message || 'Failed to update name.' });
       }
     } catch (err: any) {
       setProfileSaveFeedback({ type: 'error', message: err?.message || 'Error saving to database.' });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleVerifyProfileOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanCode = profileOtpCode.trim();
+    if (!cleanCode) {
+      setProfileSaveFeedback({ type: 'error', message: 'Please enter the OTP verification code.' });
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileSaveFeedback(null);
+
+    try {
+      const verifyRes = await verifyCustomerProfileOtp(profileOtpId, cleanCode, profileTargetPhone);
+      if (!verifyRes.success) {
+        setProfileSaveFeedback({ type: 'error', message: verifyRes.message || 'Incorrect OTP code. Please check SMS and try again.' });
+        setIsSavingProfile(false);
+        return;
+      }
+
+      // OTP matched successfully! Now save the updated name, phone, and password
+      const res = await updateCustomerProfile({
+        name: formName.trim(),
+        phone: formPhone.trim(),
+        password: formPassword.trim() || initialPassword,
+      });
+
+      if (res.success) {
+        setProfileSaveFeedback({ type: 'success', message: '✅ Phone & Password updated and saved to database!' });
+        setTimeout(() => {
+          setIsEditProfileOpen(false);
+          setIsSettingsModalOpen(false);
+          setProfileOtpStep('idle');
+          setProfileSaveFeedback(null);
+        }, 900);
+      } else {
+        setProfileSaveFeedback({ type: 'error', message: res.message || 'Failed to save changes.' });
+      }
+    } catch (err: any) {
+      setProfileSaveFeedback({ type: 'error', message: err?.message || 'Error verifying OTP.' });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleResendProfileOtp = async () => {
+    if (profileOtpTimer > 0 || isSavingProfile) return;
+    setIsSavingProfile(true);
+    setProfileSaveFeedback(null);
+    try {
+      const res = await requestCustomerProfileOtp(profileTargetPhone);
+      if (res.success && res.otpId) {
+        setProfileOtpId(res.otpId);
+        setProfileOtpTimer(30);
+        setProfileSaveFeedback({ type: 'success', message: 'New OTP code sent to ' + profileTargetPhone });
+      } else {
+        setProfileSaveFeedback({ type: 'error', message: res.message || 'Failed to resend OTP.' });
+      }
+    } catch (e: any) {
+      setProfileSaveFeedback({ type: 'error', message: e?.message || 'Error resending OTP.' });
     } finally {
       setIsSavingProfile(false);
     }
@@ -2974,13 +3113,16 @@ export const CustomerPortal: React.FC = () => {
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-black text-slate-900 text-base">
-                {isEditProfileOpen ? 'User Profile' : 'Account Settings'}
+                {profileOtpStep === 'otp_required' 
+                  ? 'Verify with OTP' 
+                  : (isEditProfileOpen ? 'User Profile' : 'Account Settings')}
               </h3>
               <button 
                 type="button"
                 onClick={() => {
                   setIsEditProfileOpen(false);
                   setIsSettingsModalOpen(false);
+                  setProfileOtpStep('idle');
                   setProfileSaveFeedback(null);
                 }} 
                 className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer p-1"
@@ -2989,80 +3131,189 @@ export const CustomerPortal: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Display Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Your Name"
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
-                <input
-                  type="tel"
-                  required
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  placeholder="customer@example.com"
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
-                />
-              </div>
-
-              {profileSaveFeedback && (
-                <div className={`p-2.5 rounded-xl text-center font-bold text-xs ${
-                  profileSaveFeedback.type === 'success' 
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                    : 'bg-rose-50 text-rose-700 border border-rose-200'
-                }`}>
-                  {profileSaveFeedback.message}
+            {profileOtpStep === 'idle' ? (
+              <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="Your Name"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                  />
                 </div>
-              )}
 
-              <div className="pt-2 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditProfileOpen(false);
-                    setIsSettingsModalOpen(false);
-                    setProfileSaveFeedback(null);
-                  }}
-                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-xl text-xs font-black shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                >
-                  {isSavingProfile ? (
-                    <>
-                      <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      <span>Saving to DB...</span>
-                    </>
-                  ) : (
-                    <span>Save Changes</span>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formPassword}
+                      onChange={(e) => setFormPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="w-full px-3.5 py-2.5 pr-10 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200/70 p-2.5 rounded-xl space-y-1">
+                  <p className="font-bold text-slate-700">💡 Security Rules:</p>
+                  <p>• <span className="font-semibold text-emerald-700">Display Name:</span> updates directly without OTP.</p>
+                  <p>• <span className="font-semibold text-amber-700">Phone or Password:</span> requires SMS OTP verification.</p>
+                </div>
+
+                {profileSaveFeedback && (
+                  <div className={`p-2.5 rounded-xl text-center font-bold text-xs ${
+                    profileSaveFeedback.type === 'success' 
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                      : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {profileSaveFeedback.message}
+                  </div>
+                )}
+
+                <div className="pt-2 flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditProfileOpen(false);
+                      setIsSettingsModalOpen(false);
+                      setProfileSaveFeedback(null);
+                    }}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-xl text-xs font-black shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 bg-amber-50 border border-amber-200/70 p-3 rounded-2xl">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs">OTP Verification Required</h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      An OTP code was sent to <span className="font-bold text-slate-900">{profileTargetPhone}</span> to confirm your phone/password update.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleVerifyProfileOtp} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Enter OTP Code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoFocus
+                      required
+                      maxLength={6}
+                      value={profileOtpCode}
+                      onChange={(e) => setProfileOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Enter 4-6 digit OTP"
+                      className="w-full text-center text-lg font-black tracking-widest px-3.5 py-2.5 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <button
+                      type="button"
+                      onClick={handleResendProfileOtp}
+                      disabled={profileOtpTimer > 0 || isSavingProfile}
+                      className="font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      {profileOtpTimer > 0 ? `Resend OTP (${profileOtpTimer}s)` : 'Resend OTP'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOtpStep('idle');
+                        setProfileSaveFeedback(null);
+                      }}
+                      className="text-slate-500 hover:text-slate-700 font-semibold cursor-pointer"
+                    >
+                      Back to edit
+                    </button>
+                  </div>
+
+                  {profileSaveFeedback && (
+                    <div className={`p-2.5 rounded-xl text-center font-bold text-xs ${
+                      profileSaveFeedback.type === 'success' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}>
+                      {profileSaveFeedback.message}
+                    </div>
                   )}
-                </button>
+
+                  <div className="pt-2 flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditProfileOpen(false);
+                        setIsSettingsModalOpen(false);
+                        setProfileOtpStep('idle');
+                        setProfileSaveFeedback(null);
+                      }}
+                      className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingProfile || !profileOtpCode.trim()}
+                      className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-xl text-xs font-black shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isSavingProfile ? (
+                        <>
+                          <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <span>Verify & Update</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}
