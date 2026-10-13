@@ -3,8 +3,8 @@
   "name": "FoodHub - Rider Delivery App",
   "short_name": "Rider App",
   "description": "FoodHub Rider Delivery App: Live GPS dispatch, proximity orders, and cash delivery.",
-  "start_url": "./rider.html",
-  "scope": "./",
+  "start_url": "/rider.html",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
@@ -12,31 +12,31 @@
   "categories": ["food", "delivery", "business"],
   "icons": [
     {
-      "src": "./icons/icon-rider-192.png",
+      "src": "/icons/icon-rider-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-rider-192.png",
+      "src": "/icons/icon-rider-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "./icons/icon-rider-512.png",
+      "src": "/icons/icon-rider-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-rider-512.png",
+      "src": "/icons/icon-rider-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "./icons/icon-rider.svg",
+      "src": "/icons/icon-rider.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

@@ -1,6 +1,6 @@
 {
   "packageId": "com.foodhub.rider",
-  "host": "localhost",
+  "host": "ais-dev-32k34kdur3oe4zwgpjqoqo-226628343560.asia-east1.run.app",
   "name": "FoodHub Rider",
   "launcherName": "FoodHub Rider",
   "themeColor": "#d97706",
@@ -8,18 +8,12 @@
   "backgroundColor": "#ffffff",
   "enableNotifications": true,
   "startUrl": "/rider.html",
-  "iconUrl": "/icons/icon-rider-512.png",
-  "maskableIconUrl": "/icons/icon-rider-512.png",
+  "iconUrl": "https://ais-dev-32k34kdur3oe4zwgpjqoqo-226628343560.asia-east1.run.app/icons/icon-rider-512.png",
+  "maskableIconUrl": "https://ais-dev-32k34kdur3oe4zwgpjqoqo-226628343560.asia-east1.run.app/icons/icon-rider-512.png",
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
-  "shortcuts": [
-    {
-      "name": "Active Deliveries",
-      "short_name": "Orders",
-      "url": "/rider.html#orders",
-      "icon": "/icons/icon-rider-192.png"
-    }
-  ],
-  "generatorApp": "foodhub-twa-builder",
-  "webManifestUrl": "/manifest.rider.json"
+  "shortcuts": [],
+  "generatorApp": "bubblewrap",
+  "webManifestUrl": "https://ais-dev-32k34kdur3oe4zwgpjqoqo-226628343560.asia-east1.run.app/manifest.rider.json",
+  "fallbackType": "customtabs"
 }
