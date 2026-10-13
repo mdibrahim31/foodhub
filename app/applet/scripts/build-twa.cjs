@@ -50,6 +50,17 @@ async function main() {
   console.log('Generating TWA Android project from rider.html PWA...');
   await twaGenerator.createTwaProject(process.cwd(), twaManifest);
 
+  // Post-process app/build.gradle to ensure minSdkVersion 24 and fix splashScreenFadeOutDuration syntax
+  const gradlePath = path.join(process.cwd(), 'app', 'build.gradle');
+  if (fs.existsSync(gradlePath)) {
+    let gradleContent = fs.readFileSync(gradlePath, 'utf8');
+    gradleContent = gradleContent.replace(/minSdkVersion\s+\d+/g, 'minSdkVersion 24');
+    gradleContent = gradleContent.replace(/splashScreenFadeOutDuration:\s*,/g, 'splashScreenFadeOutDuration: 300,');
+    gradleContent = gradleContent.replace(/splashScreenFadeOutDuration:\s*\n/g, 'splashScreenFadeOutDuration: 300\n');
+    fs.writeFileSync(gradlePath, gradleContent);
+    console.log('Post-processed app/build.gradle: minSdkVersion set to 24, splashScreenFadeOutDuration corrected.');
+  }
+
   // Generate checksum file
   const manifestContents = fs.readFileSync(manifestPath);
   const checksum = crypto.createHash('sha256').update(manifestContents).digest('hex');
