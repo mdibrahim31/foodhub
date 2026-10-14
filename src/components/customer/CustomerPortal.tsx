@@ -911,7 +911,13 @@ export const CustomerPortal: React.FC = () => {
   // If user is not logged in, show the Login/Registration/OTP page
   if (!currentUser || currentUser.role !== 'customer') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative">
+        {/* WebAPK Download Button in Top-Right */}
+        <WebApkDownloadButton
+          appName="foodiplace Customer"
+          portalType="customer"
+          className="absolute top-4 right-4 z-10"
+        />
         <div className="bg-white w-full max-w-sm rounded-3xl shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-orange-600 p-8 text-white text-center">
@@ -1699,29 +1705,66 @@ export const CustomerPortal: React.FC = () => {
             ========================================================================
           */
           <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 pb-28">
-            {/* Top Bar: Account Title on Left + Settings Gear Icon on Right */}
+            {/* Top Bar: Account Title on Left + Download WebAPK + Settings Gear Icon on Right */}
             <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Account</h1>
-              <button 
-                onClick={openSettingsModal}
-                className="p-1 text-slate-800 hover:text-orange-600 transition cursor-pointer"
-                aria-label="Settings"
-              >
-                <Settings className="w-6 h-6 stroke-[2]" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <WebApkDownloadButton
+                  appName="foodiplace Customer"
+                  portalType="customer"
+                  className="relative shrink-0"
+                />
+                <button 
+                  onClick={openSettingsModal}
+                  className="p-1 text-slate-800 hover:text-orange-600 transition cursor-pointer"
+                  aria-label="Settings"
+                >
+                  <Settings className="w-6 h-6 stroke-[2]" />
+                </button>
+              </div>
             </div>
 
             <div className="px-5 py-5 space-y-6">
-              {/* User Name & View Profile */}
-              <div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">{accountDisplayName}</h2>
-                <button 
-                  onClick={openEditProfile}
-                  className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block cursor-pointer"
-                >
-                  View profile
-                </button>
-              </div>
+              {/* User Profile or Login Card */}
+              {!currentUser || currentUser.role !== 'customer' ? (
+                <div className="bg-gradient-to-br from-orange-50 via-white to-amber-50 rounded-3xl p-6 border border-orange-200/90 shadow-lg relative space-y-4">
+                  {/* WebAPK Download Button in Top-Right of Customer Login Card */}
+                  <WebApkDownloadButton
+                    appName="foodiplace Customer"
+                    portalType="customer"
+                    className="absolute top-4 right-4 z-10"
+                  />
+                  <div className="space-y-1 pr-14">
+                    <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shadow-xs">
+                      <User className="w-6 h-6 stroke-[2.2]" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight pt-1">
+                      Customer Login
+                    </h2>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Log in or create an account to track orders & save delivery addresses.
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-orange-600/30 transition cursor-pointer flex items-center justify-center space-x-2 active:scale-95"
+                  >
+                    <LogIn className="w-4 h-4 stroke-[2.5]" />
+                    <span>Login / Register Account</span>
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">{accountDisplayName}</h2>
+                  <button 
+                    onClick={openEditProfile}
+                    className="text-xs font-semibold text-slate-700 hover:text-orange-600 transition mt-1 block cursor-pointer"
+                  >
+                    View profile
+                  </button>
+                </div>
+              )}
 
               {/* 3 Action Cards (Orders, Favourites, Addresses) */}
               <div className="grid grid-cols-3 gap-3">
@@ -2132,8 +2175,13 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Right: Fullscreen Toggle + Heart Icon (Favorites) */}
-                <div className="flex items-center space-x-1 shrink-0">
+                {/* Right: Download WebAPK + Fullscreen Toggle + Heart Icon (Favorites) */}
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  <WebApkDownloadButton
+                    appName="foodiplace Customer"
+                    portalType="customer"
+                    className="relative shrink-0"
+                  />
                   <button 
                     onClick={toggleFullscreen}
                     className="p-1.5 text-white/90 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer active:scale-95"

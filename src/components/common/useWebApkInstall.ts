@@ -20,16 +20,18 @@ if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('webapk-installed'));
   });
 
-  // Ensure service worker is registered
+  // Ensure service worker is registered with relative path support for GitHub Pages
   if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('./sw.js')
         .then((reg) => {
           console.log('✅ WebAPK PWA Service Worker active:', reg.scope);
         })
-        .catch((err) => {
-          console.warn('[WebAPK] Service worker registration note:', err);
+        .catch(() => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('[WebAPK] Service worker registration note:', err);
+          });
         });
     });
   }
