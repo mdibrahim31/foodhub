@@ -18,6 +18,7 @@ import {
   Smartphone,
   RotateCcw
 } from 'lucide-react';
+import { WebApkDownloadButton } from './WebApkDownloadButton';
 
 interface AuthModalProps {
   targetRole: PortalRole;
@@ -266,12 +267,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <WebApkDownloadButton
+              appName={`foodiplace ${roleTitle}`}
+              portalType={targetRole}
+              className="relative"
+            />
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Current Logged In state */}

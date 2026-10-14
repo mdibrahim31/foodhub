@@ -44,6 +44,7 @@ import {
   Download
 } from 'lucide-react';
 import { RiderAppDownloadModal } from './RiderAppDownloadModal';
+import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 export const RiderPortal: React.FC = () => {
   const { 
@@ -706,18 +707,13 @@ export const RiderPortal: React.FC = () => {
   if (!currentUser || currentUser.role !== 'rider' || !currentRider) {
     return (
       <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white relative">
-        {/* Direct APK Download Button in Top-Right */}
-        <div className="absolute top-4 right-4 z-10">
-          <a
-            href="./FoodHub-Rider.apk"
-            download="FoodHub-Rider.apk"
-            onClick={handleDownloadApk}
-            className={`w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl flex items-center justify-center hover:from-amber-600 hover:to-orange-600 transition active:scale-95 border border-amber-300/60 cursor-pointer ${isDownloadingApk ? 'opacity-70 animate-pulse' : ''}`}
-            title="Download FoodHub Rider App (APK)"
-          >
-            <Download className="w-5 h-5 stroke-[2.5]" />
-          </a>
-        </div>
+        {/* WebAPK / App Download Button in Top-Right */}
+        <WebApkDownloadButton
+          appName="foodiplace Rider"
+          portalType="rider"
+          apkDownloadUrl="./FoodHub-Rider.apk"
+          className="absolute top-4 right-4 z-10"
+        />
         <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
           
           <div className="text-center space-y-2">

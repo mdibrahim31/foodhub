@@ -33,6 +33,7 @@ import {
   ArrowUpRight,
   ShieldCheck
 } from 'lucide-react';
+import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 export const SubAdminPortal: React.FC = () => {
   const {
@@ -188,7 +189,13 @@ export const SubAdminPortal: React.FC = () => {
   // If Not Authenticated, show modern Sub-Admin Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative">
+        {/* WebAPK / App Download Button in Top-Right */}
+        <WebApkDownloadButton
+          appName="foodiplace Sub-Admin"
+          portalType="subadmin"
+          className="absolute top-4 right-4 z-10"
+        />
         <div className="w-full max-w-md bg-slate-800/90 border border-slate-700/80 rounded-3xl p-8 shadow-2xl backdrop-blur-xl space-y-6 text-white">
           <div className="text-center space-y-2">
             <div className="w-16 h-16 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto shadow-inner">

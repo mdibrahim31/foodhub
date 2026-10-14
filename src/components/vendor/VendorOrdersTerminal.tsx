@@ -64,6 +64,7 @@ import {
   CheckCircle,
   Save
 } from 'lucide-react';
+import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
   saturday: { day: 'saturday', day_label: 'Saturday', day_label_bn: 'শনিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
@@ -946,8 +947,13 @@ export const VendorOrdersTerminal: React.FC = () => {
             </button>
           </div>
 
-          {/* Right Group: Store icon with clock + Status Pill */}
-          <div className="flex items-center space-x-3.5">
+          {/* Right Group: WebAPK download button + Store icon with clock + Status Pill */}
+          <div className="flex items-center space-x-3">
+            <WebApkDownloadButton
+              appName="foodiplace Kitchen Orders"
+              portalType="orders"
+              className="relative shrink-0"
+            />
             {/* Storefront with Clock Badge: Opens 1-week schedule & permanent close modal */}
             <button
               onClick={handleOpenScheduleModal}

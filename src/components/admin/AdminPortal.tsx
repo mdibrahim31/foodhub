@@ -41,8 +41,10 @@ import {
   Layers,
   CheckCircle2,
   AlertCircle,
-  Users
+  Users,
+  LogOut
 } from 'lucide-react';
+import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 // Parse latitude and longitude from various Google Maps and map URL formats
 function parseGoogleMapsCoordinates(urlOrText: string): { lat: number; lng: number } | null {
@@ -132,6 +134,35 @@ export const AdminPortal: React.FC = () => {
     connectSupabase,
     syncAllToSupabase
   } = useDelivery();
+
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('foodiplace_admin_auth') === 'true';
+    }
+    return false;
+  });
+  const [adminPinInput, setAdminPinInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState('');
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminPinInput === '123456' || adminPinInput.toLowerCase() === 'admin') {
+      setIsAdminAuthenticated(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('foodiplace_admin_auth', 'true');
+      }
+      setAdminAuthError('');
+    } else {
+      setAdminAuthError('ভুল পাসওয়ার্ড/পিন। ডিফল্ট পিন: admin অথবা 123456');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('foodiplace_admin_auth');
+    }
+  };
 
   const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads'>(() => {
     if (typeof window !== 'undefined') {
@@ -679,6 +710,71 @@ export const AdminPortal: React.FC = () => {
       return (a.name || '').localeCompare(b.name || '');
     });
 
+  // If not authenticated, display Admin Login Page
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white relative">
+        {/* WebAPK / App Download Button in Top-Right */}
+        <WebApkDownloadButton
+          appName="foodiplace Admin"
+          portalType="admin"
+          className="absolute top-4 right-4 z-10"
+        />
+        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-md">
+              <ShieldCheck className="w-7 h-7 stroke-[2.5]" />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">
+              foodiplace Admin
+            </h2>
+            <p className="text-xs text-slate-500 font-bold">
+              Master Control & Operations Console
+            </p>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="space-y-4 text-xs font-bold">
+            <div className="space-y-1">
+              <label className="text-slate-600 uppercase tracking-wider text-[10px]">Admin Access PIN / Password</label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="password"
+                  value={adminPinInput}
+                  onChange={(e) => setAdminPinInput(e.target.value)}
+                  placeholder="Enter PIN (default: admin or 123456)"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm font-mono"
+                  autoFocus
+                  required
+                />
+              </div>
+              {adminAuthError && (
+                <p className="text-xs text-rose-600 font-bold flex items-center gap-1 pt-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>{adminAuthError}</span>
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
+            >
+              Login to Admin Console
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Role: Super Admin</span>
+            <a href="./subadmin.html" className="text-rose-600 hover:underline">
+              Operations Sub-Admin &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-slate-900 pb-12 font-sans selection:bg-rose-500 selection:text-white">
       {/* Header Bar */}
@@ -711,6 +807,15 @@ export const AdminPortal: React.FC = () => {
               <span>Customer App</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+
+            <button
+              onClick={handleAdminLogout}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition flex items-center space-x-1 border border-rose-200 cursor-pointer"
+              title="Logout from Admin"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>

@@ -52,6 +52,7 @@ import {
   EyeOff,
   ShieldCheck
 } from 'lucide-react';
+import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 export const CustomerPortal: React.FC = () => {
   const { 
@@ -3656,12 +3657,19 @@ export const CustomerPortal: React.FC = () => {
       {isCustomerLoginModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4 relative">
-            <button 
-              onClick={() => setIsCustomerLoginModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="absolute top-3.5 right-3.5 flex items-center space-x-2 z-10">
+              <WebApkDownloadButton
+                appName="foodiplace Customer"
+                portalType="customer"
+                className="relative"
+              />
+              <button 
+                onClick={() => setIsCustomerLoginModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
