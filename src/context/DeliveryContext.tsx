@@ -3437,36 +3437,39 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const fileName = `${type}_${Date.now()}.${ext}`;
     const filePath = `${folderName}/${fileName}`;
 
-    // 1. Try Supabase Storage bucket "images" if configured
+    // 1. Try Supabase Storage buckets ("vendors" then "images")
     if (isSupabaseConfigured && supabase) {
-      try {
-        let { error: uploadErr } = await supabase.storage
-          .from('images')
-          .upload(filePath, file, { upsert: true, cacheControl: '3600' });
-
-        if (uploadErr && uploadErr.message?.toLowerCase().includes('bucket not found')) {
-          await supabase.storage.createBucket('images', { public: true });
-          const retry = await supabase.storage
-            .from('images')
+      const bucketNames = ['vendors', 'images'];
+      for (const bucket of bucketNames) {
+        try {
+          let { error: uploadErr } = await supabase.storage
+            .from(bucket)
             .upload(filePath, file, { upsert: true, cacheControl: '3600' });
-          uploadErr = retry.error;
-        }
 
-        if (!uploadErr) {
-          const { data: publicUrlData } = supabase.storage
-            .from('images')
-            .getPublicUrl(filePath);
-          
-          if (publicUrlData?.publicUrl) {
-            return {
-              success: true,
-              url: publicUrlData.publicUrl,
-              message: `Uploaded to Supabase bucket "images/${folderName}/${fileName}"`
-            };
+          if (uploadErr && uploadErr.message?.toLowerCase().includes('bucket not found')) {
+            await supabase.storage.createBucket(bucket, { public: true });
+            const retry = await supabase.storage
+              .from(bucket)
+              .upload(filePath, file, { upsert: true, cacheControl: '3600' });
+            uploadErr = retry.error;
           }
+
+          if (!uploadErr) {
+            const { data: publicUrlData } = supabase.storage
+              .from(bucket)
+              .getPublicUrl(filePath);
+            
+            if (publicUrlData?.publicUrl) {
+              return {
+                success: true,
+                url: publicUrlData.publicUrl,
+                message: `Uploaded to Supabase bucket "${bucket}/${folderName}/${fileName}"`
+              };
+            }
+          }
+        } catch (bErr) {
+          console.warn(`Supabase storage bucket ${bucket} attempt notice:`, bErr);
         }
-      } catch (err) {
-        console.warn('Supabase storage upload fallback:', err);
       }
     }
 
