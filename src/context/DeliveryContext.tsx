@@ -1895,7 +1895,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { error } = await supabase.from('otp_sender').insert([{
           id: customerId,
           phone: cleanPhone,
-          phone_number: cleanPhone,
           otp: generatedOtp,
           message: `Your FoodHub verification code is ${generatedOtp}`,
           status: 'pending',
@@ -1906,13 +1905,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           console.warn('Supabase otp_sender insert error:', error.message || error);
           const fallbackRes = await supabase.from('otp_sender').insert([{
             id: customerId,
-            phone_number: cleanPhone,
+            phone: cleanPhone,
             otp: generatedOtp
           }]);
           if (fallbackRes.error) {
             console.warn('Supabase otp_sender insert fallback error:', fallbackRes.error.message || fallbackRes.error);
-          } else {
-            console.log('Successfully inserted row into otp_sender with OTP:', generatedOtp);
           }
         } else {
           console.log('Successfully inserted row into Supabase otp_sender table with OTP:', { id: customerId, phone: cleanPhone, otp: generatedOtp });
@@ -2126,7 +2123,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { error } = await supabase.from('otp_sender').insert([{
           id: otpId,
           phone: cleanPhone,
-          phone_number: cleanPhone,
           otp: generatedOtp,
           message: `Your FoodHub verification code is ${generatedOtp}`,
           status: 'pending',
@@ -2137,7 +2133,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           console.warn('Supabase otp_sender insert error:', error.message || error);
           const fallbackRes = await supabase.from('otp_sender').insert([{
             id: otpId,
-            phone_number: cleanPhone,
+            phone: cleanPhone,
             otp: generatedOtp
           }]);
           if (fallbackRes.error) {

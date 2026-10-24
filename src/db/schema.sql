@@ -61,11 +61,10 @@ CREATE TABLE IF NOT EXISTS public.customers (
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.otp_sender (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    phone VARCHAR(50),
-    phone_number VARCHAR(50),
+    phone VARCHAR(50) NOT NULL,
     otp VARCHAR(10),
     message TEXT,
-    status VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'pending',
     error_message TEXT,
     expires_at TIMESTAMP WITH TIME ZONE,
     sent_at TIMESTAMP WITH TIME ZONE,
