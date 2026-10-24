@@ -43,6 +43,31 @@ CREATE TABLE IF NOT EXISTS public.zones (
 );
 
 -- ====================================================================
+-- 3B. DIVISIONS TABLE (বিভাগ)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.divisions (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    bn_name VARCHAR(100),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
+-- 3C. CITIES & AREAS TABLE (শহর ও এলাকা)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.city_areas (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    division_id VARCHAR(255) NOT NULL REFERENCES public.divisions(id) ON DELETE CASCADE,
+    division_name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    bn_name VARCHAR(100),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_division_city_area UNIQUE (division_id, name)
+);
+
+-- ====================================================================
 -- 4. CUSTOMER ACCOUNTS TABLE (Self-Registered Customer Users)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customers (
@@ -149,6 +174,8 @@ CREATE TABLE IF NOT EXISTS public.vendors (
     email VARCHAR(100),
     address TEXT NOT NULL,
     zone VARCHAR(100) NOT NULL DEFAULT 'Chawkbazar Zone',
+    division VARCHAR(100),
+    city_area VARCHAR(100),
     latitude DOUBLE PRECISION NOT NULL,
     longitude DOUBLE PRECISION NOT NULL,
     google_maps_link TEXT,

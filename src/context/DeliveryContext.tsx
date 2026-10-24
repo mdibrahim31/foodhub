@@ -14,7 +14,9 @@ import {
   DeliveryZone,
   RiderMessage,
   AdBanner,
-  VendorReview
+  VendorReview,
+  Division,
+  CityArea
 } from '../types/database';
 import { 
   DEFAULT_SETTINGS, 
@@ -26,6 +28,8 @@ import {
   INITIAL_RIDERS, 
   INITIAL_ORDERS,
   INITIAL_FOOD_CATEGORIES,
+  INITIAL_DIVISIONS,
+  INITIAL_CITY_AREAS,
   supabase,
   isSupabaseConfigured,
   updateSupabaseCredentials,
@@ -68,6 +72,18 @@ interface DeliveryContextType {
   deleteCustomer?: (id: string) => void;
   logoutUser: () => void;
 
+  // Divisions & Cities/Areas Management
+  divisions: Division[];
+  cityAreas: CityArea[];
+  selectedArea: string;
+  setSelectedArea: (area: string) => void;
+  addDivision: (division: Omit<Division, 'id' | 'created_at'>) => Promise<Division>;
+  updateDivision: (id: string, updates: Partial<Division>) => Promise<void>;
+  deleteDivision: (id: string) => Promise<void>;
+  addCityArea: (area: Omit<CityArea, 'id' | 'created_at'>) => Promise<CityArea>;
+  updateCityArea: (id: string, updates: Partial<CityArea>) => Promise<void>;
+  deleteCityArea: (id: string) => Promise<void>;
+
   // Delivery & Rider Zones (Admin Configured Boundary & Map)
   zones: DeliveryZone[];
   addZone: (zone: Omit<DeliveryZone, 'id' | 'created_at' | 'updated_at'>) => Promise<DeliveryZone>;
@@ -89,6 +105,8 @@ interface DeliveryContextType {
     address: string;
     cuisine: string;
     zone: string;
+    division?: string;
+    city_area?: string;
     latitude: number;
     longitude: number;
     description?: string;
@@ -324,6 +342,74 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<SystemSettings>(() => {
     return safeJsonParse(`${STORAGE_KEY_PREFIX}settings`, DEFAULT_SETTINGS);
   });
+
+  const [divisions, setDivisions] = useState<Division[]>(() => {
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}divisions`, INITIAL_DIVISIONS);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_DIVISIONS;
+  });
+
+  const [cityAreas, setCityAreas] = useState<CityArea[]>(() => {
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}city_areas`, INITIAL_CITY_AREAS);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_CITY_AREAS;
+  });
+
+  const [selectedArea, setSelectedAreaState] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(`${STORAGE_KEY_PREFIX}selected_area`) || 'all';
+    }
+    return 'all';
+  });
+
+  const setSelectedArea = (area: string) => {
+    setSelectedAreaState(area);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}selected_area`, area);
+    }
+  };
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}divisions`, JSON.stringify(divisions));
+  }, [divisions]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}city_areas`, JSON.stringify(cityAreas));
+  }, [cityAreas]);
+
+  const addDivision = async (data: Omit<Division, 'id' | 'created_at'>): Promise<Division> => {
+    const newDiv: Division = {
+      ...data,
+      id: generateUUID(),
+      created_at: new Date().toISOString()
+    };
+    setDivisions(prev => [...prev, newDiv]);
+    return newDiv;
+  };
+
+  const updateDivision = async (id: string, updates: Partial<Division>): Promise<void> => {
+    setDivisions(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
+  };
+
+  const deleteDivision = async (id: string): Promise<void> => {
+    setDivisions(prev => prev.filter(d => d.id !== id));
+  };
+
+  const addCityArea = async (data: Omit<CityArea, 'id' | 'created_at'>): Promise<CityArea> => {
+    const newArea: CityArea = {
+      ...data,
+      id: generateUUID(),
+      created_at: new Date().toISOString()
+    };
+    setCityAreas(prev => [...prev, newArea]);
+    return newArea;
+  };
+
+  const updateCityArea = async (id: string, updates: Partial<CityArea>): Promise<void> => {
+    setCityAreas(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+
+  const deleteCityArea = async (id: string): Promise<void> => {
+    setCityAreas(prev => prev.filter(a => a.id !== id));
+  };
 
   const [zones, setZones] = useState<DeliveryZone[]>(() => {
     const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}zones`, INITIAL_ZONES);
@@ -2826,6 +2912,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     address: string;
     cuisine: string;
     zone: string;
+    division?: string;
+    city_area?: string;
     latitude: number;
     longitude: number;
     description?: string;
@@ -2840,7 +2928,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       phone: data.phone.trim(),
       address: data.address.trim(),
       cuisine: data.cuisine.trim(),
-      zone: data.zone || 'Chawkbazar Zone',
+      division: data.division || 'Chittagong',
+      city_area: data.city_area || data.zone || 'Chawkbazar',
+      zone: data.city_area || data.zone || 'Chawkbazar Zone',
       latitude: data.latitude,
       longitude: data.longitude,
       google_maps_link: data.google_maps_link || '',
@@ -5151,6 +5241,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         verifyCustomerProfileOtp,
         deleteCustomer,
         logoutUser,
+        divisions,
+        cityAreas,
+        selectedArea,
+        setSelectedArea,
+        addDivision,
+        updateDivision,
+        deleteDivision,
+        addCityArea,
+        updateCityArea,
+        deleteCityArea,
         zones,
         addZone,
         updateZone,

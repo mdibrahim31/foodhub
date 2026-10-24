@@ -83,9 +83,14 @@ export const CustomerPortal: React.FC = () => {
     reviews,
     addOrderReview,
     favorites,
-    toggleFavorite
+    toggleFavorite,
+    divisions,
+    cityAreas,
+    selectedArea,
+    setSelectedArea
   } = useDelivery();
 
+  const [isChooseAreaModalOpen, setIsChooseAreaModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
 
@@ -513,6 +518,7 @@ export const CustomerPortal: React.FC = () => {
     (selectedVendorForMenu ? 1 : 0) + 
     (isViewingCartDetail ? 1 : 0) + 
     (accountSubView !== 'none' ? 1 : 0) + 
+    (isChooseAreaModalOpen ? 1 : 0) +
     (isAddressModalOpen ? 1 : 0) + 
     (isCustomerLoginModalOpen ? 1 : 0) +
     (isAuthModalOpen ? 1 : 0) +
@@ -547,7 +553,7 @@ export const CustomerPortal: React.FC = () => {
       }
     }
     prevOpenCountRef.current = openCount;
-  }, [openCount, activeBottomNav, selectedVendorForMenu, isViewingCartDetail, accountSubView, isAddressModalOpen, isCustomerLoginModalOpen, isAuthModalOpen, isRestaurantReviewsOpen, isEditProfileOpen, isSettingsModalOpen, isLogoutConfirmOpen, isCartOpen]);
+  }, [openCount, activeBottomNav, selectedVendorForMenu, isViewingCartDetail, accountSubView, isChooseAreaModalOpen, isAddressModalOpen, isCustomerLoginModalOpen, isAuthModalOpen, isRestaurantReviewsOpen, isEditProfileOpen, isSettingsModalOpen, isLogoutConfirmOpen, isCartOpen]);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -560,7 +566,9 @@ export const CustomerPortal: React.FC = () => {
       isPoppingRef.current = true;
       
       // Close topmost modal/view sequentially when back button is pressed on phone
-      if (isAddressModalOpen) {
+      if (isChooseAreaModalOpen) {
+        setIsChooseAreaModalOpen(false);
+      } else if (isAddressModalOpen) {
         setIsAddressModalOpen(false);
       } else if (isCustomerLoginModalOpen) {
         setIsCustomerLoginModalOpen(false);
@@ -788,42 +796,25 @@ export const CustomerPortal: React.FC = () => {
     return null;
   }, [selectedAddress?.zone, customerLat, customerLng, zones]);
 
-  // Filtered and Sorted Vendors (Strictly filtered by Customer Zone Boundary)
+  // Filtered and Sorted Vendors (Filtered by Selected Area or All)
   const filteredVendors = vendors.filter((v) => {
-    // 1. Filter strictly by Customer Zone: Only vendors added/belonging to this active zone are shown!
-    if (!activeCustomerZone) {
-      return false; // Customer pinned outside all delivery zones (e.g., in Dhaka) -> show 0 vendors!
-    }
+    // 1. Manual Area Selection Filter: If an area is chosen (and not 'all'), filter vendors belonging to that area
+    if (selectedArea && selectedArea.toLowerCase() !== 'all') {
+      const normArea = selectedArea.toLowerCase().trim();
+      const vCityArea = (v.city_area || '').toLowerCase().trim();
+      const vZone = (v.zone || '').toLowerCase().trim();
+      const vDivision = (v.division || '').toLowerCase().trim();
+      const vAddress = (v.address || '').toLowerCase().trim();
 
-    // Determine vendor's actual GPS location (from vendor's latitude/longitude OR parsed google_maps_link)
-    let vendorLat = v.latitude;
-    let vendorLng = v.longitude;
-    if ((!vendorLat || !vendorLng) && v.google_maps_link) {
-      const parsedCoords = parseGoogleMapsLinkOrCoords(v.google_maps_link);
-      if (parsedCoords) {
-        vendorLat = parsedCoords.lat;
-        vendorLng = parsedCoords.lng;
+      const matchesArea = 
+        (vCityArea.length > 0 && (vCityArea.includes(normArea) || normArea.includes(vCityArea))) ||
+        (vZone.length > 0 && (vZone.includes(normArea) || normArea.includes(vZone))) ||
+        (vDivision.length > 0 && (vDivision.includes(normArea) || normArea.includes(vDivision))) ||
+        vAddress.includes(normArea);
+
+      if (!matchesArea) {
+        return false;
       }
-    }
-
-    const normCustZone = activeCustomerZone.name.toLowerCase().replace(/\s*zone\s*/i, '').trim();
-    const normVendorZone = (v.zone || '').toLowerCase().replace(/\s*zone\s*/i, '').trim();
-
-    // Check if vendor's GPS coordinate is physically inside the active customer zone boundary/radius
-    const isPointInsideActiveZone = Boolean(vendorLat && vendorLng && isPointInZone(vendorLat, vendorLng, activeCustomerZone));
-
-    // Flexible zone name or ID match
-    const isZoneNameMatch = normVendorZone.length > 0 && (
-      normVendorZone === normCustZone ||
-      normVendorZone.includes(normCustZone) ||
-      normCustZone.includes(normVendorZone)
-    );
-    const isZoneIdMatch = Boolean(v.zone && (v.zone === activeCustomerZone.id || v.zone.toLowerCase() === activeCustomerZone.name.toLowerCase()));
-
-    // Strict boundary match: Vendor MUST either be physically located inside active customer zone OR explicitly assigned to it
-    const matchesZone = isPointInsideActiveZone || isZoneNameMatch || isZoneIdMatch;
-    if (!matchesZone) {
-      return false; // Reject vendors outside active customer zone!
     }
 
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -868,7 +859,7 @@ export const CustomerPortal: React.FC = () => {
     // Filter by New Vendors (within last 30 days)
     const matchesNew = (!isNewOnly && selectedSort !== 'new') || isVendorNew(v);
 
-    return matchesZone && matchesSearch && matchesRating && matchesCuisine && matchesType && matchesRestType && matchesNew;
+    return matchesSearch && matchesRating && matchesCuisine && matchesType && matchesRestType && matchesNew;
   }).sort((a, b) => {
     if (selectedSort === 'rating') return b.rating - a.rating;
     if (selectedSort === 'distance') {
@@ -2153,24 +2144,36 @@ export const CustomerPortal: React.FC = () => {
           */}
           <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-[max(env(safe-area-inset-top),0.75rem)] pb-6 px-4 rounded-b-[2.5rem] shadow-sm">
             <div className="max-w-md mx-auto space-y-3">
-              {/* Top Row: Location Pin + Current Location + Chittagong + Fullscreen + Heart */}
+              {/* Top Row: Location Pin + Choose Area + Fullscreen + Heart */}
               <div className="flex items-center justify-between">
                 <div 
                   onClick={() => setIsAddressModalOpen(true)}
-                  className="flex items-start space-x-2.5 cursor-pointer group flex-1 min-w-0 pr-2"
+                  className="flex items-start space-x-2 cursor-pointer group flex-1 min-w-0 pr-2"
                 >
-                  <MapPin className="w-6 h-6 text-white mt-0.5 fill-transparent stroke-[2.2] shrink-0" />
+                  <MapPin className="w-5 h-5 text-white mt-0.5 fill-transparent stroke-[2.2] shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center space-x-1">
-                      <h1 className="text-base font-black tracking-tight text-white leading-tight">
+                      <h1 className="text-sm font-black tracking-tight text-white leading-tight">
                         Current Location
                       </h1>
                     </div>
-                    <p className="text-xs text-orange-100 font-medium truncate max-w-[200px] sm:max-w-[250px]">
-                      {selectedAddress ? `${selectedAddress.address_line}${activeCustomerZone?.name ? ` • ${activeCustomerZone.name}` : ''}` : (activeCustomerZone?.name || 'Chittagong')}
+                    <p className="text-[11px] text-orange-100 font-medium truncate max-w-[150px] sm:max-w-[200px]">
+                      {selectedAddress ? selectedAddress.address_line : 'Select Address'}
                     </p>
                   </div>
                 </div>
+
+                {/* Choose Area Button */}
+                <button
+                  onClick={() => setIsChooseAreaModalOpen(true)}
+                  className="mr-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-xs font-black flex items-center space-x-1 border border-white/30 transition shadow-2xs active:scale-95 shrink-0 cursor-pointer"
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[110px]">
+                    {selectedArea && selectedArea.toLowerCase() !== 'all' ? selectedArea : 'Choose Area'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                </button>
 
                 {/* Right: Fullscreen Toggle + Heart Icon (Favorites) */}
                 <div className="flex items-center space-x-1.5 shrink-0">
@@ -3829,6 +3832,107 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </div>
       ))}
+
+      {/* Choose Area Modal (Division -> City/Area Selection) */}
+      {isChooseAreaModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl border border-slate-100">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center font-bold">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Choose Your Area</h3>
+                  <p className="text-xs font-semibold text-slate-500">আপনার শহর বা এলাকা নির্বাচন করুন</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChooseAreaModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center text-slate-600 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-5 flex-1">
+              {/* Option 1: All Areas */}
+              <button
+                onClick={() => {
+                  setSelectedArea('all');
+                  setIsChooseAreaModalOpen(false);
+                }}
+                className={`w-full p-4 rounded-2xl border-2 text-left font-black text-sm transition flex items-center justify-between cursor-pointer ${
+                  !selectedArea || selectedArea.toLowerCase() === 'all'
+                    ? 'border-orange-500 bg-orange-50/60 text-orange-600 shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Store className="w-5 h-5 text-orange-600" />
+                  <div>
+                    <span>সকল এলাকা (All Areas)</span>
+                    <p className="text-xs font-medium text-slate-500">Show restaurants & shops from all locations</p>
+                  </div>
+                </div>
+                {(!selectedArea || selectedArea.toLowerCase() === 'all') && (
+                  <Check className="w-5 h-5 text-orange-600 stroke-[3]" />
+                )}
+              </button>
+
+              {/* Option 2: Grouped by Division */}
+              <div className="space-y-4 pt-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Select by Division & City (বিভাগ ও শহর)
+                </h4>
+
+                {divisions.map((div) => {
+                  const divAreas = cityAreas.filter(a => a.division_id === div.id);
+                  return (
+                    <div key={div.id} className="bg-slate-50/80 rounded-2xl p-3 border border-slate-200/70 space-y-2.5">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                        <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                          {div.name}
+                        </h5>
+                      </div>
+
+                      {divAreas.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic pl-4">No areas added yet in this division</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {divAreas.map((area) => {
+                            const isSelected = selectedArea?.toLowerCase() === area.name.toLowerCase();
+                            return (
+                              <button
+                                key={area.id}
+                                onClick={() => {
+                                  setSelectedArea(area.name);
+                                  setIsChooseAreaModalOpen(false);
+                                }}
+                                className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left transition flex items-center justify-between cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-orange-600 text-white shadow-xs'
+                                    : 'bg-white text-slate-800 border border-slate-200 hover:border-orange-300 hover:bg-orange-50/30'
+                                }`}
+                              >
+                                <span className="truncate">{area.name}</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] shrink-0 ml-1" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Customer Auth Modal */}
       {isAuthModalOpen && (

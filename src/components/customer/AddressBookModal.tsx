@@ -108,6 +108,8 @@ const KNOWN_LOCATIONS = [
 
 export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onClose }) => {
   const { 
+    cityAreas,
+    setSelectedArea,
     addresses, 
     selectedAddress, 
     setSelectedAddress, 
@@ -791,16 +793,28 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                 />
               </div>
 
-              {/* City */}
+              {/* City / Area Selection */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Select Area / City (এলাকা নির্বাচন করুন) <span className="text-rose-500">*</span>
+                </label>
+                <select
                   value={cityField}
-                  onChange={(e) => setCityField(e.target.value)}
-                  placeholder="Chittagong"
-                  className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
-                />
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    setCityField(chosen);
+                    setSelectedArea(chosen);
+                  }}
+                  className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-slate-50 cursor-pointer"
+                  required
+                >
+                  <option value="" disabled>-- Select Area / City --</option>
+                  {cityAreas.map((area) => (
+                    <option key={area.id} value={area.name}>
+                      {area.name} ({area.division_name}) {area.bn_name ? `- ${area.bn_name}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Note to Rider */}

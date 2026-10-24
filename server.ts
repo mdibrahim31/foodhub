@@ -27,6 +27,8 @@ interface ServerState {
   pausedRiderIds: string[];
   pausedVendorIds: string[];
   zones: any[];
+  divisions?: any[];
+  cityAreas?: any[];
   riders: any[];
   vendors: any[];
   orders: any[];
@@ -130,6 +132,8 @@ const INITIAL_SERVER_STATE: ServerState = {
       created_at: new Date().toISOString()
     }
   ],
+  divisions: [],
+  cityAreas: [],
   riders: [],
   vendors: [],
   orders: [],

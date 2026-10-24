@@ -44,6 +44,24 @@ export interface DeliveryZone {
 export const DELIVERY_ZONES = DEFAULT_DELIVERY_ZONE_NAMES;
 export type DeliveryZoneName = string;
 
+export interface Division {
+  id: string;
+  name: string;
+  bn_name?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface CityArea {
+  id: string;
+  division_id: string;
+  division_name: string;
+  name: string;
+  bn_name?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
 export interface Vendor {
   id: string;
   unique_id?: string; // e.g. VND-1001
@@ -55,6 +73,8 @@ export interface Vendor {
   phone: string;
   email?: string;
   address: string;
+  division?: string;
+  city_area?: string;
   zone: string;
   latitude: number;
   longitude: number;
@@ -151,6 +171,8 @@ export interface CustomerAddress {
   details?: string;
   latitude: number;
   longitude: number;
+  division?: string;
+  city_area?: string;
   zone?: string;
   is_default: boolean;
   status: 'active' | 'inactive';
