@@ -3433,9 +3433,11 @@ export const CustomerPortal: React.FC = () => {
 
               {/* Description */}
               {selectedMenuItemForModal.description && (
-                <p className="text-xs text-slate-500 leading-relaxed font-semibold pt-1 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full">
-                  {selectedMenuItemForModal.description}
-                </p>
+                <div className="pt-1 pb-1">
+                  <p className="text-xs text-slate-600 leading-relaxed font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap block w-full">
+                    {selectedMenuItemForModal.description}
+                  </p>
+                </div>
               )}
             </div>
 
