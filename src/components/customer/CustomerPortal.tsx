@@ -216,6 +216,21 @@ export const CustomerPortal: React.FC = () => {
   const [modalSpecialInstructions, setModalSpecialInstructions] = useState('');
   const [isUnavailPopupOpen, setIsUnavailPopupOpen] = useState(false);
   const [unavailPreference, setUnavailPreference] = useState<'remove' | 'call'>('remove');
+  const modalScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const isValidDescription = (desc?: string | null): boolean => {
+    if (!desc || typeof desc !== 'string') return false;
+    const trimmed = desc.trim();
+    if (!trimmed) return false;
+    const lower = trimmed.toLowerCase();
+    return lower !== 'false' && lower !== 'null' && lower !== 'undefined' && lower !== 'true';
+  };
+
+  useEffect(() => {
+    if (selectedMenuItemForModal && modalScrollContainerRef.current) {
+      modalScrollContainerRef.current.scrollTop = 0;
+    }
+  }, [selectedMenuItemForModal]);
 
   const handleOpenMenuItemModal = (dish: MenuItem) => {
     setSelectedMenuItemForModal(dish);
@@ -2836,7 +2851,12 @@ export const CustomerPortal: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3.5">
                   {menuItems
-                    .filter((m) => m.vendor_id === selectedVendorForMenu.id)
+                    .filter((m) => {
+                      if (m.vendor_id !== selectedVendorForMenu.id) return false;
+                      if (!menuSearchQuery.trim()) return true;
+                      const q = menuSearchQuery.trim().toLowerCase();
+                      return m.name.toLowerCase().includes(q) || (m.description && m.description.toLowerCase().includes(q));
+                    })
                     .slice(0, 6)
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
@@ -2873,6 +2893,11 @@ export const CustomerPortal: React.FC = () => {
                           </div>
                           <div className="px-0.5 space-y-0.5">
                             <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-1">{dish.name}</h5>
+                            {isValidDescription(dish.description) && (
+                              <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
+                                {dish.description}
+                              </p>
+                            )}
                             <div className="flex items-center space-x-1.5">
                               <span className="text-xs font-black text-[#d70f64]">{settings.currency_symbol} {dish.price}</span>
                               <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
@@ -2900,7 +2925,12 @@ export const CustomerPortal: React.FC = () => {
                   <h4 className="text-base font-extrabold text-slate-900">{cat}</h4>
                   <div className="grid grid-cols-2 gap-3.5">
                     {menuItems
-                      .filter(m => m.vendor_id === selectedVendorForMenu.id && m.category === cat)
+                      .filter(m => {
+                        if (m.vendor_id !== selectedVendorForMenu.id || m.category !== cat) return false;
+                        if (!menuSearchQuery.trim()) return true;
+                        const q = menuSearchQuery.trim().toLowerCase();
+                        return m.name.toLowerCase().includes(q) || (m.description && m.description.toLowerCase().includes(q));
+                      })
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                         const originalPrice = Math.round(dish.price * 1.12);
@@ -2936,6 +2966,11 @@ export const CustomerPortal: React.FC = () => {
                             </div>
                             <div className="px-0.5 space-y-0.5">
                               <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-1">{dish.name}</h5>
+                              {isValidDescription(dish.description) && (
+                                <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
+                                  {dish.description}
+                                </p>
+                              )}
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-black text-[#d70f64]">{settings.currency_symbol} {dish.price}</span>
                                 <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
@@ -3385,12 +3420,15 @@ export const CustomerPortal: React.FC = () => {
       )}
 
       {selectedMenuItemForModal && selectedVendorForMenu && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300">
+        <div 
+          ref={modalScrollContainerRef}
+          className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300"
+        >
           {/* Main Fullscreen Container */}
-          <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full max-w-full pb-24 relative bg-white overflow-x-hidden">
+          <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full max-w-full pb-28 relative bg-white overflow-x-hidden">
             
             {/* Top Dish Cover Header with Close Button */}
-            <div className="relative h-72 sm:h-80 w-full shrink-0 bg-slate-100 overflow-hidden">
+            <div className="relative h-60 sm:h-72 w-full shrink-0 bg-slate-100 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
@@ -3406,9 +3444,9 @@ export const CustomerPortal: React.FC = () => {
             </div>
 
             {/* Product Details Header Section */}
-            <div className="px-5 pt-5 pb-3 space-y-2 w-full max-w-full overflow-x-hidden">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words [overflow-wrap:anywhere]">
-                {selectedMenuItemForModal.name}
+            <div className="px-5 pt-4 pb-4 space-y-2.5 w-full max-w-full overflow-x-hidden">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words [overflow-wrap:anywhere]">
+                {selectedMenuItemForModal.name || 'Delicious Dish'}
               </h2>
               
               {/* Price & Original Price with Strike-through */}
@@ -3431,14 +3469,23 @@ export const CustomerPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Description */}
-              {selectedMenuItemForModal.description && (
-                <div className="pt-1 pb-1">
-                  <p className="text-xs text-slate-600 leading-relaxed font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap block w-full">
-                    {selectedMenuItemForModal.description}
+              {/* Description Section - Prominently Displayed & Protected */}
+              <div className="pt-2 pb-1">
+                {isValidDescription(selectedMenuItemForModal.description) ? (
+                  <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100 space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                      Description
+                    </span>
+                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium break-words [overflow-wrap:anywhere] whitespace-pre-wrap block w-full">
+                      {selectedMenuItemForModal.description}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic leading-relaxed font-medium">
+                    Freshly prepared with authentic recipes and ingredients.
                   </p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Space separation strip */}
