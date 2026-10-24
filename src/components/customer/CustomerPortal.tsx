@@ -917,7 +917,7 @@ export const CustomerPortal: React.FC = () => {
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-inner">
               {signupStep === 'otp' ? <Smartphone className="w-8 h-8" /> : <LogIn className="w-8 h-8" />}
             </div>
-            <h1 className="text-2xl font-black tracking-tight">FoodHub</h1>
+            <h1 className="text-2xl font-black tracking-tight">foodiplace</h1>
             <p className="text-orange-100 text-sm font-medium mt-1">
               {signupStep === 'otp' ? 'SMS OTP Verification' : 'Welcome back, food lover!'}
             </p>
@@ -960,7 +960,7 @@ export const CustomerPortal: React.FC = () => {
                     if (!vRes.success) {
                       setOtpAlert({ type: 'error', text: vRes.message || 'OTP code does not match.' });
                     } else {
-                      setOtpAlert({ type: 'success', text: '✅ OTP Verified! Welcome to FoodHub.' });
+                      setOtpAlert({ type: 'success', text: '✅ OTP Verified! Welcome to foodiplace.' });
                       // User is logged in and will automatically transition into customer portal
                     }
                   } catch (err: any) {
@@ -1793,10 +1793,10 @@ export const CustomerPortal: React.FC = () => {
                 <div 
                   onClick={() => {
                     if (navigator.share) {
-                      navigator.share({ title: 'FoodHub', url: window.location.href });
+                      navigator.share({ title: 'foodiplace', url: window.location.href });
                     } else {
                       navigator.clipboard.writeText(window.location.href);
-                      alert('FoodHub link copied to clipboard!');
+                      alert('foodiplace link copied to clipboard!');
                     }
                   }}
                   className="py-4 flex items-center justify-between cursor-pointer hover:text-orange-600 group"
@@ -3353,7 +3353,7 @@ export const CustomerPortal: React.FC = () => {
                 <LogOut className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-slate-900 text-base">Log out from FoodHub?</h3>
+                <h3 className="font-black text-slate-900 text-base">Log out from foodiplace?</h3>
                 <p className="text-xs text-slate-500">You can log back in at any time</p>
               </div>
             </div>

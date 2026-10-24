@@ -1279,7 +1279,7 @@ export const VendorPortal: React.FC = () => {
         /* 
           ========================================================================
           OVERVIEW VIEW (100% Matching Screenshot_20260930_193547_panda partner.jpg)
-          With FoodHub Orange theme
+          With foodiplace Orange theme
           ========================================================================
         */
         <>
@@ -2051,9 +2051,9 @@ export const VendorPortal: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs text-slate-700 leading-relaxed">
-              <p className="font-bold text-slate-900">FoodHub Restaurant Partner Desk (24/7):</p>
+              <p className="font-bold text-slate-900">foodiplace Restaurant Partner Desk (24/7):</p>
               <p>📞 Phone: 16212 (Toll Free)</p>
-              <p>✉️ Email: partner-support@foodhub.com</p>
+              <p>✉️ Email: partner-support@foodiplace.com</p>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <p className="font-bold text-slate-800">Rider Handover Rule:</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
