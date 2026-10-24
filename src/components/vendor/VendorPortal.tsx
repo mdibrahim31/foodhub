@@ -56,7 +56,6 @@ import {
   Phone,
   Utensils
 } from 'lucide-react';
-import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 export const VendorPortal: React.FC = () => {
   const { 
@@ -358,12 +357,6 @@ export const VendorPortal: React.FC = () => {
   if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
     return (
       <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white relative">
-        {/* WebAPK / App Download Button in Top-Right */}
-        <WebApkDownloadButton
-          appName="foodiplace Partner"
-          portalType="vendor"
-          className="absolute top-4 right-4 z-10"
-        />
         <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
           
           <div className="text-center space-y-2">

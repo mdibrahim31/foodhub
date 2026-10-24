@@ -6,11 +6,6 @@
     <meta name="theme-color" content="#ea580c" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ea580c" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#ea580c" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="application-name" content="FoodHub" />
-    <link rel="manifest" href="./manifest.json" />
     <link rel="apple-touch-icon" href="./icons/icon-main-192.png" />
     <link rel="icon" type="image/png" href="./icons/icon-main-192.png" />
     <title>foodiplace - Food Delivery System</title>
@@ -27,7 +22,7 @@
           const params = new URLSearchParams(window.location.search || '');
           const portal = (params.get('portal') || hash).split('?')[0];
 
-          // If opened via shortcut with portal hash/query or on GitHub Pages / standalone
+          // If opened via shortcut with portal hash/query
           if (portal === 'vendor') {
             window.location.replace('./vendor.html' + window.location.search);
           } else if (portal === 'orders' || portal === 'order' || portal === 'kitchen') {
@@ -39,12 +34,6 @@
           } else if (portal === 'subadmin') {
             window.location.replace('./subadmin.html' + window.location.search);
           } else if (portal === 'customer') {
-            window.location.replace('./customer.html' + window.location.search);
-          } else if (
-            window.matchMedia('(display-mode: standalone)').matches || 
-            window.navigator.standalone === true ||
-            window.location.hostname.includes('github.io')
-          ) {
             window.location.replace('./customer.html' + window.location.search);
           }
         } catch (e) {

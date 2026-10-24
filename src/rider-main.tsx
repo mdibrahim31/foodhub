@@ -65,17 +65,3 @@ const StandaloneRiderApp: React.FC = () => {
 };
 
 createRoot(document.getElementById('root')!).render(<StandaloneRiderApp />);
-
-// Register Service Worker for PWA installability and offline support
-if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw-rider.js')
-      .then((reg) => {
-        console.log('✅ Rider PWA Service Worker registered:', reg.scope);
-      })
-      .catch((err) => {
-        console.warn('Rider Service Worker registration notice:', err);
-      });
-  });
-}

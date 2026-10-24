@@ -44,7 +44,6 @@ import {
   Users,
   LogOut
 } from 'lucide-react';
-import { WebApkDownloadButton } from '../common/WebApkDownloadButton';
 
 // Parse latitude and longitude from various Google Maps and map URL formats
 function parseGoogleMapsCoordinates(urlOrText: string): { lat: number; lng: number } | null {
@@ -714,12 +713,6 @@ export const AdminPortal: React.FC = () => {
   if (!isAdminAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white relative">
-        {/* WebAPK / App Download Button in Top-Right */}
-        <WebApkDownloadButton
-          appName="foodiplace Admin"
-          portalType="admin"
-          className="absolute top-4 right-4 z-10"
-        />
         <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
           <div className="text-center space-y-2">
             <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-md">

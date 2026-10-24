@@ -12,17 +12,6 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'data', 'uploads')));
 
-// Direct APK download route for FoodHub Rider Android App
-app.get(['/download/FoodHub-Rider.apk', '/FoodHub-Rider.apk'], (_req, res) => {
-  const apkPath = path.resolve(process.cwd(), 'public', 'FoodHub-Rider.apk');
-  if (fs.existsSync(apkPath)) {
-    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    res.setHeader('Content-Disposition', 'attachment; filename="FoodHub-Rider.apk"');
-    return res.sendFile(apkPath);
-  }
-  return res.status(404).send('APK file not found');
-});
-
 // Path to persistent data file
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DATA_FILE = path.resolve(DATA_DIR, 'db.json');

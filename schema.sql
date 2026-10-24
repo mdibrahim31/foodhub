@@ -1,18 +1,18 @@
 -- ====================================================================
--- FOODIPLACE / CASH ON DELIVERY MULTI-PORTAL FOOD DELIVERY PLATFORM
--- ALL-IN-ONE SUPABASE & POSTGRESQL PRODUCTION DATABASE SCHEMA
--- File: schema.sql (Copy and run directly in Supabase SQL Editor)
+-- FOODIPLACE / FOODHUB CASH-ON-DELIVERY PLATFORM
+-- COMPLETE PRODUCTION MASTER DATABASE SCHEMA FOR SUPABASE / POSTGRESQL
+-- File: schema.sql (Run this all-in-one script in Supabase SQL Editor)
 -- ====================================================================
 
--- 1. Enable Required Extensions
+-- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ====================================================================
--- 2. SYSTEM SETTINGS TABLE (Global Rates, Delivery Fees & Radius)
+-- 2. SYSTEM SETTINGS TABLE (Delivery Charges, Radius & Global Rates)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.system_settings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(255) PRIMARY KEY DEFAULT 'set-001',
     per_km_delivery_charge NUMERIC(10, 2) NOT NULL DEFAULT 15.00,
     base_delivery_charge NUMERIC(10, 2) NOT NULL DEFAULT 30.00,
     rider_match_radius_km NUMERIC(10, 2) NOT NULL DEFAULT 1.00,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
 -- 3. RIDERS & DELIVERY ZONES TABLE (Admin Configured Boundary & Map)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.zones (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     name VARCHAR(100) NOT NULL UNIQUE,
     bn_name VARCHAR(100),
     description TEXT,
@@ -43,10 +43,10 @@ CREATE TABLE IF NOT EXISTS public.zones (
 );
 
 -- ====================================================================
--- 4. CUSTOMER USERS TABLE (Self-Registered Customer Accounts)
+-- 4. CUSTOMER ACCOUNTS TABLE (Self-Registered Customer Users)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE NOT NULL,
     password TEXT NOT NULL,
@@ -57,12 +57,12 @@ CREATE TABLE IF NOT EXISTS public.customers (
 );
 
 -- ====================================================================
--- 5. OTP SENDER TABLE (Customer Signup OTP Verification via SMS Gateway)
+-- 5. OTP SENDER TABLE (Signup OTP Verification via External Gateway)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.otp_sender (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    phone VARCHAR(20) NOT NULL,
-    phone_number VARCHAR(20),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone VARCHAR(50),
+    phone_number VARCHAR(50),
     otp VARCHAR(10),
     message TEXT,
     status VARCHAR(20),
@@ -74,10 +74,28 @@ CREATE TABLE IF NOT EXISTS public.otp_sender (
 );
 
 -- ====================================================================
+-- 5B. SMS FORWARDER TABLE (Android SMS Forwarder App Integration)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.sms_forwarder (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender VARCHAR(50),
+    phone VARCHAR(50),
+    phone_number VARCHAR(50),
+    message TEXT,
+    content TEXT,
+    otp VARCHAR(20),
+    sim_slot INT DEFAULT 1,
+    status VARCHAR(50) DEFAULT 'received',
+    device_id VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
 -- 6. VENDORS / RESTAURANTS & GROCERY SHOPS TABLE (Admin Registered)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.vendors (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     unique_id VARCHAR(50) UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -113,7 +131,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
 -- 7. PROMOTIONAL ADS & HERO BANNERS TABLE
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.ads_banners (
-    id VARCHAR(255) PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     title TEXT NOT NULL,
     subtitle TEXT,
     action_text VARCHAR(100) DEFAULT 'Redeem now',
@@ -133,7 +151,7 @@ CREATE TABLE IF NOT EXISTS public.ads_banners (
 -- 8. FOOD CATEGORIES & GROCERY CATEGORIES TABLES (Admin Configured)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.food_categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     name VARCHAR(100) NOT NULL UNIQUE,
     icon VARCHAR(50) DEFAULT '🍕',
     image_url TEXT,
@@ -145,7 +163,7 @@ CREATE TABLE IF NOT EXISTS public.food_categories (
 );
 
 CREATE TABLE IF NOT EXISTS public.grocery_categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     name VARCHAR(100) NOT NULL UNIQUE,
     icon VARCHAR(50) DEFAULT '🛒',
     image_url TEXT,
@@ -160,7 +178,7 @@ CREATE TABLE IF NOT EXISTS public.grocery_categories (
 -- 9. MENU ITEMS TABLE (Foods & Dishes)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.menu_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     vendor_id UUID NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -177,7 +195,7 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
 -- 10. CUSTOMER ADDRESS BOOK (With Map Pin Points & Status)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customer_addresses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES public.customers(id) ON DELETE CASCADE,
     customer_phone VARCHAR(20) NOT NULL,
     customer_name VARCHAR(100) NOT NULL,
@@ -196,7 +214,7 @@ CREATE TABLE IF NOT EXISTS public.customer_addresses (
 -- 11. RIDERS TABLE (Admin Registered Rider Fleet)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.riders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE NOT NULL,
     photo_url TEXT,
@@ -220,8 +238,8 @@ CREATE TABLE IF NOT EXISTS public.riders (
 -- 12. ORDERS TABLE (Full Cash-On-Delivery, Cooking & Dispatch Lifecycle)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_code VARCHAR(20) UNIQUE NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_code VARCHAR(50) UNIQUE NOT NULL,
     customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
     customer_name VARCHAR(100) NOT NULL,
     customer_phone VARCHAR(20) NOT NULL,
@@ -261,7 +279,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 -- 13. ORDER ITEMS TABLE (Items, Variations & Special Instructions)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.order_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
     menu_item_id UUID REFERENCES public.menu_items(id) ON DELETE SET NULL,
     item_name VARCHAR(255) NOT NULL,
@@ -276,7 +294,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 -- 14. CUSTOMER CARTS TABLE (Persistent Multi-Device Shopping Carts)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customer_carts (
-    customer_id VARCHAR(255) PRIMARY KEY, -- Guest identifier or Customer ID
+    customer_id VARCHAR(255) PRIMARY KEY,
     cart_items JSONB NOT NULL DEFAULT '[]'::JSONB,
     vendor JSONB,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -338,25 +356,27 @@ FOR EACH ROW
 EXECUTE FUNCTION update_vendor_average_rating();
 
 -- ====================================================================
--- 18. MIGRATION COMMANDS FOR EXISTING DATABASE INSTANCES
+-- 18. STORAGE BUCKET CONFIGURATION (For Uploading Vendor & Menu Images)
 -- ====================================================================
-ALTER TABLE IF EXISTS public.riders ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_paused BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS vendor_type VARCHAR(20) DEFAULT 'restaurant';
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS restaurant_type VARCHAR(30) DEFAULT 'restaurant';
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS opening_schedule JSONB;
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS is_permanently_closed BOOLEAN DEFAULT FALSE;
-ALTER TABLE IF EXISTS public.vendors ADD COLUMN IF NOT EXISTS featured_position INT;
-ALTER TABLE IF EXISTS public.ads_banners ADD COLUMN IF NOT EXISTS portal_type VARCHAR(20) DEFAULT 'food';
-ALTER TABLE IF EXISTS public.ads_banners ADD COLUMN IF NOT EXISTS video_url TEXT;
-ALTER TABLE IF EXISTS public.ads_banners ADD COLUMN IF NOT EXISTS banner_position VARCHAR(20) DEFAULT 'top';
-ALTER TABLE IF EXISTS public.food_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(20) DEFAULT 'food';
-ALTER TABLE IF EXISTS public.customer_addresses ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
-ALTER TABLE IF EXISTS public.system_settings ADD COLUMN IF NOT EXISTS banner_slide_interval_seconds INT DEFAULT 3;
-ALTER TABLE IF EXISTS public.system_settings ADD COLUMN IF NOT EXISTS banner_slide_auto_play BOOLEAN DEFAULT TRUE;
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('images', 'images', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Storage Policies for 'images'
+DROP POLICY IF EXISTS "Public View Storage Images" ON storage.objects;
+CREATE POLICY "Public View Storage Images" ON storage.objects FOR SELECT USING (bucket_id = 'images');
+
+DROP POLICY IF EXISTS "Public Upload Storage Images" ON storage.objects;
+CREATE POLICY "Public Upload Storage Images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'images');
+
+DROP POLICY IF EXISTS "Public Update Storage Images" ON storage.objects;
+CREATE POLICY "Public Update Storage Images" ON storage.objects FOR UPDATE USING (bucket_id = 'images');
+
+DROP POLICY IF EXISTS "Public Delete Storage Images" ON storage.objects;
+CREATE POLICY "Public Delete Storage Images" ON storage.objects FOR DELETE USING (bucket_id = 'images');
 
 -- ====================================================================
--- 19. INDEXES FOR HIGH-PERFORMANCE QUERIES & REAL-TIME
+-- 19. INDEXES FOR HIGH-PERFORMANCE SEARCH & REAL-TIME
 -- ====================================================================
 CREATE INDEX IF NOT EXISTS idx_zones_active ON public.zones(is_active);
 CREATE INDEX IF NOT EXISTS idx_vendors_zone ON public.vendors(zone);
@@ -375,6 +395,9 @@ CREATE INDEX IF NOT EXISTS idx_favorites_customer_phone ON public.favorites(cust
 CREATE INDEX IF NOT EXISTS idx_favorites_customer_id ON public.favorites(customer_id);
 CREATE INDEX IF NOT EXISTS idx_favorites_vendor_id ON public.favorites(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_otp_sender_phone ON public.otp_sender(phone);
+CREATE INDEX IF NOT EXISTS idx_sms_forwarder_phone ON public.sms_forwarder(phone);
+CREATE INDEX IF NOT EXISTS idx_sms_forwarder_sender ON public.sms_forwarder(sender);
+CREATE INDEX IF NOT EXISTS idx_sms_forwarder_created_at ON public.sms_forwarder(created_at DESC);
 
 -- ====================================================================
 -- 20. ROW LEVEL SECURITY (RLS) POLICIES
@@ -383,6 +406,7 @@ ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.zones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.otp_sender ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sms_forwarder ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ads_banners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.food_categories ENABLE ROW LEVEL SECURITY;
@@ -423,6 +447,16 @@ DROP POLICY IF EXISTS "Public select otp_sender" ON public.otp_sender;
 CREATE POLICY "Public select otp_sender" ON public.otp_sender FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Public update otp_sender" ON public.otp_sender;
 CREATE POLICY "Public update otp_sender" ON public.otp_sender FOR UPDATE USING (true);
+
+-- 20.4B SMS Forwarder Policies
+DROP POLICY IF EXISTS "Public insert sms_forwarder" ON public.sms_forwarder;
+CREATE POLICY "Public insert sms_forwarder" ON public.sms_forwarder FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Public select sms_forwarder" ON public.sms_forwarder;
+CREATE POLICY "Public select sms_forwarder" ON public.sms_forwarder FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public update sms_forwarder" ON public.sms_forwarder;
+CREATE POLICY "Public update sms_forwarder" ON public.sms_forwarder FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Public delete sms_forwarder" ON public.sms_forwarder;
+CREATE POLICY "Public delete sms_forwarder" ON public.sms_forwarder FOR DELETE USING (true);
 
 -- 20.5 Vendors Policies
 DROP POLICY IF EXISTS "Public read vendors" ON public.vendors;
@@ -483,3 +517,44 @@ CREATE POLICY "Users can update reviews" ON public.reviews FOR UPDATE USING (tru
 -- 20.14 Favorites Policies
 DROP POLICY IF EXISTS "Public favorites access" ON public.favorites;
 CREATE POLICY "Public favorites access" ON public.favorites FOR ALL USING (true) WITH CHECK (true);
+
+-- ====================================================================
+-- 21. REALTIME REPLICATION CONFIGURATION (Live GPS, Orders & Status)
+-- ====================================================================
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE 
+      public.orders, 
+      public.riders, 
+      public.vendors, 
+      public.customers, 
+      public.customer_addresses,
+      public.reviews, 
+      public.favorites, 
+      public.otp_sender, 
+      public.sms_forwarder, 
+      public.system_settings,
+      public.zones;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+-- ====================================================================
+-- 22. DEFAULT SEED DATA (System Settings & Starter Delivery Zones)
+-- ====================================================================
+INSERT INTO public.system_settings (
+    id, per_km_delivery_charge, base_delivery_charge, rider_match_radius_km, 
+    currency, currency_symbol, banner_slide_interval_seconds, banner_slide_auto_play, is_active
+) VALUES (
+    'set-001', 15.00, 30.00, 1.00, 'BDT', '৳', 3, true, true
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.zones (id, name, bn_name, description, center_latitude, center_longitude, radius_km, color, is_active)
+VALUES 
+    ('zone-001', 'Chawkbazar Zone', 'চকবাজার জোন', 'Chawkbazar, Parade Square, Chatteshwari, Gani Bakery, DC Hill', 22.3590, 91.8380, 2.50, '#E11D48', true),
+    ('zone-002', 'GEC Zone', 'জিইসি জোন', 'GEC Circle, CDA Avenue, Dampara, Golpahar, Prabartak Circle', 22.3595, 91.8215, 2.50, '#2563EB', true),
+    ('zone-003', 'Khulshi Zone', 'খুলশী জোন', 'South Khulshi, North Khulshi, Zakir Hossain Road, Wireless Gate', 22.3650, 91.8150, 2.50, '#7C3AED', true),
+    ('zone-004', 'Agrabad Zone', 'আগ্রাবাদ জোন', 'Commercial Area, Badamtali, Sheikh Mujib Road, Chowmuhani', 22.3275, 91.8120, 3.00, '#059669', true),
+    ('zone-005', 'Nasirabad Zone', 'নাসিরাবাদ জোন', 'Nasirabad Housing, Polytechnic, Baizid Bostami, Sholashahar', 22.3780, 91.8250, 3.00, '#D97706', true),
+    ('zone-006', 'Halishahar Zone', 'হালিশহর জোন', 'Halishahar Housing Estate, Boropool, Rampur, Block A-L', 22.3350, 91.7850, 3.50, '#0D9488', true)
+ON CONFLICT (name) DO NOTHING;
