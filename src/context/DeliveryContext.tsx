@@ -1877,36 +1877,45 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
         });
 
-    // In accordance with user requirement and exact schema:
-    // Table: `otp_sender`
-    // Columns: `id` (uuid), `phone_number` (text), `otp` (text - left empty for SMS app)
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const otpPayload: Record<string, any> = {
       id: customerId,
-      phone_number: cleanPhone
+      phone: cleanPhone,
+      phone_number: cleanPhone,
+      otp: generatedOtp,
+      message: `Your FoodHub verification code is ${generatedOtp}`,
+      status: 'pending',
+      created_at: new Date().toISOString()
     };
 
-    // 1. Insert into Supabase `otp_sender` table
+    // 1. Insert into Supabase `otp_sender` table with generated OTP code
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.from('otp_sender').insert([{
           id: customerId,
-          phone_number: cleanPhone
+          phone: cleanPhone,
+          phone_number: cleanPhone,
+          otp: generatedOtp,
+          message: `Your FoodHub verification code is ${generatedOtp}`,
+          status: 'pending',
+          created_at: new Date().toISOString()
         }]);
 
         if (error) {
-          console.warn('Supabase otp_sender insert error (phone_number):', error.message || error);
-          // Fallback if column happens to be named phone
+          console.warn('Supabase otp_sender insert error:', error.message || error);
           const fallbackRes = await supabase.from('otp_sender').insert([{
             id: customerId,
-            phone: cleanPhone
+            phone_number: cleanPhone,
+            otp: generatedOtp
           }]);
           if (fallbackRes.error) {
             console.warn('Supabase otp_sender insert fallback error:', fallbackRes.error.message || fallbackRes.error);
           } else {
-            console.log('Successfully inserted row into otp_sender (phone column)');
+            console.log('Successfully inserted row into otp_sender with OTP:', generatedOtp);
           }
         } else {
-          console.log('Successfully inserted row into Supabase otp_sender table:', { id: customerId, phone_number: cleanPhone });
+          console.log('Successfully inserted row into Supabase otp_sender table with OTP:', { id: customerId, phone: cleanPhone, otp: generatedOtp });
         }
       } catch (err) {
         console.warn('Supabase otp_sender insert exception:', err);
@@ -2099,9 +2108,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
         });
 
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const otpPayload: Record<string, any> = {
       id: otpId,
-      phone_number: cleanPhone
+      phone: cleanPhone,
+      phone_number: cleanPhone,
+      otp: generatedOtp,
+      message: `Your FoodHub verification code is ${generatedOtp}`,
+      status: 'pending',
+      created_at: new Date().toISOString()
     };
 
     // 1. Insert into Supabase `otp_sender` table
@@ -2109,22 +2125,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const { error } = await supabase.from('otp_sender').insert([{
           id: otpId,
-          phone_number: cleanPhone
+          phone: cleanPhone,
+          phone_number: cleanPhone,
+          otp: generatedOtp,
+          message: `Your FoodHub verification code is ${generatedOtp}`,
+          status: 'pending',
+          created_at: new Date().toISOString()
         }]);
 
         if (error) {
-          console.warn('Supabase otp_sender insert error (phone_number):', error.message || error);
+          console.warn('Supabase otp_sender insert error:', error.message || error);
           const fallbackRes = await supabase.from('otp_sender').insert([{
             id: otpId,
-            phone: cleanPhone
+            phone_number: cleanPhone,
+            otp: generatedOtp
           }]);
           if (fallbackRes.error) {
             console.warn('Supabase otp_sender insert fallback error:', fallbackRes.error.message || fallbackRes.error);
-          } else {
-            console.log('Successfully inserted row into otp_sender (phone column)');
           }
         } else {
-          console.log('Successfully inserted row into Supabase otp_sender table:', { id: otpId, phone_number: cleanPhone });
+          console.log('Successfully inserted row into Supabase otp_sender table with OTP:', { id: otpId, phone: cleanPhone, otp: generatedOtp });
         }
       } catch (err) {
         console.warn('Supabase otp_sender insert exception:', err);
