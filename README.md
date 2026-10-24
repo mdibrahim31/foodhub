@@ -9,6 +9,7 @@ This repository contains the complete source code for **Foodiplace / FoodHub**, 
 ### 1. Database Schema Maintenance (`/supabase/schema.sql`)
 - **Single Source of Truth**: The master database schema is located at **`/supabase/schema.sql`**.
 - **Mandatory Synchronization**: Whenever you add new features, create new tables, add/modify columns, update indexes, alter trigger functions, or add Row Level Security (RLS) policies, you **MUST IMMEDIATELY UPDATE `/supabase/schema.sql`**.
+- **Provide SQL Code in Response**: Whenever a new feature or database change is added that requires running SQL in Supabase, AI Studio **MUST provide the exact SQL code directly in text format in the chat response**, as well as updating **`/supabase/schema.sql`**.
 - **Consolidated Master Script**: Do not create separate scattered migration files. All SQL definitions (Extensions, Tables, Triggers, RLS Policies, Indexes, Storage Buckets, and Initial Seed Data) must remain clean and consolidated in **`/supabase/schema.sql`**.
 
 ### 2. Setting Up Database in Supabase
