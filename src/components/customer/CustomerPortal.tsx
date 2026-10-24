@@ -2892,7 +2892,7 @@ export const CustomerPortal: React.FC = () => {
                             </div>
                           </div>
                           <div className="px-0.5 space-y-0.5">
-                            <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-1">{dish.name}</h5>
+                            <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2">{dish.name}</h5>
                             {isValidDescription(dish.description) && (
                               <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
                                 {dish.description}
@@ -2965,7 +2965,7 @@ export const CustomerPortal: React.FC = () => {
                               </div>
                             </div>
                             <div className="px-0.5 space-y-0.5">
-                              <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-1">{dish.name}</h5>
+                              <h5 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2">{dish.name}</h5>
                               {isValidDescription(dish.description) && (
                                 <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
                                   {dish.description}
@@ -3428,7 +3428,7 @@ export const CustomerPortal: React.FC = () => {
           <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full max-w-full pb-28 relative bg-white overflow-x-hidden">
             
             {/* Top Dish Cover Header with Close Button */}
-            <div className="relative h-60 sm:h-72 w-full shrink-0 bg-slate-100 overflow-hidden">
+            <div className="relative h-48 sm:h-64 w-full shrink-0 bg-slate-100 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
@@ -3444,18 +3444,31 @@ export const CustomerPortal: React.FC = () => {
             </div>
 
             {/* Product Details Header Section */}
-            <div className="px-5 pt-4 pb-4 space-y-2.5 w-full max-w-full overflow-x-hidden">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words [overflow-wrap:anywhere]">
+            <div className="px-5 pt-4 pb-3 w-full max-w-full overflow-x-hidden">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug tracking-tight break-words [overflow-wrap:anywhere]">
                 {selectedMenuItemForModal.name || 'Delicious Dish'}
               </h2>
               
+              {/* Description directly under Item Name */}
+              {isValidDescription(selectedMenuItemForModal.description) ? (
+                <p className="mt-1.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap">
+                  {selectedMenuItemForModal.description}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400 italic leading-relaxed font-normal">
+                  Freshly prepared with authentic recipes and ingredients.
+                </p>
+              )}
+              
               {/* Price & Original Price with Strike-through */}
-              <div className="flex flex-col space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide shrink-0">
-                    {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 ? 'from' : ''}
-                  </span>
-                  <span className="text-base font-black text-[#d70f64] font-mono">
+              <div className="mt-3 flex items-center space-x-3">
+                <div className="flex items-baseline space-x-1.5">
+                  {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 && (
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                      from
+                    </span>
+                  )}
+                  <span className="text-lg font-black text-[#d70f64] font-mono">
                     Tk {selectedMenuItemForModal.price}
                   </span>
                   <span className="text-xs text-slate-400 line-through font-semibold font-mono">
@@ -3464,27 +3477,10 @@ export const CustomerPortal: React.FC = () => {
                 </div>
                 
                 {/* Thumbs-up Rating */}
+                <span className="text-slate-300">•</span>
                 <div className="flex items-center space-x-1 text-xs font-bold text-slate-700">
                   <span>👍 52%</span>
                 </div>
-              </div>
-
-              {/* Description Section - Prominently Displayed & Protected */}
-              <div className="pt-2 pb-1">
-                {isValidDescription(selectedMenuItemForModal.description) ? (
-                  <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100 space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                      Description
-                    </span>
-                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium break-words [overflow-wrap:anywhere] whitespace-pre-wrap block w-full">
-                      {selectedMenuItemForModal.description}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 italic leading-relaxed font-medium">
-                    Freshly prepared with authentic recipes and ingredients.
-                  </p>
-                )}
               </div>
             </div>
 
