@@ -72,6 +72,50 @@ CREATE TABLE IF NOT EXISTS public.otp_sender (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Enable Realtime for otp_sender table
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'otp_sender'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.otp_sender;
+    END IF;
+END $$;
+
+-- Trigger Function: Auto generate 6-digit OTP, message, status & expiry if empty
+CREATE OR REPLACE FUNCTION generate_otp_sender_code()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.otp IS NULL OR NEW.otp = '' THEN
+        NEW.otp := lpad(floor(random() * (999999 - 100000 + 1) + 100000)::text, 6, '0');
+    END IF;
+
+    IF NEW.status IS NULL OR NEW.status = '' THEN
+        NEW.status := 'pending';
+    END IF;
+
+    IF NEW.expires_at IS NULL THEN
+        NEW.expires_at := timezone('utc'::text, now()) + interval '5 minutes';
+    END IF;
+
+    IF NEW.message IS NULL OR NEW.message = '' THEN
+        NEW.message := 'Your OTP verification code is ' || NEW.otp || '. Valid for 5 minutes.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger: Execute generate_otp_sender_code BEFORE INSERT
+DROP TRIGGER IF EXISTS trg_generate_otp ON public.otp_sender;
+CREATE TRIGGER trg_generate_otp
+BEFORE INSERT ON public.otp_sender
+FOR EACH ROW
+EXECUTE FUNCTION generate_otp_sender_code();
+
 -- ====================================================================
 -- 5B. SMS FORWARDER TABLE (Android SMS Forwarder App Integration)
 -- ====================================================================
