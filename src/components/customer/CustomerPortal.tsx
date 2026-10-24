@@ -3385,12 +3385,12 @@ export const CustomerPortal: React.FC = () => {
       )}
 
       {selectedMenuItemForModal && selectedVendorForMenu && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300">
           {/* Main Fullscreen Container */}
-          <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full pb-24 relative bg-white">
+          <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full max-w-full pb-24 relative bg-white overflow-x-hidden">
             
             {/* Top Dish Cover Header with Close Button */}
-            <div className="relative h-72 sm:h-80 w-full shrink-0 bg-slate-100">
+            <div className="relative h-72 sm:h-80 w-full shrink-0 bg-slate-100 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
@@ -3406,15 +3406,15 @@ export const CustomerPortal: React.FC = () => {
             </div>
 
             {/* Product Details Header Section */}
-            <div className="px-5 pt-5 pb-3 space-y-2">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="px-5 pt-5 pb-3 space-y-2 w-full max-w-full overflow-x-hidden">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight break-words [overflow-wrap:anywhere]">
                 {selectedMenuItemForModal.name}
               </h2>
               
               {/* Price & Original Price with Strike-through */}
               <div className="flex flex-col space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide shrink-0">
                     {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 ? 'from' : ''}
                   </span>
                   <span className="text-base font-black text-[#d70f64] font-mono">
@@ -3433,7 +3433,7 @@ export const CustomerPortal: React.FC = () => {
 
               {/* Description */}
               {selectedMenuItemForModal.description && (
-                <p className="text-xs text-slate-500 leading-relaxed font-semibold pt-1">
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold pt-1 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full">
                   {selectedMenuItemForModal.description}
                 </p>
               )}

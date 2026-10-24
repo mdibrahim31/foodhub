@@ -911,7 +911,7 @@ export const VendorPortal: React.FC = () => {
                                   <h4 className="font-extrabold text-sm text-slate-900 truncate">
                                     {item.name}
                                   </h4>
-                                  <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                                  <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 break-words [overflow-wrap:anywhere]">
                                     {item.description || '1:1 - Special restaurant recipe'}
                                   </p>
 
