@@ -896,21 +896,7 @@ export const CustomerPortal: React.FC = () => {
     if (v.is_active === false) return false;
     if (v.is_paused) return false;
 
-    // 1. Get exact vendor latitude and longitude
-    const { lat: vLat, lng: vLng } = getVendorCoords(v);
-    
-    // If vendor coordinates are missing or invalid, cannot calculate distance
-    if (!vLat || !vLng || isNaN(vLat) || isNaN(vLng) || (vLat === 0 && vLng === 0)) {
-      return false;
-    }
-
-    // 2. Calculate Haversine distance strictly between customer address lat/lng and vendor lat/lng
-    const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-
-    // 3. Must be within 5 km
-    if (distKm > MAX_VENDOR_DISTANCE_KM) {
-      return false;
-    }
+    // Vendors from database should never be hidden by strict distance constraints
 
     const matchesSearch = !searchQuery.trim() || 
       (v.name && v.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -2698,10 +2684,10 @@ export const CustomerPortal: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h3 className="font-extrabold text-slate-900 text-sm">
-                  ৫ কি.মি. রেঞ্জের মধ্যে কোনো {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} পাওয়া যায়নি
+                  কোনো {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} পাওয়া যায়নি
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                  আপনার নির্বাচিত অ্যাড্রেস পিন পয়েন্টের ৫ কি.মি. দূরত্বের মধ্যে এই মুহূর্তে কোনো ভেন্ডর নেই। অনুগ্রহ করে অ্যাড্রেস বুক থেকে অন্য লোকেশন বা ম্যাপ পিন নির্বাচন করুন।
+                  ডাটাবেজে বর্তমানে কোনো সক্রিয় {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} নেই।
                 </p>
               </div>
               <button 

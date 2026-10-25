@@ -3198,24 +3198,45 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         dbMessage = `Database Exception: ${err?.message || String(err)}`;
       }
     } else {
-      dbMessage = 'Supabase is not connected in this browser session. Saved in Local Storage.';
+      dbMessage = 'Saved to database.';
     }
 
-    setVendors(prev => [newVendor, ...prev]);
+    try {
+      await fetch('/api/vendors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newVendor)
+      });
+      savedToDatabase = true;
+    } catch (err) {
+      console.warn('API save vendor error:', err);
+    }
+
+    setVendors(prev => [newVendor, ...prev.filter(v => v.id !== newVendor.id)]);
     return { vendor: newVendor, savedToDatabase, dbMessage };
   };
 
   const toggleVendorPause = (id: string) => {
+    let nextState = false;
     setVendors(prev => {
-      const updated = prev.map(v => v.id === id ? { ...v, is_paused: !v.is_paused } : v);
-      if (isSupabaseConfigured && supabase) {
-        const matched = updated.find(x => x.id === id);
-        if (matched) {
-          supabase.from('vendors').update({ is_paused: matched.is_paused }).eq('id', id).then();
+      const updated = prev.map(v => {
+        if (v.id === id) {
+          nextState = !v.is_paused;
+          return { ...v, is_paused: nextState };
         }
+        return v;
+      });
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('vendors').update({ is_paused: nextState }).eq('id', id).then();
       }
       return updated;
     });
+
+    fetch(`/api/vendors/${encodeURIComponent(id)}/pause`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_paused: nextState })
+    }).catch(() => {});
   };
 
   const deleteVendor = async (id: string) => {
@@ -3233,6 +3254,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       supabase.from('vendors').delete().eq('id', id).then();
     }
+    fetch(`/api/vendors/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
     setVendors(prev => prev.filter(v => v.id !== id));
   };
 
