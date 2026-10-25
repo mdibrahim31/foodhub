@@ -164,5 +164,23 @@ export function parseGoogleMapsLinkOrCoords(input: string): { lat: number; lng: 
     return { lat: parseFloat(searchMatch[1]), lng: parseFloat(searchMatch[2]) };
   }
 
+  // Pattern 5: Protobuf embedded coordinates: !3d<lat>!4d<lng>
+  const protoMatch = trimmed.match(/!3d([-+]?\d+\.\d+)!4d([-+]?\d+\.\d+)/);
+  if (protoMatch) {
+    return { lat: parseFloat(protoMatch[1]), lng: parseFloat(protoMatch[2]) };
+  }
+
+  // Pattern 6: ll=lat,lng or center=lat,lng or query=lat,lng
+  const paramMatch = trimmed.match(/[?&](?:ll|center|query|loc|destination)=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
+  if (paramMatch) {
+    return { lat: parseFloat(paramMatch[1]), lng: parseFloat(paramMatch[2]) };
+  }
+
+  // Pattern 7: Generic embedded lat,lng in URL path or parameters
+  const embeddedMatch = trimmed.match(/[/=]([-+]?[1-8]?\d\.\d{3,}),\s*([-+]?(?:1[0-7]\d|[1-9]?\d)\.\d{3,})/);
+  if (embeddedMatch) {
+    return { lat: parseFloat(embeddedMatch[1]), lng: parseFloat(embeddedMatch[2]) };
+  }
+
   return null;
 }

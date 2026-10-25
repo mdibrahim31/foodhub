@@ -548,6 +548,45 @@ app.post('/api/vendors/:id/pause', (req, res) => {
   res.json({ success: true, vendor: target });
 });
 
+// 6A-2. Google Maps URL Resolver (Expands short links like maps.app.goo.gl to exact coordinates)
+app.get('/api/resolve-maps-coords', async (req, res) => {
+  const url = req.query.url as string;
+  if (!url) {
+    return res.status(400).json({ error: 'URL query parameter is required' });
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    const finalUrl = response.url || '';
+    
+    // Look for coordinates in final URL
+    const match = finalUrl.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) ||
+                  finalUrl.match(/!3d([-+]?\d+\.\d+)!4d([-+]?\d+\.\d+)/) ||
+                  finalUrl.match(/[?&]q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) ||
+                  finalUrl.match(/[/=]([-+]?[1-8]?\d\.\d{3,}),\s*([-+]?(?:1[0-7]\d|[1-9]?\d)\.\d{3,})/);
+
+    if (match) {
+      return res.json({
+        success: true,
+        lat: parseFloat(match[1]),
+        lng: parseFloat(match[2]),
+        finalUrl
+      });
+    }
+
+    res.json({ success: false, message: 'Could not parse coordinates from redirect', finalUrl });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 6B. Menu Items API
 app.get('/api/menu-items', (req, res) => {
   if (!serverState.menuItems) serverState.menuItems = [];

@@ -88,7 +88,8 @@ export const CustomerPortal: React.FC = () => {
     divisions,
     cityAreas,
     selectedArea,
-    setSelectedArea
+    setSelectedArea,
+    updateVendor
   } = useDelivery();
 
   const [isChooseAreaModalOpen, setIsChooseAreaModalOpen] = useState(false);
@@ -797,11 +798,12 @@ export const CustomerPortal: React.FC = () => {
     return null;
   }, [activeCustomerAddress?.zone, customerLat, customerLng, zones]);
 
-  // Helper to extract vendor coordinates safely
-  const getVendorCoords = (v: Vendor): { lat: number; lng: number } => {
+  // Helper to extract vendor coordinates safely with Google Maps parsing and Zone fallbacks
+  const getVendorCoords = React.useCallback((v: Vendor): { lat: number; lng: number } => {
     let lat = typeof v.latitude === 'string' ? parseFloat(v.latitude) : Number(v.latitude || 0);
     let lng = typeof v.longitude === 'string' ? parseFloat(v.longitude) : Number(v.longitude || 0);
 
+    // 1. Parse from google_maps_link
     if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.google_maps_link) {
       const parsed = parseGoogleMapsLinkOrCoords(v.google_maps_link);
       if (parsed && !isNaN(parsed.lat) && !isNaN(parsed.lng)) {
@@ -810,6 +812,7 @@ export const CustomerPortal: React.FC = () => {
       }
     }
 
+    // 2. Parse from address string
     if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.address) {
       const parsedAddr = parseGoogleMapsLinkOrCoords(v.address);
       if (parsedAddr && !isNaN(parsedAddr.lat) && !isNaN(parsedAddr.lng)) {
@@ -818,37 +821,108 @@ export const CustomerPortal: React.FC = () => {
       }
     }
 
+    // 3. Fallback: match vendor's zone or city area with delivery zones
+    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && (v.zone || v.city_area)) {
+      const targetZone = (v.zone || v.city_area || '').trim().toLowerCase();
+      const matchedZone = zones.find(z => {
+        const zName = z.name.toLowerCase();
+        const zBn = (z.bn_name || '').toLowerCase();
+        return zName === targetZone ||
+               zBn === targetZone ||
+               targetZone.includes(zName.replace(' zone', '')) ||
+               zName.includes(targetZone.replace(' zone', '')) ||
+               z.id === v.zone;
+      });
+      if (matchedZone && matchedZone.center_latitude && matchedZone.center_longitude) {
+        lat = Number(matchedZone.center_latitude);
+        lng = Number(matchedZone.center_longitude);
+      }
+    }
+
+    // 4. Fallback: match vendor's address text with delivery zones
+    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.address) {
+      const addrLower = v.address.toLowerCase();
+      const matchedZone = zones.find(z => {
+        const zClean = z.name.toLowerCase().replace(' zone', '');
+        return addrLower.includes(zClean) || (z.bn_name && addrLower.includes(z.bn_name.toLowerCase()));
+      });
+      if (matchedZone && matchedZone.center_latitude && matchedZone.center_longitude) {
+        lat = Number(matchedZone.center_latitude);
+        lng = Number(matchedZone.center_longitude);
+      }
+    }
+
+    // 5. Fallback: if vendor is in the same zone as active customer address
+    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && (v.zone || v.city_area)) {
+      const custZone = (activeCustomerAddress?.zone || activeCustomerZone?.name || '').toLowerCase();
+      const vZone = (v.zone || v.city_area || '').toLowerCase();
+      if (custZone && vZone && (custZone.includes(vZone) || vZone.includes(custZone))) {
+        lat = customerLat;
+        lng = customerLng;
+      }
+    }
+
     return {
       lat: isNaN(lat) ? 0 : lat,
       lng: isNaN(lng) ? 0 : lng
     };
-  };
+  }, [zones, activeCustomerAddress?.zone, activeCustomerZone?.name, customerLat, customerLng]);
+
+  // Asynchronously resolve shortened Google Maps links (e.g. maps.app.goo.gl) in background
+  useEffect(() => {
+    vendors.forEach(v => {
+      if (v.google_maps_link && (v.google_maps_link.includes('maps.app.goo.gl') || v.google_maps_link.includes('goo.gl/maps'))) {
+        const { lat, lng } = getVendorCoords(v);
+        if (!lat || !lng || (lat === 0 && lng === 0)) {
+          fetch(`/api/resolve-maps-coords?url=${encodeURIComponent(v.google_maps_link)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data?.success && data.lat && data.lng) {
+                updateVendor(v.id, { latitude: data.lat, longitude: data.lng });
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    });
+  }, [vendors, getVendorCoords, updateVendor]);
 
   // Maximum allowed delivery distance from customer's pinpoint location (5.0 km)
   const MAX_VENDOR_DISTANCE_KM = 5.0;
 
   // Filtered and Sorted Vendors (Filtered strictly by 5km radius from customer's active address pinpoint)
   const filteredVendors = vendors.filter((v) => {
+    // Check active status
+    if (v.is_active === false) return false;
+    if (v.is_paused) return false;
+
     // 1. Automatic Pinpoint Location Calculation (Must be within 5 km of customer's active map pin)
     const { lat: vLat, lng: vLng } = getVendorCoords(v);
     
-    // If vendor coordinates are completely missing or invalid (0,0), cannot be determined within 5km
-    if (!vLat || !vLng || (vLat === 0 && vLng === 0)) {
-      return false;
+    // Check distance if coordinates are available
+    if (vLat && vLng && !(vLat === 0 && vLng === 0)) {
+      const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+      if (distKm > MAX_VENDOR_DISTANCE_KM) {
+        return false;
+      }
+    } else {
+      // If coordinates couldn't be computed from short link or zone, check if zone matches customer zone
+      const custZone = (activeCustomerAddress?.zone || activeCustomerZone?.name || '').toLowerCase();
+      const vZone = (v.zone || v.city_area || '').toLowerCase();
+      const isZoneMatch = custZone && vZone && (custZone.includes(vZone) || vZone.includes(custZone));
+      if (!isZoneMatch) {
+        return false;
+      }
     }
 
-    const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-
-    if (distKm > MAX_VENDOR_DISTANCE_KM) {
-      return false;
-    }
-
-    const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRating = !isRating4PlusOnly || v.rating >= 4.0;
+    const matchesSearch = !searchQuery.trim() || 
+      (v.name && v.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.cuisine && v.cuisine.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+    const matchesRating = !isRating4PlusOnly || (v.rating || 5.0) >= 4.0;
     
     const normalizeCatName = (name: string) => {
-      const norm = name.toLowerCase().trim();
+      const norm = (name || '').toLowerCase().trim();
       if (norm.includes('biryani') || norm.includes('biriyani')) return 'biryani';
       if (norm.includes('kebab') || norm.includes('kabab')) return 'kebab';
       return norm;
@@ -860,26 +934,28 @@ export const CustomerPortal: React.FC = () => {
            normalizeCatName(m.category) === normalizeCatName(activeCuisineFilter)
     );
     const matchesCuisine = activeCuisineFilter === 'All' || 
-      v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase()) ||
-      normalizeCatName(v.cuisine).includes(normalizeCatName(activeCuisineFilter)) ||
+      (v.cuisine && v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase())) ||
+      (v.cuisine && normalizeCatName(v.cuisine).includes(normalizeCatName(activeCuisineFilter))) ||
       hasMenuItemInSelectedCategory;
     
     // Filter by type: Food page shows restaurants, Grocery page shows shops
+    const vType = (v.vendor_type || 'restaurant').toLowerCase();
     const matchesType = activeBottomNav === 'food' 
-      ? (v.vendor_type === 'restaurant' || !v.vendor_type) 
+      ? (vType === 'restaurant' || vType === 'food' || !v.vendor_type) 
       : activeBottomNav === 'grocery' 
-        ? v.vendor_type === 'shop'
+        ? (vType === 'shop' || vType === 'grocery')
         : true;
 
     // Filter by Restaurant Sub-Type (Restaurant, Cloud Kitchen, Home Kitchen)
+    const restType = (v.restaurant_type || 'restaurant').toLowerCase();
     const matchesRestType = (activeBottomNav !== 'food' || activeRestaurantTypeFilter === 'All')
       ? true
       : activeRestaurantTypeFilter === 'restaurant'
-        ? (v.restaurant_type === 'restaurant' || !v.restaurant_type || v.cuisine.toLowerCase() === 'restaurant')
+        ? (restType === 'restaurant' || !v.restaurant_type || (v.cuisine && v.cuisine.toLowerCase() === 'restaurant'))
         : activeRestaurantTypeFilter === 'cloud_kitchen'
-          ? (v.restaurant_type === 'cloud_kitchen' || v.cuisine.toLowerCase().includes('cloud') || v.name.toLowerCase().includes('cloud'))
+          ? (restType === 'cloud_kitchen' || (v.cuisine && v.cuisine.toLowerCase().includes('cloud')) || (v.name && v.name.toLowerCase().includes('cloud')))
           : activeRestaurantTypeFilter === 'home_kitchen'
-            ? (v.restaurant_type === 'home_kitchen' || v.cuisine.toLowerCase().includes('home') || v.name.toLowerCase().includes('home'))
+            ? (restType === 'home_kitchen' || (v.cuisine && v.cuisine.toLowerCase().includes('home')) || (v.name && v.name.toLowerCase().includes('home')))
             : true;
 
     // Filter by New Vendors (within last 30 days)

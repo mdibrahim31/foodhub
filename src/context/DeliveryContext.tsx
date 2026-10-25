@@ -1024,7 +1024,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('vendors')
             .select('*');
           if (!vError && vData && isSubscribed) {
-            setVendors(vData as Vendor[]);
+            setVendors(prev => {
+              const map = new Map<string, Vendor>();
+              (vData as Vendor[]).forEach(v => map.set(v.id, v));
+              prev.forEach(v => {
+                if (!map.has(v.id)) map.set(v.id, v);
+              });
+              const list = Array.from(map.values());
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(list));
+              } catch {}
+              return list;
+            });
           }
 
           const { data: rData, error: rError } = await supabase
@@ -1114,7 +1125,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (vRes.ok) {
           const vData = await vRes.json();
           if (Array.isArray(vData) && isSubscribed) {
-            setVendors(vData);
+            setVendors(prev => {
+              if (vData.length === 0 && prev.length > 0) {
+                return prev;
+              }
+              const map = new Map<string, Vendor>();
+              prev.forEach(v => map.set(v.id, v));
+              vData.forEach((v: Vendor) => {
+                if (!map.has(v.id)) map.set(v.id, v);
+              });
+              const list = Array.from(map.values());
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(list));
+              } catch {}
+              return list;
+            });
           }
         }
       } catch {}
@@ -1288,6 +1313,32 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               setCustomers(prev => prev.map(c => c.id === cNew.id ? { ...c, ...cNew } : c));
             } else if (payload.eventType === 'DELETE' && payload.old) {
               setCustomers(prev => prev.filter(c => c.id !== payload.old.id));
+            }
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'vendors' }, (payload: any) => {
+            if (!isSubscribed) return;
+            if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
+              const vNew = payload.new as Vendor;
+              setVendors(prev => {
+                const map = new Map<string, Vendor>();
+                map.set(vNew.id, vNew);
+                prev.forEach(v => {
+                  if (!map.has(v.id)) map.set(v.id, v);
+                });
+                const updated = Array.from(map.values());
+                try {
+                  localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(updated));
+                } catch {}
+                return updated;
+              });
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              setVendors(prev => {
+                const updated = prev.filter(v => v.id !== payload.old.id);
+                try {
+                  localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(updated));
+                } catch {}
+                return updated;
+              });
             }
           })
           .subscribe();
@@ -2819,16 +2870,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       }
 
+      // Persist configuration to backend server so all browsers and devices inherit it
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, anonKey })
+        });
+      } catch (postErr) {
+        console.warn('Could not persist Supabase config to server:', postErr);
+      }
+
       // Load live records from Supabase
       try {
         const { data: vData } = await res.client.from('vendors').select('*');
         if (vData && vData.length > 0) {
           setVendors(vData as Vendor[]);
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(vData));
+          } catch {}
         }
 
         const { data: rData } = await res.client.from('riders').select('*');
         if (rData && rData.length > 0) {
           setRiders(rData as Rider[]);
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}riders`, JSON.stringify(rData));
+          } catch {}
         }
       } catch (loadErr) {
         console.warn('Initial data load warning:', loadErr);
