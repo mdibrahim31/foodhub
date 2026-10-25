@@ -821,9 +821,12 @@ export const CustomerPortal: React.FC = () => {
       }
     }
 
+    const finalLat = isNaN(lat) || !lat || lat === 0 ? 22.3590 : lat;
+    const finalLng = isNaN(lng) || !lng || lng === 0 ? 91.8380 : lng;
+
     return {
-      lat: isNaN(lat) ? 0 : lat,
-      lng: isNaN(lng) ? 0 : lng
+      lat: finalLat,
+      lng: finalLng
     };
   }, []);
 
