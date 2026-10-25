@@ -785,17 +785,21 @@ export const CustomerPortal: React.FC = () => {
 
   // Active Customer Zone based strictly on the map pin point (customerLat, customerLng)
   const activeCustomerZone = React.useMemo(() => {
-    // 1. Determine zone from exact pin coordinates inside zone boundary / radius (NO FALLBACK)
+    // 1. Determine zone from exact pin coordinates inside zone boundary / radius
     const zoneFromCoords = findZoneForPoint(customerLat, customerLng, zones, false);
     if (zoneFromCoords) return zoneFromCoords;
 
-    // 2. If address has a zone specified, verify customer pin is inside that zone
+    // 2. If address has a zone specified, match that zone
     if (activeCustomerAddress?.zone) {
-      const match = zones.find(z => z.name.toLowerCase() === activeCustomerAddress.zone?.toLowerCase() || z.id === activeCustomerAddress.zone);
-      if (match && isPointInZone(customerLat, customerLng, match)) return match;
+      const match = zones.find(z => 
+        z.name.toLowerCase() === activeCustomerAddress.zone?.toLowerCase() || 
+        z.id === activeCustomerAddress.zone
+      );
+      if (match) return match;
     }
 
-    return null;
+    // 3. Fallback to closest zone for the pin coordinates
+    return findZoneForPoint(customerLat, customerLng, zones, true);
   }, [activeCustomerAddress?.zone, customerLat, customerLng, zones]);
 
   // Helper to extract vendor coordinates safely directly from vendors table lat/long (and Google Maps links if needed)
@@ -849,22 +853,32 @@ export const CustomerPortal: React.FC = () => {
     });
   }, [vendors, getVendorCoords, updateVendor]);
 
-  // Maximum allowed delivery distance from customer's address book location (5.0 km)
-  const MAX_VENDOR_DISTANCE_KM = 5.0;
-
-  // Filtered and Sorted Vendors: strictly calculated between customer address (lat, long) and vendor (lat, long) <= 5.0 km
+  // Filtered and Sorted Vendors: Show all vendors belonging to the active customer zone
   const filteredVendors = vendors.filter((v) => {
     // Check active status
     if (v.is_active === false) return false;
     if (v.is_paused) return false;
 
-    // Calculate distance between customer address lat/long and vendor lat/long
-    const { lat: vLat, lng: vLng } = getVendorCoords(v);
-    const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-    
-    // Only show if vendor is within 5.0 km of customer address
-    if (distKm > MAX_VENDOR_DISTANCE_KM) {
-      return false;
+    // Zone-based filtering: Show vendors belonging to the customer's active zone
+    if (activeCustomerZone && zones && zones.length > 0) {
+      const targetZoneName = (activeCustomerZone.name || '').trim().toLowerCase();
+      const targetZoneBn = (activeCustomerZone.bn_name || '').trim().toLowerCase();
+      const targetZoneId = (activeCustomerZone.id || '').trim().toLowerCase();
+      const vZone = (v.zone || '').trim().toLowerCase();
+
+      const matchesZone = Boolean(
+        vZone === targetZoneName ||
+        vZone === targetZoneId ||
+        (targetZoneBn && vZone === targetZoneBn) ||
+        (vZone && targetZoneName && (
+          vZone.includes(targetZoneName.replace(' zone', '')) || 
+          targetZoneName.includes(vZone.replace(' zone', ''))
+        ))
+      );
+
+      if (!matchesZone) {
+        return false;
+      }
     }
 
     const matchesSearch = !searchQuery.trim() || 
@@ -2653,18 +2667,18 @@ export const CustomerPortal: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h3 className="font-extrabold text-slate-900 text-sm">
-                  আপনার ৫ কি.মি. দূরত্বের মধ্যে কোনো {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} নেই
+                  No {activeBottomNav === 'food' ? 'restaurants' : 'shops'} available in {activeCustomerZone?.name || 'this zone'}
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                  আপনার অ্যাড্রেস বুকের লোকেশন থেকে ৫ কি.মি. দূরত্বের ভেতরে কোনো সক্রিয় ভেন্ডর পাওয়া যায়নি। অ্যাড্রেস পরিবর্তন করে দেখতে পারেন।
+                  Only vendors within your active delivery zone boundary are displayed. Please change your delivery address or map pin to browse vendors in other zones.
                 </p>
               </div>
               <button 
                 onClick={() => setIsAddressModalOpen(true)}
-                className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-orange-600/20 cursor-pointer transition inline-flex items-center gap-1.5"
+                className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-orange-600/20 cursor-pointer transition flex items-center justify-center gap-2"
               >
                 <MapPin className="w-4 h-4" />
-                <span>Change Pin Point in Address Book</span>
+                <span>CHANGE DELIVERY ADDRESS / ZONE</span>
               </button>
             </div>
           ) : (

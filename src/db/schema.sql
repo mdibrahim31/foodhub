@@ -1,8 +1,7 @@
 -- ====================================================================
 -- FOODIPLACE / FOODHUB CASH-ON-DELIVERY PLATFORM
--- COMPLETE PRODUCTION MASTER DATABASE SCHEMA FOR SUPABASE / POSTGRESQL
--- File: /src/db/schema.sql (Consolidated Mirror)
--- Run this entire script in Supabase SQL Editor (All-in-One Execution)
+-- PRODUCTION MASTER DATABASE SCHEMA FOR SUPABASE / POSTGRESQL
+-- File: /src/db/schema.sql
 -- ====================================================================
 
 -- 1. EXTENSIONS
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
 );
 
 -- ====================================================================
--- 3. RIDERS & DELIVERY ZONES TABLE (Admin Configured Boundary & Map)
+-- 3. DELIVERY & ADMIN ZONES (Zone-Based Vendor & Boundary Filtering)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.zones (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -36,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.zones (
     center_latitude DOUBLE PRECISION NOT NULL DEFAULT 22.3590,
     center_longitude DOUBLE PRECISION NOT NULL DEFAULT 91.8380,
     radius_km NUMERIC(10, 2) NOT NULL DEFAULT 3.00,
-    boundary_coordinates JSONB,
+    boundary_coordinates JSONB DEFAULT '[]'::JSONB,
     color VARCHAR(20) DEFAULT '#E11D48',
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -44,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.zones (
 );
 
 -- ====================================================================
--- 3B. DIVISIONS TABLE (বিভাগ)
+-- 4. DIVISIONS TABLE (বিভাগ)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.divisions (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -55,7 +54,7 @@ CREATE TABLE IF NOT EXISTS public.divisions (
 );
 
 -- ====================================================================
--- 3C. CITIES & AREAS TABLE (শহর ও এলাকা)
+-- 5. CITIES & AREAS TABLE (শহর ও এলাকা)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.city_areas (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -69,7 +68,7 @@ CREATE TABLE IF NOT EXISTS public.city_areas (
 );
 
 -- ====================================================================
--- 4. CUSTOMER ACCOUNTS TABLE (Self-Registered Customer Users)
+-- 6. CUSTOMER ACCOUNTS TABLE (Registered Customers)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,7 +82,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
 );
 
 -- ====================================================================
--- 5. OTP SENDER TABLE (Signup OTP Verification via External Gateway)
+-- 7. OTP SENDER TABLE (Signup & Verification OTPs)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.otp_sender (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -98,7 +97,7 @@ CREATE TABLE IF NOT EXISTS public.otp_sender (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Trigger Function: Auto generate 6-digit OTP, message, status & expiry if empty
+-- Trigger Function: Auto generate 6-digit OTP & 5-minute expiry if not set
 CREATE OR REPLACE FUNCTION generate_otp_sender_code()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -129,25 +128,7 @@ FOR EACH ROW
 EXECUTE FUNCTION generate_otp_sender_code();
 
 -- ====================================================================
--- 5B. SMS FORWARDER TABLE (Android SMS Forwarder App Integration)
--- ====================================================================
-CREATE TABLE IF NOT EXISTS public.sms_forwarder (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sender VARCHAR(50),
-    phone VARCHAR(50),
-    phone_number VARCHAR(50),
-    message TEXT,
-    content TEXT,
-    otp VARCHAR(20),
-    sim_slot INT DEFAULT 1,
-    status VARCHAR(50) DEFAULT 'received',
-    device_id VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- ====================================================================
--- 6. VENDORS / RESTAURANTS & GROCERY SHOPS TABLE (Admin Registered)
+-- 8. VENDORS TABLE (Restaurants, Cloud Kitchens & Grocery Shops)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.vendors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -185,7 +166,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
 );
 
 -- ====================================================================
--- 7. PROMOTIONAL ADS & HERO BANNERS TABLE
+-- 9. PROMOTIONAL ADS & HERO BANNERS TABLE
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.ads_banners (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -205,7 +186,7 @@ CREATE TABLE IF NOT EXISTS public.ads_banners (
 );
 
 -- ====================================================================
--- 8. FOOD CATEGORIES & GROCERY CATEGORIES TABLES (Admin Configured)
+-- 10. FOOD CATEGORIES TABLE (Food & Grocery Item Categories)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.food_categories (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -219,20 +200,8 @@ CREATE TABLE IF NOT EXISTS public.food_categories (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS public.grocery_categories (
-    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    icon VARCHAR(50) DEFAULT '🛒',
-    image_url TEXT,
-    category_type VARCHAR(20) DEFAULT 'grocery',
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    order_index INT DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
 -- ====================================================================
--- 9. MENU ITEMS TABLE (Foods & Dishes)
+-- 11. MENU ITEMS TABLE (Dishes, Products & Variations)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.menu_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -249,7 +218,7 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
 );
 
 -- ====================================================================
--- 10. CUSTOMER ADDRESS BOOK (With Map Pin Points & Status)
+-- 12. CUSTOMER ADDRESS BOOK (Pinpoint GPS, Delivery Zones & Default)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customer_addresses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -260,6 +229,8 @@ CREATE TABLE IF NOT EXISTS public.customer_addresses (
     address_line TEXT NOT NULL,
     details TEXT,
     zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
+    division VARCHAR(100),
+    city_area VARCHAR(100),
     latitude DOUBLE PRECISION NOT NULL DEFAULT 22.3590,
     longitude DOUBLE PRECISION NOT NULL DEFAULT 91.8380,
     is_default BOOLEAN DEFAULT false,
@@ -268,7 +239,7 @@ CREATE TABLE IF NOT EXISTS public.customer_addresses (
 );
 
 -- ====================================================================
--- 11. RIDERS TABLE (Admin Registered Rider Fleet)
+-- 13. RIDERS TABLE (Delivery Fleet Management)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.riders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -292,7 +263,7 @@ CREATE TABLE IF NOT EXISTS public.riders (
 );
 
 -- ====================================================================
--- 12. ORDERS TABLE (Full Cash-On-Delivery, Cooking & Dispatch Lifecycle)
+-- 14. ORDERS TABLE (Cash-On-Delivery Lifecycle & Zone Dispatch)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -333,7 +304,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 );
 
 -- ====================================================================
--- 13. ORDER ITEMS TABLE (Items, Variations & Special Instructions)
+-- 15. ORDER ITEMS TABLE (Items, Variations & Special Instructions)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -348,7 +319,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 );
 
 -- ====================================================================
--- 14. CUSTOMER CARTS TABLE (Persistent Multi-Device Shopping Carts)
+-- 16. CUSTOMER CARTS TABLE (Persistent Multi-Device Shopping Carts)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customer_carts (
     customer_id VARCHAR(255) PRIMARY KEY,
@@ -358,7 +329,7 @@ CREATE TABLE IF NOT EXISTS public.customer_carts (
 );
 
 -- ====================================================================
--- 15. REVIEWS & RATINGS TABLE (Customer Order Reviews for Vendors)
+-- 17. REVIEWS & RATINGS TABLE (Customer Reviews for Vendors)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -378,7 +349,7 @@ CREATE TABLE IF NOT EXISTS public.reviews (
 );
 
 -- ====================================================================
--- 16. FAVORITES TABLE (Customer Favorite Vendors)
+-- 18. FAVORITES TABLE (Customer Favorite Vendors)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.favorites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -390,7 +361,7 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 );
 
 -- ====================================================================
--- 17. AUTOMATED VENDOR RATING RECALCULATION TRIGGER
+-- 19. AUTOMATED VENDOR RATING RECALCULATION TRIGGER
 -- ====================================================================
 CREATE OR REPLACE FUNCTION update_vendor_average_rating()
 RETURNS TRIGGER AS $$
@@ -413,13 +384,12 @@ FOR EACH ROW
 EXECUTE FUNCTION update_vendor_average_rating();
 
 -- ====================================================================
--- 18. STORAGE BUCKET CONFIGURATION (For Uploading Vendor & Menu Images)
+-- 20. STORAGE BUCKET CONFIGURATION (Public Uploads for Logos/Covers)
 -- ====================================================================
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('images', 'images', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Storage Policies for 'images'
 DROP POLICY IF EXISTS "Public View Storage Images" ON storage.objects;
 CREATE POLICY "Public View Storage Images" ON storage.objects FOR SELECT USING (bucket_id = 'images');
 
@@ -433,12 +403,15 @@ DROP POLICY IF EXISTS "Public Delete Storage Images" ON storage.objects;
 CREATE POLICY "Public Delete Storage Images" ON storage.objects FOR DELETE USING (bucket_id = 'images');
 
 -- ====================================================================
--- 19. INDEXES FOR HIGH-PERFORMANCE SEARCH & REAL-TIME
+-- 21. PERFORMANCE INDEXES
 -- ====================================================================
 CREATE INDEX IF NOT EXISTS idx_zones_active ON public.zones(is_active);
 CREATE INDEX IF NOT EXISTS idx_divisions_active ON public.divisions(is_active);
 CREATE INDEX IF NOT EXISTS idx_city_areas_division ON public.city_areas(division_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_zone ON public.vendors(zone);
+CREATE INDEX IF NOT EXISTS idx_vendors_active ON public.vendors(is_active);
+CREATE INDEX IF NOT EXISTS idx_customer_addresses_phone ON public.customer_addresses(customer_phone);
+CREATE INDEX IF NOT EXISTS idx_customer_addresses_zone ON public.customer_addresses(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_zone ON public.riders(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_online ON public.riders(is_online);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
@@ -448,18 +421,12 @@ CREATE INDEX IF NOT EXISTS idx_orders_customer_phone ON public.orders(customer_p
 CREATE INDEX IF NOT EXISTS idx_ads_active ON public.ads_banners(is_active);
 CREATE INDEX IF NOT EXISTS idx_reviews_vendor_id ON public.reviews(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_order_code ON public.reviews(order_code);
-CREATE INDEX IF NOT EXISTS idx_reviews_rating ON public.reviews(rating);
-CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON public.reviews(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_favorites_customer_phone ON public.favorites(customer_phone);
-CREATE INDEX IF NOT EXISTS idx_favorites_customer_id ON public.favorites(customer_id);
 CREATE INDEX IF NOT EXISTS idx_favorites_vendor_id ON public.favorites(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_otp_sender_phone ON public.otp_sender(phone);
-CREATE INDEX IF NOT EXISTS idx_sms_forwarder_phone ON public.sms_forwarder(phone);
-CREATE INDEX IF NOT EXISTS idx_sms_forwarder_sender ON public.sms_forwarder(sender);
-CREATE INDEX IF NOT EXISTS idx_sms_forwarder_created_at ON public.sms_forwarder(created_at DESC);
 
 -- ====================================================================
--- 20. ROW LEVEL SECURITY (RLS) POLICIES
+-- 22. ROW LEVEL SECURITY (RLS) POLICIES
 -- ====================================================================
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.zones ENABLE ROW LEVEL SECURITY;
@@ -467,11 +434,9 @@ ALTER TABLE public.divisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.city_areas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.otp_sender ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.sms_forwarder ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ads_banners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.food_categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.grocery_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.riders ENABLE ROW LEVEL SECURITY;
@@ -481,118 +446,79 @@ ALTER TABLE public.customer_carts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 
--- 20.1 System Settings Policies
+-- 22.1 System Settings
 DROP POLICY IF EXISTS "Public read system settings" ON public.system_settings;
 CREATE POLICY "Public read system settings" ON public.system_settings FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin update system settings" ON public.system_settings;
 CREATE POLICY "Admin update system settings" ON public.system_settings FOR ALL USING (true);
 
--- 20.2 Zones Policies
+-- 22.2 Zones
 DROP POLICY IF EXISTS "Public read zones" ON public.zones;
 CREATE POLICY "Public read zones" ON public.zones FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin manage zones" ON public.zones;
 CREATE POLICY "Admin manage zones" ON public.zones FOR ALL USING (true);
 
--- 20.2B Divisions Policies
+-- 22.3 Divisions & City Areas
 DROP POLICY IF EXISTS "Public read divisions" ON public.divisions;
 CREATE POLICY "Public read divisions" ON public.divisions FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin manage divisions" ON public.divisions;
 CREATE POLICY "Admin manage divisions" ON public.divisions FOR ALL USING (true);
 
--- 20.2C City Areas Policies
 DROP POLICY IF EXISTS "Public read city_areas" ON public.city_areas;
 CREATE POLICY "Public read city_areas" ON public.city_areas FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin manage city_areas" ON public.city_areas;
 CREATE POLICY "Admin manage city_areas" ON public.city_areas FOR ALL USING (true);
 
--- 20.3 Customers Policies
-DROP POLICY IF EXISTS "Public insert customers" ON public.customers;
-CREATE POLICY "Public insert customers" ON public.customers FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Public select customers" ON public.customers;
-CREATE POLICY "Public select customers" ON public.customers FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Customers update own profile" ON public.customers;
-CREATE POLICY "Customers update own profile" ON public.customers FOR UPDATE USING (true);
+-- 22.4 Customers
+DROP POLICY IF EXISTS "Public manage customers" ON public.customers;
+CREATE POLICY "Public manage customers" ON public.customers FOR ALL USING (true);
 
--- 20.4 OTP Sender Policies
-DROP POLICY IF EXISTS "Public insert otp_sender" ON public.otp_sender;
-CREATE POLICY "Public insert otp_sender" ON public.otp_sender FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Public select otp_sender" ON public.otp_sender;
-CREATE POLICY "Public select otp_sender" ON public.otp_sender FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Public update otp_sender" ON public.otp_sender;
-CREATE POLICY "Public update otp_sender" ON public.otp_sender FOR UPDATE USING (true);
+-- 22.5 OTP Sender
+DROP POLICY IF EXISTS "Public manage otp_sender" ON public.otp_sender;
+CREATE POLICY "Public manage otp_sender" ON public.otp_sender FOR ALL USING (true);
 
--- 20.4B SMS Forwarder Policies
-DROP POLICY IF EXISTS "Public insert sms_forwarder" ON public.sms_forwarder;
-CREATE POLICY "Public insert sms_forwarder" ON public.sms_forwarder FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Public select sms_forwarder" ON public.sms_forwarder;
-CREATE POLICY "Public select sms_forwarder" ON public.sms_forwarder FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Public update sms_forwarder" ON public.sms_forwarder;
-CREATE POLICY "Public update sms_forwarder" ON public.sms_forwarder FOR UPDATE USING (true);
-DROP POLICY IF EXISTS "Public delete sms_forwarder" ON public.sms_forwarder;
-CREATE POLICY "Public delete sms_forwarder" ON public.sms_forwarder FOR DELETE USING (true);
+-- 22.6 Vendors
+DROP POLICY IF EXISTS "Public manage vendors" ON public.vendors;
+CREATE POLICY "Public manage vendors" ON public.vendors FOR ALL USING (true);
 
--- 20.5 Vendors Policies
-DROP POLICY IF EXISTS "Public read vendors" ON public.vendors;
-CREATE POLICY "Public read vendors" ON public.vendors FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin & Vendor manage vendors" ON public.vendors;
-CREATE POLICY "Admin & Vendor manage vendors" ON public.vendors FOR ALL USING (true);
+-- 22.7 Ads & Banners
+DROP POLICY IF EXISTS "Public manage ads_banners" ON public.ads_banners;
+CREATE POLICY "Public manage ads_banners" ON public.ads_banners FOR ALL USING (true);
 
--- 20.6 Promotional Ads Policies
-DROP POLICY IF EXISTS "Public read active ads" ON public.ads_banners;
-CREATE POLICY "Public read active ads" ON public.ads_banners FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin manage ads" ON public.ads_banners;
-CREATE POLICY "Admin manage ads" ON public.ads_banners FOR ALL USING (true);
+-- 22.8 Categories
+DROP POLICY IF EXISTS "Public manage food_categories" ON public.food_categories;
+CREATE POLICY "Public manage food_categories" ON public.food_categories FOR ALL USING (true);
 
--- 20.7 Categories Policies
-DROP POLICY IF EXISTS "Public read categories" ON public.food_categories;
-CREATE POLICY "Public read categories" ON public.food_categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin manage categories" ON public.food_categories;
-CREATE POLICY "Admin manage categories" ON public.food_categories FOR ALL USING (true);
-DROP POLICY IF EXISTS "Public read grocery categories" ON public.grocery_categories;
-CREATE POLICY "Public read grocery categories" ON public.grocery_categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin manage grocery categories" ON public.grocery_categories;
-CREATE POLICY "Admin manage grocery categories" ON public.grocery_categories FOR ALL USING (true);
+-- 22.9 Menu Items
+DROP POLICY IF EXISTS "Public manage menu_items" ON public.menu_items;
+CREATE POLICY "Public manage menu_items" ON public.menu_items FOR ALL USING (true);
 
--- 20.8 Menu Items Policies
-DROP POLICY IF EXISTS "Public read menu items" ON public.menu_items;
-CREATE POLICY "Public read menu items" ON public.menu_items FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Vendors manage menu items" ON public.menu_items;
-CREATE POLICY "Vendors manage menu items" ON public.menu_items FOR ALL USING (true);
+-- 22.10 Customer Addresses
+DROP POLICY IF EXISTS "Public manage customer_addresses" ON public.customer_addresses;
+CREATE POLICY "Public manage customer_addresses" ON public.customer_addresses FOR ALL USING (true);
 
--- 20.9 Customer Addresses Policies
-DROP POLICY IF EXISTS "Manage customer addresses" ON public.customer_addresses;
-CREATE POLICY "Manage customer addresses" ON public.customer_addresses FOR ALL USING (true);
+-- 22.11 Riders
+DROP POLICY IF EXISTS "Public manage riders" ON public.riders;
+CREATE POLICY "Public manage riders" ON public.riders FOR ALL USING (true);
 
--- 20.10 Riders Policies
-DROP POLICY IF EXISTS "Public read active riders" ON public.riders;
-CREATE POLICY "Public read active riders" ON public.riders FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin & Rider update riders" ON public.riders;
-CREATE POLICY "Admin & Rider update riders" ON public.riders FOR ALL USING (true);
+-- 22.12 Orders & Items
+DROP POLICY IF EXISTS "Public manage orders" ON public.orders;
+CREATE POLICY "Public manage orders" ON public.orders FOR ALL USING (true);
+DROP POLICY IF EXISTS "Public manage order_items" ON public.order_items;
+CREATE POLICY "Public manage order_items" ON public.order_items FOR ALL USING (true);
 
--- 20.11 Orders & Order Items Policies
-DROP POLICY IF EXISTS "Public create and read orders" ON public.orders;
-CREATE POLICY "Public create and read orders" ON public.orders FOR ALL USING (true);
-DROP POLICY IF EXISTS "Public manage order items" ON public.order_items;
-CREATE POLICY "Public manage order items" ON public.order_items FOR ALL USING (true);
+-- 22.13 Carts, Reviews & Favorites
+DROP POLICY IF EXISTS "Public manage customer_carts" ON public.customer_carts;
+CREATE POLICY "Public manage customer_carts" ON public.customer_carts FOR ALL USING (true);
 
--- 20.12 Customer Carts Policies
-DROP POLICY IF EXISTS "Public manage customer carts" ON public.customer_carts;
-CREATE POLICY "Public manage customer carts" ON public.customer_carts FOR ALL USING (true);
+DROP POLICY IF EXISTS "Public manage reviews" ON public.reviews;
+CREATE POLICY "Public manage reviews" ON public.reviews FOR ALL USING (true);
 
--- 20.13 Reviews Policies
-DROP POLICY IF EXISTS "Public reviews are viewable by everyone" ON public.reviews;
-CREATE POLICY "Public reviews are viewable by everyone" ON public.reviews FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Users can create reviews" ON public.reviews;
-CREATE POLICY "Users can create reviews" ON public.reviews FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Users can update reviews" ON public.reviews;
-CREATE POLICY "Users can update reviews" ON public.reviews FOR UPDATE USING (true);
-
--- 20.14 Favorites Policies
-DROP POLICY IF EXISTS "Public favorites access" ON public.favorites;
-CREATE POLICY "Public favorites access" ON public.favorites FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage favorites" ON public.favorites;
+CREATE POLICY "Public manage favorites" ON public.favorites FOR ALL USING (true);
 
 -- ====================================================================
--- 21. REALTIME REPLICATION CONFIGURATION (Live GPS, Orders & Status)
+-- 23. REALTIME REPLICATION (Instant Updates)
 -- ====================================================================
 DO $$
 BEGIN
@@ -605,22 +531,20 @@ BEGIN
       public.reviews, 
       public.favorites, 
       public.otp_sender, 
-      public.sms_forwarder, 
       public.system_settings,
       public.zones,
       public.divisions,
       public.city_areas,
       public.menu_items,
       public.food_categories,
-      public.grocery_categories,
       public.ads_banners,
       public.customer_carts;
 EXCEPTION
-  WHEN OTHERS THEN NULL;
+  WHEN OTHERS THEN NULL
 END $$;
 
 -- ====================================================================
--- 22. DEFAULT SEED DATA (System Settings & Starter Delivery Zones)
+-- 24. DEFAULT SEED DATA (System Settings & Initial Zones)
 -- ====================================================================
 INSERT INTO public.system_settings (
     id, per_km_delivery_charge, base_delivery_charge, rider_match_radius_km, 

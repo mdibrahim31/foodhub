@@ -511,7 +511,7 @@ export const AdminPortal: React.FC = () => {
       cuisine: finalCuisine,
       division: vDivision,
       city_area: vCityArea,
-      zone: vCityArea || vZone,
+      zone: vZone || (zones[0]?.name || 'Chawkbazar Zone'),
       latitude: vLat,
       longitude: vLng,
       vendor_type: vVendorType,
@@ -3644,6 +3644,34 @@ export const AdminPortal: React.FC = () => {
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   required
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Delivery Zone (ডেলিভারি জোন) *</label>
+                <select
+                  value={vZone}
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    setVZone(selected);
+                    const matched = zones.find(z => z.name === selected || z.id === selected);
+                    if (matched && matched.center_latitude && matched.center_longitude) {
+                      setVLat(matched.center_latitude);
+                      setVLng(matched.center_longitude);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer"
+                  required
+                >
+                  <option value="" disabled>Select Delivery Zone</option>
+                  {(zones || []).map((z) => (
+                    <option key={z.id} value={z.name}>
+                      {z.name} {z.bn_name ? `(${z.bn_name})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500">
+                  কাস্টমার অ্যাড্রেস বুকের পিন লোকেশন যে জোনের ভেতরে থাকবে, সেই জোনের সব ভেন্ডর কাস্টমার দেখতে পাবে।
+                </p>
               </div>
 
               <div className="space-y-1">
