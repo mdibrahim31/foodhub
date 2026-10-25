@@ -271,6 +271,116 @@ app.delete('/api/zones/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// 3C. Divisions API
+app.get('/api/divisions', (_req, res) => {
+  if (!serverState.divisions) serverState.divisions = [];
+  res.json(serverState.divisions);
+});
+
+app.post('/api/divisions', (req, res) => {
+  const newDiv = req.body;
+  if (!newDiv.id) newDiv.id = `div-${Date.now()}`;
+  if (!serverState.divisions) serverState.divisions = [];
+
+  const existingIdx = serverState.divisions.findIndex(d => d.id === newDiv.id || (newDiv.name && d.name.toLowerCase() === newDiv.name.toLowerCase()));
+  if (existingIdx >= 0) {
+    serverState.divisions[existingIdx] = { ...serverState.divisions[existingIdx], ...newDiv };
+    saveState(serverState);
+    return res.json({ success: true, division: serverState.divisions[existingIdx] });
+  }
+
+  const divToSave = {
+    id: newDiv.id,
+    name: newDiv.name,
+    bn_name: newDiv.bn_name || '',
+    is_active: newDiv.is_active !== false,
+    created_at: newDiv.created_at || new Date().toISOString()
+  };
+
+  serverState.divisions.push(divToSave);
+  saveState(serverState);
+  res.json({ success: true, division: divToSave });
+});
+
+app.put('/api/divisions/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.divisions) serverState.divisions = [];
+  const idx = serverState.divisions.findIndex(d => d.id === id);
+  if (idx >= 0) {
+    serverState.divisions[idx] = { ...serverState.divisions[idx], ...updates };
+    saveState(serverState);
+    return res.json({ success: true, division: serverState.divisions[idx] });
+  }
+  res.status(404).json({ success: false, message: 'Division not found' });
+});
+
+app.delete('/api/divisions/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.divisions) serverState.divisions = [];
+  serverState.divisions = serverState.divisions.filter(d => d.id !== id);
+  // Also filter city areas under this division
+  if (serverState.cityAreas) {
+    serverState.cityAreas = serverState.cityAreas.filter(a => a.division_id !== id);
+  }
+  saveState(serverState);
+  res.json({ success: true });
+});
+
+// 3D. City Areas API
+app.get('/api/city-areas', (_req, res) => {
+  if (!serverState.cityAreas) serverState.cityAreas = [];
+  res.json(serverState.cityAreas);
+});
+
+app.post('/api/city-areas', (req, res) => {
+  const newArea = req.body;
+  if (!newArea.id) newArea.id = `area-${Date.now()}`;
+  if (!serverState.cityAreas) serverState.cityAreas = [];
+
+  const existingIdx = serverState.cityAreas.findIndex(a => a.id === newArea.id || (newArea.division_id === a.division_id && newArea.name && a.name.toLowerCase() === newArea.name.toLowerCase()));
+  if (existingIdx >= 0) {
+    serverState.cityAreas[existingIdx] = { ...serverState.cityAreas[existingIdx], ...newArea };
+    saveState(serverState);
+    return res.json({ success: true, cityArea: serverState.cityAreas[existingIdx] });
+  }
+
+  const areaToSave = {
+    id: newArea.id,
+    division_id: newArea.division_id,
+    division_name: newArea.division_name || '',
+    name: newArea.name,
+    bn_name: newArea.bn_name || '',
+    is_active: newArea.is_active !== false,
+    created_at: newArea.created_at || new Date().toISOString()
+  };
+
+  serverState.cityAreas.push(areaToSave);
+  saveState(serverState);
+  res.json({ success: true, cityArea: areaToSave });
+});
+
+app.put('/api/city-areas/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.cityAreas) serverState.cityAreas = [];
+  const idx = serverState.cityAreas.findIndex(a => a.id === id);
+  if (idx >= 0) {
+    serverState.cityAreas[idx] = { ...serverState.cityAreas[idx], ...updates };
+    saveState(serverState);
+    return res.json({ success: true, cityArea: serverState.cityAreas[idx] });
+  }
+  res.status(404).json({ success: false, message: 'City Area not found' });
+});
+
+app.delete('/api/city-areas/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.cityAreas) serverState.cityAreas = [];
+  serverState.cityAreas = serverState.cityAreas.filter(a => a.id !== id);
+  saveState(serverState);
+  res.json({ success: true });
+});
+
 // 4. Riders API
 app.get('/api/riders', (_req, res) => {
   res.json(serverState.riders);

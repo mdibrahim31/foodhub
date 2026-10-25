@@ -382,15 +382,56 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
     setDivisions(prev => [...prev, newDiv]);
+
+    try {
+      await fetch('/api/divisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDiv)
+      });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('divisions').insert([newDiv]);
+      } catch {}
+    }
+
     return newDiv;
   };
 
   const updateDivision = async (id: string, updates: Partial<Division>): Promise<void> => {
     setDivisions(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
+
+    try {
+      await fetch(`/api/divisions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('divisions').update(updates).eq('id', id);
+      } catch {}
+    }
   };
 
   const deleteDivision = async (id: string): Promise<void> => {
     setDivisions(prev => prev.filter(d => d.id !== id));
+    setCityAreas(prev => prev.filter(a => a.division_id !== id));
+
+    try {
+      await fetch(`/api/divisions/${id}`, { method: 'DELETE' });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('divisions').delete().eq('id', id);
+        await supabase.from('city_areas').delete().eq('division_id', id);
+      } catch {}
+    }
   };
 
   const addCityArea = async (data: Omit<CityArea, 'id' | 'created_at'>): Promise<CityArea> => {
@@ -400,15 +441,54 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
     setCityAreas(prev => [...prev, newArea]);
+
+    try {
+      await fetch('/api/city-areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newArea)
+      });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('city_areas').insert([newArea]);
+      } catch {}
+    }
+
     return newArea;
   };
 
   const updateCityArea = async (id: string, updates: Partial<CityArea>): Promise<void> => {
     setCityAreas(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+
+    try {
+      await fetch(`/api/city-areas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('city_areas').update(updates).eq('id', id);
+      } catch {}
+    }
   };
 
   const deleteCityArea = async (id: string): Promise<void> => {
     setCityAreas(prev => prev.filter(a => a.id !== id));
+
+    try {
+      await fetch(`/api/city-areas/${id}`, { method: 'DELETE' });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('city_areas').delete().eq('id', id);
+      } catch {}
+    }
   };
 
   const [zones, setZones] = useState<DeliveryZone[]>(() => {
@@ -924,6 +1004,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setZones(zData as DeliveryZone[]);
           }
 
+          const { data: divData } = await supabase
+            .from('divisions')
+            .select('*')
+            .order('name', { ascending: true });
+          if (divData && isSubscribed) {
+            setDivisions(divData as Division[]);
+          }
+
+          const { data: areaData } = await supabase
+            .from('city_areas')
+            .select('*')
+            .order('name', { ascending: true });
+          if (areaData && isSubscribed) {
+            setCityAreas(areaData as CityArea[]);
+          }
+
           const { data: vData, error: vError } = await supabase
             .from('vendors')
             .select('*');
@@ -993,7 +1089,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
 
-      // 2. Query backend server database /api/zones and /api/riders for cross-browser synchronization
+      try {
+        const divRes = await fetch('/api/divisions');
+        if (divRes.ok) {
+          const divData = await divRes.json();
+          if (Array.isArray(divData) && isSubscribed) {
+            setDivisions(divData);
+          }
+        }
+      } catch {}
+
+      try {
+        const areaRes = await fetch('/api/city-areas');
+        if (areaRes.ok) {
+          const areaData = await areaRes.json();
+          if (Array.isArray(areaData) && isSubscribed) {
+            setCityAreas(areaData);
+          }
+        }
+      } catch {}
+
       try {
         const vRes = await fetch('/api/vendors');
         if (vRes.ok) {
