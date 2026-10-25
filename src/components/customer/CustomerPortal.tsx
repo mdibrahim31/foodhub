@@ -890,29 +890,26 @@ export const CustomerPortal: React.FC = () => {
   // Maximum allowed delivery distance from customer's pinpoint location (5.0 km)
   const MAX_VENDOR_DISTANCE_KM = 5.0;
 
-  // Filtered and Sorted Vendors (Filtered strictly by 5km radius from customer's active address pinpoint)
+  // Filtered and Sorted Vendors (Filtered strictly by 5km radius from customer's active address pinpoint latitude & longitude)
   const filteredVendors = vendors.filter((v) => {
     // Check active status
     if (v.is_active === false) return false;
     if (v.is_paused) return false;
 
-    // 1. Automatic Pinpoint Location Calculation (Must be within 5 km of customer's active map pin)
+    // 1. Get exact vendor latitude and longitude
     const { lat: vLat, lng: vLng } = getVendorCoords(v);
     
-    // Check distance if coordinates are available
-    if (vLat && vLng && !(vLat === 0 && vLng === 0)) {
-      const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-      if (distKm > MAX_VENDOR_DISTANCE_KM) {
-        return false;
-      }
-    } else {
-      // If coordinates couldn't be computed from short link or zone, check if zone matches customer zone
-      const custZone = (activeCustomerAddress?.zone || activeCustomerZone?.name || '').toLowerCase();
-      const vZone = (v.zone || v.city_area || '').toLowerCase();
-      const isZoneMatch = custZone && vZone && (custZone.includes(vZone) || vZone.includes(custZone));
-      if (!isZoneMatch) {
-        return false;
-      }
+    // If vendor coordinates are missing or invalid, cannot calculate distance
+    if (!vLat || !vLng || isNaN(vLat) || isNaN(vLng) || (vLat === 0 && vLng === 0)) {
+      return false;
+    }
+
+    // 2. Calculate Haversine distance strictly between customer address lat/lng and vendor lat/lng
+    const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+
+    // 3. Must be within 5 km
+    if (distKm > MAX_VENDOR_DISTANCE_KM) {
+      return false;
     }
 
     const matchesSearch = !searchQuery.trim() || 
