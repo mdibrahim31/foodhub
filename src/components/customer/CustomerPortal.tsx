@@ -259,11 +259,43 @@ export const CustomerPortal: React.FC = () => {
     setSelectedModalVariations(initialVars);
   };
 
+  const getItemPortionPrice = (optPrice: number | undefined | null, basePrice: number): number => {
+    const p = optPrice !== undefined && optPrice !== null ? Number(optPrice) : 0;
+    if (p === 0) return basePrice;
+    if (p > 0 && p < basePrice) {
+      return basePrice + p;
+    }
+    return p;
+  };
+
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
-    const basePrice = selectedMenuItemForModal.price;
-    const extraPrice = Object.values(selectedModalVariations).reduce((sum, v) => sum + (v.price || 0), 0);
-    return basePrice + extraPrice;
+    const basePrice = Number(selectedMenuItemForModal.price) || 0;
+    let effectivePrice = basePrice;
+    let addOnsPrice = 0;
+
+    if (selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0) {
+      selectedMenuItemForModal.variations.forEach(group => {
+        const groupKey = group.id || group.name;
+        const sel = selectedModalVariations[groupKey];
+        if (!sel) return;
+
+        const groupName = (group.name || '').toLowerCase();
+        const isPortion = group.type === 'single' || 
+          groupName.includes('portion') || 
+          groupName.includes('size') || 
+          groupName.includes('সাইজ') || 
+          groupName.includes('পরিমাণ');
+
+        if (isPortion) {
+          effectivePrice = getItemPortionPrice(sel.price, basePrice);
+        } else {
+          addOnsPrice += (sel.price || 0);
+        }
+      });
+    }
+
+    return effectivePrice + addOnsPrice;
   }, [selectedMenuItemForModal, selectedModalVariations]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
@@ -1640,16 +1672,7 @@ export const CustomerPortal: React.FC = () => {
 
                             <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
                               <Bike className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="line-through text-slate-400">Tk107</span>
-                              <span className="text-[#DB2777] font-extrabold">Free</span>
-                            </div>
-
-                            {/* 35% discount badge */}
-                            <div className="pt-0.5">
-                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-pink-50 text-[#DB2777] border border-pink-100 rounded-lg text-[10px] font-black">
-                                <Ticket className="w-3 h-3 text-[#DB2777]" />
-                                <span>35% off</span>
-                              </span>
+                              <span>Standard Delivery</span>
                             </div>
                           </div>
                         </div>
@@ -1747,16 +1770,7 @@ export const CustomerPortal: React.FC = () => {
 
                             <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
                               <Bike className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="line-through text-slate-400">Tk107</span>
-                              <span className="text-[#DB2777] font-extrabold">Free</span>
-                            </div>
-
-                            {/* 35% discount badge */}
-                            <div className="pt-0.5">
-                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-pink-50 text-[#DB2777] border border-pink-100 rounded-lg text-[10px] font-black">
-                                <Ticket className="w-3 h-3 text-[#DB2777]" />
-                                <span>Shop Deal: 15% off Tk. 499</span>
-                              </span>
+                              <span>Standard Delivery</span>
                             </div>
                           </div>
                         </div>
@@ -2739,17 +2753,10 @@ export const CustomerPortal: React.FC = () => {
                     </p>
 
                     <div className="flex items-center space-x-2 text-xs">
-                      <span className="line-through text-slate-400">Tk15</span>
-                      <span className="font-bold text-emerald-600">Free</span>
-                      <span className="text-slate-400">&bull;</span>
-                      <span className="text-slate-500 font-medium">COD: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
+                      <span className="text-slate-500 font-medium">Delivery: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
                     </div>
 
-                    <div className="pt-1 flex items-center justify-between">
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[11px] font-bold">
-                        <Ticket className="w-3 h-3 text-rose-500" />
-                        <span>35% off</span>
-                      </span>
+                    <div className="pt-1 flex items-center justify-end">
                       <span className="text-xs font-bold text-orange-600 group-hover:translate-x-1 transition-transform">
                         View Menu &rarr;
                       </span>
@@ -2934,7 +2941,7 @@ export const CustomerPortal: React.FC = () => {
                     .slice(0, 6)
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                      const originalPrice = Math.round(dish.price * 1.12);
+                      const hasDiscount = Boolean(dish.original_price && dish.original_price > dish.price);
                       return (
                         <div 
                           key={dish.id} 
@@ -2974,7 +2981,9 @@ export const CustomerPortal: React.FC = () => {
                             )}
                             <div className="flex items-center space-x-1.5">
                               <span className="text-xs font-black text-[#d70f64]">{settings.currency_symbol} {dish.price}</span>
-                              <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
+                              {hasDiscount && (
+                                <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
+                              )}
                             </div>
                             <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
                               <span>👍 92%</span>
@@ -3007,7 +3016,7 @@ export const CustomerPortal: React.FC = () => {
                       })
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                        const originalPrice = Math.round(dish.price * 1.12);
+                        const hasDiscount = Boolean(dish.original_price && dish.original_price > dish.price);
                         return (
                           <div 
                             key={dish.id} 
@@ -3047,7 +3056,9 @@ export const CustomerPortal: React.FC = () => {
                               )}
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-black text-[#d70f64]">{settings.currency_symbol} {dish.price}</span>
-                                <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {originalPrice}</span>
+                                {hasDiscount && (
+                                  <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
+                                )}
                               </div>
                               <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
                                 <span>👍 95%</span>
@@ -3539,11 +3550,13 @@ export const CustomerPortal: React.FC = () => {
                   {/* Price & Rating */}
                   <div className="pt-1 flex items-center space-x-2">
                     <span className="text-sm font-black text-[#d70f64] font-mono">
-                      Tk {selectedMenuItemForModal.price}
+                      Tk {calculatedModalUnitPrice || selectedMenuItemForModal.price}
                     </span>
-                    <span className="text-[11px] text-slate-400 line-through font-semibold font-mono">
-                      Tk {Math.round(selectedMenuItemForModal.price * 1.12)}
-                    </span>
+                    {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > selectedMenuItemForModal.price) && (
+                      <span className="text-[11px] text-slate-400 line-through font-semibold font-mono">
+                        Tk {selectedMenuItemForModal.original_price}
+                      </span>
+                    )}
                     <span className="text-slate-300">•</span>
                     <span className="text-[11px] font-bold text-slate-700">👍 95%</span>
                   </div>
@@ -3565,6 +3578,12 @@ export const CustomerPortal: React.FC = () => {
                   {selectedMenuItemForModal.variations.map((group) => {
                     const groupKey = group.id || group.name;
                     const selectedVal = selectedModalVariations[groupKey];
+                    const gName = (group.name || '').toLowerCase();
+                    const isPortion = group.type === 'single' || 
+                      gName.includes('portion') || 
+                      gName.includes('size') || 
+                      gName.includes('সাইজ') || 
+                      gName.includes('পরিমাণ');
 
                     return (
                       <div key={groupKey} className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 space-y-1.5">
@@ -3580,7 +3599,10 @@ export const CustomerPortal: React.FC = () => {
                         <div className="grid grid-cols-1 gap-1.5">
                           {group.options.map((opt) => {
                             const isSelected = selectedVal?.optionName === opt.name;
-                            const currentOptionPrice = selectedMenuItemForModal.price + (opt.price || 0);
+                            const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
+                            const displayPrice = isPortion 
+                              ? getItemPortionPrice(optionPriceNum, Number(selectedMenuItemForModal.price) || 0)
+                              : optionPriceNum;
 
                             return (
                               <div
@@ -3591,7 +3613,7 @@ export const CustomerPortal: React.FC = () => {
                                     [groupKey]: {
                                       groupName: group.name,
                                       optionName: opt.name,
-                                      price: opt.price || 0
+                                      price: optionPriceNum
                                     }
                                   }));
                                 }}
@@ -3604,7 +3626,7 @@ export const CustomerPortal: React.FC = () => {
                                 <span>{opt.name}</span>
                                 <div className="flex items-center space-x-2">
                                   <span className="font-mono font-black text-[#d70f64]">
-                                    Tk {currentOptionPrice}
+                                    {isPortion ? `Tk ${displayPrice}` : (displayPrice > 0 ? `+Tk ${displayPrice}` : 'Free')}
                                   </span>
                                   <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                                     isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
@@ -3681,7 +3703,7 @@ export const CustomerPortal: React.FC = () => {
                 >
                   <span>Add to cart</span>
                   <span className="font-mono font-extrabold text-sm">
-                    Tk {selectedMenuItemForModal.price * modalQuantity}
+                    Tk {calculatedModalTotal}
                   </span>
                 </button>
               </div>

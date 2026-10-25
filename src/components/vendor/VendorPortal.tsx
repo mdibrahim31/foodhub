@@ -583,7 +583,8 @@ export const VendorPortal: React.FC = () => {
         price: parseFloat(dishPrice),
         category: dishCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined
+        variations: dishVariations.length > 0 ? dishVariations : undefined,
+        original_price: undefined
       });
     } else {
       addMenuItem({
@@ -594,7 +595,8 @@ export const VendorPortal: React.FC = () => {
         category: dishCategory,
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined
+        variations: dishVariations.length > 0 ? dishVariations : undefined,
+        original_price: undefined
       });
     }
 
@@ -1900,7 +1902,7 @@ export const VendorPortal: React.FC = () => {
                         <div className="space-y-1.5 pl-1">
                           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
                             <span>Option Name (e.g. Full, 1:2)</span>
-                            <span>Extra Price (+BDT)</span>
+                            <span>{group.type === 'single' || (group.name || '').toLowerCase().includes('portion') || (group.name || '').toLowerCase().includes('size') ? 'Portion Price (BDT)' : 'Extra Price (+BDT)'}</span>
                           </div>
                           {group.options.map((opt, optIdx) => (
                             <div key={opt.id} className="flex items-center gap-2">
