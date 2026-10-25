@@ -79,7 +79,8 @@ export const VendorPortal: React.FC = () => {
     currentUser,
     loginUser,
     setPasswordForUser,
-    logoutUser
+    logoutUser,
+    setRole
   } = useDelivery();
 
   // Vendor Auth State
@@ -500,6 +501,17 @@ export const VendorPortal: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Switch to Customer Site */}
+          <div className="pt-2 text-center">
+            <button
+              type="button"
+              onClick={() => setRole('customer')}
+              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer"
+            >
+              <span>← Back to Customer Site (কাস্টমার সাইটে যান)</span>
+            </button>
           </div>
 
         </div>
@@ -2637,7 +2649,19 @@ export const VendorPortal: React.FC = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="pt-2 flex items-center justify-end border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-between border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsStoreBrandingOpen(false);
+                    setIsLogoutConfirmOpen(true);
+                  }}
+                  className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition flex items-center space-x-1.5 cursor-pointer border border-rose-200"
+                >
+                  <LogOut className="w-4 h-4 text-rose-600" />
+                  <span>Logout (লগআউট)</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setIsStoreBrandingOpen(false)}
@@ -2718,6 +2742,51 @@ export const VendorPortal: React.FC = () => {
                   )}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: VENDOR LOGOUT CONFIRMATION
+        ========================================================================
+      */}
+      {isLogoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center space-y-4 border border-slate-100">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <LogOut className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-black text-slate-900">
+                লগআউট করতে চান?
+              </h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                আপনি কি নিশ্চিতভাবে ভেন্ডর অ্যাকাউন্ট থেকে লগআউট করতে চান? পরবর্তী সময়ে লগইন করতে আপনার ফোন নম্বর ও পাসওয়ার্ড প্রয়োজন হবে।
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsLogoutConfirmOpen(false)}
+                className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition cursor-pointer"
+              >
+                বাতিল (Cancel)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogoutConfirmOpen(false);
+                  logoutUser();
+                }}
+                className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-md shadow-rose-600/30 cursor-pointer"
+              >
+                লগআউট (Logout)
+              </button>
             </div>
           </div>
         </div>

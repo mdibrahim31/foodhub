@@ -59,6 +59,7 @@ export const CustomerPortal: React.FC = () => {
     menuItems, 
     foodCategories,
     adBanners,
+    addresses,
     selectedAddress, 
     settings, 
     cart, 
@@ -776,9 +777,10 @@ export const CustomerPortal: React.FC = () => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderInstructions, setOrderInstructions] = useState('');
 
-  // Customer Coordinates from active address in Address Book or default
-  const customerLat = selectedAddress?.latitude || 22.3590;
-  const customerLng = selectedAddress?.longitude || 91.8380;
+  // Customer Coordinates strictly from active address in Address Book or default
+  const activeCustomerAddress = selectedAddress || addresses?.find(a => a.status === 'active') || addresses?.find(a => a.is_default) || addresses?.[0] || null;
+  const customerLat = activeCustomerAddress?.latitude ? Number(activeCustomerAddress.latitude) : 22.3590;
+  const customerLng = activeCustomerAddress?.longitude ? Number(activeCustomerAddress.longitude) : 91.8380;
 
   // Active Customer Zone based strictly on the map pin point (customerLat, customerLng)
   const activeCustomerZone = React.useMemo(() => {
@@ -787,62 +789,58 @@ export const CustomerPortal: React.FC = () => {
     if (zoneFromCoords) return zoneFromCoords;
 
     // 2. If address has a zone specified, verify customer pin is inside that zone
-    if (selectedAddress?.zone) {
-      const match = zones.find(z => z.name.toLowerCase() === selectedAddress.zone?.toLowerCase() || z.id === selectedAddress.zone);
+    if (activeCustomerAddress?.zone) {
+      const match = zones.find(z => z.name.toLowerCase() === activeCustomerAddress.zone?.toLowerCase() || z.id === activeCustomerAddress.zone);
       if (match && isPointInZone(customerLat, customerLng, match)) return match;
     }
 
-    // Customer pinned outside all configured delivery zones (e.g. pinned in Dhaka when only CTG zone exists) -> return null
     return null;
-  }, [selectedAddress?.zone, customerLat, customerLng, zones]);
+  }, [activeCustomerAddress?.zone, customerLat, customerLng, zones]);
 
   // Helper to extract vendor coordinates safely
-  const getVendorCoords = (v: Vendor) => {
-    let lat = v.latitude;
-    let lng = v.longitude;
-    if ((!lat || !lng || (lat === 0 && lng === 0)) && v.google_maps_link) {
+  const getVendorCoords = (v: Vendor): { lat: number; lng: number } => {
+    let lat = typeof v.latitude === 'string' ? parseFloat(v.latitude) : Number(v.latitude || 0);
+    let lng = typeof v.longitude === 'string' ? parseFloat(v.longitude) : Number(v.longitude || 0);
+
+    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.google_maps_link) {
       const parsed = parseGoogleMapsLinkOrCoords(v.google_maps_link);
-      if (parsed) {
+      if (parsed && !isNaN(parsed.lat) && !isNaN(parsed.lng)) {
         lat = parsed.lat;
         lng = parsed.lng;
       }
     }
+
+    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.address) {
+      const parsedAddr = parseGoogleMapsLinkOrCoords(v.address);
+      if (parsedAddr && !isNaN(parsedAddr.lat) && !isNaN(parsedAddr.lng)) {
+        lat = parsedAddr.lat;
+        lng = parsedAddr.lng;
+      }
+    }
+
     return {
-      lat: lat || 22.3590,
-      lng: lng || 91.8380
+      lat: isNaN(lat) ? 0 : lat,
+      lng: isNaN(lng) ? 0 : lng
     };
   };
 
   // Maximum allowed delivery distance from customer's pinpoint location (5.0 km)
   const MAX_VENDOR_DISTANCE_KM = 5.0;
 
-  // Filtered and Sorted Vendors (Filtered automatically by 5km radius from customer's pinpoint location)
+  // Filtered and Sorted Vendors (Filtered strictly by 5km radius from customer's active address pinpoint)
   const filteredVendors = vendors.filter((v) => {
-    // 1. Automatic Pinpoint Location Calculation (Must be within 5 km)
+    // 1. Automatic Pinpoint Location Calculation (Must be within 5 km of customer's active map pin)
     const { lat: vLat, lng: vLng } = getVendorCoords(v);
+    
+    // If vendor coordinates are completely missing or invalid (0,0), cannot be determined within 5km
+    if (!vLat || !vLng || (vLat === 0 && vLng === 0)) {
+      return false;
+    }
+
     const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
 
     if (distKm > MAX_VENDOR_DISTANCE_KM) {
       return false;
-    }
-
-    // 2. Manual Area Selection Filter: If an area is chosen (and not 'all'), filter vendors belonging to that area
-    if (selectedArea && selectedArea.toLowerCase() !== 'all') {
-      const normArea = selectedArea.toLowerCase().trim();
-      const vCityArea = (v.city_area || '').toLowerCase().trim();
-      const vZone = (v.zone || '').toLowerCase().trim();
-      const vDivision = (v.division || '').toLowerCase().trim();
-      const vAddress = (v.address || '').toLowerCase().trim();
-
-      const matchesArea = 
-        (vCityArea.length > 0 && (vCityArea.includes(normArea) || normArea.includes(vCityArea))) ||
-        (vZone.length > 0 && (vZone.includes(normArea) || normArea.includes(vZone))) ||
-        (vDivision.length > 0 && (vDivision.includes(normArea) || normArea.includes(vDivision))) ||
-        vAddress.includes(normArea);
-
-      if (!matchesArea) {
-        return false;
-      }
     }
 
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -2188,21 +2186,21 @@ export const CustomerPortal: React.FC = () => {
                       </h1>
                     </div>
                     <p className="text-[11px] text-orange-100 font-medium truncate max-w-[150px] sm:max-w-[200px]">
-                      {selectedAddress ? selectedAddress.address_line : 'Select Address'}
+                      {activeCustomerAddress ? activeCustomerAddress.address_line : 'Select Address'}
                     </p>
                   </div>
                 </div>
 
-                {/* Choose Area Button */}
+                {/* Address Book Pin Point Button */}
                 <button
-                  onClick={() => setIsChooseAreaModalOpen(true)}
+                  onClick={() => setIsAddressModalOpen(true)}
                   className="mr-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-xs font-black flex items-center space-x-1 border border-white/30 transition shadow-2xs active:scale-95 shrink-0 cursor-pointer"
+                  title="Open Address Book to change map pin point"
                 >
-                  <Store className="w-3.5 h-3.5" />
+                  <MapPin className="w-3.5 h-3.5" />
                   <span className="truncate max-w-[110px]">
-                    {selectedArea && selectedArea.toLowerCase() !== 'all' ? selectedArea : 'Choose Area'}
+                    {activeCustomerAddress ? activeCustomerAddress.label || 'Pin Location' : 'Pin Location'}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
                 </button>
 
                 {/* Right: Fullscreen Toggle + Heart Icon (Favorites) */}
@@ -2627,10 +2625,10 @@ export const CustomerPortal: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h3 className="font-extrabold text-slate-900 text-sm">
-                  No {activeBottomNav === 'food' ? 'restaurants' : 'shops'} available in {activeCustomerZone?.name || 'this zone'}
+                  ৫ কি.মি. রেঞ্জের মধ্যে কোনো {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} পাওয়া যায়নি
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                  Only vendors within your active delivery zone boundary are displayed. Please change your delivery address or map pin to browse vendors in other zones.
+                  আপনার নির্বাচিত অ্যাড্রেস পিন পয়েন্টের ৫ কি.মি. দূরত্বের মধ্যে এই মুহূর্তে কোনো ভেন্ডর নেই। অনুগ্রহ করে অ্যাড্রেস বুক থেকে অন্য লোকেশন বা ম্যাপ পিন নির্বাচন করুন।
                 </p>
               </div>
               <button 
@@ -2638,13 +2636,14 @@ export const CustomerPortal: React.FC = () => {
                 className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-orange-600/20 cursor-pointer transition inline-flex items-center gap-1.5"
               >
                 <MapPin className="w-4 h-4" />
-                <span>Change Delivery Address / Zone</span>
+                <span>Change Pin Point in Address Book</span>
               </button>
             </div>
           ) : (
             <div className="space-y-4">
               {filteredVendors.map((vendor) => {
-              const distanceKm = calculateDistanceKm(vendor.latitude, vendor.longitude, customerLat, customerLng);
+              const { lat: vLat, lng: vLng } = getVendorCoords(vendor);
+              const distanceKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
               const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
               const isNew = isVendorNew(vendor);

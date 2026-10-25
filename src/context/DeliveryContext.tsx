@@ -2789,10 +2789,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const logoutUser = () => {
     setCurrentUser(null);
+    setCurrentVendorState(null);
     setCart([]);
     setCartVendor(null);
     try {
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}selected_vendor_id`);
+      localStorage.removeItem('foodiplace_selected_vendor_id');
+      localStorage.removeItem('active_vendor_id');
+      localStorage.removeItem('foodiplace_vendor_tab');
     } catch {}
   };
 
