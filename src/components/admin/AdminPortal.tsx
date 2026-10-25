@@ -171,17 +171,17 @@ export const AdminPortal: React.FC = () => {
     }
   };
 
-  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'divisions' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads'>(() => {
+  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('foodiplace_admin_active_tab') as any;
-      if (['settings', 'categories', 'divisions', 'zones', 'vendors', 'riders', 'orders', 'ads'].includes(saved)) {
+      if (['settings', 'categories', 'zones', 'vendors', 'riders', 'orders', 'ads'].includes(saved)) {
         return saved;
       }
     }
-    return 'divisions';
+    return 'vendors';
   });
 
-  const setActiveTab = (tab: 'settings' | 'categories' | 'divisions' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads') => {
+  const setActiveTab = (tab: 'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads') => {
     setActiveTabState(tab);
     if (typeof window !== 'undefined') {
       localStorage.setItem('foodiplace_admin_active_tab', tab);
@@ -862,18 +862,6 @@ export const AdminPortal: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('divisions')}
-            className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
-              activeTab === 'divisions' 
-                ? 'bg-rose-600 text-white shadow-xs' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Divisions & Areas ({cityAreas.length})</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('zones')}
             className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeTab === 'zones' 
@@ -1153,237 +1141,6 @@ export const AdminPortal: React.FC = () => {
           </div>
         )}
 
-        {/* 
-          ======================================================================
-          TAB: DIVISIONS & CITIES/AREAS MANAGEMENT (বিভাগ ও শহর/এলাকা যুক্ত করুন)
-          ======================================================================
-        */}
-        {activeTab === 'divisions' && (
-          <div className="space-y-6">
-            {/* Header Description Card */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-2xl">
-                  <Layers className="w-6 h-6 stroke-[2.5]" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                    Divisions & Cities/Areas (বিভাগ ও শহর/এলাকা ব্যবস্থাপনা)
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    প্রথমে বিভাগ (Division) তৈরি করুন, তারপর বিভাগের অধীনে শহর বা এলাকা (City/Area) যুক্ত করুন। গ্রাহকরা তাদের এলাকা ম্যানুয়ালি নির্বাচন করবেন।
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Create Division & Create City/Area Forms Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Form 1: Add New Division */}
-              <div className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-3xl shadow-xs space-y-4">
-                <h4 className="font-extrabold text-slate-900 text-sm flex items-center space-x-2">
-                  <Plus className="w-4 h-4 text-rose-600" />
-                  <span>১. নতুন বিভাগ তৈরি করুন (Add Division)</span>
-                </h4>
-
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!newDivName.trim()) return;
-                    await addDivision({
-                      name: newDivName.trim(),
-                      bn_name: newDivBnName.trim() || undefined,
-                      is_active: true
-                    });
-                    setNewDivName('');
-                    setNewDivBnName('');
-                  }}
-                  className="space-y-3 text-xs font-bold"
-                >
-                  <div className="space-y-1">
-                    <label className="text-slate-600">Division Name (English) *</label>
-                    <input
-                      type="text"
-                      value={newDivName}
-                      onChange={(e) => setNewDivName(e.target.value)}
-                      placeholder="e.g. Chittagong, Dhaka, Sylhet"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-xs font-bold"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-slate-600">বিভাগের নাম (বাংলা - ঐচ্ছিক)</label>
-                    <input
-                      type="text"
-                      value={newDivBnName}
-                      onChange={(e) => setNewDivBnName(e.target.value)}
-                      placeholder="যেমন: চট্টগ্রাম, ঢাকা, সিলেট"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-xs font-bold"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer"
-                  >
-                    + Add Division (বিভাগ যোগ করুন)
-                  </button>
-                </form>
-              </div>
-
-              {/* Form 2: Add New City/Area under Division */}
-              <div className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-3xl shadow-xs space-y-4">
-                <h4 className="font-extrabold text-slate-900 text-sm flex items-center space-x-2">
-                  <MapPin className="w-4 h-4 text-rose-600" />
-                  <span>২. বিভাগের অধীনে শহর/এলাকা যুক্ত করুন (Add City/Area)</span>
-                </h4>
-
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!selectedDivForArea || !newAreaName.trim()) return;
-                    const matchedDiv = divisions.find(d => d.id === selectedDivForArea || d.name === selectedDivForArea);
-                    const divName = matchedDiv ? matchedDiv.name : selectedDivForArea;
-                    const divId = matchedDiv ? matchedDiv.id : 'div-01';
-
-                    await addCityArea({
-                      division_id: divId,
-                      division_name: divName,
-                      name: newAreaName.trim(),
-                      bn_name: newAreaBnName.trim() || undefined,
-                      is_active: true
-                    });
-                    setNewAreaName('');
-                    setNewAreaBnName('');
-                  }}
-                  className="space-y-3 text-xs font-bold"
-                >
-                  <div className="space-y-1">
-                    <label className="text-slate-600">Select Division (বিভাগ নির্বাচন করুন) *</label>
-                    <select
-                      value={selectedDivForArea}
-                      onChange={(e) => setSelectedDivForArea(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-xs font-extrabold cursor-pointer"
-                      required
-                    >
-                      <option value="" disabled>-- Select Division --</option>
-                      {divisions.map(d => (
-                        <option key={d.id} value={d.id}>
-                          {d.name} {d.bn_name ? `(${d.bn_name})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-slate-600">City / Area Name (English) *</label>
-                    <input
-                      type="text"
-                      value={newAreaName}
-                      onChange={(e) => setNewAreaName(e.target.value)}
-                      placeholder="e.g. Agrabad, Chawkbazar, Mirpur, Uttara"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-xs font-bold"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-slate-600">এলাকার নাম (বাংলা - ঐচ্ছিক)</label>
-                    <input
-                      type="text"
-                      value={newAreaBnName}
-                      onChange={(e) => setNewAreaBnName(e.target.value)}
-                      placeholder="যেমন: আগ্রাবাদ, চকবাজার, মিরপুর"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-xs font-bold"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer"
-                  >
-                    + Add Area to Division (এলাকা যুক্ত করুন)
-                  </button>
-                </form>
-              </div>
-
-            </div>
-
-            {/* List of Divisions and their Cities/Areas */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs space-y-5">
-              <h4 className="font-extrabold text-base text-slate-900 flex items-center justify-between">
-                <span>বর্তমান সকল বিভাগ ও শহর/এলাকা ({divisions.length} Divisions, {cityAreas.length} Areas)</span>
-              </h4>
-
-              <div className="space-y-4">
-                {divisions.map((div) => {
-                  const areasInDiv = cityAreas.filter(a => a.division_id === div.id || a.division_name === div.name);
-
-                  return (
-                    <div key={div.id} className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/50 space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
-                        <div className="flex items-center space-x-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-rose-600" />
-                          <h5 className="font-black text-sm text-slate-900">
-                            {div.name} {div.bn_name ? `(${div.bn_name})` : ''}
-                          </h5>
-                          <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">
-                            {areasInDiv.length} Areas
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Delete division "${div.name}" and remove its areas?`)) {
-                              deleteDivision(div.id);
-                            }
-                          }}
-                          className="text-xs text-rose-600 hover:bg-rose-100 p-1.5 rounded-lg transition"
-                          title="Delete Division"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      {/* City/Areas Chips/Grid */}
-                      {areasInDiv.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">No city/areas added under this division yet.</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {areasInDiv.map((area) => (
-                            <div
-                              key={area.id}
-                              className="flex items-center space-x-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs text-xs font-bold text-slate-800"
-                            >
-                              <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                              <span>{area.name} {area.bn_name ? `(${area.bn_name})` : ''}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm(`Delete area "${area.name}"?`)) {
-                                    deleteCityArea(area.id);
-                                  }
-                                }}
-                                className="text-slate-400 hover:text-rose-600 transition"
-                                title="Remove Area"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-        )}
 
         {/* 
           ======================================================================
@@ -3815,52 +3572,6 @@ export const AdminPortal: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Division (বিভাগ) *</label>
-                  <select
-                    value={vDivision}
-                    onChange={(e) => {
-                      const divVal = e.target.value;
-                      setVDivision(divVal);
-                      const areasForDiv = cityAreas.filter(a => a.division_id === divVal || a.division_name === divVal);
-                      if (areasForDiv.length > 0) {
-                        setVCityArea(areasForDiv[0].name);
-                      }
-                    }}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                    required
-                  >
-                    {divisions.map((div) => (
-                      <option key={div.id} value={div.name}>
-                        {div.name} {div.bn_name ? `(${div.bn_name})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">City / Area (শহর/এলাকা) *</label>
-                  <select
-                    value={vCityArea}
-                    onChange={(e) => {
-                      const areaVal = e.target.value;
-                      setVCityArea(areaVal);
-                      setVZone(areaVal);
-                    }}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                    required
-                  >
-                    {cityAreas
-                      .filter(a => a.division_name === vDivision || a.division_id === vDivision || !vDivision)
-                      .map((area) => (
-                        <option key={area.id} value={area.name}>
-                          {area.name} {area.bn_name ? `(${area.bn_name})` : ''}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
 
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Vendor Partner Type *</label>
