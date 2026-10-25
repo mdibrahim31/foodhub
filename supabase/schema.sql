@@ -1,7 +1,8 @@
 -- ====================================================================
 -- FOODIPLACE / FOODHUB CASH-ON-DELIVERY PLATFORM
 -- COMPLETE PRODUCTION MASTER DATABASE SCHEMA FOR SUPABASE / POSTGRESQL
--- File: schema.sql (Run this all-in-one script in Supabase SQL Editor)
+-- File: /supabase/schema.sql
+-- Run this entire script in Supabase SQL Editor (All-in-One Execution)
 -- ====================================================================
 
 -- 1. EXTENSIONS
@@ -97,19 +98,6 @@ CREATE TABLE IF NOT EXISTS public.otp_sender (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable Realtime for otp_sender table
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_publication_tables 
-        WHERE pubname = 'supabase_realtime' 
-          AND schemaname = 'public' 
-          AND tablename = 'otp_sender'
-    ) THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.otp_sender;
-    END IF;
-END $$;
-
 -- Trigger Function: Auto generate 6-digit OTP, message, status & expiry if empty
 CREATE OR REPLACE FUNCTION generate_otp_sender_code()
 RETURNS TRIGGER AS $$
@@ -134,7 +122,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger: Execute generate_otp_sender_code BEFORE INSERT
 DROP TRIGGER IF EXISTS trg_generate_otp ON public.otp_sender;
 CREATE TRIGGER trg_generate_otp
 BEFORE INSERT ON public.otp_sender
@@ -172,12 +159,12 @@ CREATE TABLE IF NOT EXISTS public.vendors (
     cuisine VARCHAR(100) DEFAULT 'Fast Food, Biryani',
     phone VARCHAR(20) UNIQUE NOT NULL,
     email VARCHAR(100),
-    address TEXT NOT NULL,
+    address TEXT NOT NULL DEFAULT '',
     zone VARCHAR(100) NOT NULL DEFAULT 'Chawkbazar Zone',
     division VARCHAR(100),
     city_area VARCHAR(100),
-    latitude DOUBLE PRECISION NOT NULL,
-    longitude DOUBLE PRECISION NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL DEFAULT 22.3590,
+    longitude DOUBLE PRECISION NOT NULL DEFAULT 91.8380,
     google_maps_link TEXT,
     is_active BOOLEAN DEFAULT true,
     is_paused BOOLEAN NOT NULL DEFAULT false,
@@ -273,8 +260,8 @@ CREATE TABLE IF NOT EXISTS public.customer_addresses (
     address_line TEXT NOT NULL,
     details TEXT,
     zone VARCHAR(100) DEFAULT 'Chawkbazar Zone',
-    latitude DOUBLE PRECISION NOT NULL,
-    longitude DOUBLE PRECISION NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL DEFAULT 22.3590,
+    longitude DOUBLE PRECISION NOT NULL DEFAULT 91.8380,
     is_default BOOLEAN DEFAULT false,
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -293,8 +280,8 @@ CREATE TABLE IF NOT EXISTS public.riders (
     vehicle_type VARCHAR(50) DEFAULT 'Motorcycle',
     is_online BOOLEAN DEFAULT false,
     is_paused BOOLEAN NOT NULL DEFAULT false,
-    current_latitude DOUBLE PRECISION,
-    current_longitude DOUBLE PRECISION,
+    current_latitude DOUBLE PRECISION DEFAULT 22.3590,
+    current_longitude DOUBLE PRECISION DEFAULT 91.8380,
     last_location_updated_at TIMESTAMP WITH TIME ZONE,
     cash_in_hand NUMERIC(10, 2) DEFAULT 0.00,
     is_approved BOOLEAN DEFAULT true,
@@ -318,8 +305,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
     zone VARCHAR(100) NOT NULL,
     
     delivery_address TEXT NOT NULL,
-    delivery_latitude DOUBLE PRECISION NOT NULL,
-    delivery_longitude DOUBLE PRECISION NOT NULL,
+    delivery_latitude DOUBLE PRECISION NOT NULL DEFAULT 22.3590,
+    delivery_longitude DOUBLE PRECISION NOT NULL DEFAULT 91.8380,
     
     food_total NUMERIC(10, 2) NOT NULL,
     delivery_distance_km NUMERIC(10, 2) NOT NULL,
@@ -449,6 +436,8 @@ CREATE POLICY "Public Delete Storage Images" ON storage.objects FOR DELETE USING
 -- 19. INDEXES FOR HIGH-PERFORMANCE SEARCH & REAL-TIME
 -- ====================================================================
 CREATE INDEX IF NOT EXISTS idx_zones_active ON public.zones(is_active);
+CREATE INDEX IF NOT EXISTS idx_divisions_active ON public.divisions(is_active);
+CREATE INDEX IF NOT EXISTS idx_city_areas_division ON public.city_areas(division_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_zone ON public.vendors(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_zone ON public.riders(zone);
 CREATE INDEX IF NOT EXISTS idx_riders_online ON public.riders(is_online);
@@ -474,6 +463,8 @@ CREATE INDEX IF NOT EXISTS idx_sms_forwarder_created_at ON public.sms_forwarder(
 -- ====================================================================
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.zones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.divisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.city_areas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.otp_sender ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sms_forwarder ENABLE ROW LEVEL SECURITY;
@@ -501,6 +492,18 @@ DROP POLICY IF EXISTS "Public read zones" ON public.zones;
 CREATE POLICY "Public read zones" ON public.zones FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin manage zones" ON public.zones;
 CREATE POLICY "Admin manage zones" ON public.zones FOR ALL USING (true);
+
+-- 20.2B Divisions Policies
+DROP POLICY IF EXISTS "Public read divisions" ON public.divisions;
+CREATE POLICY "Public read divisions" ON public.divisions FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin manage divisions" ON public.divisions;
+CREATE POLICY "Admin manage divisions" ON public.divisions FOR ALL USING (true);
+
+-- 20.2C City Areas Policies
+DROP POLICY IF EXISTS "Public read city_areas" ON public.city_areas;
+CREATE POLICY "Public read city_areas" ON public.city_areas FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin manage city_areas" ON public.city_areas;
+CREATE POLICY "Admin manage city_areas" ON public.city_areas FOR ALL USING (true);
 
 -- 20.3 Customers Policies
 DROP POLICY IF EXISTS "Public insert customers" ON public.customers;
@@ -604,7 +607,14 @@ BEGIN
       public.otp_sender, 
       public.sms_forwarder, 
       public.system_settings,
-      public.zones;
+      public.zones,
+      public.divisions,
+      public.city_areas,
+      public.menu_items,
+      public.food_categories,
+      public.grocery_categories,
+      public.ads_banners,
+      public.customer_carts;
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;

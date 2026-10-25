@@ -798,12 +798,12 @@ export const CustomerPortal: React.FC = () => {
     return null;
   }, [activeCustomerAddress?.zone, customerLat, customerLng, zones]);
 
-  // Helper to extract vendor coordinates safely with Google Maps parsing and Zone fallbacks
+  // Helper to extract vendor coordinates safely directly from vendors table lat/long (and Google Maps links if needed)
   const getVendorCoords = React.useCallback((v: Vendor): { lat: number; lng: number } => {
     let lat = typeof v.latitude === 'string' ? parseFloat(v.latitude) : Number(v.latitude || 0);
     let lng = typeof v.longitude === 'string' ? parseFloat(v.longitude) : Number(v.longitude || 0);
 
-    // 1. Parse from google_maps_link
+    // 1. Parse from google_maps_link if lat/lng are missing or 0
     if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.google_maps_link) {
       const parsed = parseGoogleMapsLinkOrCoords(v.google_maps_link);
       if (parsed && !isNaN(parsed.lat) && !isNaN(parsed.lng)) {
@@ -812,7 +812,7 @@ export const CustomerPortal: React.FC = () => {
       }
     }
 
-    // 2. Parse from address string
+    // 2. Parse from address string if coordinates are embedded
     if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.address) {
       const parsedAddr = parseGoogleMapsLinkOrCoords(v.address);
       if (parsedAddr && !isNaN(parsedAddr.lat) && !isNaN(parsedAddr.lng)) {
@@ -821,52 +821,11 @@ export const CustomerPortal: React.FC = () => {
       }
     }
 
-    // 3. Fallback: match vendor's zone or city area with delivery zones
-    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && (v.zone || v.city_area)) {
-      const targetZone = (v.zone || v.city_area || '').trim().toLowerCase();
-      const matchedZone = zones.find(z => {
-        const zName = z.name.toLowerCase();
-        const zBn = (z.bn_name || '').toLowerCase();
-        return zName === targetZone ||
-               zBn === targetZone ||
-               targetZone.includes(zName.replace(' zone', '')) ||
-               zName.includes(targetZone.replace(' zone', '')) ||
-               z.id === v.zone;
-      });
-      if (matchedZone && matchedZone.center_latitude && matchedZone.center_longitude) {
-        lat = Number(matchedZone.center_latitude);
-        lng = Number(matchedZone.center_longitude);
-      }
-    }
-
-    // 4. Fallback: match vendor's address text with delivery zones
-    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && v.address) {
-      const addrLower = v.address.toLowerCase();
-      const matchedZone = zones.find(z => {
-        const zClean = z.name.toLowerCase().replace(' zone', '');
-        return addrLower.includes(zClean) || (z.bn_name && addrLower.includes(z.bn_name.toLowerCase()));
-      });
-      if (matchedZone && matchedZone.center_latitude && matchedZone.center_longitude) {
-        lat = Number(matchedZone.center_latitude);
-        lng = Number(matchedZone.center_longitude);
-      }
-    }
-
-    // 5. Fallback: if vendor is in the same zone as active customer address
-    if ((!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && (v.zone || v.city_area)) {
-      const custZone = (activeCustomerAddress?.zone || activeCustomerZone?.name || '').toLowerCase();
-      const vZone = (v.zone || v.city_area || '').toLowerCase();
-      if (custZone && vZone && (custZone.includes(vZone) || vZone.includes(custZone))) {
-        lat = customerLat;
-        lng = customerLng;
-      }
-    }
-
     return {
       lat: isNaN(lat) ? 0 : lat,
       lng: isNaN(lng) ? 0 : lng
     };
-  }, [zones, activeCustomerAddress?.zone, activeCustomerZone?.name, customerLat, customerLng]);
+  }, []);
 
   // Asynchronously resolve shortened Google Maps links (e.g. maps.app.goo.gl) in background
   useEffect(() => {
@@ -887,16 +846,23 @@ export const CustomerPortal: React.FC = () => {
     });
   }, [vendors, getVendorCoords, updateVendor]);
 
-  // Maximum allowed delivery distance from customer's pinpoint location (5.0 km)
+  // Maximum allowed delivery distance from customer's address book location (5.0 km)
   const MAX_VENDOR_DISTANCE_KM = 5.0;
 
-  // Filtered and Sorted Vendors (Filtered strictly by 5km radius from customer's active address pinpoint latitude & longitude)
+  // Filtered and Sorted Vendors: strictly calculated between customer address (lat, long) and vendor (lat, long) <= 5.0 km
   const filteredVendors = vendors.filter((v) => {
     // Check active status
     if (v.is_active === false) return false;
     if (v.is_paused) return false;
 
-    // Vendors from database should never be hidden by strict distance constraints
+    // Calculate distance between customer address lat/long and vendor lat/long
+    const { lat: vLat, lng: vLng } = getVendorCoords(v);
+    const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+    
+    // Only show if vendor is within 5.0 km of customer address
+    if (distKm > MAX_VENDOR_DISTANCE_KM) {
+      return false;
+    }
 
     const matchesSearch = !searchQuery.trim() || 
       (v.name && v.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -2684,10 +2650,10 @@ export const CustomerPortal: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h3 className="font-extrabold text-slate-900 text-sm">
-                  কোনো {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} পাওয়া যায়নি
+                  আপনার ৫ কি.মি. দূরত্বের মধ্যে কোনো {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} নেই
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                  ডাটাবেজে বর্তমানে কোনো সক্রিয় {activeBottomNav === 'food' ? 'রেস্টুরেন্ট' : 'শপ'} নেই।
+                  আপনার অ্যাড্রেস বুকের লোকেশন থেকে ৫ কি.মি. দূরত্বের ভেতরে কোনো সক্রিয় ভেন্ডর পাওয়া যায়নি। অ্যাড্রেস পরিবর্তন করে দেখতে পারেন।
                 </p>
               </div>
               <button 
