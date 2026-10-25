@@ -796,9 +796,37 @@ export const CustomerPortal: React.FC = () => {
     return null;
   }, [selectedAddress?.zone, customerLat, customerLng, zones]);
 
-  // Filtered and Sorted Vendors (Filtered by Selected Area or All)
+  // Helper to extract vendor coordinates safely
+  const getVendorCoords = (v: Vendor) => {
+    let lat = v.latitude;
+    let lng = v.longitude;
+    if ((!lat || !lng || (lat === 0 && lng === 0)) && v.google_maps_link) {
+      const parsed = parseGoogleMapsLinkOrCoords(v.google_maps_link);
+      if (parsed) {
+        lat = parsed.lat;
+        lng = parsed.lng;
+      }
+    }
+    return {
+      lat: lat || 22.3590,
+      lng: lng || 91.8380
+    };
+  };
+
+  // Maximum allowed delivery distance from customer's pinpoint location (5.0 km)
+  const MAX_VENDOR_DISTANCE_KM = 5.0;
+
+  // Filtered and Sorted Vendors (Filtered automatically by 5km radius from customer's pinpoint location)
   const filteredVendors = vendors.filter((v) => {
-    // 1. Manual Area Selection Filter: If an area is chosen (and not 'all'), filter vendors belonging to that area
+    // 1. Automatic Pinpoint Location Calculation (Must be within 5 km)
+    const { lat: vLat, lng: vLng } = getVendorCoords(v);
+    const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+
+    if (distKm > MAX_VENDOR_DISTANCE_KM) {
+      return false;
+    }
+
+    // 2. Manual Area Selection Filter: If an area is chosen (and not 'all'), filter vendors belonging to that area
     if (selectedArea && selectedArea.toLowerCase() !== 'all') {
       const normArea = selectedArea.toLowerCase().trim();
       const vCityArea = (v.city_area || '').toLowerCase().trim();
@@ -863,8 +891,10 @@ export const CustomerPortal: React.FC = () => {
   }).sort((a, b) => {
     if (selectedSort === 'rating') return b.rating - a.rating;
     if (selectedSort === 'distance') {
-      const distA = calculateDistanceKm(a.latitude, a.longitude, customerLat, customerLng);
-      const distB = calculateDistanceKm(b.latitude, b.longitude, customerLat, customerLng);
+      const coordsA = getVendorCoords(a);
+      const coordsB = getVendorCoords(b);
+      const distA = calculateDistanceKm(coordsA.lat, coordsA.lng, customerLat, customerLng);
+      const distB = calculateDistanceKm(coordsB.lat, coordsB.lng, customerLat, customerLng);
       return distA - distB;
     }
     if (selectedSort === 'new') {
