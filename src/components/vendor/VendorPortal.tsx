@@ -238,6 +238,7 @@ export const VendorPortal: React.FC = () => {
   const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
   const [dishName, setDishName] = useState('');
   const [dishPrice, setDishPrice] = useState('');
+  const [dishOriginalPrice, setDishOriginalPrice] = useState('');
   const [dishCategory, setDishCategory] = useState('Burger');
   const [dishDescription, setDishDescription] = useState('');
   const [dishImageUrl, setDishImageUrl] = useState('');
@@ -247,6 +248,7 @@ export const VendorPortal: React.FC = () => {
     setEditingDish(null);
     setDishName('');
     setDishPrice('');
+    setDishOriginalPrice('');
     setDishCategory('Burger');
     setDishDescription('');
     setDishImageUrl('');
@@ -258,6 +260,7 @@ export const VendorPortal: React.FC = () => {
     setEditingDish(item);
     setDishName(item.name);
     setDishPrice(item.price.toString());
+    setDishOriginalPrice(item.original_price ? item.original_price.toString() : '');
     setDishCategory(item.category || 'Main Course');
     setDishDescription(item.description || '');
     setDishImageUrl(item.image_url || '');
@@ -587,17 +590,20 @@ export const VendorPortal: React.FC = () => {
       ? portionGroup.options.map(o => ({ id: o.id, name: o.name, price: o.price }))
       : undefined;
 
+    const parsedOriginal = dishOriginalPrice.trim() ? parseFloat(dishOriginalPrice) : undefined;
+    const finalOriginalPrice = parsedOriginal && parsedOriginal > parseFloat(dishPrice) ? parsedOriginal : undefined;
+
     if (editingDish) {
       updateMenuItem(editingDish.id, {
         name: dishName.trim(),
         description: dishDescription.trim(),
         price: parseFloat(dishPrice),
+        original_price: finalOriginalPrice,
         category: dishCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined,
         has_portions: hasPortions,
-        portion_options: portionOpts,
-        original_price: undefined
+        portion_options: portionOpts
       });
     } else {
       addMenuItem({
@@ -605,18 +611,19 @@ export const VendorPortal: React.FC = () => {
         name: dishName.trim(),
         description: dishDescription.trim(),
         price: parseFloat(dishPrice),
+        original_price: finalOriginalPrice,
         category: dishCategory,
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined,
         has_portions: hasPortions,
-        portion_options: portionOpts,
-        original_price: undefined
+        portion_options: portionOpts
       });
     }
 
     setDishName('');
     setDishPrice('');
+    setDishOriginalPrice('');
     setDishDescription('');
     setDishImageUrl('');
     setDishVariations([]);
@@ -1767,24 +1774,36 @@ export const VendorPortal: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Price (BDT)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Selling Price *</label>
                   <input
                     type="number"
                     required
                     value={dishPrice}
                     onChange={(e) => setDishPrice(e.target.value)}
                     placeholder="40.00"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold"
+                    className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold"
                   />
                 </div>
-                 <div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1" title="Optional regular price for strikethrough discount">
+                    Original Price
+                  </label>
+                  <input
+                    type="number"
+                    value={dishOriginalPrice}
+                    onChange={(e) => setDishOriginalPrice(e.target.value)}
+                    placeholder="e.g. 50"
+                    className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold text-slate-500"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
                   <select
                     value={dishCategory}
                     onChange={(e) => setDishCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold bg-white cursor-pointer"
+                    className="w-full px-2 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold bg-white cursor-pointer"
                   >
                     {allCategoryNames.length > 0 ? (
                       allCategoryNames.map((catName) => {

@@ -245,7 +245,7 @@ export const CustomerPortal: React.FC = () => {
     setModalSpecialInstructions('');
 
     const initialVars: Record<string, import('../../context/DeliveryContext').CartItemOption> = {};
-    if (dish.variations) {
+    if (dish.variations && dish.variations.length > 0) {
       dish.variations.forEach(g => {
         if (g.options && g.options.length > 0) {
           initialVars[g.id || g.name] = {
@@ -255,6 +255,12 @@ export const CustomerPortal: React.FC = () => {
           };
         }
       });
+    } else if (dish.portion_options && dish.portion_options.length > 0) {
+      initialVars['portion-group'] = {
+        groupName: 'Portion / Size',
+        optionName: dish.portion_options[0].name,
+        price: dish.portion_options[0].price || 0
+      };
     }
     setSelectedModalVariations(initialVars);
   };
@@ -2728,12 +2734,19 @@ export const CustomerPortal: React.FC = () => {
                       <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
                     </button>
 
-                    <div className="absolute bottom-0 inset-x-0 bg-white/95 px-3 py-1 flex items-center space-x-1.5 text-slate-800 text-[11px] font-bold border-t border-slate-100">
-                      <span className="text-purple-700 font-extrabold flex items-center gap-0.5">
-                        <Sparkles className="w-3 h-3 text-purple-600" /> PRO
-                      </span>
-                      <span>40% off selected items</span>
-                    </div>
+                    {(() => {
+                      const vendorDiscounts = menuItems.filter(m => m.vendor_id === vendor.id && m.original_price && m.original_price > m.price);
+                      if (vendorDiscounts.length === 0) return null;
+                      const maxDiscountPercent = Math.max(...vendorDiscounts.map(m => Math.round(((m.original_price! - m.price) / m.original_price!) * 100)));
+                      return (
+                        <div className="absolute bottom-0 inset-x-0 bg-white/95 px-3 py-1 flex items-center space-x-1.5 text-slate-800 text-[11px] font-bold border-t border-slate-100">
+                          <span className="text-purple-700 font-extrabold flex items-center gap-0.5">
+                            <Sparkles className="w-3 h-3 text-purple-600" /> PRO
+                          </span>
+                          <span>Up to {maxDiscountPercent}% off selected items</span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="p-3.5 space-y-1.5">
@@ -3569,77 +3582,94 @@ export const CustomerPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Variations (if any) - Compact List */}
-              {selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0 && (
-                <div className="space-y-2">
-                  {selectedMenuItemForModal.variations.map((group) => {
-                    const groupKey = group.id || group.name;
-                    const selectedVal = selectedModalVariations[groupKey];
-                    const gName = (group.name || '').toLowerCase();
-                    const isPortion = group.type === 'single' || 
-                      gName.includes('portion') || 
-                      gName.includes('size') || 
-                      gName.includes('সাইজ') || 
-                      gName.includes('পরিমাণ');
+              {/* Variations & Portions directly from database */}
+              {(() => {
+                const effectiveVariations: import('../../types/database').MenuVariationGroup[] = 
+                  selectedMenuItemForModal.variations && selectedMenuItemForModal.variations.length > 0
+                    ? selectedMenuItemForModal.variations
+                    : (selectedMenuItemForModal.portion_options && selectedMenuItemForModal.portion_options.length > 0
+                        ? [{
+                            id: 'portion-group',
+                            name: 'Portion / Size',
+                            type: 'single',
+                            required: true,
+                            options: selectedMenuItemForModal.portion_options
+                          }]
+                        : []);
 
-                    return (
-                      <div key={groupKey} className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wide">
-                            {group.name}
-                          </h3>
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                            Required
-                          </span>
-                        </div>
+                if (effectiveVariations.length === 0) return null;
 
-                        <div className="grid grid-cols-1 gap-1.5">
-                          {group.options.map((opt) => {
-                            const isSelected = selectedVal?.optionName === opt.name;
-                            const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
-                            const displayPrice = isPortion 
-                              ? getItemPortionPrice(optionPriceNum, Number(selectedMenuItemForModal.price) || 0)
-                              : optionPriceNum;
+                return (
+                  <div className="space-y-2">
+                    {effectiveVariations.map((group) => {
+                      const groupKey = group.id || group.name;
+                      const selectedVal = selectedModalVariations[groupKey];
+                      const gName = (group.name || '').toLowerCase();
+                      const isPortion = group.type === 'single' || 
+                        gName.includes('portion') || 
+                        gName.includes('size') || 
+                        gName.includes('সাইজ') || 
+                        gName.includes('পরিমাণ');
 
-                            return (
-                              <div
-                                key={opt.id || opt.name}
-                                onClick={() => {
-                                  setSelectedModalVariations(prev => ({
-                                    ...prev,
-                                    [groupKey]: {
-                                      groupName: group.name,
-                                      optionName: opt.name,
-                                      price: optionPriceNum
-                                    }
-                                  }));
-                                }}
-                                className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition ${
-                                  isSelected 
-                                    ? 'border-[#d70f64] bg-pink-50/50 font-bold text-slate-900' 
-                                    : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
-                                }`}
-                              >
-                                <span>{opt.name}</span>
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-mono font-black text-[#d70f64]">
-                                    {isPortion ? `Tk ${displayPrice}` : (displayPrice > 0 ? `+Tk ${displayPrice}` : 'Free')}
-                                  </span>
-                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                                    isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
-                                  }`}>
-                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      return (
+                        <div key={groupKey} className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wide">
+                              {group.name}
+                            </h3>
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                              Required
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-1.5">
+                            {group.options.map((opt) => {
+                              const isSelected = selectedVal?.optionName === opt.name;
+                              const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
+                              const displayPrice = isPortion 
+                                ? getItemPortionPrice(optionPriceNum, Number(selectedMenuItemForModal.price) || 0)
+                                : optionPriceNum;
+
+                              return (
+                                <div
+                                  key={opt.id || opt.name}
+                                  onClick={() => {
+                                    setSelectedModalVariations(prev => ({
+                                      ...prev,
+                                      [groupKey]: {
+                                        groupName: group.name,
+                                        optionName: opt.name,
+                                        price: optionPriceNum
+                                      }
+                                    }));
+                                  }}
+                                  className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition ${
+                                    isSelected 
+                                      ? 'border-[#d70f64] bg-pink-50/50 font-bold text-slate-900' 
+                                      : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                                  }`}
+                                >
+                                  <span>{opt.name}</span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-mono font-black text-[#d70f64]">
+                                      {isPortion ? `Tk ${displayPrice}` : (displayPrice > 0 ? `+Tk ${displayPrice}` : 'Free')}
+                                    </span>
+                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                      isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
+                                    }`}>
+                                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Special Instructions Input - Compact */}
               <div className="space-y-1">
