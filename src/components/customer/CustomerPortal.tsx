@@ -261,11 +261,8 @@ export const CustomerPortal: React.FC = () => {
 
   const getItemPortionPrice = (optPrice: number | undefined | null, basePrice: number): number => {
     const p = optPrice !== undefined && optPrice !== null ? Number(optPrice) : 0;
-    if (p === 0) return basePrice;
-    if (p > 0 && p < basePrice) {
-      return basePrice + p;
-    }
-    return p;
+    if (p > 0) return p;
+    return basePrice;
   };
 
   const calculatedModalUnitPrice = useMemo(() => {

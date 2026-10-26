@@ -576,6 +576,17 @@ export const VendorPortal: React.FC = () => {
     e.preventDefault();
     if (!dishName.trim() || !dishPrice) return;
 
+    const portionGroup = dishVariations.find(v => 
+      v.type === 'single' || 
+      (v.name || '').toLowerCase().includes('portion') || 
+      (v.name || '').toLowerCase().includes('size')
+    );
+
+    const hasPortions = Boolean(portionGroup && portionGroup.options.length > 0);
+    const portionOpts = hasPortions && portionGroup 
+      ? portionGroup.options.map(o => ({ id: o.id, name: o.name, price: o.price }))
+      : undefined;
+
     if (editingDish) {
       updateMenuItem(editingDish.id, {
         name: dishName.trim(),
@@ -584,6 +595,8 @@ export const VendorPortal: React.FC = () => {
         category: dishCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined,
+        has_portions: hasPortions,
+        portion_options: portionOpts,
         original_price: undefined
       });
     } else {
@@ -596,6 +609,8 @@ export const VendorPortal: React.FC = () => {
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined,
+        has_portions: hasPortions,
+        portion_options: portionOpts,
         original_price: undefined
       });
     }
