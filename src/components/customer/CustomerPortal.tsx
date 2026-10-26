@@ -3084,7 +3084,7 @@ export const CustomerPortal: React.FC = () => {
                             )}
                             <div className="flex items-center space-x-1.5">
                               <span className="text-xs font-black text-[#d70f64]">
-                                {settings.currency_symbol} {dish.price}
+                                {settings.currency_symbol} {hasPortions ? startingPrice : dish.price}
                               </span>
                               {hasDiscount && (
                                 <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
@@ -3125,7 +3125,7 @@ export const CustomerPortal: React.FC = () => {
                         const portionGroup = itemVars.find(g => isPortionGroup(g, itemVars));
                         const hasPortions = Boolean(portionGroup && portionGroup.options.length > 0);
                         const startingPrice = hasPortions && portionGroup
-                          ? Math.min(...portionGroup.options.map(o => (Number(o.price) > 0 ? Number(o.price) : Number(dish.price))))
+                          ? Math.min(...portionGroup.options.map(o => Number(o.price) || 0))
                           : Number(dish.price);
                         const hasDiscount = Boolean(dish.original_price && dish.original_price > (hasPortions ? startingPrice : dish.price));
 
@@ -3168,7 +3168,7 @@ export const CustomerPortal: React.FC = () => {
                               )}
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-black text-[#d70f64]">
-                                  {settings.currency_symbol} {dish.price}
+                                  {settings.currency_symbol} {hasPortions ? startingPrice : dish.price}
                                 </span>
                                 {hasDiscount && (
                                   <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
