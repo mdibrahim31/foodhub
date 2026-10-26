@@ -543,6 +543,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(menuItems));
+    } catch {}
+  }, [menuItems]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(portions));
     } catch {}
   }, [portions]);
@@ -3863,6 +3869,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}`)
     };
 
+    try {
+      await fetch('/api/menu-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem)
+      });
+    } catch {}
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.from('menu_items').insert([{
@@ -3887,10 +3901,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    setMenuItems(prev => [newItem, ...prev]);
+    setMenuItems(prev => [newItem, ...prev.filter(m => m.id !== newItem.id)]);
   };
 
   const updateMenuItem = async (id: string, updates: Partial<MenuItem>) => {
+    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+
+    try {
+      await fetch(`/api/menu-items/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch {}
+
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('menu_items').update(updates).eq('id', id);
@@ -3898,13 +3922,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Supabase update menu item error:', err);
       }
     }
-    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
   };
 
   const toggleMenuItemAvailability = async (id: string) => {
     const target = menuItems.find(m => m.id === id);
     if (!target) return;
     const nextAvail = !target.is_available;
+
+    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: nextAvail } : m));
+
+    try {
+      await fetch(`/api/menu-items/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_available: nextAvail })
+      });
+    } catch {}
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -3913,11 +3946,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Supabase toggle menu availability error:', err);
       }
     }
-
-    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, is_available: nextAvail } : m));
   };
 
   const deleteMenuItem = async (id: string) => {
+    setMenuItems(prev => prev.filter(m => m.id !== id));
+    setPortions(prev => prev.filter(p => p.menu_item_id !== id));
+
+    try {
+      await fetch(`/api/menu-items/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch {}
+
     const itemToDelete = menuItems.find(m => m.id === id);
     if (itemToDelete && itemToDelete.image_url && isSupabaseConfigured && supabase) {
       try {
@@ -3941,9 +3979,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Supabase delete menu item error:', err);
       }
     }
-
-    setMenuItems(prev => prev.filter(m => m.id !== id));
-    setPortions(prev => prev.filter(p => p.menu_item_id !== id));
   };
 
   // -------------------------------------------------------------
