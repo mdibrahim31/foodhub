@@ -593,7 +593,7 @@ export const VendorPortal: React.FC = () => {
 
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dishName.trim() || !dishPrice) return;
+    if (!dishName.trim() || !dishPrice || !currentVendor) return;
 
     const portionGroup = dishVariations.find(v => 
       v.type === 'single' || 
@@ -610,6 +610,7 @@ export const VendorPortal: React.FC = () => {
     const finalOriginalPrice = parsedOriginal && parsedOriginal > parseFloat(dishPrice) ? parsedOriginal : undefined;
 
     const targetDishId = editingDish ? editingDish.id : `m-${Date.now()}`;
+    const selectedCategory = dishCategory.trim() || (allCategoryNames[0] || 'Burger');
 
     // Collect flat list of all portion options across variation groups to sync with dedicated portion table
     const portionItemsToSync: Array<{ groupName: string; name: string; price: number }> = [];
@@ -633,7 +634,7 @@ export const VendorPortal: React.FC = () => {
         description: dishDescription.trim(),
         price: parseFloat(dishPrice),
         original_price: finalOriginalPrice,
-        category: dishCategory,
+        category: selectedCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined,
         has_portions: hasPortions,
@@ -648,7 +649,7 @@ export const VendorPortal: React.FC = () => {
         description: dishDescription.trim(),
         price: parseFloat(dishPrice),
         original_price: finalOriginalPrice,
-        category: dishCategory,
+        category: selectedCategory,
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined,
@@ -891,7 +892,7 @@ export const VendorPortal: React.FC = () => {
                 </div>
               ) : (
                 allCategoryNames.map((categoryName) => {
-                const categoryItems = filteredMenuItems.filter(item => item.category === categoryName);
+                const categoryItems = filteredMenuItems.filter(item => (item.category || '').trim().toLowerCase() === categoryName.trim().toLowerCase());
                 const isCollapsed = !!collapsedCategories[categoryName];
 
                 return (

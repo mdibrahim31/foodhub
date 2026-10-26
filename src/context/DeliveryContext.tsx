@@ -1093,14 +1093,32 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('menu_items')
             .select('*');
           if (!menuError && menuData && isSubscribed && Array.isArray(menuData)) {
-            setMenuItems(menuData as MenuItem[]);
+            setMenuItems(prev => {
+              const map = new Map<string, MenuItem>();
+              prev.forEach(item => map.set(item.id, item));
+              (menuData as MenuItem[]).forEach(item => map.set(item.id, item));
+              const merged = Array.from(map.values());
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
           }
 
           const { data: pData, error: pError } = await supabase
             .from('menu_item_portions')
             .select('*');
           if (!pError && pData && isSubscribed && Array.isArray(pData)) {
-            setPortions(pData as MenuItemPortion[]);
+            setPortions(prev => {
+              const map = new Map<string, MenuItemPortion>();
+              prev.forEach(p => map.set(p.id, p));
+              (pData as MenuItemPortion[]).forEach(p => map.set(p.id, p));
+              const merged = Array.from(map.values());
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
           }
 
           // Fetch customers strictly from Supabase customers table (single source of truth)
@@ -1182,7 +1200,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (mRes.ok) {
           const mData = await mRes.json();
           if (Array.isArray(mData) && isSubscribed) {
-            setMenuItems(mData);
+            setMenuItems(prev => {
+              const map = new Map<string, MenuItem>();
+              prev.forEach(item => map.set(item.id, item));
+              mData.forEach((item: MenuItem) => map.set(item.id, item));
+              const merged = Array.from(map.values());
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
           }
         }
       } catch {}
@@ -1192,7 +1219,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (pRes.ok) {
           const pData = await pRes.json();
           if (Array.isArray(pData) && isSubscribed) {
-            setPortions(pData);
+            setPortions(prev => {
+              const map = new Map<string, MenuItemPortion>();
+              prev.forEach(p => map.set(p.id, p));
+              pData.forEach((p: MenuItemPortion) => map.set(p.id, p));
+              const merged = Array.from(map.values());
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
           }
         }
       } catch {}
@@ -3869,6 +3905,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}`)
     };
 
+    setMenuItems(prev => {
+      const updated = [newItem, ...prev.filter(m => m.id !== newItem.id)];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     try {
       await fetch('/api/menu-items', {
         method: 'POST',
@@ -3900,8 +3944,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.error('Failed to insert menu item in database:', err);
       }
     }
-
-    setMenuItems(prev => [newItem, ...prev.filter(m => m.id !== newItem.id)]);
   };
 
   const updateMenuItem = async (id: string, updates: Partial<MenuItem>) => {
@@ -3991,6 +4033,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString()
     };
 
+    setPortions(prev => {
+      const updated = [...prev.filter(p => p.id !== newPortion.id), newPortion];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     try {
       await fetch('/api/portions', {
         method: 'POST',
@@ -4007,7 +4057,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    setPortions(prev => [...prev.filter(p => p.id !== newPortion.id), newPortion]);
     return newPortion;
   };
 
