@@ -609,7 +609,9 @@ export const VendorPortal: React.FC = () => {
     const parsedOriginal = dishOriginalPrice.trim() ? parseFloat(dishOriginalPrice) : undefined;
     const finalOriginalPrice = parsedOriginal && parsedOriginal > parseFloat(dishPrice) ? parsedOriginal : undefined;
 
-    const targetDishId = editingDish ? editingDish.id : `m-${Date.now()}`;
+    const targetDishId = editingDish 
+      ? editingDish.id 
+      : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
     const selectedCategory = dishCategory.trim() || (allCategoryNames[0] || 'Burger');
 
     // Collect flat list of all portion options across variation groups to sync with dedicated portion table
@@ -636,9 +638,7 @@ export const VendorPortal: React.FC = () => {
         original_price: finalOriginalPrice,
         category: selectedCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined,
-        has_portions: hasPortions,
-        portion_options: portionOpts
+        variations: dishVariations.length > 0 ? dishVariations : undefined
       });
       syncPortionsForMenuItem(editingDish.id, portionItemsToSync);
     } else {
@@ -652,9 +652,7 @@ export const VendorPortal: React.FC = () => {
         category: selectedCategory,
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined,
-        has_portions: hasPortions,
-        portion_options: portionOpts
+        variations: dishVariations.length > 0 ? dishVariations : undefined
       });
       syncPortionsForMenuItem(targetDishId, portionItemsToSync);
     }

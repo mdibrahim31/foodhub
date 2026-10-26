@@ -217,8 +217,6 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
     discount_percent NUMERIC(5, 2) DEFAULT 0.00,
     discount_type VARCHAR(20) DEFAULT 'none',
     discount_amount NUMERIC(10, 2) DEFAULT 0.00,
-    has_portions BOOLEAN DEFAULT false,
-    portion_options JSONB DEFAULT '[]'::JSONB,
     image_url TEXT,
     category VARCHAR(100) DEFAULT 'Main Course',
     is_available BOOLEAN DEFAULT true,
@@ -227,14 +225,14 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure discount & portion columns exist on existing menu_items table
+-- Ensure discount columns exist & remove redundant portion columns from menu_items table
 ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
 ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_price NUMERIC(10, 2);
 ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5, 2) DEFAULT 0.00;
 ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'none';
 ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10, 2) DEFAULT 0.00;
-ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS has_portions BOOLEAN DEFAULT false;
-ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS portion_options JSONB DEFAULT '[]'::JSONB;
+ALTER TABLE public.menu_items DROP COLUMN IF EXISTS has_portions;
+ALTER TABLE public.menu_items DROP COLUMN IF EXISTS portion_options;
 
 -- ====================================================================
 -- 10B. MENU ITEM PORTIONS TABLE (Dedicated Portion Table)
