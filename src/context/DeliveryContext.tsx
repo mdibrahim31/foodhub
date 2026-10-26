@@ -136,13 +136,7 @@ interface DeliveryContextType {
   toggleMenuItemAvailability: (id: string) => void;
   deleteMenuItem: (id: string) => void;
 
-  // Portion Table Management
-  portions: MenuItemPortion[];
-  addPortion: (portion: Omit<MenuItemPortion, 'id'>) => Promise<MenuItemPortion>;
-  updatePortion: (id: string, updates: Partial<MenuItemPortion>) => Promise<void>;
-  deletePortion: (id: string) => Promise<void>;
-  getPortionsForMenuItem: (menuItemId: string) => MenuItemPortion[];
-  syncPortionsForMenuItem: (menuItemId: string, portionItems: Array<{ groupName?: string; name: string; price: number }>) => Promise<void>;
+
 
   // Food Categories (Configurable by Admin)
   foodCategories: FoodCategory[];
@@ -536,22 +530,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return Array.isArray(parsed) ? parsed : [];
   });
 
-  const [portions, setPortions] = useState<MenuItemPortion[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}portions`, []);
-    return Array.isArray(parsed) ? parsed : [];
-  });
-
   useEffect(() => {
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}menu_items`, JSON.stringify(menuItems));
     } catch {}
   }, [menuItems]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(portions));
-    } catch {}
-  }, [portions]);
+
 
   // Customer accounts ONLY load from the database (never hardcoded or persisted to localStorage)
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
@@ -1105,21 +1090,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             });
           }
 
-          const { data: pData, error: pError } = await supabase
-            .from('menu_item_portions')
-            .select('*');
-          if (!pError && pData && isSubscribed && Array.isArray(pData)) {
-            setPortions(prev => {
-              const map = new Map<string, MenuItemPortion>();
-              prev.forEach(p => map.set(p.id, p));
-              (pData as MenuItemPortion[]).forEach(p => map.set(p.id, p));
-              const merged = Array.from(map.values());
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(merged));
-              } catch {}
-              return merged;
-            });
-          }
+
 
           // Fetch customers strictly from Supabase customers table (single source of truth)
           const { data: custData, error: custError } = await supabase
@@ -1214,24 +1185,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       } catch {}
 
-      try {
-        const pRes = await fetch('/api/portions');
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          if (Array.isArray(pData) && isSubscribed) {
-            setPortions(prev => {
-              const map = new Map<string, MenuItemPortion>();
-              prev.forEach(p => map.set(p.id, p));
-              pData.forEach((p: MenuItemPortion) => map.set(p.id, p));
-              const merged = Array.from(map.values());
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(merged));
-              } catch {}
-              return merged;
-            });
-          }
-        }
-      } catch {}
+
 
       try {
         const catRes = await fetch('/api/food-categories');
@@ -3177,27 +3131,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    let pCount = 0;
-    for (const p of portions) {
-      try {
-        const payload = {
-          id: isValidUUID(p.id) ? p.id : generateUUID(),
-          menu_item_id: p.menu_item_id,
-          portion_group_name: p.portion_group_name || 'Portion / Size',
-          portion_name: p.portion_name,
-          price: Number(p.price || 0),
-          created_at: p.created_at || new Date().toISOString()
-        };
-        const { error } = await supabase.from('menu_item_portions').upsert([payload]);
-        if (!error) pCount++;
-      } catch (err) {
-        console.warn('Sync portion error:', err);
-      }
-    }
-
     return { 
       success: true, 
-      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, ${mCount} menu items, and ${pCount} portions!`, 
+      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, and ${mCount} menu items!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };
@@ -4032,7 +3968,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteMenuItem = async (id: string) => {
     setMenuItems(prev => prev.filter(m => m.id !== id));
-    setPortions(prev => prev.filter(p => p.menu_item_id !== id));
 
     try {
       await fetch(`/api/menu-items/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -4056,119 +3991,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('menu_items').delete().eq('id', id);
-        await supabase.from('menu_item_portions').delete().eq('menu_item_id', id);
       } catch (err) {
         console.warn('Supabase delete menu item error:', err);
       }
-    }
-  };
-
-  // -------------------------------------------------------------
-  // PORTION TABLE MANAGEMENT
-  // -------------------------------------------------------------
-  const addPortion = async (portion: Omit<MenuItemPortion, 'id'> & { id?: string }): Promise<MenuItemPortion> => {
-    const portionId = isValidUUID(portion.id) ? portion.id! : generateUUID();
-    const newPortion: MenuItemPortion = {
-      ...portion,
-      id: portionId,
-      created_at: portion.created_at || new Date().toISOString()
-    };
-
-    setPortions(prev => {
-      const updated = [...prev.filter(p => p.id !== newPortion.id), newPortion];
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    try {
-      await fetch('/api/portions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPortion)
-      });
-    } catch {}
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const payload = {
-          id: newPortion.id,
-          menu_item_id: newPortion.menu_item_id,
-          portion_group_name: newPortion.portion_group_name || 'Portion / Size',
-          portion_name: newPortion.portion_name,
-          price: Number(newPortion.price || 0),
-          created_at: newPortion.created_at || new Date().toISOString()
-        };
-        const { error } = await supabase.from('menu_item_portions').upsert([payload]);
-        if (error) {
-          console.warn('Supabase portion upsert notice:', error);
-        }
-      } catch (err) {
-        console.warn('Supabase portion upsert notice:', err);
-      }
-    }
-
-    return newPortion;
-  };
-
-  const updatePortion = async (id: string, updates: Partial<MenuItemPortion>) => {
-    setPortions(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-
-    try {
-      await fetch(`/api/portions/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-    } catch {}
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('menu_item_portions').update(updates).eq('id', id);
-      } catch (err) {
-        console.warn('Supabase portion update notice:', err);
-      }
-    }
-  };
-
-  const deletePortion = async (id: string) => {
-    setPortions(prev => prev.filter(p => p.id !== id));
-
-    try {
-      await fetch(`/api/portions/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    } catch {}
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('menu_item_portions').delete().eq('id', id);
-      } catch (err) {
-        console.warn('Supabase portion delete notice:', err);
-      }
-    }
-  };
-
-  const getPortionsForMenuItem = (menuItemId: string): MenuItemPortion[] => {
-    return portions.filter(p => p.menu_item_id === menuItemId);
-  };
-
-  const syncPortionsForMenuItem = async (
-    menuItemId: string,
-    portionItems: Array<{ groupName?: string; name: string; price: number }>
-  ) => {
-    const existing = portions.filter(p => p.menu_item_id === menuItemId);
-    for (const p of existing) {
-      await deletePortion(p.id);
-    }
-
-    for (const item of portionItems) {
-      if (!item.name || !item.name.trim()) continue;
-      await addPortion({
-        menu_item_id: menuItemId,
-        portion_group_name: item.groupName || 'Portion / Size',
-        portion_name: item.name.trim(),
-        price: Number(item.price || 0)
-      });
     }
   };
 
@@ -5774,12 +5599,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateMenuItem,
         toggleMenuItemAvailability,
         deleteMenuItem,
-        portions,
-        addPortion,
-        updatePortion,
-        deletePortion,
-        getPortionsForMenuItem,
-        syncPortionsForMenuItem,
+
         foodCategories,
         addFoodCategory,
         updateFoodCategory,

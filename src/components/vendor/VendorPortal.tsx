@@ -70,7 +70,6 @@ export const VendorPortal: React.FC = () => {
     updateMenuItem,
     toggleMenuItemAvailability, 
     deleteMenuItem,
-    syncPortionsForMenuItem,
     orders, 
     updateOrderStatus,
     settings,
@@ -640,7 +639,6 @@ export const VendorPortal: React.FC = () => {
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined
       });
-      syncPortionsForMenuItem(editingDish.id, portionItemsToSync);
     } else {
       addMenuItem({
         id: targetDishId,
@@ -654,7 +652,6 @@ export const VendorPortal: React.FC = () => {
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
         variations: dishVariations.length > 0 ? dishVariations : undefined
       });
-      syncPortionsForMenuItem(targetDishId, portionItemsToSync);
     }
 
     setDishName('');
@@ -1911,131 +1908,7 @@ export const VendorPortal: React.FC = () => {
                 )}
               </div>
 
-              {/* Variations & Portion Sizes Builder Section with Structured Table */}
-              <div className="space-y-2.5 pt-3 border-t border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                      <span>Portions & Variations (পোর্শন টেবিল ও ভ্যারিয়েশন)</span>
-                      <span className="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-1.5 py-0.5 rounded-full">Separate Price</span>
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      Add portion choices (e.g. Full, Half, Extra Rice) and their individual additional prices.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addVariationGroup}
-                    className="px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Add Portion Group</span>
-                  </button>
-                </div>
 
-                {dishVariations.length === 0 ? (
-                  <div className="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center space-y-1">
-                    <p className="font-bold text-slate-700">No portion table added for this item</p>
-                    <p className="text-slate-400">Click "+ Add Portion Group" to create portion options (e.g. Size, Extra Rice, Half/Full).</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {dishVariations.map((group, groupIdx) => (
-                      <div key={group.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <input
-                            type="text"
-                            value={group.name}
-                            onChange={(e) => updateVariationGroup(groupIdx, { name: e.target.value })}
-                            placeholder="Group Name (e.g. Portion / Size)"
-                            className="flex-1 px-2.5 py-1.5 text-xs font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500"
-                          />
-                          <select
-                            value={group.type}
-                            onChange={(e) => updateVariationGroup(groupIdx, { type: e.target.value as 'single' | 'multiple' })}
-                            className="px-2 py-1.5 text-xs font-semibold border border-slate-200 bg-white rounded-lg cursor-pointer"
-                          >
-                            <option value="single">Single Choice (Radio)</option>
-                            <option value="multiple">Multiple Choice (Checkbox)</option>
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => removeVariationGroup(groupIdx)}
-                            className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
-                            title="Remove group"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Structured Table for Options */}
-                        <div className="overflow-hidden border border-slate-200 rounded-xl bg-white shadow-2xs">
-                          <table className="w-full text-left text-xs border-collapse">
-                            <thead>
-                              <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                                <th className="py-2 px-3">Portion Name</th>
-                                <th className="py-2 px-3 w-32">Portion Price (Tk)</th>
-                                <th className="py-2 px-2 w-12 text-center">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {group.options.map((opt, optIdx) => (
-                                <tr key={opt.id} className="hover:bg-slate-50/60 transition">
-                                  <td className="py-1.5 px-3">
-                                    <input
-                                      type="text"
-                                      value={opt.name}
-                                      onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { name: e.target.value })}
-                                      placeholder="Portion Name (e.g. Half, Rice)"
-                                      className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md font-bold text-slate-800 focus:outline-hidden focus:border-orange-500"
-                                    />
-                                  </td>
-                                  <td className="py-1.5 px-3">
-                                    <div className="relative">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-mono font-bold text-[11px]">Tk</span>
-                                      <input
-                                        type="number"
-                                        value={opt.price}
-                                        onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: parseFloat(e.target.value) || 0 })}
-                                        placeholder="0"
-                                        className="w-full pl-7 pr-2 py-1 text-xs border border-slate-200 rounded-md font-mono font-black text-slate-900 focus:outline-hidden focus:border-orange-500"
-                                      />
-                                    </div>
-                                  </td>
-                                  <td className="py-1.5 px-2 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => removeOptionFromGroup(groupIdx, optIdx)}
-                                      className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition"
-                                      title="Delete option"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-
-                          <div className="p-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => addOptionToGroup(groupIdx)}
-                              className="text-[11px] font-extrabold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer px-2 py-1 rounded-md hover:bg-orange-50"
-                            >
-                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                              <span>+ Add Portion Row</span>
-                            </button>
-                            <span className="text-[10px] text-slate-400 font-medium italic">
-                              Direct portion price (standalone)
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button

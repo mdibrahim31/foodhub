@@ -57,8 +57,6 @@ export const CustomerPortal: React.FC = () => {
   const { 
     vendors, 
     menuItems, 
-    portions,
-    getPortionsForMenuItem,
     foodCategories,
     adBanners,
     addresses,
@@ -245,42 +243,12 @@ export const CustomerPortal: React.FC = () => {
   const getItemEffectiveVariations = (dish?: MenuItem | null): import('../../types/database').MenuVariationGroup[] => {
     if (!dish) return [];
 
-    // 1. Primary: Load portions directly from dedicated portions database table by menu_item_id
-    const dbPortions = portions.filter(p => p.menu_item_id === dish.id);
-    if (dbPortions && dbPortions.length > 0) {
-      const groupsMap = new Map<string, Array<{ id: string; name: string; price: number }>>();
-      dbPortions.forEach(p => {
-        const gName = p.portion_group_name || 'Portion / Size';
-        if (!groupsMap.has(gName)) {
-          groupsMap.set(gName, []);
-        }
-        groupsMap.get(gName)!.push({
-          id: p.id,
-          name: p.portion_name,
-          price: Number(p.price) || 0
-        });
-      });
-
-      const resultGroups: import('../../types/database').MenuVariationGroup[] = [];
-      groupsMap.forEach((opts, gName) => {
-        resultGroups.push({
-          id: `grp-${gName.toLowerCase().replace(/\s+/g, '-')}`,
-          name: gName,
-          type: 'single',
-          required: true,
-          options: opts
-        });
-      });
-
-      return resultGroups;
-    }
-
-    // 2. Secondary: Variations field on MenuItem
+    // 1. Variations field on MenuItem
     if (dish.variations && Array.isArray(dish.variations) && dish.variations.length > 0) {
       return dish.variations;
     }
 
-    // 3. Fallback: portion_options JSON column on MenuItem
+    // 2. Fallback: portion_options JSON column on MenuItem
     if (dish.portion_options && Array.isArray(dish.portion_options) && dish.portion_options.length > 0) {
       return [{
         id: 'portion-group',
@@ -367,7 +335,7 @@ export const CustomerPortal: React.FC = () => {
 
     const basePrice = portionPrice !== null ? portionPrice : (Number(selectedMenuItemForModal.price) || 0);
     return basePrice + extraPriceTotal;
-  }, [selectedMenuItemForModal, selectedModalVariations, portions]);
+  }, [selectedMenuItemForModal, selectedModalVariations]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
 
