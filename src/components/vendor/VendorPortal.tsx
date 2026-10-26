@@ -264,7 +264,22 @@ export const VendorPortal: React.FC = () => {
     setDishCategory(item.category || 'Main Course');
     setDishDescription(item.description || '');
     setDishImageUrl(item.image_url || '');
-    setDishVariations(item.variations || []);
+    const initialVariations = (item.variations && item.variations.length > 0)
+      ? item.variations
+      : (item.portion_options && item.portion_options.length > 0
+          ? [{
+              id: `var-${Date.now()}`,
+              name: 'Portion / Size',
+              type: 'single' as const,
+              required: true,
+              options: item.portion_options.map((po, idx) => ({
+                id: po.id || `opt-${Date.now()}-${idx}`,
+                name: po.name,
+                price: Number(po.price) || 0
+              }))
+            }]
+          : []);
+    setDishVariations(initialVariations);
     setIsAddDishOpen(true);
   };
 
