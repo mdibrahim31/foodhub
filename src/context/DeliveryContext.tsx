@@ -3155,9 +3155,51 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    let mCount = 0;
+    for (const m of menuItems) {
+      try {
+        const payload = {
+          id: isValidUUID(m.id) ? m.id : generateUUID(),
+          vendor_id: m.vendor_id,
+          name: m.name,
+          description: m.description || null,
+          price: Number(m.price) || 0,
+          original_price: m.original_price ? Number(m.original_price) : null,
+          has_portions: m.has_portions ?? false,
+          portion_options: m.portion_options || null,
+          image_url: m.image_url || null,
+          category: m.category || 'Main Course',
+          is_available: m.is_available ?? true,
+          variations: m.variations || null
+        };
+        const { error } = await supabase.from('menu_items').upsert([payload]);
+        if (!error) mCount++;
+      } catch (err) {
+        console.warn('Sync menu item error:', err);
+      }
+    }
+
+    let pCount = 0;
+    for (const p of portions) {
+      try {
+        const payload = {
+          id: isValidUUID(p.id) ? p.id : generateUUID(),
+          menu_item_id: p.menu_item_id,
+          portion_group_name: p.portion_group_name || 'Portion / Size',
+          portion_name: p.portion_name,
+          price: Number(p.price || 0),
+          created_at: p.created_at || new Date().toISOString()
+        };
+        const { error } = await supabase.from('menu_item_portions').upsert([payload]);
+        if (!error) pCount++;
+      } catch (err) {
+        console.warn('Sync portion error:', err);
+      }
+    }
+
     return { 
       success: true, 
-      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, ${addrCount} addresses, and ${favCount} favorites!`, 
+      message: `Synced ${rCount} riders, ${vCount} vendors, ${zCount} zones, ${adCount} banners, ${catCount} categories, ${custCount} customers, ${mCount} menu items, and ${pCount} portions!`, 
       ridersCount: rCount, 
       vendorsCount: vCount 
     };
@@ -3900,9 +3942,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // MENU ITEMS
   // -------------------------------------------------------------
   const addMenuItem = async (item: Omit<MenuItem, 'id'> & { id?: string }) => {
+    const newItemId = isValidUUID(item.id) ? item.id! : generateUUID();
     const newItem: MenuItem = { 
       ...item, 
-      id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}`)
+      id: newItemId
     };
 
     setMenuItems(prev => {
@@ -3923,25 +3966,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('menu_items').insert([{
+        const payload = {
           id: newItem.id,
           vendor_id: newItem.vendor_id,
           name: newItem.name,
           description: newItem.description || null,
-          price: newItem.price,
-          original_price: newItem.original_price || null,
+          price: Number(newItem.price) || 0,
+          original_price: newItem.original_price ? Number(newItem.original_price) : null,
           has_portions: newItem.has_portions ?? false,
           portion_options: newItem.portion_options || null,
           image_url: newItem.image_url || null,
           category: newItem.category || 'Main Course',
           is_available: newItem.is_available ?? true,
           variations: newItem.variations || null
-        }]);
+        };
+        const { error } = await supabase.from('menu_items').upsert([payload]);
         if (error) {
-          console.error('Supabase error inserting menu item:', error);
+          console.error('Supabase error upserting menu item:', error);
         }
       } catch (err) {
-        console.error('Failed to insert menu item in database:', err);
+        console.error('Failed to upsert menu item in database:', err);
       }
     }
   };
@@ -4026,11 +4070,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // PORTION TABLE MANAGEMENT
   // -------------------------------------------------------------
-  const addPortion = async (portion: Omit<MenuItemPortion, 'id'>): Promise<MenuItemPortion> => {
+  const addPortion = async (portion: Omit<MenuItemPortion, 'id'> & { id?: string }): Promise<MenuItemPortion> => {
+    const portionId = isValidUUID(portion.id) ? portion.id! : generateUUID();
     const newPortion: MenuItemPortion = {
       ...portion,
-      id: `prt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      created_at: new Date().toISOString()
+      id: portionId,
+      created_at: portion.created_at || new Date().toISOString()
     };
 
     setPortions(prev => {
@@ -4051,9 +4096,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('menu_item_portions').insert([newPortion]);
+        const payload = {
+          id: newPortion.id,
+          menu_item_id: newPortion.menu_item_id,
+          portion_group_name: newPortion.portion_group_name || 'Portion / Size',
+          portion_name: newPortion.portion_name,
+          price: Number(newPortion.price || 0),
+          created_at: newPortion.created_at || new Date().toISOString()
+        };
+        const { error } = await supabase.from('menu_item_portions').upsert([payload]);
+        if (error) {
+          console.warn('Supabase portion upsert notice:', error);
+        }
       } catch (err) {
-        console.warn('Supabase portion insert notice:', err);
+        console.warn('Supabase portion upsert notice:', err);
       }
     }
 
