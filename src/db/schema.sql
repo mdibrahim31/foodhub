@@ -212,6 +212,13 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price NUMERIC(10, 2) NOT NULL,
+    original_price NUMERIC(10, 2),
+    discount_price NUMERIC(10, 2),
+    discount_percent NUMERIC(5, 2) DEFAULT 0.00,
+    discount_type VARCHAR(20) DEFAULT 'none',
+    discount_amount NUMERIC(10, 2) DEFAULT 0.00,
+    has_portions BOOLEAN DEFAULT false,
+    portion_options JSONB DEFAULT '[]'::JSONB,
     image_url TEXT,
     category VARCHAR(100) DEFAULT 'Main Course',
     is_available BOOLEAN DEFAULT true,
@@ -219,6 +226,15 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure discount & portion columns exist on existing menu_items table
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_price NUMERIC(10, 2);
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5, 2) DEFAULT 0.00;
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'none';
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10, 2) DEFAULT 0.00;
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS has_portions BOOLEAN DEFAULT false;
+ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS portion_options JSONB DEFAULT '[]'::JSONB;
 
 -- ====================================================================
 -- 11. CUSTOMER ADDRESS BOOK (Pinpoint GPS, Delivery Zones & Default)
@@ -313,11 +329,19 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     menu_item_id UUID REFERENCES public.menu_items(id) ON DELETE SET NULL,
     item_name VARCHAR(255) NOT NULL,
     item_price NUMERIC(10, 2) NOT NULL,
+    original_price NUMERIC(10, 2),
+    discount_amount NUMERIC(10, 2) DEFAULT 0.00,
+    selected_portion VARCHAR(100),
     quantity INT NOT NULL DEFAULT 1,
     subtotal NUMERIC(10, 2) NOT NULL,
     selected_variations TEXT[],
     special_instructions TEXT
 );
+
+-- Ensure discount & portion columns exist on existing order_items table
+ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
+ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10, 2) DEFAULT 0.00;
+ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS selected_portion VARCHAR(100);
 
 -- ====================================================================
 -- 15. CUSTOMER CARTS TABLE (Persistent Multi-Device Shopping Carts)

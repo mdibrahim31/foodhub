@@ -149,12 +149,25 @@ export interface MenuVariationGroup {
   options: MenuVariationOption[];
 }
 
+export interface PortionOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface MenuItem {
   id: string;
   vendor_id: string;
   name: string;
   description?: string;
   price: number;
+  original_price?: number;
+  discount_price?: number;
+  discount_percent?: number;
+  discount_type?: 'none' | 'flat' | 'percentage';
+  discount_amount?: number;
+  has_portions?: boolean;
+  portion_options?: PortionOption[];
   image_url?: string;
   category: string;
   is_available: boolean;
@@ -238,6 +251,9 @@ export interface OrderItem {
   menu_item_id?: string;
   item_name: string;
   item_price: number;
+  original_price?: number;
+  discount_amount?: number;
+  selected_portion?: string;
   quantity: number;
   subtotal: number;
   selected_variations?: string[];
