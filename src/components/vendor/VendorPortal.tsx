@@ -1054,14 +1054,8 @@ export const VendorPortal: React.FC = () => {
 
             <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
               <h4 className="font-bold text-sm text-slate-900">Active Discounts</h4>
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
-                <div>
-                  <p className="font-bold text-xs text-slate-800">15% off: back4more</p>
-                  <p className="text-[11px] text-slate-500">Auto-applied for orders above ৳299</p>
-                </div>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
-                  Active
-                </span>
+              <div className="p-4 bg-slate-50 rounded-2xl text-center border border-slate-100">
+                <p className="text-xs text-slate-500 font-medium">কোনো ডিসকাউন্ট ক্যাম্পেইন সক্রিয় নেই (No active discounts)</p>
               </div>
             </div>
           </div>
@@ -2074,9 +2068,9 @@ export const VendorPortal: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl space-y-1">
-                <p className="font-bold text-orange-900">Active Campaign: Flat 15% OFF</p>
-                <p className="text-slate-600">Code: back4more (Min. order ৳299)</p>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-center">
+                <p className="font-bold text-slate-700">কোনো সক্রিয় প্রমোশন নেই (No active promotions)</p>
+                <p className="text-slate-500 text-[11px]">বর্তমানে কোনো ডিসকাউন্ট বা ভাউচার কোড চালিত নেই।</p>
               </div>
               <p className="text-slate-500">
                 Create new seasonal festival discounts to attract more local diners in your area.
