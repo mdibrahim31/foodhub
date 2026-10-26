@@ -345,20 +345,29 @@ export const CustomerPortal: React.FC = () => {
 
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
-    const basePrice = Number(selectedMenuItemForModal.price) || 0;
+    const effectiveVariations = getItemEffectiveVariations(selectedMenuItemForModal);
+    
+    let portionPrice: number | null = null;
     let extraPriceTotal = 0;
 
-    Object.values(selectedModalVariations).forEach(sel => {
-      if (sel && sel.price !== undefined && sel.price !== null) {
-        const p = Number(sel.price);
-        if (p > 0) {
+    effectiveVariations.forEach(group => {
+      const groupKey = group.id || group.name;
+      const selectedVal = selectedModalVariations[groupKey];
+      const isPortion = isPortionGroup(group, effectiveVariations);
+
+      if (selectedVal && selectedVal.price !== undefined && selectedVal.price !== null) {
+        const p = Number(selectedVal.price);
+        if (isPortion) {
+          portionPrice = p;
+        } else {
           extraPriceTotal += p;
         }
       }
     });
 
+    const basePrice = portionPrice !== null ? portionPrice : (Number(selectedMenuItemForModal.price) || 0);
     return basePrice + extraPriceTotal;
-  }, [selectedMenuItemForModal, selectedModalVariations]);
+  }, [selectedMenuItemForModal, selectedModalVariations, portions]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
 
@@ -3655,9 +3664,9 @@ export const CustomerPortal: React.FC = () => {
                   {/* Price & Rating */}
                   <div className="pt-1 flex items-center space-x-2">
                     <span className="text-sm font-black text-[#d70f64] font-mono">
-                      Tk {selectedMenuItemForModal.price}
+                      Tk {calculatedModalUnitPrice > 0 ? calculatedModalUnitPrice : selectedMenuItemForModal.price}
                     </span>
-                    {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > selectedMenuItemForModal.price) && (
+                    {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > (calculatedModalUnitPrice || selectedMenuItemForModal.price)) && (
                       <span className="text-[11px] text-slate-400 line-through font-semibold font-mono">
                         Tk {selectedMenuItemForModal.original_price}
                       </span>
@@ -3740,7 +3749,7 @@ export const CustomerPortal: React.FC = () => {
                                     <span className="font-semibold">{opt.name}</span>
                                   </div>
                                   <span className="font-mono font-black text-[#d70f64]">
-                                    {optionPriceNum > 0 ? `+Tk ${optionPriceNum}` : 'Free'}
+                                    {isPortion ? `Tk ${optionPriceNum}` : (optionPriceNum > 0 ? `+Tk ${optionPriceNum}` : 'Free')}
                                   </span>
                                 </div>
                               );
