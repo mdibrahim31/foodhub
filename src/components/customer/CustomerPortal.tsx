@@ -270,11 +270,14 @@ export const CustomerPortal: React.FC = () => {
     const groups = getItemEffectiveVariations(dish);
     groups.forEach(g => {
       if (g.options && g.options.length > 0) {
-        initialVars[g.id || g.name] = {
-          groupName: g.name,
-          optionName: g.options[0].name,
-          price: g.options[0].price || 0
-        };
+        if (g.required || g.type === 'single') {
+          const defaultOpt = g.options.find(o => (Number(o.price) || 0) === 0) || g.options[0];
+          initialVars[g.id || g.name] = {
+            groupName: g.name,
+            optionName: defaultOpt.name,
+            price: Number(defaultOpt.price) || 0
+          };
+        }
       }
     });
     setSelectedModalVariations(initialVars);
@@ -303,38 +306,21 @@ export const CustomerPortal: React.FC = () => {
     return allGroups.length === 1 && group.type === 'single';
   };
 
-  const getItemPortionPrice = (optPrice: number | undefined | null, basePrice: number): number => {
-    const p = optPrice !== undefined && optPrice !== null ? Number(optPrice) : 0;
-    // Portion price is separate and standalone: vendor ja add korbe tai hobe
-    return p > 0 ? p : basePrice;
-  };
-
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
     const basePrice = Number(selectedMenuItemForModal.price) || 0;
-    const groups = getItemEffectiveVariations(selectedMenuItemForModal);
+    let extraPriceTotal = 0;
 
-    let portionPrice: number | null = null;
-    let addOnsPrice = 0;
-
-    groups.forEach(group => {
-      const groupKey = group.id || group.name;
-      const sel = selectedModalVariations[groupKey];
-      if (!sel) return;
-
-      if (isPortionGroup(group, groups)) {
-        const p = sel.price !== undefined && sel.price !== null ? Number(sel.price) : 0;
-        portionPrice = p > 0 ? p : basePrice;
-      } else {
-        const extra = Number(sel.price) || 0;
-        if (extra > 0) {
-          addOnsPrice += extra;
+    Object.values(selectedModalVariations).forEach(sel => {
+      if (sel && sel.price !== undefined && sel.price !== null) {
+        const p = Number(sel.price);
+        if (p > 0) {
+          extraPriceTotal += p;
         }
       }
     });
 
-    const finalBase = portionPrice !== null ? portionPrice : basePrice;
-    return finalBase + addOnsPrice;
+    return basePrice + extraPriceTotal;
   }, [selectedMenuItemForModal, selectedModalVariations]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
@@ -2184,11 +2170,12 @@ export const CustomerPortal: React.FC = () => {
                           )}
                           <div className="min-w-0">
                             <h5 className="font-extrabold text-xs text-slate-900 truncate">{item.menuItem.name}</h5>
+                            <p className="text-[10px] text-slate-500 font-medium">Base: {settings.currency_symbol}{item.menuItem.price}</p>
                             {item.selectedVariations && item.selectedVariations.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-0.5">
                                 {item.selectedVariations.map((v, vIdx) => (
-                                  <span key={vIdx} className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                                    {v.optionName}
+                                  <span key={vIdx} className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                    {v.optionName} {v.price > 0 ? `(+${settings.currency_symbol}${v.price})` : ''}
                                   </span>
                                 ))}
                               </div>
@@ -3051,7 +3038,7 @@ export const CustomerPortal: React.FC = () => {
                             )}
                             <div className="flex items-center space-x-1.5">
                               <span className="text-xs font-black text-[#d70f64]">
-                                {hasPortions ? `FROM Tk ${startingPrice}` : `${settings.currency_symbol} ${dish.price}`}
+                                {settings.currency_symbol} {dish.price}
                               </span>
                               {hasDiscount && (
                                 <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
@@ -3135,7 +3122,7 @@ export const CustomerPortal: React.FC = () => {
                               )}
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-black text-[#d70f64]">
-                                  {hasPortions ? `FROM Tk ${startingPrice}` : `${settings.currency_symbol} ${dish.price}`}
+                                  {settings.currency_symbol} {dish.price}
                                 </span>
                                 {hasDiscount && (
                                   <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
@@ -3680,40 +3667,44 @@ export const CustomerPortal: React.FC = () => {
                             {group.options.map((opt) => {
                               const isSelected = selectedVal?.optionName === opt.name;
                               const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
-                              const displayPrice = isPortion 
-                                ? (optionPriceNum > 0 ? optionPriceNum : Number(selectedMenuItemForModal.price) || 0)
-                                : optionPriceNum;
 
                               return (
                                 <div
                                   key={opt.id || opt.name}
                                   onClick={() => {
-                                    setSelectedModalVariations(prev => ({
-                                      ...prev,
-                                      [groupKey]: {
-                                        groupName: group.name,
-                                        optionName: opt.name,
-                                        price: optionPriceNum
+                                    setSelectedModalVariations(prev => {
+                                      if (isSelected && group.type === 'multiple') {
+                                        const next = { ...prev };
+                                        delete next[groupKey];
+                                        return next;
                                       }
-                                    }));
+                                      return {
+                                        ...prev,
+                                        [groupKey]: {
+                                          groupName: group.name,
+                                          optionName: opt.name,
+                                          price: optionPriceNum
+                                        }
+                                      };
+                                    });
                                   }}
-                                  className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition ${
+                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                                     isSelected 
-                                      ? 'border-[#d70f64] bg-pink-50/50 font-bold text-slate-900' 
+                                      ? 'border-[#d70f64] bg-pink-50/50 font-bold text-slate-900 shadow-2xs' 
                                       : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
                                   }`}
                                 >
-                                  <span>{opt.name}</span>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="font-mono font-black text-[#d70f64]">
-                                      {isPortion ? `Tk ${displayPrice}` : (displayPrice > 0 ? `+Tk ${displayPrice}` : 'Free')}
-                                    </span>
-                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                                       isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
                                     }`}>
                                       {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                     </div>
+                                    <span className="font-semibold">{opt.name}</span>
                                   </div>
+                                  <span className="font-mono font-black text-[#d70f64]">
+                                    {optionPriceNum > 0 ? `+Tk ${optionPriceNum}` : 'Free'}
+                                  </span>
                                 </div>
                               );
                             })}
