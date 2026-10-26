@@ -4,6 +4,7 @@ import {
   SystemSettings, 
   Vendor, 
   MenuItem, 
+  MenuItemPortion,
   CustomerAddress, 
   CustomerUser,
   Rider, 
@@ -130,10 +131,18 @@ interface DeliveryContextType {
   
   // Menu Items
   menuItems: MenuItem[];
-  addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
+  addMenuItem: (item: Omit<MenuItem, 'id'> & { id?: string }) => void;
   updateMenuItem: (id: string, updates: Partial<MenuItem>) => void;
   toggleMenuItemAvailability: (id: string) => void;
   deleteMenuItem: (id: string) => void;
+
+  // Portion Table Management
+  portions: MenuItemPortion[];
+  addPortion: (portion: Omit<MenuItemPortion, 'id'>) => Promise<MenuItemPortion>;
+  updatePortion: (id: string, updates: Partial<MenuItemPortion>) => Promise<void>;
+  deletePortion: (id: string) => Promise<void>;
+  getPortionsForMenuItem: (menuItemId: string) => MenuItemPortion[];
+  syncPortionsForMenuItem: (menuItemId: string, portionItems: Array<{ groupName?: string; name: string; price: number }>) => Promise<void>;
 
   // Food Categories (Configurable by Admin)
   foodCategories: FoodCategory[];
@@ -526,6 +535,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}menu_items`, []);
     return Array.isArray(parsed) ? parsed : [];
   });
+
+  const [portions, setPortions] = useState<MenuItemPortion[]>(() => {
+    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}portions`, []);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}portions`, JSON.stringify(portions));
+    } catch {}
+  }, [portions]);
 
   // Customer accounts ONLY load from the database (never hardcoded or persisted to localStorage)
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
@@ -1070,6 +1090,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setMenuItems(menuData as MenuItem[]);
           }
 
+          const { data: pData, error: pError } = await supabase
+            .from('menu_item_portions')
+            .select('*');
+          if (!pError && pData && isSubscribed && Array.isArray(pData)) {
+            setPortions(pData as MenuItemPortion[]);
+          }
+
           // Fetch customers strictly from Supabase customers table (single source of truth)
           const { data: custData, error: custError } = await supabase
             .from('customers')
@@ -1150,6 +1177,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const mData = await mRes.json();
           if (Array.isArray(mData) && isSubscribed) {
             setMenuItems(mData);
+          }
+        }
+      } catch {}
+
+      try {
+        const pRes = await fetch('/api/portions');
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          if (Array.isArray(pData) && isSubscribed) {
+            setPortions(pData);
           }
         }
       } catch {}
@@ -3820,10 +3857,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // -------------------------------------------------------------
   // MENU ITEMS
   // -------------------------------------------------------------
-  const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
+  const addMenuItem = async (item: Omit<MenuItem, 'id'> & { id?: string }) => {
     const newItem: MenuItem = { 
       ...item, 
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}` 
+      id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}`)
     };
 
     if (isSupabaseConfigured && supabase) {
@@ -3899,12 +3936,104 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('menu_items').delete().eq('id', id);
+        await supabase.from('menu_item_portions').delete().eq('menu_item_id', id);
       } catch (err) {
         console.warn('Supabase delete menu item error:', err);
       }
     }
 
     setMenuItems(prev => prev.filter(m => m.id !== id));
+    setPortions(prev => prev.filter(p => p.menu_item_id !== id));
+  };
+
+  // -------------------------------------------------------------
+  // PORTION TABLE MANAGEMENT
+  // -------------------------------------------------------------
+  const addPortion = async (portion: Omit<MenuItemPortion, 'id'>): Promise<MenuItemPortion> => {
+    const newPortion: MenuItemPortion = {
+      ...portion,
+      id: `prt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      await fetch('/api/portions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPortion)
+      });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('menu_item_portions').insert([newPortion]);
+      } catch (err) {
+        console.warn('Supabase portion insert notice:', err);
+      }
+    }
+
+    setPortions(prev => [...prev.filter(p => p.id !== newPortion.id), newPortion]);
+    return newPortion;
+  };
+
+  const updatePortion = async (id: string, updates: Partial<MenuItemPortion>) => {
+    setPortions(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+
+    try {
+      await fetch(`/api/portions/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('menu_item_portions').update(updates).eq('id', id);
+      } catch (err) {
+        console.warn('Supabase portion update notice:', err);
+      }
+    }
+  };
+
+  const deletePortion = async (id: string) => {
+    setPortions(prev => prev.filter(p => p.id !== id));
+
+    try {
+      await fetch(`/api/portions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('menu_item_portions').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase portion delete notice:', err);
+      }
+    }
+  };
+
+  const getPortionsForMenuItem = (menuItemId: string): MenuItemPortion[] => {
+    return portions.filter(p => p.menu_item_id === menuItemId);
+  };
+
+  const syncPortionsForMenuItem = async (
+    menuItemId: string,
+    portionItems: Array<{ groupName?: string; name: string; price: number }>
+  ) => {
+    const existing = portions.filter(p => p.menu_item_id === menuItemId);
+    for (const p of existing) {
+      await deletePortion(p.id);
+    }
+
+    for (const item of portionItems) {
+      if (!item.name || !item.name.trim()) continue;
+      await addPortion({
+        menu_item_id: menuItemId,
+        portion_group_name: item.groupName || 'Portion / Size',
+        portion_name: item.name.trim(),
+        price: Number(item.price || 0)
+      });
+    }
   };
 
   // -------------------------------------------------------------
@@ -5509,6 +5638,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateMenuItem,
         toggleMenuItemAvailability,
         deleteMenuItem,
+        portions,
+        addPortion,
+        updatePortion,
+        deletePortion,
+        getPortionsForMenuItem,
+        syncPortionsForMenuItem,
         foodCategories,
         addFoodCategory,
         updateFoodCategory,

@@ -237,6 +237,21 @@ ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS has_portions BOOLEAN DEFA
 ALTER TABLE public.menu_items ADD COLUMN IF NOT EXISTS portion_options JSONB DEFAULT '[]'::JSONB;
 
 -- ====================================================================
+-- 10B. MENU ITEM PORTIONS TABLE (Dedicated Portion Table)
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS public.menu_item_portions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    menu_item_id UUID NOT NULL REFERENCES public.menu_items(id) ON DELETE CASCADE,
+    portion_group_name VARCHAR(100) NOT NULL DEFAULT 'Portion / Size',
+    portion_name VARCHAR(255) NOT NULL,
+    price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    is_required BOOLEAN DEFAULT false,
+    selection_type VARCHAR(20) DEFAULT 'single',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ====================================================================
 -- 11. CUSTOMER ADDRESS BOOK (Pinpoint GPS, Delivery Zones & Default)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.customer_addresses (

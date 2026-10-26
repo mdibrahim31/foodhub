@@ -70,6 +70,7 @@ export const VendorPortal: React.FC = () => {
     updateMenuItem,
     toggleMenuItemAvailability, 
     deleteMenuItem,
+    syncPortionsForMenuItem,
     orders, 
     updateOrderStatus,
     settings,
@@ -608,6 +609,24 @@ export const VendorPortal: React.FC = () => {
     const parsedOriginal = dishOriginalPrice.trim() ? parseFloat(dishOriginalPrice) : undefined;
     const finalOriginalPrice = parsedOriginal && parsedOriginal > parseFloat(dishPrice) ? parsedOriginal : undefined;
 
+    const targetDishId = editingDish ? editingDish.id : `m-${Date.now()}`;
+
+    // Collect flat list of all portion options across variation groups to sync with dedicated portion table
+    const portionItemsToSync: Array<{ groupName: string; name: string; price: number }> = [];
+    dishVariations.forEach(g => {
+      if (g.options && g.options.length > 0) {
+        g.options.forEach(o => {
+          if (o.name && o.name.trim()) {
+            portionItemsToSync.push({
+              groupName: g.name || 'Portion / Size',
+              name: o.name.trim(),
+              price: Number(o.price || 0)
+            });
+          }
+        });
+      }
+    });
+
     if (editingDish) {
       updateMenuItem(editingDish.id, {
         name: dishName.trim(),
@@ -620,8 +639,10 @@ export const VendorPortal: React.FC = () => {
         has_portions: hasPortions,
         portion_options: portionOpts
       });
+      syncPortionsForMenuItem(editingDish.id, portionItemsToSync);
     } else {
       addMenuItem({
+        id: targetDishId,
         vendor_id: currentVendor.id,
         name: dishName.trim(),
         description: dishDescription.trim(),
@@ -634,6 +655,7 @@ export const VendorPortal: React.FC = () => {
         has_portions: hasPortions,
         portion_options: portionOpts
       });
+      syncPortionsForMenuItem(targetDishId, portionItemsToSync);
     }
 
     setDishName('');

@@ -42,6 +42,7 @@ interface ServerState {
   reviews?: any[];
   favorites?: any[];
   otpSenders?: any[];
+  menuItemPortions?: any[];
   updatedAt: string;
 }
 
@@ -629,6 +630,59 @@ app.delete('/api/menu-items/:id', (req, res) => {
   const { id } = req.params;
   if (!serverState.menuItems) serverState.menuItems = [];
   serverState.menuItems = serverState.menuItems.filter(m => m.id !== id);
+  if (serverState.menuItemPortions) {
+    serverState.menuItemPortions = serverState.menuItemPortions.filter(p => p.menu_item_id !== id);
+  }
+  saveState(serverState);
+  res.json({ success: true });
+});
+
+// 6B-2. Menu Item Portions Table API
+app.get('/api/portions', (req, res) => {
+  if (!serverState.menuItemPortions) serverState.menuItemPortions = [];
+  const { menu_item_id } = req.query;
+  if (menu_item_id) {
+    return res.json(serverState.menuItemPortions.filter(p => p.menu_item_id === menu_item_id));
+  }
+  res.json(serverState.menuItemPortions);
+});
+
+app.post('/api/portions', (req, res) => {
+  if (!serverState.menuItemPortions) serverState.menuItemPortions = [];
+  const newPortion = req.body;
+  if (!newPortion.id) newPortion.id = `prt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  newPortion.price = Number(newPortion.price || 0);
+  
+  const existingIdx = serverState.menuItemPortions.findIndex(p => p.id === newPortion.id);
+  if (existingIdx >= 0) {
+    serverState.menuItemPortions[existingIdx] = { ...serverState.menuItemPortions[existingIdx], ...newPortion, updated_at: new Date().toISOString() };
+    saveState(serverState);
+    return res.json({ success: true, portion: serverState.menuItemPortions[existingIdx] });
+  }
+  
+  serverState.menuItemPortions.push(newPortion);
+  saveState(serverState);
+  res.json({ success: true, portion: newPortion });
+});
+
+app.put('/api/portions/:id', (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  if (!serverState.menuItemPortions) serverState.menuItemPortions = [];
+  const idx = serverState.menuItemPortions.findIndex(p => p.id === id);
+  if (idx >= 0) {
+    if (updates.price !== undefined) updates.price = Number(updates.price);
+    serverState.menuItemPortions[idx] = { ...serverState.menuItemPortions[idx], ...updates, updated_at: new Date().toISOString() };
+    saveState(serverState);
+    return res.json({ success: true, portion: serverState.menuItemPortions[idx] });
+  }
+  res.status(404).json({ success: false, message: 'Portion not found' });
+});
+
+app.delete('/api/portions/:id', (req, res) => {
+  const { id } = req.params;
+  if (!serverState.menuItemPortions) serverState.menuItemPortions = [];
+  serverState.menuItemPortions = serverState.menuItemPortions.filter(p => p.id !== id);
   saveState(serverState);
   res.json({ success: true });
 });

@@ -155,6 +155,18 @@ export interface PortionOption {
   price: number;
 }
 
+export interface MenuItemPortion {
+  id: string;
+  menu_item_id: string;
+  portion_group_name: string;
+  portion_name: string;
+  price: number;
+  is_required?: boolean;
+  selection_type?: 'single' | 'multiple';
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface MenuItem {
   id: string;
   vendor_id: string;
