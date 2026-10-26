@@ -1974,7 +1974,7 @@ export const VendorPortal: React.FC = () => {
                             <thead>
                               <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-black text-slate-700 uppercase tracking-wider">
                                 <th className="py-2 px-3">Portion Name</th>
-                                <th className="py-2 px-3 w-32">Extra Price (Tk)</th>
+                                <th className="py-2 px-3 w-32">Portion Price (Tk)</th>
                                 <th className="py-2 px-2 w-12 text-center">Action</th>
                               </tr>
                             </thead>
@@ -1992,13 +1992,13 @@ export const VendorPortal: React.FC = () => {
                                   </td>
                                   <td className="py-1.5 px-3">
                                     <div className="relative">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-mono font-bold text-[11px]">+Tk</span>
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-mono font-bold text-[11px]">Tk</span>
                                       <input
                                         type="number"
                                         value={opt.price}
                                         onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: parseFloat(e.target.value) || 0 })}
                                         placeholder="0"
-                                        className="w-full pl-8 pr-2 py-1 text-xs border border-slate-200 rounded-md font-mono font-black text-slate-900 focus:outline-hidden focus:border-orange-500"
+                                        className="w-full pl-7 pr-2 py-1 text-xs border border-slate-200 rounded-md font-mono font-black text-slate-900 focus:outline-hidden focus:border-orange-500"
                                       />
                                     </div>
                                   </td>
@@ -2027,7 +2027,7 @@ export const VendorPortal: React.FC = () => {
                               <span>+ Add Portion Row</span>
                             </button>
                             <span className="text-[10px] text-slate-400 font-medium italic">
-                              Extra price will be added to base dish price
+                              Direct portion price (standalone)
                             </span>
                           </div>
                         </div>
