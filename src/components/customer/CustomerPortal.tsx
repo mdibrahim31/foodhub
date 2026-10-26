@@ -66,6 +66,7 @@ export const CustomerPortal: React.FC = () => {
     cartVendor, 
     addToCart, 
     updateCartQuantity, 
+    removeFromCart,
     clearCart,
     placeOrder,
     orders,
@@ -279,39 +280,61 @@ export const CustomerPortal: React.FC = () => {
     setSelectedModalVariations(initialVars);
   };
 
+  const isPortionGroup = (
+    group: import('../../types/database').MenuVariationGroup, 
+    allGroups: import('../../types/database').MenuVariationGroup[]
+  ): boolean => {
+    const gName = (group.name || '').toLowerCase();
+    if (
+      gName.includes('portion') || 
+      gName.includes('size') || 
+      gName.includes('সাইজ') || 
+      gName.includes('পরিমাণ')
+    ) {
+      return true;
+    }
+    const hasExplicitPortionGroup = allGroups.some(g => {
+      const n = (g.name || '').toLowerCase();
+      return n.includes('portion') || n.includes('size') || n.includes('সাইজ') || n.includes('পরিমাণ');
+    });
+    if (hasExplicitPortionGroup) {
+      return false;
+    }
+    return allGroups.length === 1 && group.type === 'single';
+  };
+
   const getItemPortionPrice = (optPrice: number | undefined | null, basePrice: number): number => {
     const p = optPrice !== undefined && optPrice !== null ? Number(optPrice) : 0;
-    if (p > 0) return p;
-    return basePrice;
+    // Portion price is separate and standalone: vendor ja add korbe tai hobe
+    return p > 0 ? p : basePrice;
   };
 
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
     const basePrice = Number(selectedMenuItemForModal.price) || 0;
-    let effectivePrice = basePrice;
+    const groups = getItemEffectiveVariations(selectedMenuItemForModal);
+
+    let portionPrice: number | null = null;
     let addOnsPrice = 0;
 
-    const groups = getItemEffectiveVariations(selectedMenuItemForModal);
     groups.forEach(group => {
       const groupKey = group.id || group.name;
       const sel = selectedModalVariations[groupKey];
       if (!sel) return;
 
-      const groupName = (group.name || '').toLowerCase();
-      const isPortion = group.type === 'single' || 
-        groupName.includes('portion') || 
-        groupName.includes('size') || 
-        groupName.includes('সাইজ') || 
-        groupName.includes('পরিমাণ');
-
-      if (isPortion) {
-        effectivePrice = getItemPortionPrice(sel.price, basePrice);
+      if (isPortionGroup(group, groups)) {
+        const p = sel.price !== undefined && sel.price !== null ? Number(sel.price) : 0;
+        portionPrice = p > 0 ? p : basePrice;
       } else {
-        addOnsPrice += (sel.price || 0);
+        const extra = Number(sel.price) || 0;
+        if (extra > 0) {
+          addOnsPrice += extra;
+        }
       }
     });
 
-    return effectivePrice + addOnsPrice;
+    const finalBase = portionPrice !== null ? portionPrice : basePrice;
+    return finalBase + addOnsPrice;
   }, [selectedMenuItemForModal, selectedModalVariations]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
@@ -997,7 +1020,7 @@ export const CustomerPortal: React.FC = () => {
   });
 
   // Cart Calculations
-  const foodTotal = cart.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0);
+  const foodTotal = cart.reduce((sum, item) => sum + (item.unitPrice ?? item.menuItem.price) * item.quantity, 0);
   const cartDistanceKm = cartVendor 
     ? calculateDistanceKm(cartVendor.latitude, cartVendor.longitude, customerLat, customerLng)
     : 0;
@@ -2144,49 +2167,66 @@ export const CustomerPortal: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  {cart.map((item) => (
-                    <div key={item.menuItem.id} className="p-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        {item.menuItem.image_url && (
-                          <img
-                            src={item.menuItem.image_url}
-                            alt={item.menuItem.name}
-                            className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-100"
-                          />
-                        )}
-                        <div className="min-w-0">
-                          <h5 className="font-extrabold text-xs text-slate-900 truncate">{item.menuItem.name}</h5>
-                          <p className="text-[11px] font-bold text-orange-600">{settings.currency_symbol}{item.menuItem.price}</p>
-                        </div>
-                      </div>
+                  {cart.map((item, cartIdx) => {
+                    const itemVarKey = JSON.stringify(item.selectedVariations || []);
+                    const itemEffectivePrice = item.unitPrice ?? item.menuItem.price;
+                    const itemSubtotal = itemEffectivePrice * item.quantity;
 
-                      <div className="flex items-center space-x-2 shrink-0">
-                        <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+                    return (
+                      <div key={`${item.menuItem.id}-${cartIdx}`} className="p-4 flex items-center justify-between gap-3 border-b border-slate-100 last:border-b-0">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          {item.menuItem.image_url && (
+                            <img
+                              src={item.menuItem.image_url}
+                              alt={item.menuItem.name}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-100"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <h5 className="font-extrabold text-xs text-slate-900 truncate">{item.menuItem.name}</h5>
+                            {item.selectedVariations && item.selectedVariations.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.selectedVariations.map((v, vIdx) => (
+                                  <span key={vIdx} className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                    {v.optionName}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-[11px] font-bold text-orange-600 font-mono mt-0.5">
+                              {settings.currency_symbol}{itemEffectivePrice} × {item.quantity} = {settings.currency_symbol}{itemSubtotal}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+                            <button
+                              onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1, itemVarKey)}
+                              className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer hover:bg-slate-50"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-6 text-center text-xs font-black text-slate-900">{item.quantity}</span>
+                            <button
+                              onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1, itemVarKey)}
+                              className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer hover:bg-slate-50"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                          {/* Remove item button */}
                           <button
-                            onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1)}
-                            className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer"
+                            onClick={() => removeFromCart(item.menuItem.id, itemVarKey)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Remove item"
                           >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-black text-slate-900">{item.quantity}</span>
-                          <button
-                            onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1)}
-                            className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        {/* Remove item button */}
-                        <button
-                          onClick={() => updateCartQuantity(item.menuItem.id, 0)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                          title="Remove item"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Delivery Address Card */}
@@ -2964,13 +3004,13 @@ export const CustomerPortal: React.FC = () => {
                     .slice(0, 6)
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                      const hasDiscount = Boolean(dish.original_price && dish.original_price > dish.price);
                       const itemVars = getItemEffectiveVariations(dish);
-                      const portionGroup = itemVars.find(g => g.type === 'single' || (g.name || '').toLowerCase().includes('portion') || (g.name || '').toLowerCase().includes('size') || (g.name || '').toLowerCase().includes('সাইজ'));
+                      const portionGroup = itemVars.find(g => isPortionGroup(g, itemVars));
                       const hasPortions = Boolean(portionGroup && portionGroup.options.length > 0);
                       const startingPrice = hasPortions && portionGroup
                         ? Math.min(...portionGroup.options.map(o => (Number(o.price) > 0 ? Number(o.price) : Number(dish.price))))
                         : Number(dish.price);
+                      const hasDiscount = Boolean(dish.original_price && dish.original_price > (hasPortions ? startingPrice : dish.price));
 
                       return (
                         <div 
@@ -3048,13 +3088,13 @@ export const CustomerPortal: React.FC = () => {
                       })
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                        const hasDiscount = Boolean(dish.original_price && dish.original_price > dish.price);
                         const itemVars = getItemEffectiveVariations(dish);
-                        const portionGroup = itemVars.find(g => g.type === 'single' || (g.name || '').toLowerCase().includes('portion') || (g.name || '').toLowerCase().includes('size') || (g.name || '').toLowerCase().includes('সাইজ'));
+                        const portionGroup = itemVars.find(g => isPortionGroup(g, itemVars));
                         const hasPortions = Boolean(portionGroup && portionGroup.options.length > 0);
                         const startingPrice = hasPortions && portionGroup
                           ? Math.min(...portionGroup.options.map(o => (Number(o.price) > 0 ? Number(o.price) : Number(dish.price))))
                           : Number(dish.price);
+                        const hasDiscount = Boolean(dish.original_price && dish.original_price > (hasPortions ? startingPrice : dish.price));
 
                         return (
                           <div 
@@ -3623,12 +3663,7 @@ export const CustomerPortal: React.FC = () => {
                     {effectiveVariations.map((group) => {
                       const groupKey = group.id || group.name;
                       const selectedVal = selectedModalVariations[groupKey];
-                      const gName = (group.name || '').toLowerCase();
-                      const isPortion = group.type === 'single' || 
-                        gName.includes('portion') || 
-                        gName.includes('size') || 
-                        gName.includes('সাইজ') || 
-                        gName.includes('পরিমাণ');
+                      const isPortion = isPortionGroup(group, effectiveVariations);
 
                       return (
                         <div key={groupKey} className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 space-y-1.5">
@@ -3646,7 +3681,7 @@ export const CustomerPortal: React.FC = () => {
                               const isSelected = selectedVal?.optionName === opt.name;
                               const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
                               const displayPrice = isPortion 
-                                ? getItemPortionPrice(optionPriceNum, Number(selectedMenuItemForModal.price) || 0)
+                                ? (optionPriceNum > 0 ? optionPriceNum : Number(selectedMenuItemForModal.price) || 0)
                                 : optionPriceNum;
 
                               return (

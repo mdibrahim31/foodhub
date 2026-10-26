@@ -203,8 +203,8 @@ interface DeliveryContextType {
     specialInstructions?: string,
     customUnitPrice?: number
   ) => void;
-  removeFromCart: (menuItemId: string) => void;
-  updateCartQuantity: (menuItemId: string, qty: number) => void;
+  removeFromCart: (menuItemId: string, varKey?: string) => void;
+  updateCartQuantity: (menuItemId: string, qty: number, varKey?: string) => void;
   clearCart: () => void;
   placeOrder: (instructions?: string) => Promise<Order | null>;
   
@@ -4822,9 +4822,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const removeFromCart = (menuItemId: string) => {
+  const removeFromCart = (menuItemId: string, varKey?: string) => {
     setCart(prev => {
-      const filtered = prev.filter(ci => ci.menuItem.id !== menuItemId);
+      const filtered = prev.filter(ci => {
+        if (varKey) {
+          const itemVarKey = JSON.stringify(ci.selectedVariations || []);
+          return !(ci.menuItem.id === menuItemId && itemVarKey === varKey);
+        }
+        return ci.menuItem.id !== menuItemId;
+      });
       const nextVendor = filtered.length === 0 ? null : cartVendor;
       if (filtered.length === 0) {
         setCartVendor(null);
@@ -4836,13 +4842,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const updateCartQuantity = (menuItemId: string, qty: number) => {
+  const updateCartQuantity = (menuItemId: string, qty: number, varKey?: string) => {
     if (qty <= 0) {
-      removeFromCart(menuItemId);
+      removeFromCart(menuItemId, varKey);
       return;
     }
     setCart(prev => {
-      const updated = prev.map(ci => ci.menuItem.id === menuItemId ? { ...ci, quantity: qty } : ci);
+      const updated = prev.map(ci => {
+        const itemVarKey = JSON.stringify(ci.selectedVariations || []);
+        const matches = ci.menuItem.id === menuItemId && (!varKey || itemVarKey === varKey);
+        return matches ? { ...ci, quantity: qty } : ci;
+      });
       persistCustomerCart(updated, cartVendor);
       return updated;
     });
@@ -4929,7 +4939,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : `00000000-0000-4000-9000-${(Date.now() + index).toString(16).padStart(12, '0')}`;
           
         const unitPrice = ci.unitPrice ?? ci.menuItem.price;
-        const selectedVarStrings = ci.selectedVariations?.map(v => `${v.groupName}: ${v.optionName}${v.price > 0 ? ` (+৳${v.price})` : ''}`);
+        const portionVar = ci.selectedVariations?.find(v => {
+          const g = (v.groupName || '').toLowerCase();
+          return g.includes('portion') || g.includes('size') || g.includes('সাইজ') || g.includes('পরিমাণ');
+        });
+        const selectedPortionName = portionVar ? portionVar.optionName : undefined;
+
+        const selectedVarStrings = ci.selectedVariations?.map(v => {
+          const g = (v.groupName || '').toLowerCase();
+          const isPortion = g.includes('portion') || g.includes('size') || g.includes('সাইজ') || g.includes('পরিমাণ');
+          if (isPortion) {
+            return `${v.groupName}: ${v.optionName} (৳${v.price || unitPrice})`;
+          }
+          return `${v.groupName}: ${v.optionName}${v.price > 0 ? ` (+৳${v.price})` : ''}`;
+        });
 
         return {
           id: itemId,
@@ -4939,6 +4962,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           item_price: unitPrice,
           quantity: ci.quantity,
           subtotal: unitPrice * ci.quantity,
+          selected_portion: selectedPortionName,
           selected_variations: selectedVarStrings,
           special_instructions: ci.specialInstructions || ''
         };
