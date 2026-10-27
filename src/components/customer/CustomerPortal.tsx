@@ -21,7 +21,6 @@ import {
   UtensilsCrossed,
   Store,
   User,
-  Ticket,
   Banknote,
   ArrowRight,
   Settings,
@@ -160,7 +159,6 @@ export const CustomerPortal: React.FC = () => {
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [isFilterSettingsOpen, setIsFilterSettingsOpen] = useState(false);
   const [isRating4PlusOnly, setIsRating4PlusOnly] = useState(false);
-  const [hasOfferOnly, setHasOfferOnly] = useState(false);
   const [isNewOnly, setIsNewOnly] = useState(false);
   const [activeCuisineFilter, setActiveCuisineFilter] = useState('All');
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
@@ -1327,15 +1325,6 @@ export const CustomerPortal: React.FC = () => {
     { label: 'Fast Food', icon: '🍗', filter: 'Fast Food', img: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=120&auto=format&fit=crop&q=80' },
     { label: 'Bangladeshi', icon: '🐟', filter: 'Bangladeshi', img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=120&auto=format&fit=crop&q=80' },
     { label: 'Rice', icon: '🍚', filter: 'Biryani', img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=120&auto=format&fit=crop&q=80' },
-  ];
-
-  // Quick Services Row (Matching Image 1 top chips)
-  const serviceShortcuts = [
-    { label: 'Offers', badge: '%', badgeBg: 'bg-rose-500', icon: '🏷️' },
-    { label: 'foodmart', icon: '🛒' },
-    { label: 'Pick-up', icon: '🛍️' },
-    { label: 'Health & Beauty', icon: '🧴' },
-    { label: 'Restaurants', icon: '🍽️' },
   ];
 
   return (
@@ -2601,16 +2590,6 @@ export const CustomerPortal: React.FC = () => {
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
-            {/* Offers Chip */}
-            <button
-              onClick={() => setHasOfferOnly(prev => !prev)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border shrink-0 transition flex items-center gap-1 cursor-pointer ${
-                hasOfferOnly ? 'bg-orange-600 text-white border-orange-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <span>Offers</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
 
             {/* Ratings 4.0+ Chip */}
             <button
