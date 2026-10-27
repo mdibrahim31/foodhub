@@ -1333,49 +1333,9 @@ export const CustomerPortal: React.FC = () => {
   const serviceShortcuts = [
     { label: 'Offers', badge: '%', badgeBg: 'bg-rose-500', icon: '🏷️' },
     { label: 'foodmart', icon: '🛒' },
-    { label: 'Pick-up', badge: 'Up to -25%', badgeBg: 'bg-orange-600', icon: '🛍️' },
+    { label: 'Pick-up', icon: '🛍️' },
     { label: 'Health & Beauty', icon: '🧴' },
     { label: 'Restaurants', icon: '🍽️' },
-  ];
-
-  // Promo Dishes (Matching Image 3)
-  const promoDishes = [
-    {
-      id: 'pd-1',
-      name: 'Plain Khichuri',
-      vendor: "Sharia's Kitchen",
-      rating: 3.9,
-      prepTime: '60–85 mins',
-      discountedPrice: 60,
-      originalPrice: 70,
-      discountText: '15% off',
-      image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&auto=format&fit=crop&q=80',
-      vendorId: 'a0000006-0000-0000-0000-000000000006'
-    },
-    {
-      id: 'pd-2',
-      name: 'Set Menu - 3',
-      vendor: "Sharia's Kitchen",
-      rating: 3.9,
-      prepTime: '60–85 mins',
-      discountedPrice: 170,
-      originalPrice: 200,
-      discountText: '15% off',
-      image: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&auto=format&fit=crop&q=80',
-      vendorId: 'a0000006-0000-0000-0000-000000000006'
-    },
-    {
-      id: 'pd-3',
-      name: 'Loaded Shawarma',
-      vendor: 'Snackza',
-      rating: 4.5,
-      prepTime: '40 mins',
-      discountedPrice: 180,
-      originalPrice: 210,
-      discountText: '15% off',
-      image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&auto=format&fit=crop&q=80',
-      vendorId: 'a0000002-0000-0000-0000-000000000002'
-    }
   ];
 
   return (
@@ -2826,27 +2786,12 @@ export const CustomerPortal: React.FC = () => {
                       <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
                     </button>
 
-                    {(() => {
-                      if (hasDiscount) {
-                        return (
-                          <div className="absolute bottom-0 inset-x-0 bg-rose-600/95 text-white px-3 py-1 flex items-center space-x-1.5 text-[11px] font-bold">
-                            <Tag className="w-3 h-3 text-white" />
-                            <span>Campaign Offer: {discountTagText}</span>
-                          </div>
-                        );
-                      }
-                      const vendorDiscounts = menuItems.filter(m => m.vendor_id === vendor.id && m.original_price && m.original_price > m.price);
-                      if (vendorDiscounts.length === 0) return null;
-                      const maxDiscountPercent = Math.max(...vendorDiscounts.map(m => Math.round(((m.original_price! - m.price) / m.original_price!) * 100)));
-                      return (
-                        <div className="absolute bottom-0 inset-x-0 bg-white/95 px-3 py-1 flex items-center space-x-1.5 text-slate-800 text-[11px] font-bold border-t border-slate-100">
-                          <span className="text-purple-700 font-extrabold flex items-center gap-0.5">
-                            <Sparkles className="w-3 h-3 text-purple-600" /> PRO
-                          </span>
-                          <span>Up to {maxDiscountPercent}% off selected items</span>
-                        </div>
-                      );
-                    })()}
+                    {hasDiscount && (
+                      <div className="absolute bottom-0 inset-x-0 bg-rose-600/95 text-white px-3 py-1 flex items-center space-x-1.5 text-[11px] font-bold">
+                        <Tag className="w-3 h-3 text-white" />
+                        <span>Campaign Offer: {discountTagText}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-3.5 space-y-1.5">
