@@ -1240,28 +1240,61 @@ export const AdminPortal: React.FC = () => {
 
                           {/* Discount Column */}
                           <td className="py-3 px-4">
-                            {v.discount_title || v.discount_percentage ? (
-                              <span className="px-2.5 py-1 bg-orange-100 text-orange-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-orange-200 shadow-2xs">
-                                <Sparkles className="w-3 h-3 text-orange-600" />
-                                <span>{v.discount_title || `${v.discount_percentage}% OFF`}</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 font-bold text-xs">-</span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentPct = v.discount_percentage ? String(v.discount_percentage) : '';
+                                const input = prompt(`Enter discount percentage for ${v.name} (e.g. 15 for 15% OFF, or leave blank to remove):`, currentPct);
+                                if (input !== null) {
+                                  const trimmed = input.trim();
+                                  if (!trimmed) {
+                                    updateVendor(v.id, { discount_percentage: undefined, discount_title: undefined });
+                                  } else {
+                                    const num = parseFloat(trimmed);
+                                    if (!isNaN(num) && num >= 0) {
+                                      updateVendor(v.id, { discount_percentage: num, discount_title: `${num}% OFF` });
+                                    } else {
+                                      alert('Please enter a valid discount percentage');
+                                    }
+                                  }
+                                }
+                              }}
+                              className="text-left cursor-pointer group hover:opacity-80 transition"
+                              title="Click to change vendor discount percentage"
+                            >
+                              {v.discount_title || v.discount_percentage ? (
+                                <span className="px-2.5 py-1 bg-orange-100 group-hover:bg-orange-200 text-orange-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-orange-200 shadow-2xs">
+                                  <Sparkles className="w-3 h-3 text-orange-600" />
+                                  <span>{v.discount_title || `${v.discount_percentage}% OFF`}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-bold text-xs group-hover:text-slate-600 hover:underline">+ Add Discount</span>
+                              )}
+                            </button>
                           </td>
 
                           {/* Delivery Column */}
                           <td className="py-3 px-4">
-                            {v.is_free_delivery ? (
-                              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-emerald-200 shadow-2xs">
-                                <Bike className="w-3 h-3 text-emerald-600" />
-                                <span>Free Delivery</span>
-                              </span>
-                            ) : v.delivery_fee ? (
-                              <span className="font-mono text-slate-800 font-extrabold text-xs">৳{v.delivery_fee}</span>
-                            ) : (
-                              <span className="text-slate-500 font-semibold text-[11px]">Standard Rate</span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextFree = !v.is_free_delivery;
+                                updateVendor(v.id, { is_free_delivery: nextFree });
+                              }}
+                              className="text-left cursor-pointer group hover:opacity-80 transition"
+                              title="Click to toggle Free Delivery ON/OFF"
+                            >
+                              {v.is_free_delivery ? (
+                                <span className="px-2.5 py-1 bg-emerald-100 group-hover:bg-emerald-200 text-emerald-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-emerald-200 shadow-2xs">
+                                  <Bike className="w-3 h-3 text-emerald-600" />
+                                  <span>Free Delivery</span>
+                                </span>
+                              ) : v.delivery_fee ? (
+                                <span className="font-mono text-slate-800 font-extrabold text-xs group-hover:underline">৳{v.delivery_fee}</span>
+                              ) : (
+                                <span className="text-slate-500 font-semibold text-[11px] group-hover:text-slate-800 group-hover:underline">Standard Rate</span>
+                              )}
+                            </button>
                           </td>
 
                           {/* Status */}
