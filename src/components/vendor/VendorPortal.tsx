@@ -1140,7 +1140,7 @@ export const VendorPortal: React.FC = () => {
                       <button
                         onClick={async () => {
                           if (confirm('ডিসকাউন্ট ক্যাম্পেইন বন্ধ করতে চান?\n(Remove active discount campaign?)')) {
-                            await updateVendor(currentVendor.id, { discount_percentage: undefined, discount_title: undefined });
+                            await updateVendor(currentVendor.id, { discount_percentage: null as any, discount_title: null as any });
                           }
                         }}
                         className="p-2 hover:bg-orange-200/60 rounded-xl text-orange-700 transition cursor-pointer"
@@ -1175,7 +1175,7 @@ export const VendorPortal: React.FC = () => {
                       <button
                         onClick={async () => {
                           if (confirm('ফ্রি ডেলিভারি অফার বন্ধ করতে চান?\n(Disable free delivery offer?)')) {
-                            await updateVendor(currentVendor.id, { is_free_delivery: false });
+                            await updateVendor(currentVendor.id, { is_free_delivery: false, delivery_fee: null as any });
                           }
                         }}
                         className="p-2 hover:bg-emerald-200/60 rounded-xl text-emerald-700 transition cursor-pointer"
@@ -2908,12 +2908,12 @@ export const VendorPortal: React.FC = () => {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                const pct = discountPercentInput.trim() ? parseFloat(discountPercentInput) : undefined;
-                const title = discountTitleInput.trim() || (pct ? `${pct}% OFF` : undefined);
+                const pct = discountPercentInput.trim() ? parseFloat(discountPercentInput) : null;
+                const title = discountTitleInput.trim() ? discountTitleInput.trim() : (pct ? `${pct}% OFF` : null);
                 
                 await updateVendor(currentVendor.id, {
-                  discount_percentage: pct,
-                  discount_title: title,
+                  discount_percentage: pct as any,
+                  discount_title: title as any,
                   is_free_delivery: isFreeDeliveryOffer
                 });
 

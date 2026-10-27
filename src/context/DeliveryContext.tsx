@@ -3695,16 +3695,50 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateVendor = async (id: string, updates: Partial<Vendor>) => {
-    setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+    // Sanitize updates to convert undefined reset fields into explicit null for JSON/DB persistence
+    const sanitizedUpdates: Record<string, any> = { ...updates };
+    if ('discount_percentage' in updates && (updates.discount_percentage === undefined || updates.discount_percentage === null)) {
+      sanitizedUpdates.discount_percentage = null;
+    }
+    if ('discount_title' in updates && (updates.discount_title === undefined || updates.discount_title === null)) {
+      sanitizedUpdates.discount_title = null;
+    }
+    if ('delivery_fee' in updates && (updates.delivery_fee === undefined || updates.delivery_fee === null)) {
+      sanitizedUpdates.delivery_fee = null;
+    }
+    if ('is_free_delivery' in updates && (updates.is_free_delivery === undefined || updates.is_free_delivery === null)) {
+      sanitizedUpdates.is_free_delivery = false;
+    }
+
+    setVendors(prev => prev.map(v => {
+      if (v.id === id) {
+        const merged = { ...v, ...updates };
+        if (sanitizedUpdates.discount_percentage === null) delete merged.discount_percentage;
+        if (sanitizedUpdates.discount_title === null) delete merged.discount_title;
+        if (sanitizedUpdates.delivery_fee === null) delete merged.delivery_fee;
+        if (sanitizedUpdates.is_free_delivery === false) merged.is_free_delivery = false;
+        return merged;
+      }
+      return v;
+    }));
+
     if (currentVendor && currentVendor.id === id) {
-      setCurrentVendor(prev => prev ? { ...prev, ...updates } : null);
+      setCurrentVendor(prev => {
+        if (!prev) return null;
+        const merged = { ...prev, ...updates };
+        if (sanitizedUpdates.discount_percentage === null) delete merged.discount_percentage;
+        if (sanitizedUpdates.discount_title === null) delete merged.discount_title;
+        if (sanitizedUpdates.delivery_fee === null) delete merged.delivery_fee;
+        if (sanitizedUpdates.is_free_delivery === false) merged.is_free_delivery = false;
+        return merged;
+      });
     }
 
     try {
       await fetch(`/api/vendors/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(sanitizedUpdates)
       });
     } catch (err) {
       console.warn('Server vendor update error:', err);
@@ -3712,7 +3746,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('vendors').update(updates).eq('id', id);
+        await supabase.from('vendors').update(sanitizedUpdates).eq('id', id);
       } catch (err) {
         console.warn('Supabase vendor update error:', err);
       }

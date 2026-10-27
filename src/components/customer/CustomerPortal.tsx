@@ -1025,7 +1025,7 @@ export const CustomerPortal: React.FC = () => {
     ? calculateDistanceKm(cartVendor.latitude, cartVendor.longitude, customerLat, customerLng)
     : 0;
   const deliveryFee = cartVendor
-    ? calculateDeliveryFee(cartDistanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge)
+    ? (cartVendor.is_free_delivery ? 0 : calculateDeliveryFee(cartDistanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge))
     : 0;
   const totalCashPayable = foodTotal + deliveryFee;
   const totalCartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
@@ -2757,12 +2757,17 @@ export const CustomerPortal: React.FC = () => {
               {filteredVendors.map((vendor) => {
               const { lat: vLat, lng: vLng } = getVendorCoords(vendor);
               const distanceKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-              const isFreeDelivery = vendor.is_free_delivery || false;
+              const isFreeDelivery = Boolean(vendor.is_free_delivery);
               const fee = isFreeDelivery ? 0 : calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
               const isNew = isVendorNew(vendor);
-              const discountVal = vendor.discount_percentage ? Number(vendor.discount_percentage) : 0;
-              const hasDiscount = discountVal > 0 || Boolean(vendor.discount_title);
+              const discountVal = (vendor.discount_percentage !== null && vendor.discount_percentage !== undefined) 
+                ? Number(vendor.discount_percentage) 
+                : 0;
+              const discountTagText = vendor.discount_title && vendor.discount_title.trim() 
+                ? vendor.discount_title.trim() 
+                : (discountVal > 0 ? `${discountVal}% OFF` : '');
+              const hasDiscount = discountVal > 0 || discountTagText.length > 0;
 
               return (
                 <div
@@ -2788,7 +2793,7 @@ export const CustomerPortal: React.FC = () => {
                       {hasDiscount && (
                         <span className="px-2.5 py-1 bg-rose-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center space-x-1 border border-rose-400/40">
                           <Tag className="w-3 h-3 fill-rose-200 text-white" />
-                          <span>{vendor.discount_title || `${discountVal}% OFF`}</span>
+                          <span>{discountTagText}</span>
                         </span>
                       )}
                       {isFreeDelivery && (
@@ -2811,7 +2816,7 @@ export const CustomerPortal: React.FC = () => {
                         return (
                           <div className="absolute bottom-0 inset-x-0 bg-rose-600/95 text-white px-3 py-1 flex items-center space-x-1.5 text-[11px] font-bold">
                             <Tag className="w-3 h-3 text-white" />
-                            <span>Campaign Offer: {vendor.discount_title || `${discountVal}% OFF on orders`}</span>
+                            <span>Campaign Offer: {discountTagText}</span>
                           </div>
                         );
                       }
