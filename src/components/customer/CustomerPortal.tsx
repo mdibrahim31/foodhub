@@ -585,6 +585,21 @@ export const CustomerPortal: React.FC = () => {
     return null;
   });
 
+  // Keep active open vendor menu synchronized with real-time vendor updates
+  useEffect(() => {
+    if (selectedVendorForMenu) {
+      const fresh = vendors.find(v => v.id === selectedVendorForMenu.id);
+      if (fresh && (
+        fresh.discount_percentage !== selectedVendorForMenu.discount_percentage ||
+        fresh.discount_title !== selectedVendorForMenu.discount_title ||
+        fresh.is_free_delivery !== selectedVendorForMenu.is_free_delivery ||
+        fresh.name !== selectedVendorForMenu.name
+      )) {
+        setSelectedVendorForMenuState(fresh);
+      }
+    }
+  }, [vendors, selectedVendorForMenu]);
+
   // Phone Physical Back Button & Browser History State Synchronization (Safe placement after initialization)
   const openCount = 
     (activeBottomNav !== 'food' ? 1 : 0) +

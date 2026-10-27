@@ -963,6 +963,35 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return [...prev, customer];
           });
         }
+      } else if (data?.type === 'VENDOR_UPDATE') {
+        const { vendorId, updates } = data;
+        setVendors(prev => prev.map(v => {
+          if (v.id !== vendorId) return v;
+          const merged = { ...v, ...updates };
+          if (updates?.discount_percentage === null) delete merged.discount_percentage;
+          if (updates?.discount_title === null) delete merged.discount_title;
+          if (updates?.delivery_fee === null) delete merged.delivery_fee;
+          if (updates?.is_free_delivery === false) merged.is_free_delivery = false;
+          return merged;
+        }));
+        setCurrentVendor(prev => {
+          if (!prev || prev.id !== vendorId) return prev;
+          const merged = { ...prev, ...updates };
+          if (updates?.discount_percentage === null) delete merged.discount_percentage;
+          if (updates?.discount_title === null) delete merged.discount_title;
+          if (updates?.delivery_fee === null) delete merged.delivery_fee;
+          if (updates?.is_free_delivery === false) merged.is_free_delivery = false;
+          return merged;
+        });
+        setCartVendor(prev => {
+          if (!prev || prev.id !== vendorId) return prev;
+          const merged = { ...prev, ...updates };
+          if (updates?.discount_percentage === null) delete merged.discount_percentage;
+          if (updates?.discount_title === null) delete merged.discount_title;
+          if (updates?.delivery_fee === null) delete merged.delivery_fee;
+          if (updates?.is_free_delivery === false) merged.is_free_delivery = false;
+          return merged;
+        });
       }
     };
     foodiplaceRealtimeChannel.addEventListener('message', handleBroadcastMsg);
@@ -1154,7 +1183,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               const map = new Map<string, Vendor>();
               prev.forEach(v => map.set(v.id, v));
               vData.forEach((v: Vendor) => {
-                if (!map.has(v.id)) map.set(v.id, v);
+                const existing = map.get(v.id);
+                map.set(v.id, existing ? { ...existing, ...v } : v);
               });
               const list = Array.from(map.values());
               try {
@@ -3751,6 +3781,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Supabase vendor update error:', err);
       }
     }
+
+    // Broadcast update across open browser tabs in real-time
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'VENDOR_UPDATE',
+        vendorId: id,
+        updates: sanitizedUpdates
+      });
+    } catch {}
   };
 
   const deleteVendorImageFile = async (imageUrl?: string) => {
