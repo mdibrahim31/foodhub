@@ -2757,9 +2757,12 @@ export const CustomerPortal: React.FC = () => {
               {filteredVendors.map((vendor) => {
               const { lat: vLat, lng: vLng } = getVendorCoords(vendor);
               const distanceKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-              const fee = calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
+              const isFreeDelivery = vendor.is_free_delivery || false;
+              const fee = isFreeDelivery ? 0 : calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
               const isNew = isVendorNew(vendor);
+              const discountVal = vendor.discount_percentage ? Number(vendor.discount_percentage) : 0;
+              const hasDiscount = discountVal > 0 || Boolean(vendor.discount_title);
 
               return (
                 <div
@@ -2774,21 +2777,44 @@ export const CustomerPortal: React.FC = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
 
-                    {/* NEW Badge for Vendors added within last 30 days */}
-                    {isNew && (
-                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center space-x-1 border border-emerald-400/40 z-10">
-                        <Sparkles className="w-3 h-3 fill-amber-300 text-amber-300" />
-                        <span>NEW</span>
-                      </span>
-                    )}
+                    {/* NEW Badge & Offer Badges */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 items-start">
+                      {isNew && (
+                        <span className="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center space-x-1 border border-emerald-400/40">
+                          <Sparkles className="w-3 h-3 fill-amber-300 text-amber-300" />
+                          <span>NEW</span>
+                        </span>
+                      )}
+                      {hasDiscount && (
+                        <span className="px-2.5 py-1 bg-rose-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center space-x-1 border border-rose-400/40">
+                          <Tag className="w-3 h-3 fill-rose-200 text-white" />
+                          <span>{vendor.discount_title || `${discountVal}% OFF`}</span>
+                        </span>
+                      )}
+                      {isFreeDelivery && (
+                        <span className="px-2.5 py-1 bg-orange-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center space-x-1 border border-orange-400/40">
+                          <Bike className="w-3 h-3 text-white" />
+                          <span>FREE DELIVERY</span>
+                        </span>
+                      )}
+                    </div>
+
                     <button 
                       onClick={(e) => toggleFavorite(vendor.id, e)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-700 hover:text-rose-500 transition"
+                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-md text-slate-700 hover:text-rose-500 transition z-10"
                     >
                       <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
                     </button>
 
                     {(() => {
+                      if (hasDiscount) {
+                        return (
+                          <div className="absolute bottom-0 inset-x-0 bg-rose-600/95 text-white px-3 py-1 flex items-center space-x-1.5 text-[11px] font-bold">
+                            <Tag className="w-3 h-3 text-white" />
+                            <span>Campaign Offer: {vendor.discount_title || `${discountVal}% OFF on orders`}</span>
+                          </div>
+                        );
+                      }
                       const vendorDiscounts = menuItems.filter(m => m.vendor_id === vendor.id && m.original_price && m.original_price > m.price);
                       if (vendorDiscounts.length === 0) return null;
                       const maxDiscountPercent = Math.max(...vendorDiscounts.map(m => Math.round(((m.original_price! - m.price) / m.original_price!) * 100)));
@@ -2817,7 +2843,13 @@ export const CustomerPortal: React.FC = () => {
                     </p>
 
                     <div className="flex items-center space-x-2 text-xs">
-                      <span className="text-slate-500 font-medium">Delivery: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
+                      {isFreeDelivery ? (
+                        <span className="text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                          <Bike className="w-3.5 h-3.5 text-emerald-600" /> Free Delivery ({distanceKm} km)
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 font-medium">Delivery: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
+                      )}
                     </div>
 
                     <div className="pt-1 flex items-center justify-end">

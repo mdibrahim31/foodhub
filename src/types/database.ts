@@ -93,6 +93,10 @@ export interface Vendor {
   restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen'; // Sub-type for restaurant (Restaurant, Cloud Kitchen, Home Kitchen)
   opening_schedule?: WeeklySchedule; // 1-week opening/closing schedule
   is_permanently_closed?: boolean; // Manual permanent close toggle (until vendor manually reopens)
+  discount_percentage?: number; // e.g. 15 for 15% OFF
+  discount_title?: string; // e.g. "15% OFF"
+  is_free_delivery?: boolean; // Free delivery offer active
+  delivery_fee?: number; // Specific vendor delivery fee if set
   created_at?: string;
 }
 

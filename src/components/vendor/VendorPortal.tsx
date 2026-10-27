@@ -171,6 +171,21 @@ export const VendorPortal: React.FC = () => {
   const [profileCoverUrlInput, setProfileCoverUrlInput] = useState('');
   const [isUrlInputMode, setIsUrlInputMode] = useState(false);
 
+  // Campaign & Ads Management State
+  const [discountPercentInput, setDiscountPercentInput] = useState<string>('15');
+  const [discountTitleInput, setDiscountTitleInput] = useState<string>('15% OFF');
+  const [isFreeDeliveryOffer, setIsFreeDeliveryOffer] = useState<boolean>(false);
+  const [isEditCampaignModalOpen, setIsEditCampaignModalOpen] = useState(false);
+
+  const openEditCampaignModal = () => {
+    if (currentVendor) {
+      setDiscountPercentInput(currentVendor.discount_percentage ? String(currentVendor.discount_percentage) : '15');
+      setDiscountTitleInput(currentVendor.discount_title || '15% OFF');
+      setIsFreeDeliveryOffer(Boolean(currentVendor.is_free_delivery));
+    }
+    setIsEditCampaignModalOpen(true);
+  };
+
   const openVendorProfileModal = () => {
     if (currentVendor) {
       setProfileLogoUrlInput(currentVendor.logo_url || '');
@@ -1051,30 +1066,136 @@ export const VendorPortal: React.FC = () => {
         <div className="max-w-md mx-auto min-h-screen bg-slate-50 text-slate-900 pb-28">
           <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between z-10">
             <h2 className="text-base font-black text-slate-900">Ads & Restaurant Booster</h2>
-            <button onClick={() => setActiveBottomNav('overview')} className="p-1 text-slate-400">
+            <button onClick={() => setActiveBottomNav('overview')} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
               <X className="w-6 h-6" />
             </button>
           </div>
 
           <div className="p-4 space-y-4">
+            {/* Boost Restaurant Card */}
             <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 rounded-3xl text-white shadow-md space-y-2">
-              <h3 className="font-black text-base">Get 3x More Orders</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-base">Get 3x More Orders</h3>
+                {currentVendor.is_boosted && (
+                  <span className="px-2.5 py-0.5 bg-white text-orange-600 rounded-full text-[10px] font-black uppercase shadow-xs">
+                    ⚡ Featured Active
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-orange-100 leading-relaxed">
                 Featured restaurant placements appear at the top of customer search in Banani, Gulshan, and Chittagong.
               </p>
               <button 
-                onClick={() => alert('Promotional campaign activated! Your restaurant is now pinned as Featured.')}
-                className="mt-2 px-4 py-2 bg-white text-orange-600 rounded-xl text-xs font-black shadow-xs cursor-pointer"
+                onClick={async () => {
+                  const nextBoost = !currentVendor.is_boosted;
+                  await updateVendor(currentVendor.id, { is_boosted: nextBoost });
+                  alert(nextBoost ? '✅ Restaurant visibility boosted! Pinned at top of customer search.' : 'Boost campaign paused.');
+                }}
+                className="mt-2 px-4 py-2 bg-white hover:bg-orange-50 text-orange-600 rounded-xl text-xs font-black shadow-xs cursor-pointer transition active:scale-95"
               >
-                Boost Restaurant Visibility
+                {currentVendor.is_boosted ? 'Pause Booster Campaign' : 'Boost Restaurant Visibility'}
               </button>
             </div>
 
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-              <h4 className="font-bold text-sm text-slate-900">Active Discounts</h4>
-              <div className="p-4 bg-slate-50 rounded-2xl text-center border border-slate-100">
-                <p className="text-xs text-slate-500 font-medium">কোনো ডিসকাউন্ট ক্যাম্পেইন সক্রিয় নেই (No active discounts)</p>
+            {/* Active Discounts & Free Delivery Section */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">Active Discounts & Offers</h4>
+                  <p className="text-[11px] text-slate-500">Provide discounts and free delivery to attract more customers</p>
+                </div>
+                <button
+                  onClick={openEditCampaignModal}
+                  className="px-3.5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Offer Config</span>
+                </button>
               </div>
+
+              {/* Active Campaigns List or Empty State */}
+              {(currentVendor.discount_percentage || currentVendor.discount_title || currentVendor.is_free_delivery) ? (
+                <div className="space-y-3">
+                  {/* Discount Offer Card */}
+                  {(currentVendor.discount_percentage || currentVendor.discount_title) && (
+                    <div className="p-4 bg-orange-50/80 border border-orange-200 rounded-2xl flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                          <Percent className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-xs text-orange-950">
+                              {currentVendor.discount_title || `${currentVendor.discount_percentage}% OFF`}
+                            </span>
+                            <span className="px-2 py-0.5 bg-orange-200 text-orange-900 font-black text-[10px] rounded-md uppercase">
+                              Active Discount
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-orange-800 mt-0.5">
+                            Customers get {currentVendor.discount_percentage ? `${currentVendor.discount_percentage}% discount` : 'special discount'} on all menu orders.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (confirm('ডিসকাউন্ট ক্যাম্পেইন বন্ধ করতে চান?\n(Remove active discount campaign?)')) {
+                            await updateVendor(currentVendor.id, { discount_percentage: undefined, discount_title: undefined });
+                          }
+                        }}
+                        className="p-2 hover:bg-orange-200/60 rounded-xl text-orange-700 transition cursor-pointer"
+                        title="Remove discount campaign"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Free Delivery Offer Card */}
+                  {currentVendor.is_free_delivery && (
+                    <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                          <Bike className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-xs text-emerald-950">
+                              Free Delivery Offer
+                            </span>
+                            <span className="px-2 py-0.5 bg-emerald-200 text-emerald-900 font-black text-[10px] rounded-md uppercase">
+                              Active Offer
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 mt-0.5">
+                            Customers get 100% Free Delivery on orders placed from your store.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (confirm('ফ্রি ডেলিভারি অফার বন্ধ করতে চান?\n(Disable free delivery offer?)')) {
+                            await updateVendor(currentVendor.id, { is_free_delivery: false });
+                          }
+                        }}
+                        className="p-2 hover:bg-emerald-200/60 rounded-xl text-emerald-700 transition cursor-pointer"
+                        title="Remove free delivery offer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-5 bg-slate-50 rounded-2xl text-center border border-slate-100 space-y-2">
+                  <p className="text-xs text-slate-500 font-medium">
+                    কোনো ডিসকাউন্ট বা ফ্রি ডেলিভারি ক্যাম্পেইন সক্রিয় নেই (No active offers)
+                  </p>
+                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                    ট্যাপ করুন "Offer Config" নতুন ডিসকাউন্ট % অথবা ফ্রি ডেলিভারি চালুর জন্য।
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2756,6 +2877,160 @@ export const VendorPortal: React.FC = () => {
                 লগআউট (Logout)
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* 
+        ========================================================================
+        MODAL: CREATE / EDIT DISCOUNT & FREE DELIVERY CAMPAIGN
+        ========================================================================
+      */}
+      {isEditCampaignModalOpen && currentVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-5 border border-slate-100 relative">
+            <button
+              onClick={() => setIsEditCampaignModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                <Tag className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Discount & Free Delivery Campaign</h3>
+                <p className="text-xs text-slate-500">Configure promotional offers for {currentVendor.name}</p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const pct = discountPercentInput.trim() ? parseFloat(discountPercentInput) : undefined;
+                const title = discountTitleInput.trim() || (pct ? `${pct}% OFF` : undefined);
+                
+                await updateVendor(currentVendor.id, {
+                  discount_percentage: pct,
+                  discount_title: title,
+                  is_free_delivery: isFreeDeliveryOffer
+                });
+
+                setIsEditCampaignModalOpen(false);
+                alert('✅ Promotional discount & free delivery offer saved successfully!');
+              }}
+              className="space-y-4 text-xs font-bold"
+            >
+              {/* Discount Percentage Preset Buttons */}
+              <div className="space-y-2">
+                <label className="text-slate-700 block uppercase text-[10px] tracking-wider">
+                  Select Discount Percentage (%)
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['10', '15', '20', '25', '30', '40', '50'].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => {
+                        setDiscountPercentInput(p);
+                        setDiscountTitleInput(`${p}% OFF`);
+                      }}
+                      className={`py-2 rounded-xl border text-xs font-extrabold transition cursor-pointer ${
+                        discountPercentInput === p
+                          ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {p}% OFF
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiscountPercentInput('');
+                      setDiscountTitleInput('');
+                    }}
+                    className={`py-2 rounded-xl border text-xs font-extrabold transition cursor-pointer ${
+                      !discountPercentInput
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    No Discount
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Discount Input */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-600 block mb-1 uppercase text-[10px]">Discount %</label>
+                  <input
+                    type="number"
+                    value={discountPercentInput}
+                    onChange={(e) => setDiscountPercentInput(e.target.value)}
+                    placeholder="e.g. 15"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-mono font-bold focus:outline-hidden focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-600 block mb-1 uppercase text-[10px]">Badge Tag Text</label>
+                  <input
+                    type="text"
+                    value={discountTitleInput}
+                    onChange={(e) => setDiscountTitleInput(e.target.value)}
+                    placeholder="e.g. 15% OFF"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-bold focus:outline-hidden focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Free Delivery Toggle Box */}
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Bike className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="font-extrabold text-xs text-emerald-950">Free Delivery Offer</h5>
+                    <p className="text-[10px] text-emerald-800 font-medium">Provide 100% Free Delivery to customers</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsFreeDeliveryOffer(prev => !prev)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                    isFreeDeliveryOffer ? 'bg-emerald-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      isFreeDeliveryOffer ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditCampaignModalOpen(false)}
+                  className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white font-black rounded-2xl uppercase tracking-wider transition shadow-md shadow-orange-600/30 cursor-pointer active:scale-95"
+                >
+                  Save Campaign
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
