@@ -2817,7 +2817,15 @@ export const CustomerPortal: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="pt-1 flex items-center justify-end">
+                    <div className="pt-1 flex items-center justify-between">
+                      {hasDiscount ? (
+                        <span className="px-2.5 py-1 bg-rose-50 text-rose-600 border border-rose-200 text-xs font-extrabold rounded-xl flex items-center gap-1.5 shadow-2xs">
+                          <Ticket className="w-3.5 h-3.5 text-rose-500" />
+                          <span>{discountTagText}</span>
+                        </span>
+                      ) : (
+                        <span />
+                      )}
                       <span className="text-xs font-bold text-orange-600 group-hover:translate-x-1 transition-transform">
                         View Menu &rarr;
                       </span>
