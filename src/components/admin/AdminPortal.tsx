@@ -249,7 +249,7 @@ export const AdminPortal: React.FC = () => {
 
   // Ad Banner Form State
   const [isAddAdOpen, setIsAddAdOpen] = useState(false);
-  const [adTitle, setAdTitle] = useState('Welcome back! Enjoy 35% off & free delivery');
+  const [adTitle, setAdTitle] = useState('Welcome back! Enjoy fast food delivery');
   const [adSubtitle, setAdSubtitle] = useState('Order from top Chittagong restaurants with 100% Cash On Delivery');
   const [adActionText, setAdActionText] = useState('Redeem now');
   const [adImageUrl, setAdImageUrl] = useState('https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80');
@@ -2366,8 +2366,8 @@ export const AdminPortal: React.FC = () => {
                     const nextBoosted = !selectedVendorForProfile.is_boosted;
                     updateVendor(selectedVendorForProfile.id, { 
                       is_boosted: nextBoosted,
-                      boost_banner_title: selectedVendorForProfile.boost_banner_title || `Welcome back! Enjoy 35% off & free delivery`,
-                      boost_banner_subtitle: selectedVendorForProfile.boost_banner_subtitle || `Special offer from ${selectedVendorForProfile.name}`
+                      boost_banner_title: selectedVendorForProfile.boost_banner_title || (selectedVendorForProfile.discount_percentage ? `Enjoy ${selectedVendorForProfile.discount_percentage}% off & fast delivery` : `Special offer from ${selectedVendorForProfile.name}`),
+                      boost_banner_subtitle: selectedVendorForProfile.boost_banner_subtitle || `Order from ${selectedVendorForProfile.name}`
                     });
                     setSelectedVendorForProfile(prev => prev ? { ...prev, is_boosted: nextBoosted } : null);
                   }}
@@ -2546,7 +2546,7 @@ export const AdminPortal: React.FC = () => {
                           updateVendor(selectedVendorForProfile.id, { boost_banner_title: val });
                           setSelectedVendorForProfile(prev => prev ? { ...prev, boost_banner_title: val } : null);
                         }}
-                        placeholder="e.g. Welcome back! Enjoy 35% off & free delivery"
+                        placeholder="e.g. Special offer from restaurant"
                         className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:outline-hidden focus:border-orange-500"
                       />
                     </div>
