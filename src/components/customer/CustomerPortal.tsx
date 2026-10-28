@@ -313,25 +313,19 @@ export const CustomerPortal: React.FC = () => {
     if (!selectedMenuItemForModal) return 0;
     const effectiveVariations = getItemEffectiveVariations(selectedMenuItemForModal);
     
-    let portionPrice: number | null = null;
+    // Main dish base price strictly from menu_items.price column
+    const basePrice = Number(selectedMenuItemForModal.price) || 0;
     let extraPriceTotal = 0;
 
     effectiveVariations.forEach(group => {
       const groupKey = group.id || group.name;
       const selectedVal = selectedModalVariations[groupKey];
-      const isPortion = isPortionGroup(group, effectiveVariations);
 
       if (selectedVal && selectedVal.price !== undefined && selectedVal.price !== null) {
-        const p = Number(selectedVal.price);
-        if (isPortion) {
-          portionPrice = p;
-        } else {
-          extraPriceTotal += p;
-        }
+        extraPriceTotal += Number(selectedVal.price || 0);
       }
     });
 
-    const basePrice = portionPrice !== null ? portionPrice : (Number(selectedMenuItemForModal.price) || 0);
     return basePrice + extraPriceTotal;
   }, [selectedMenuItemForModal, selectedModalVariations]);
 
@@ -3713,7 +3707,7 @@ export const CustomerPortal: React.FC = () => {
                                     <span className="font-semibold">{opt.name}</span>
                                   </div>
                                   <span className="font-mono font-black text-[#d70f64]">
-                                    {isPortion ? `Tk ${optionPriceNum}` : (optionPriceNum > 0 ? `+Tk ${optionPriceNum}` : 'Free')}
+                                    {optionPriceNum > 0 ? `+Tk ${optionPriceNum}` : 'Free'}
                                   </span>
                                 </div>
                               );
