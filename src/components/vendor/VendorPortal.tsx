@@ -2029,6 +2029,101 @@ export const VendorPortal: React.FC = () => {
                 )}
               </div>
 
+              {/* Add-ons & Variations Manager (অতিরিক্ত রাইস, সস, সাইজ ইত্যাদি) */}
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900">Add-ons & Options (এড-অনস / অপশন)</h4>
+                    <p className="text-[10px] text-slate-500 font-medium">Add extra rice, sauce, portion size or extras with prices</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addVariationGroup}
+                    className="px-2.5 py-1 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-black flex items-center gap-1 border border-orange-200 cursor-pointer transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Option Group</span>
+                  </button>
+                </div>
+
+                {dishVariations.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 italic bg-slate-50 p-2.5 rounded-xl border border-dashed border-slate-200 text-center">
+                    No extra add-ons added yet. Click &quot;Add Option Group&quot; to add choices like Extra Rice, Sauce, or Size.
+                  </p>
+                ) : (
+                  dishVariations.map((group, groupIdx) => (
+                    <div key={group.id || groupIdx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <input
+                          type="text"
+                          value={group.name}
+                          onChange={(e) => updateVariationGroup(groupIdx, { name: e.target.value })}
+                          placeholder="Group name (e.g. Portion / Size, Extra Add-ons)"
+                          className="flex-1 px-2.5 py-1.5 text-xs font-extrabold border border-slate-200 bg-white rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                        />
+                        <select
+                          value={group.type}
+                          onChange={(e) => updateVariationGroup(groupIdx, { type: e.target.value as 'single' | 'multiple' })}
+                          className="px-2 py-1.5 text-[11px] font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden cursor-pointer"
+                        >
+                          <option value="single">Single Choice (Radio)</option>
+                          <option value="multiple">Multiple Choice (Checkbox)</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => removeVariationGroup(groupIdx)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg transition cursor-pointer"
+                          title="Delete Option Group"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 pl-1">
+                        {group.options.map((opt, optIdx) => (
+                          <div key={opt.id || optIdx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={opt.name}
+                              onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { name: e.target.value })}
+                              placeholder="Option name (e.g. Extra Rice, Extra Sauce)"
+                              className="flex-1 px-2.5 py-1 text-xs font-semibold border border-slate-200 bg-white rounded-lg focus:outline-hidden"
+                            />
+                            <div className="flex items-center gap-1 w-28">
+                              <span className="text-xs font-bold text-slate-500">৳</span>
+                              <input
+                                type="number"
+                                value={opt.price}
+                                onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: Number(e.target.value) || 0 })}
+                                placeholder="0"
+                                className="w-full px-2 py-1 text-xs font-mono font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeOptionFromGroup(groupIdx, optIdx)}
+                              className="p-1 text-slate-400 hover:text-rose-500 rounded cursor-pointer"
+                              title="Remove option"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={() => addOptionToGroup(groupIdx)}
+                          className="text-[11px] font-extrabold text-orange-600 hover:underline flex items-center gap-1 pt-1 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Add Item / Extra</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
 
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
