@@ -268,62 +268,16 @@ export const CustomerPortal: React.FC = () => {
     setSelectedMenuItemForModal(dish);
     setModalQuantity(1);
     setModalSpecialInstructions('');
-    
-    const effectiveVars = getItemEffectiveVariations(dish);
-    const initialSelected: Record<string, import('../../context/DeliveryContext').CartItemOption> = {};
-    
-    if (effectiveVars.length > 0) {
-      const firstGroup = effectiveVars[0];
-      if (firstGroup.options && firstGroup.options.length > 0) {
-        const firstOpt = firstGroup.options[0];
-        initialSelected[`${firstGroup.id || firstGroup.name}_${firstOpt.name}`] = {
-          groupName: firstGroup.name,
-          optionName: firstOpt.name,
-          price: Number(firstOpt.price) || 0
-        };
-      }
-    }
-    
-    setSelectedModalVariations(initialSelected);
+    setSelectedModalVariations({});
   };
 
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
-    
-    const effectiveVars = getItemEffectiveVariations(selectedMenuItemForModal);
-    const hasVariations = effectiveVars.length > 0;
-    
-    let baseOrVarPrice = Number(selectedMenuItemForModal.price) || 0;
-    let extrasPrice = 0;
-
-    if (hasVariations) {
-      const firstGroup = effectiveVars[0];
-      const selectedVarOpt = firstGroup.options.find(opt => {
-        return Object.values(selectedModalVariations).some(sel => 
-          sel.groupName === firstGroup.name && sel.optionName === opt.name
-        );
-      });
-
-      if (selectedVarOpt) {
-        baseOrVarPrice = Number(selectedVarOpt.price) || 0;
-      } else if (firstGroup.options.length > 0) {
-        baseOrVarPrice = Number(firstGroup.options[0].price) || 0;
-      }
-
-      // Add extras / recommendations (multi-choice add-ons where groupName !== firstGroup.name)
-      Object.values(selectedModalVariations).forEach(opt => {
-        if (opt.groupName !== firstGroup.name) {
-          extrasPrice += Number(opt.price) || 0;
-        }
-      });
-    } else {
-      baseOrVarPrice = Number(selectedMenuItemForModal.price) || 0;
-      extrasPrice = Object.values(selectedModalVariations).reduce((sum, opt) => {
-        return sum + (Number(opt.price) || 0);
-      }, 0);
-    }
-
-    return baseOrVarPrice + extrasPrice;
+    const basePrice = Number(selectedMenuItemForModal.price) || 0;
+    const extrasPrice = Object.values(selectedModalVariations).reduce((sum, opt) => {
+      return sum + (Number(opt.price) || 0);
+    }, 0);
+    return basePrice + extrasPrice;
   }, [selectedMenuItemForModal, selectedModalVariations]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
@@ -3655,11 +3609,11 @@ export const CustomerPortal: React.FC = () => {
                                 {group.name}
                               </h3>
                               <p className="text-[11px] text-slate-500 font-medium">
-                                {isPortionOrSize ? 'Select one' : 'Other customers also ordered these'}
+                                Select multiple options if needed
                               </p>
                             </div>
                             <span className="bg-slate-100 text-slate-800 text-[10px] font-black uppercase px-2.5 py-1 rounded-full tracking-wider">
-                              {isPortionOrSize ? 'Required' : 'Optional'}
+                              Optional
                             </span>
                           </div>
 
@@ -3678,34 +3632,17 @@ export const CustomerPortal: React.FC = () => {
                                   onClick={() => {
                                     setSelectedModalVariations(prev => {
                                       const next = { ...prev };
-                                      if (isPortionOrSize) {
-                                        // Single choice behavior for variation/size: clear all options in this group and set this one
-                                        Object.keys(next).forEach(k => {
-                                          if (next[k].groupName === group.name) {
-                                            delete next[k];
-                                          }
-                                        });
-                                        if (!isSelected) {
-                                          next[optKey] = {
-                                            groupName: group.name,
-                                            optionName: opt.name,
-                                            price: optionPriceNum
-                                          };
-                                        }
+                                      const existingKey = Object.keys(next).find(k => 
+                                        next[k].groupName === group.name && next[k].optionName === opt.name
+                                      );
+                                      if (existingKey) {
+                                        delete next[existingKey];
                                       } else {
-                                        // Multiple choice toggle behavior for add-ons
-                                        const existingKey = Object.keys(next).find(k => 
-                                          next[k].groupName === group.name && next[k].optionName === opt.name
-                                        );
-                                        if (existingKey) {
-                                          delete next[existingKey];
-                                        } else {
-                                          next[optKey] = {
-                                            groupName: group.name,
-                                            optionName: opt.name,
-                                            price: optionPriceNum
-                                          };
-                                        }
+                                        next[optKey] = {
+                                          groupName: group.name,
+                                          optionName: opt.name,
+                                          price: optionPriceNum
+                                        };
                                       }
                                       return next;
                                     });
@@ -3713,40 +3650,22 @@ export const CustomerPortal: React.FC = () => {
                                   className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 border border-slate-100 transition cursor-pointer select-none"
                                 >
                                   <div className="flex items-center gap-3">
-                                    {/* Optional Item Thumbnail for Add-ons */}
-                                    {!isPortionOrSize && (
-                                      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100">
-                                        <img
-                                          src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}
-                                          alt={opt.name}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      </div>
-                                    )}
                                     <div>
                                       <h4 className="font-extrabold text-xs text-slate-900">{opt.name}</h4>
                                       <div className="flex items-center space-x-1.5 font-mono text-xs mt-0.5">
                                         <span className="font-black text-[#d70f64]">
-                                          {isPortionOrSize ? `Tk ${optionPriceNum}` : `+ Tk ${optionPriceNum}`}
+                                          + Tk {optionPriceNum}
                                         </span>
                                       </div>
                                     </div>
                                   </div>
 
-                                  {/* Radio / Checkbox Indicator */}
-                                  {isPortionOrSize ? (
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
-                                      isSelected ? 'border-[#d70f64]' : 'border-slate-300'
-                                    }`}>
-                                      {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#d70f64]" />}
-                                    </div>
-                                  ) : (
-                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
-                                      isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300 bg-white'
-                                    }`}>
-                                      {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                                    </div>
-                                  )}
+                                  {/* Checkbox Indicator */}
+                                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
+                                    isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300 bg-white'
+                                  }`}>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                                  </div>
                                 </div>
                               );
                             })}
