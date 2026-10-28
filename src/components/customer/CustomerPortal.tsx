@@ -1687,6 +1687,12 @@ export const CustomerPortal: React.FC = () => {
                                 <Bike className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Standard Delivery</span>
                               </div>
+                              {Boolean((v.discount_title && String(v.discount_title).trim() && v.discount_title !== 'null' && v.discount_title !== 'undefined') || (v.discount_percentage && Number(v.discount_percentage) > 0)) && (
+                                <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
+                                  <Tag className="w-3 h-3" />
+                                  <span>{(v.discount_title && v.discount_title !== 'null' && v.discount_title !== 'undefined') ? v.discount_title : `${v.discount_percentage}% OFF`}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1787,6 +1793,12 @@ export const CustomerPortal: React.FC = () => {
                                 <Bike className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Standard Delivery</span>
                               </div>
+                              {Boolean((v.discount_title && String(v.discount_title).trim() && v.discount_title !== 'null' && v.discount_title !== 'undefined') || (v.discount_percentage && Number(v.discount_percentage) > 0)) && (
+                                <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
+                                  <Tag className="w-3 h-3" />
+                                  <span>{(v.discount_title && v.discount_title !== 'null' && v.discount_title !== 'undefined') ? v.discount_title : `${v.discount_percentage}% OFF`}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2791,6 +2803,13 @@ export const CustomerPortal: React.FC = () => {
                             <span className="text-slate-500 font-medium">Delivery: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
                           )}
                         </div>
+
+                        {Boolean((vendor.discount_title && String(vendor.discount_title).trim() && vendor.discount_title !== 'null' && vendor.discount_title !== 'undefined') || (vendor.discount_percentage && Number(vendor.discount_percentage) > 0)) && (
+                          <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
+                            <Tag className="w-3 h-3" />
+                            <span>{(vendor.discount_title && vendor.discount_title !== 'null' && vendor.discount_title !== 'undefined') ? vendor.discount_title : `${vendor.discount_percentage}% OFF`}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-1 flex items-center justify-end">
