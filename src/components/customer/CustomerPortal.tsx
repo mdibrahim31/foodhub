@@ -3584,67 +3584,69 @@ export const CustomerPortal: React.FC = () => {
         <div 
           className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         >
-          {/* Main Modal Card Container - All details fit on screen without scrolling */}
+          {/* Main Modal Card Container */}
           <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[96vh] relative animate-in slide-in-from-bottom-6 duration-300">
             
-            {/* Top Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white shrink-0">
-              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                Customize Item
-              </span>
+            {/* Top Full Banner Image Header (Fills the top area matching red box) */}
+            <div className="relative w-full h-48 sm:h-56 bg-slate-900 shrink-0 overflow-hidden">
+              <img
+                src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600'}
+                alt={selectedMenuItemForModal.name}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Gradient Overlay for Controls */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/30 pointer-events-none" />
+
+              {/* Floating Top Left Pill Badge */}
+              <div className="absolute top-3.5 left-3.5 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40">
+                <Sparkles className="w-3 h-3 text-orange-600 fill-orange-600" />
+                <span>Customize Item</span>
+              </div>
+
+              {/* Floating Top Right Close Button */}
               <button
                 type="button"
                 onClick={() => setSelectedMenuItemForModal(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center transition cursor-pointer"
+                className="absolute top-3.5 right-3.5 w-9 h-9 rounded-full bg-white/90 text-slate-800 hover:bg-white flex items-center justify-center transition cursor-pointer shadow-md backdrop-blur-md active:scale-95"
                 title="Close"
               >
-                <X className="w-4 h-4 stroke-[2.5]" />
+                <X className="w-5 h-5 stroke-[2.5]" />
               </button>
             </div>
 
-            {/* Modal Body - Compact layout fits on screen without scrolling */}
-            <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(96vh-60px)]">
+            {/* Modal Scrollable Body */}
+            <div className="p-4 space-y-3.5 overflow-y-auto max-h-[calc(96vh-200px)]">
               
-              {/* Item Info Card: Details on Left, Thumbnail on Right */}
-              <div className="flex items-start justify-between gap-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <h2 className="text-base sm:text-lg font-black text-slate-900 leading-snug break-words">
-                    {selectedMenuItemForModal.name || 'Delicious Dish'}
-                  </h2>
-                  
-                  {/* Description directly under Item Name */}
-                  {isValidDescription(selectedMenuItemForModal.description) ? (
-                    <p className="text-xs text-slate-600 leading-relaxed font-normal break-words line-clamp-3">
-                      {selectedMenuItemForModal.description}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic leading-relaxed font-normal">
-                      Freshly prepared with authentic recipes and ingredients.
-                    </p>
-                  )}
+              {/* Item Info Card: Name, Description, Price */}
+              <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1.5">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 leading-snug break-words">
+                  {selectedMenuItemForModal.name || 'Delicious Dish'}
+                </h2>
+                
+                {/* Description directly under Item Name */}
+                {isValidDescription(selectedMenuItemForModal.description) ? (
+                  <p className="text-xs text-slate-600 leading-relaxed font-normal break-words">
+                    {selectedMenuItemForModal.description}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 italic leading-relaxed font-normal">
+                    Freshly prepared with authentic recipes and ingredients.
+                  </p>
+                )}
 
-                  {/* Price & Rating */}
-                  <div className="pt-1 flex items-center space-x-2">
-                    <span className="text-sm font-black text-[#d70f64] font-mono">
-                      Tk {calculatedModalUnitPrice > 0 ? calculatedModalUnitPrice : selectedMenuItemForModal.price}
+                {/* Price & Rating */}
+                <div className="pt-1 flex items-center space-x-2">
+                  <span className="text-base font-black text-[#d70f64] font-mono">
+                    Tk {calculatedModalUnitPrice > 0 ? calculatedModalUnitPrice : selectedMenuItemForModal.price}
+                  </span>
+                  {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > (calculatedModalUnitPrice || selectedMenuItemForModal.price)) && (
+                    <span className="text-xs text-slate-400 line-through font-semibold font-mono">
+                      Tk {selectedMenuItemForModal.original_price}
                     </span>
-                    {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > (calculatedModalUnitPrice || selectedMenuItemForModal.price)) && (
-                      <span className="text-[11px] text-slate-400 line-through font-semibold font-mono">
-                        Tk {selectedMenuItemForModal.original_price}
-                      </span>
-                    )}
-                    <span className="text-slate-300">•</span>
-                    <span className="text-[11px] font-bold text-slate-700">👍 95%</span>
-                  </div>
-                </div>
-
-                {/* Right side Compact Image */}
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden shrink-0 border border-slate-200 bg-white shadow-2xs">
-                  <img
-                    src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400'}
-                    alt={selectedMenuItemForModal.name}
-                    className="w-full h-full object-cover"
-                  />
+                  )}
+                  <span className="text-slate-300">•</span>
+                  <span className="text-xs font-bold text-slate-700">👍 95%</span>
                 </div>
               </div>
 
