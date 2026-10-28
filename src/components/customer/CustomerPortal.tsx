@@ -1673,9 +1673,17 @@ export const CustomerPortal: React.FC = () => {
                               <span>Price Match</span>
                             </p>
 
-                            <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
-                              <Bike className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Standard Delivery</span>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
+                                <Bike className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Standard Delivery</span>
+                              </div>
+                              {v.discount_title && (
+                                <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
+                                  <Tag className="w-3 h-3" />
+                                  <span>{v.discount_title}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1771,9 +1779,17 @@ export const CustomerPortal: React.FC = () => {
                               <span>Price Match</span>
                             </p>
 
-                            <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
-                              <Bike className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Standard Delivery</span>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-600">
+                                <Bike className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Standard Delivery</span>
+                              </div>
+                              {v.discount_title && (
+                                <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
+                                  <Tag className="w-3 h-3" />
+                                  <span>{v.discount_title}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2766,13 +2782,22 @@ export const CustomerPortal: React.FC = () => {
                       From {vendor.estimated_prep_time_minutes} min &bull; ৳ &bull; {vendor.cuisine} &bull; Price Match
                     </p>
 
-                    <div className="flex items-center space-x-2 text-xs">
-                      {isFreeDelivery ? (
-                        <span className="text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                          <Bike className="w-3.5 h-3.5 text-emerald-600" /> Free Delivery ({distanceKm} km)
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 font-medium">Delivery: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center space-x-2 text-xs">
+                        {isFreeDelivery ? (
+                          <span className="text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                            <Bike className="w-3.5 h-3.5 text-emerald-600" /> Free Delivery ({distanceKm} km)
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 font-medium">Delivery: {settings.currency_symbol}{fee} ({distanceKm} km)</span>
+                        )}
+                      </div>
+
+                      {vendor.discount_title && (
+                        <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
+                          <Tag className="w-3 h-3" />
+                          <span>{vendor.discount_title}</span>
+                        </div>
                       )}
                     </div>
 
@@ -2881,16 +2906,25 @@ export const CustomerPortal: React.FC = () => {
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
                 {selectedVendorForMenu.name}
               </h3>
-              <div 
-                onClick={() => setIsRestaurantReviewsOpen(true)}
-                className="inline-flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600 cursor-pointer hover:opacity-85 transition group active:scale-95 py-0.5 px-2 rounded-full hover:bg-slate-50 select-none mt-1"
-                title="View Ratings & Reviews"
-              >
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span className="text-slate-900 font-black">
-                  {selectedVendorForMenu.rating ? selectedVendorForMenu.rating.toFixed(1) : '5.0'}
-                </span>
-                <span className="text-slate-500 font-semibold">(500+ ratings)</span>
+              <div className="flex flex-col items-center gap-2 mt-1">
+                <div 
+                  onClick={() => setIsRestaurantReviewsOpen(true)}
+                  className="inline-flex items-center justify-center space-x-1.5 text-xs font-bold text-slate-600 cursor-pointer hover:opacity-85 transition group active:scale-95 py-0.5 px-2 rounded-full hover:bg-slate-50 select-none"
+                  title="View Ratings & Reviews"
+                >
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-slate-900 font-black">
+                    {selectedVendorForMenu.rating ? selectedVendorForMenu.rating.toFixed(1) : '5.0'}
+                  </span>
+                  <span className="text-slate-500 font-semibold">(500+ ratings)</span>
+                </div>
+
+                {selectedVendorForMenu.discount_title && (
+                  <div className="flex items-center gap-1.5 bg-rose-50 text-rose-600 px-3 py-1 rounded-full border border-rose-200 text-xs font-black shadow-sm">
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>{selectedVendorForMenu.discount_title}</span>
+                  </div>
+                )}
               </div>
             </div>
 
