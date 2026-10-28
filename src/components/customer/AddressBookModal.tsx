@@ -355,7 +355,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     if (editingAddressId) {
       updateAddress(editingAddressId, {
         address_line: addressLine.trim(),
-        details: noteToRider.trim() || cityField,
+        details: noteToRider.trim(),
         label,
         latitude: pinnedLat,
         longitude: pinnedLng,
@@ -367,7 +367,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
         customer_phone: customerPhone.trim() || currentUser?.phone || 'guest',
         label,
         address_line: addressLine.trim(),
-        details: noteToRider.trim() || cityField,
+        details: noteToRider.trim(),
         latitude: pinnedLat,
         longitude: pinnedLng,
         zone: zoneName,
@@ -791,30 +791,6 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                   placeholder="e.g. 305 Chasma Hill R/A Rd or Sah amanot haowsing M. A."
                   className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
                 />
-              </div>
-
-              {/* City / Area Selection */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Select Area / City (এলাকা নির্বাচন করুন) <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={cityField}
-                  onChange={(e) => {
-                    const chosen = e.target.value;
-                    setCityField(chosen);
-                    setSelectedArea(chosen);
-                  }}
-                  className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-slate-50 cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>-- Select Area / City --</option>
-                  {cityAreas.map((area) => (
-                    <option key={area.id} value={area.name}>
-                      {area.name} ({area.division_name}) {area.bn_name ? `- ${area.bn_name}` : ''}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Note to Rider */}
