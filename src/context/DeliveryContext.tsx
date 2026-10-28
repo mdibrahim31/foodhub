@@ -1072,32 +1072,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('vendors')
             .select('*');
           if (!vError && vData && isSubscribed) {
-            setVendors(prev => {
-              const map = new Map<string, Vendor>();
-              (vData as Vendor[]).forEach(v => {
-                const cleaned = { ...v };
-                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
-                  delete cleaned.discount_title;
-                  delete cleaned.discount_percentage;
-                }
-                map.set(v.id, cleaned);
-              });
-              prev.forEach(v => {
-                if (!map.has(v.id)) {
-                  const cleaned = { ...v };
-                  if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
-                    delete cleaned.discount_title;
-                    delete cleaned.discount_percentage;
-                  }
-                  map.set(v.id, cleaned);
-                }
-              });
-              const list = Array.from(map.values());
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(list));
-              } catch {}
-              return list;
+            const cleanedList = (vData as Vendor[]).map(v => {
+              const cleaned = { ...v };
+              if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                delete cleaned.discount_title;
+                delete cleaned.discount_percentage;
+              }
+              return cleaned;
             });
+            setVendors(cleanedList);
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
+            } catch {}
           }
 
           const { data: rData, error: rError } = await supabase
@@ -1198,32 +1184,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (vRes.ok) {
           const vData = await vRes.json();
           if (Array.isArray(vData) && isSubscribed) {
-            setVendors(prev => {
-              if (vData.length === 0 && prev.length > 0) {
-                return prev;
+            const cleanedList = (vData as Vendor[]).map(v => {
+              const cleaned = { ...v };
+              if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                delete cleaned.discount_title;
+                delete cleaned.discount_percentage;
               }
-              const map = new Map<string, Vendor>();
-              prev.forEach(v => map.set(v.id, v));
-              vData.forEach((v: Vendor) => {
-                const cleaned = { ...v };
-                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
-                  delete cleaned.discount_title;
-                  delete cleaned.discount_percentage;
-                }
-                const existing = map.get(v.id);
-                const merged = existing ? { ...existing, ...cleaned } : cleaned;
-                if (!cleaned.discount_title) {
-                  delete merged.discount_title;
-                  delete merged.discount_percentage;
-                }
-                map.set(v.id, merged);
-              });
-              const list = Array.from(map.values());
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(list));
-              } catch {}
-              return list;
+              return cleaned;
             });
+            setVendors(cleanedList);
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
+            } catch {}
           }
         }
       } catch {}
