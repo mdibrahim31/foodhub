@@ -298,10 +298,10 @@ export const CustomerPortal: React.FC = () => {
 
     if (hasVariations) {
       const firstGroup = effectiveVars[0];
-      const groupKey = firstGroup.id || firstGroup.name;
       const selectedVarOpt = firstGroup.options.find(opt => {
-        const optKey = `${groupKey}_${opt.name}`;
-        return Boolean(selectedModalVariations[optKey]);
+        return Object.values(selectedModalVariations).some(sel => 
+          sel.groupName === firstGroup.name && sel.optionName === opt.name
+        );
       });
 
       if (selectedVarOpt) {
@@ -310,9 +310,9 @@ export const CustomerPortal: React.FC = () => {
         baseOrVarPrice = Number(firstGroup.options[0].price) || 0;
       }
 
-      // Add extras / recommendations (multi-choice add-ons)
-      Object.entries(selectedModalVariations).forEach(([key, opt]) => {
-        if (!key.startsWith(`${groupKey}_`)) {
+      // Add extras / recommendations (multi-choice add-ons where groupName !== firstGroup.name)
+      Object.values(selectedModalVariations).forEach(opt => {
+        if (opt.groupName !== firstGroup.name) {
           extrasPrice += Number(opt.price) || 0;
         }
       });
@@ -3622,7 +3622,7 @@ export const CustomerPortal: React.FC = () => {
                 {/* Price & Rating */}
                 <div className="pt-1 flex items-center space-x-2">
                   <span className="text-base font-black text-[#d70f64] font-mono">
-                    Tk {selectedMenuItemForModal.price}
+                    Tk {calculatedModalUnitPrice}
                   </span>
                   {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > selectedMenuItemForModal.price) && (
                     <span className="text-xs text-slate-400 line-through font-semibold font-mono">
@@ -3667,7 +3667,9 @@ export const CustomerPortal: React.FC = () => {
                           <div className="space-y-2">
                             {group.options.map((opt) => {
                               const optKey = `${groupKey}_${opt.name}`;
-                              const isSelected = Boolean(selectedModalVariations[optKey]);
+                              const isSelected = Object.values(selectedModalVariations).some(sel => 
+                                sel.groupName === group.name && sel.optionName === opt.name
+                              );
                               const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
 
                               return (
@@ -3677,9 +3679,11 @@ export const CustomerPortal: React.FC = () => {
                                     setSelectedModalVariations(prev => {
                                       const next = { ...prev };
                                       if (isPortionOrSize) {
-                                        // Single choice behavior for portion/size: clear other options in this group and set this one
-                                        group.options.forEach(o => {
-                                          delete next[`${groupKey}_${o.name}`];
+                                        // Single choice behavior for variation/size: clear all options in this group and set this one
+                                        Object.keys(next).forEach(k => {
+                                          if (next[k].groupName === group.name) {
+                                            delete next[k];
+                                          }
                                         });
                                         if (!isSelected) {
                                           next[optKey] = {
@@ -3689,9 +3693,12 @@ export const CustomerPortal: React.FC = () => {
                                           };
                                         }
                                       } else {
-                                        // Multiple choice toggle behavior for add-ons / frequently bought together
-                                        if (isSelected) {
-                                          delete next[optKey];
+                                        // Multiple choice toggle behavior for add-ons
+                                        const existingKey = Object.keys(next).find(k => 
+                                          next[k].groupName === group.name && next[k].optionName === opt.name
+                                        );
+                                        if (existingKey) {
+                                          delete next[existingKey];
                                         } else {
                                           next[optKey] = {
                                             groupName: group.name,
