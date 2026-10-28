@@ -1678,7 +1678,7 @@ export const CustomerPortal: React.FC = () => {
                                 <Bike className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Standard Delivery</span>
                               </div>
-                              {v.discount_title && (
+                              {v.discount_title && typeof v.discount_title === 'string' && v.discount_title.trim() && v.discount_title !== 'null' && v.discount_title !== 'undefined' && (
                                 <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
                                   <Tag className="w-3 h-3" />
                                   <span>{v.discount_title}</span>
@@ -1784,7 +1784,7 @@ export const CustomerPortal: React.FC = () => {
                                 <Bike className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Standard Delivery</span>
                               </div>
-                              {v.discount_title && (
+                              {v.discount_title && typeof v.discount_title === 'string' && v.discount_title.trim() && v.discount_title !== 'null' && v.discount_title !== 'undefined' && (
                                 <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
                                   <Tag className="w-3 h-3" />
                                   <span>{v.discount_title}</span>
@@ -2793,7 +2793,7 @@ export const CustomerPortal: React.FC = () => {
                         )}
                       </div>
 
-                      {vendor.discount_title && (
+                      {vendor.discount_title && typeof vendor.discount_title === 'string' && vendor.discount_title.trim() && vendor.discount_title !== 'null' && vendor.discount_title !== 'undefined' && (
                         <div className="flex items-center gap-1 bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 text-[10px] font-black w-fit">
                           <Tag className="w-3 h-3" />
                           <span>{vendor.discount_title}</span>
@@ -2919,7 +2919,7 @@ export const CustomerPortal: React.FC = () => {
                   <span className="text-slate-500 font-semibold">(500+ ratings)</span>
                 </div>
 
-                {selectedVendorForMenu.discount_title && (
+                {selectedVendorForMenu.discount_title && typeof selectedVendorForMenu.discount_title === 'string' && selectedVendorForMenu.discount_title.trim() && selectedVendorForMenu.discount_title !== 'null' && selectedVendorForMenu.discount_title !== 'undefined' && (
                   <div className="flex items-center gap-1.5 bg-rose-50 text-rose-600 px-3 py-1 rounded-full border border-rose-200 text-xs font-black shadow-sm">
                     <Tag className="w-3.5 h-3.5" />
                     <span>{selectedVendorForMenu.discount_title}</span>

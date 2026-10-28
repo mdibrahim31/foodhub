@@ -501,7 +501,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
     const parsed = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, []);
-    return Array.isArray(parsed) ? parsed : [];
+    const rawList = Array.isArray(parsed) ? parsed : [];
+    return rawList.map(v => {
+      const copy = { ...v };
+      if (!copy.discount_title || copy.discount_title === 'null' || copy.discount_title === 'undefined' || !String(copy.discount_title).trim()) {
+        delete copy.discount_title;
+        delete copy.discount_percentage;
+      }
+      return copy;
+    });
   });
 
   const [currentVendor, setCurrentVendorState] = useState<Vendor | null>(() => {
@@ -1066,9 +1074,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!vError && vData && isSubscribed) {
             setVendors(prev => {
               const map = new Map<string, Vendor>();
-              (vData as Vendor[]).forEach(v => map.set(v.id, v));
+              (vData as Vendor[]).forEach(v => {
+                const cleaned = { ...v };
+                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                  delete cleaned.discount_title;
+                  delete cleaned.discount_percentage;
+                }
+                map.set(v.id, cleaned);
+              });
               prev.forEach(v => {
-                if (!map.has(v.id)) map.set(v.id, v);
+                if (!map.has(v.id)) {
+                  const cleaned = { ...v };
+                  if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                    delete cleaned.discount_title;
+                    delete cleaned.discount_percentage;
+                  }
+                  map.set(v.id, cleaned);
+                }
               });
               const list = Array.from(map.values());
               try {
@@ -1183,8 +1205,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               const map = new Map<string, Vendor>();
               prev.forEach(v => map.set(v.id, v));
               vData.forEach((v: Vendor) => {
+                const cleaned = { ...v };
+                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                  delete cleaned.discount_title;
+                  delete cleaned.discount_percentage;
+                }
                 const existing = map.get(v.id);
-                map.set(v.id, existing ? { ...existing, ...v } : v);
+                const merged = existing ? { ...existing, ...cleaned } : cleaned;
+                if (!cleaned.discount_title) {
+                  delete merged.discount_title;
+                  delete merged.discount_percentage;
+                }
+                map.set(v.id, merged);
               });
               const list = Array.from(map.values());
               try {
@@ -1381,7 +1413,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .on('postgres_changes', { event: '*', schema: 'public', table: 'vendors' }, (payload: any) => {
             if (!isSubscribed) return;
             if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
-              const vNew = payload.new as Vendor;
+              const vNew = { ...payload.new } as Vendor;
+              if (!vNew.discount_title || vNew.discount_title === 'null' || !String(vNew.discount_title).trim()) {
+                delete vNew.discount_title;
+                delete vNew.discount_percentage;
+              }
               setVendors(prev => {
                 const map = new Map<string, Vendor>();
                 map.set(vNew.id, vNew);
@@ -3740,17 +3776,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       sanitizedUpdates.is_free_delivery = false;
     }
 
-    setVendors(prev => prev.map(v => {
-      if (v.id === id) {
-        const merged = { ...v, ...updates };
-        if (sanitizedUpdates.discount_percentage === null) delete merged.discount_percentage;
-        if (sanitizedUpdates.discount_title === null) delete merged.discount_title;
-        if (sanitizedUpdates.delivery_fee === null) delete merged.delivery_fee;
-        if (sanitizedUpdates.is_free_delivery === false) merged.is_free_delivery = false;
-        return merged;
-      }
-      return v;
-    }));
+    setVendors(prev => {
+      const updated = prev.map(v => {
+        if (v.id === id) {
+          const merged = { ...v, ...updates };
+          if (sanitizedUpdates.discount_percentage === null) delete merged.discount_percentage;
+          if (sanitizedUpdates.discount_title === null) delete merged.discount_title;
+          if (sanitizedUpdates.delivery_fee === null) delete merged.delivery_fee;
+          if (sanitizedUpdates.is_free_delivery === false) merged.is_free_delivery = false;
+          return merged;
+        }
+        return v;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     if (currentVendor && currentVendor.id === id) {
       setCurrentVendor(prev => {
