@@ -2052,35 +2052,21 @@ export const VendorPortal: React.FC = () => {
                   </p>
                 ) : (
                   dishVariations.map((group, groupIdx) => (
-                    <div key={group.id || groupIdx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                      {/* Top Row: Choice Type Dropdown ABOVE Group Title + Delete Button */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <label className="text-[11px] font-black text-slate-700">Selection Mode (নির্বাচন টাইপ):</label>
+                    <div key={group.id || groupIdx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                      {/* Group Title Input + Delete Button */}
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700">Group Title (অপশন/গ্রুপ নাম):</label>
                           <button
                             type="button"
                             onClick={() => removeVariationGroup(groupIdx)}
-                            className="p-1 px-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition text-[11px] font-extrabold flex items-center gap-1 border border-rose-200 cursor-pointer"
+                            className="p-1 px-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition text-[10px] font-extrabold flex items-center gap-1 border border-rose-200 cursor-pointer shrink-0"
                             title="Delete Option Group"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3 h-3" />
                             <span>Delete Group</span>
                           </button>
                         </div>
-
-                        <select
-                          value={group.type}
-                          onChange={(e) => updateVariationGroup(groupIdx, { type: e.target.value as 'single' | 'multiple' })}
-                          className="w-full px-2.5 py-1.5 text-xs font-bold border border-slate-200 bg-white rounded-xl focus:outline-hidden cursor-pointer"
-                        >
-                          <option value="single">Single Choice (Radio) - যেমন: Portion / Size</option>
-                          <option value="multiple">Multiple Choice (Checkbox) - যেমন: Add-ons / Extras</option>
-                        </select>
-                      </div>
-
-                      {/* Group Title Input */}
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Group Title (গ্রুপ নাম):</label>
                         <input
                           type="text"
                           value={group.name}

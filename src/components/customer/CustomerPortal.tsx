@@ -268,63 +268,18 @@ export const CustomerPortal: React.FC = () => {
     setSelectedMenuItemForModal(dish);
     setModalQuantity(1);
     setModalSpecialInstructions('');
-
-    const initialVars: Record<string, import('../../context/DeliveryContext').CartItemOption> = {};
-    const groups = getItemEffectiveVariations(dish);
-    groups.forEach(g => {
-      if (g.options && g.options.length > 0) {
-        if (g.required || g.type === 'single') {
-          const defaultOpt = g.options.find(o => (Number(o.price) || 0) === 0) || g.options[0];
-          initialVars[g.id || g.name] = {
-            groupName: g.name,
-            optionName: defaultOpt.name,
-            price: Number(defaultOpt.price) || 0
-          };
-        }
-      }
-    });
-    setSelectedModalVariations(initialVars);
-  };
-
-  const isPortionGroup = (
-    group: import('../../types/database').MenuVariationGroup, 
-    allGroups: import('../../types/database').MenuVariationGroup[]
-  ): boolean => {
-    const gName = (group.name || '').toLowerCase();
-    if (
-      gName.includes('portion') || 
-      gName.includes('size') || 
-      gName.includes('সাইজ') || 
-      gName.includes('পরিমাণ')
-    ) {
-      return true;
-    }
-    const hasExplicitPortionGroup = allGroups.some(g => {
-      const n = (g.name || '').toLowerCase();
-      return n.includes('portion') || n.includes('size') || n.includes('সাইজ') || n.includes('পরিমাণ');
-    });
-    if (hasExplicitPortionGroup) {
-      return false;
-    }
-    return allGroups.length === 1 && group.type === 'single';
+    setSelectedModalVariations({});
   };
 
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
-    const effectiveVariations = getItemEffectiveVariations(selectedMenuItemForModal);
     
     // Main dish base price strictly from menu_items.price column
     const basePrice = Number(selectedMenuItemForModal.price) || 0;
-    let extraPriceTotal = 0;
-
-    effectiveVariations.forEach(group => {
-      const groupKey = group.id || group.name;
-      const selectedVal = selectedModalVariations[groupKey];
-
-      if (selectedVal && selectedVal.price !== undefined && selectedVal.price !== null) {
-        extraPriceTotal += Number(selectedVal.price || 0);
-      }
-    });
+    
+    const extraPriceTotal = Object.values(selectedModalVariations).reduce((sum, opt) => {
+      return sum + (Number(opt.price) || 0);
+    }, 0);
 
     return basePrice + extraPriceTotal;
   }, [selectedMenuItemForModal, selectedModalVariations]);
@@ -1044,7 +999,10 @@ export const CustomerPortal: React.FC = () => {
     ? (cartVendor.is_free_delivery ? 0 : calculateDeliveryFee(cartDistanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge))
     : 0;
   const totalCashPayable = foodTotal + deliveryFee;
-  const totalCartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const totalCartCount = cart.reduce((sum, i) => {
+    const optionCount = (i.selectedVariations && Array.isArray(i.selectedVariations)) ? i.selectedVariations.length : 0;
+    return sum + (i.quantity * (1 + optionCount));
+  }, 0);
 
   const handleCheckout = async () => {
     if (!currentUser || currentUser.role !== 'customer') {
@@ -2993,13 +2951,8 @@ export const CustomerPortal: React.FC = () => {
                     .slice(0, 6)
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                      const itemVars = getItemEffectiveVariations(dish);
-                      const portionGroup = itemVars.find(g => isPortionGroup(g, itemVars));
-                      const hasPortions = Boolean(portionGroup && portionGroup.options.length > 0);
-                      const startingPrice = hasPortions && portionGroup
-                        ? Math.min(...portionGroup.options.map(o => (Number(o.price) > 0 ? Number(o.price) : Number(dish.price))))
-                        : Number(dish.price);
-                      const hasDiscount = Boolean(dish.original_price && dish.original_price > (hasPortions ? startingPrice : dish.price));
+                      const startingPrice = Number(dish.price) || 0;
+                      const hasDiscount = Boolean(dish.original_price && dish.original_price > startingPrice);
 
                       return (
                         <div 
@@ -3040,7 +2993,7 @@ export const CustomerPortal: React.FC = () => {
                             )}
                             <div className="flex items-center space-x-1.5">
                               <span className="text-xs font-black text-[#d70f64]">
-                                {settings.currency_symbol} {hasPortions ? startingPrice : dish.price}
+                                {settings.currency_symbol} {dish.price}
                               </span>
                               {hasDiscount && (
                                 <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
@@ -3048,7 +3001,7 @@ export const CustomerPortal: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
                               <span>👍 92%</span>
-                              {itemVars.length > 0 && (
+                              {Boolean(dish.variations && dish.variations.length > 0) && (
                                 <span className="text-[10px] text-pink-600 font-bold bg-pink-50 px-1 rounded">Options</span>
                               )}
                             </div>
@@ -3077,13 +3030,8 @@ export const CustomerPortal: React.FC = () => {
                       })
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                        const itemVars = getItemEffectiveVariations(dish);
-                        const portionGroup = itemVars.find(g => isPortionGroup(g, itemVars));
-                        const hasPortions = Boolean(portionGroup && portionGroup.options.length > 0);
-                        const startingPrice = hasPortions && portionGroup
-                          ? Math.min(...portionGroup.options.map(o => Number(o.price) || 0))
-                          : Number(dish.price);
-                        const hasDiscount = Boolean(dish.original_price && dish.original_price > (hasPortions ? startingPrice : dish.price));
+                        const startingPrice = Number(dish.price) || 0;
+                        const hasDiscount = Boolean(dish.original_price && dish.original_price > startingPrice);
 
                         return (
                           <div 
@@ -3124,7 +3072,7 @@ export const CustomerPortal: React.FC = () => {
                               )}
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-black text-[#d70f64]">
-                                  {settings.currency_symbol} {hasPortions ? startingPrice : dish.price}
+                                  {settings.currency_symbol} {dish.price}
                                 </span>
                                 {hasDiscount && (
                                   <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
@@ -3132,7 +3080,7 @@ export const CustomerPortal: React.FC = () => {
                               </div>
                               <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
                                 <span>👍 95%</span>
-                                {itemVars.length > 0 && (
+                                {Boolean(dish.variations && dish.variations.length > 0) && (
                                   <span className="text-[10px] text-pink-600 font-bold bg-pink-50 px-1 rounded">Options</span>
                                 )}
                               </div>
@@ -3653,8 +3601,6 @@ export const CustomerPortal: React.FC = () => {
                   <div className="space-y-2">
                     {effectiveVariations.map((group) => {
                       const groupKey = group.id || group.name;
-                      const selectedVal = selectedModalVariations[groupKey];
-                      const isPortion = isPortionGroup(group, effectiveVariations);
 
                       return (
                         <div key={groupKey} className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 space-y-1.5">
@@ -3662,14 +3608,15 @@ export const CustomerPortal: React.FC = () => {
                             <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wide">
                               {group.name}
                             </h3>
-                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                              Required
+                            <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                              Select Any (পছন্দ করুন)
                             </span>
                           </div>
 
                           <div className="grid grid-cols-1 gap-1.5">
                             {group.options.map((opt) => {
-                              const isSelected = selectedVal?.optionName === opt.name;
+                              const optKey = `${groupKey}_${opt.name}`;
+                              const isSelected = Boolean(selectedModalVariations[optKey]);
                               const optionPriceNum = opt.price !== undefined ? Number(opt.price) : 0;
 
                               return (
@@ -3677,32 +3624,30 @@ export const CustomerPortal: React.FC = () => {
                                   key={opt.id || opt.name}
                                   onClick={() => {
                                     setSelectedModalVariations(prev => {
-                                      if (isSelected && group.type === 'multiple') {
-                                        const next = { ...prev };
-                                        delete next[groupKey];
-                                        return next;
-                                      }
-                                      return {
-                                        ...prev,
-                                        [groupKey]: {
+                                      const next = { ...prev };
+                                      if (isSelected) {
+                                        delete next[optKey]; // Unchoose / Deselect
+                                      } else {
+                                        next[optKey] = {
                                           groupName: group.name,
                                           optionName: opt.name,
                                           price: optionPriceNum
-                                        }
-                                      };
+                                        }; // Choose / Select
+                                      }
+                                      return next;
                                     });
                                   }}
-                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition select-none ${
                                     isSelected 
                                       ? 'border-[#d70f64] bg-pink-50/50 font-bold text-slate-900 shadow-2xs' 
                                       : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                                      isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300'
+                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition ${
+                                      isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300 bg-white'
                                     }`}>
-                                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                      {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
                                     </div>
                                     <span className="font-semibold">{opt.name}</span>
                                   </div>
