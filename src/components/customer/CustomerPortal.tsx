@@ -951,19 +951,23 @@ export const CustomerPortal: React.FC = () => {
       const targetZoneId = (activeCustomerZone.id || '').trim().toLowerCase();
       const vZone = (v.zone || '').trim().toLowerCase();
 
-      const matchesZone = Boolean(
-        vZone === targetZoneName ||
-        vZone === targetZoneId ||
-        (targetZoneBn && vZone === targetZoneBn) ||
-        (vZone && targetZoneName && (
-          vZone.includes(targetZoneName.replace(' zone', '')) || 
-          targetZoneName.includes(vZone.replace(' zone', ''))
-        ))
-      );
+      // If vendor has an assigned zone, check if it matches the customer's zone
+      if (vZone) {
+        const matchesZone = Boolean(
+          vZone === targetZoneName ||
+          vZone === targetZoneId ||
+          (targetZoneBn && vZone === targetZoneBn) ||
+          (targetZoneName && (
+            vZone.includes(targetZoneName.replace(' zone', '')) || 
+            targetZoneName.includes(vZone.replace(' zone', ''))
+          ))
+        );
 
-      if (!matchesZone) {
-        return false;
+        if (!matchesZone) {
+          return false;
+        }
       }
+      // If vendor doesn't have a zone set in database, allow it through so it isn't hidden
     }
 
     const matchesSearch = !searchQuery.trim() || 
@@ -1032,6 +1036,11 @@ export const CustomerPortal: React.FC = () => {
     }
     return 0;
   });
+
+  // Fallback: If zone/category filter produces 0 items but vendors exist in database, display all active vendors
+  const displayVendors = (filteredVendors.length === 0 && vendors.length > 0 && !searchQuery.trim())
+    ? vendors.filter(v => v.is_active !== false && !v.is_paused)
+    : filteredVendors;
 
   // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => sum + (item.unitPrice ?? item.menuItem.price) * item.quantity, 0);
@@ -2690,7 +2699,7 @@ export const CustomerPortal: React.FC = () => {
             {activeBottomNav === 'food' ? 'Explore restaurants nearby' : 'Explore shops nearby'}
           </h2>
 
-          {filteredVendors.length === 0 ? (
+          {displayVendors.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center border border-slate-200/90 shadow-xs space-y-3.5 my-2">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center mx-auto border border-orange-100 shadow-inner">
                 <MapPin className="w-7 h-7" />
@@ -2713,7 +2722,7 @@ export const CustomerPortal: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredVendors.map((vendor) => {
+              {displayVendors.map((vendor) => {
                 const { lat: vLat, lng: vLng } = getVendorCoords(vendor);
                 const distanceKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
                 const isFreeDelivery = Boolean(vendor.is_free_delivery);
