@@ -3592,28 +3592,37 @@ export const CustomerPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Variations & Portions directly from database */}
+              {/* Variations & Portions / Add-ons matching Foodpanda Style */}
               {(() => {
                 const effectiveVariations = getItemEffectiveVariations(selectedMenuItemForModal);
                 if (effectiveVariations.length === 0) return null;
 
                 return (
-                  <div className="space-y-2">
-                    {effectiveVariations.map((group) => {
+                  <div className="space-y-4">
+                    {effectiveVariations.map((group, groupIdx) => {
                       const groupKey = group.id || group.name;
+                      const gNameLower = group.name.toLowerCase();
+                      const isPortionOrSize = gNameLower.includes('portion') || gNameLower.includes('size') || gNameLower.includes('variation') || gNameLower.includes('half') || gNameLower.includes('full');
 
                       return (
-                        <div key={groupKey} className="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wide">
-                              {group.name}
-                            </h3>
-                            <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                              Select Any (পছন্দ করুন)
+                        <div key={groupKey} className="space-y-2.5">
+                          {/* Group Header */}
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div>
+                              <h3 className="font-black text-sm text-slate-900 tracking-tight">
+                                {group.name}
+                              </h3>
+                              <p className="text-[11px] text-slate-500 font-medium">
+                                {isPortionOrSize ? 'Select one' : 'Other customers also ordered these'}
+                              </p>
+                            </div>
+                            <span className="bg-slate-100 text-slate-800 text-[10px] font-black uppercase px-2.5 py-1 rounded-full tracking-wider">
+                              {isPortionOrSize ? 'Required' : 'Optional'}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-1 gap-1.5">
+                          {/* Options List */}
+                          <div className="space-y-2">
                             {group.options.map((opt) => {
                               const optKey = `${groupKey}_${opt.name}`;
                               const isSelected = Boolean(selectedModalVariations[optKey]);
@@ -3625,35 +3634,70 @@ export const CustomerPortal: React.FC = () => {
                                   onClick={() => {
                                     setSelectedModalVariations(prev => {
                                       const next = { ...prev };
-                                      if (isSelected) {
-                                        delete next[optKey]; // Unchoose / Deselect
+                                      if (isPortionOrSize) {
+                                        // Single choice behavior for portion/size: clear other options in this group and set this one
+                                        group.options.forEach(o => {
+                                          delete next[`${groupKey}_${o.name}`];
+                                        });
+                                        if (!isSelected) {
+                                          next[optKey] = {
+                                            groupName: group.name,
+                                            optionName: opt.name,
+                                            price: optionPriceNum
+                                          };
+                                        }
                                       } else {
-                                        next[optKey] = {
-                                          groupName: group.name,
-                                          optionName: opt.name,
-                                          price: optionPriceNum
-                                        }; // Choose / Select
+                                        // Multiple choice toggle behavior for add-ons / frequently bought together
+                                        if (isSelected) {
+                                          delete next[optKey];
+                                        } else {
+                                          next[optKey] = {
+                                            groupName: group.name,
+                                            optionName: opt.name,
+                                            price: optionPriceNum
+                                          };
+                                        }
                                       }
                                       return next;
                                     });
                                   }}
-                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition select-none ${
-                                    isSelected 
-                                      ? 'border-[#d70f64] bg-pink-50/50 font-bold text-slate-900 shadow-2xs' 
-                                      : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
-                                  }`}
+                                  className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 border border-slate-100 transition cursor-pointer select-none"
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition ${
+                                  <div className="flex items-center gap-3">
+                                    {/* Optional Item Thumbnail for Add-ons */}
+                                    {!isPortionOrSize && (
+                                      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100">
+                                        <img
+                                          src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}
+                                          alt={opt.name}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <h4 className="font-extrabold text-xs text-slate-900">{opt.name}</h4>
+                                      <div className="flex items-center space-x-1.5 font-mono text-xs mt-0.5">
+                                        <span className="font-black text-[#d70f64]">
+                                          {isPortionOrSize ? `Tk ${optionPriceNum}` : `+ Tk ${optionPriceNum}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Radio / Checkbox Indicator */}
+                                  {isPortionOrSize ? (
+                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+                                      isSelected ? 'border-[#d70f64]' : 'border-slate-300'
+                                    }`}>
+                                      {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#d70f64]" />}
+                                    </div>
+                                  ) : (
+                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
                                       isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300 bg-white'
                                     }`}>
-                                      {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                                      {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                                     </div>
-                                    <span className="font-semibold">{opt.name}</span>
-                                  </div>
-                                  <span className="font-mono font-black text-[#d70f64]">
-                                    {optionPriceNum > 0 ? `+Tk ${optionPriceNum}` : 'Free'}
-                                  </span>
+                                  )}
                                 </div>
                               );
                             })}
