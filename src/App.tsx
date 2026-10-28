@@ -25,6 +25,7 @@ function CustomerSiteLayout() {
   const [dbUrl, setDbUrl] = useState(supabaseConfig.url || '');
   const [dbKey, setDbKey] = useState(supabaseConfig.anonKey || '');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const handleOpenDb = () => setIsDbModalOpen(true);
@@ -35,13 +36,14 @@ function CustomerSiteLayout() {
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault();
     setIsConnecting(true);
+    setFeedbackMessage(null);
     const res = await connectSupabase(dbUrl, dbKey);
     setIsConnecting(false);
     if (res.success) {
-      alert('✅ Connected to Supabase!');
-      setIsDbModalOpen(false);
+      setFeedbackMessage({ type: 'success', text: 'Connected to Supabase successfully!' });
+      setTimeout(() => setIsDbModalOpen(false), 1500);
     } else {
-      alert('❌ ' + res.message);
+      setFeedbackMessage({ type: 'error', text: res.message || 'Connection failed' });
     }
   }
 
@@ -140,6 +142,16 @@ function CustomerSiteLayout() {
                           This will allow persistent data storage for Vendors, Riders, and Orders.
                         </p>
                       </div>
+
+                      {feedbackMessage && (
+                        <div className={`p-3 rounded-2xl text-xs font-bold ${
+                          feedbackMessage.type === 'success' 
+                            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+                            : 'bg-rose-50 border border-rose-200 text-rose-800'
+                        }`}>
+                          {feedbackMessage.text}
+                        </div>
+                      )}
 
                       <button
                         type="submit"
