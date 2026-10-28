@@ -2052,79 +2052,103 @@ export const VendorPortal: React.FC = () => {
                   </p>
                 ) : (
                   dishVariations.map((group, groupIdx) => (
-                    <div key={group.id || groupIdx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
+                    <div key={group.id || groupIdx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                      {/* Top Row: Choice Type Dropdown ABOVE Group Title + Delete Button */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-[11px] font-black text-slate-700">Selection Mode (নির্বাচন টাইপ):</label>
+                          <button
+                            type="button"
+                            onClick={() => removeVariationGroup(groupIdx)}
+                            className="p-1 px-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition text-[11px] font-extrabold flex items-center gap-1 border border-rose-200 cursor-pointer"
+                            title="Delete Option Group"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Group</span>
+                          </button>
+                        </div>
+
+                        <select
+                          value={group.type}
+                          onChange={(e) => updateVariationGroup(groupIdx, { type: e.target.value as 'single' | 'multiple' })}
+                          className="w-full px-2.5 py-1.5 text-xs font-bold border border-slate-200 bg-white rounded-xl focus:outline-hidden cursor-pointer"
+                        >
+                          <option value="single">Single Choice (Radio) - যেমন: Portion / Size</option>
+                          <option value="multiple">Multiple Choice (Checkbox) - যেমন: Add-ons / Extras</option>
+                        </select>
+                      </div>
+
+                      {/* Group Title Input */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Group Title (গ্রুপ নাম):</label>
                         <input
                           type="text"
                           value={group.name}
                           onChange={(e) => updateVariationGroup(groupIdx, { name: e.target.value })}
-                          placeholder="Group name (e.g. Portion / Size, Extra Add-ons)"
-                          className="flex-1 px-2.5 py-1.5 text-xs font-extrabold border border-slate-200 bg-white rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                          placeholder="e.g. Portion / Size, Choice of Add-ons, Sauce"
+                          className="w-full px-2.5 py-1.5 text-xs font-extrabold border border-slate-200 bg-white rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
                         />
-                        <select
-                          value={group.type}
-                          onChange={(e) => updateVariationGroup(groupIdx, { type: e.target.value as 'single' | 'multiple' })}
-                          className="px-2 py-1.5 text-[11px] font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden cursor-pointer"
-                        >
-                          <option value="single">Single Choice (Radio)</option>
-                          <option value="multiple">Multiple Choice (Checkbox)</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => removeVariationGroup(groupIdx)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg transition cursor-pointer"
-                          title="Delete Option Group"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
                       </div>
 
-                      <div className="space-y-1.5 pl-1">
+                      {/* Options List */}
+                      <div className="space-y-2">
+                        <label className="block text-[11px] font-black text-slate-700">Items / Add-ons (পছন্দের আইটেম ও অতিরিক্ত দাম):</label>
                         {group.options.map((opt, optIdx) => (
-                          <div key={opt.id || optIdx} className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={opt.name}
-                              onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { name: e.target.value })}
-                              placeholder="Option name (e.g. Extra Rice, Extra Sauce)"
-                              className="flex-1 px-2.5 py-1 text-xs font-semibold border border-slate-200 bg-white rounded-lg focus:outline-hidden"
-                            />
-                            <div className="flex items-center gap-1 w-28">
-                              <span className="text-xs font-bold text-slate-500">৳</span>
-                              <input
-                                type="number"
-                                value={opt.price}
-                                onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: Number(e.target.value) || 0 })}
-                                placeholder="0"
-                                className="w-full px-2 py-1 text-xs font-mono font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden"
-                              />
+                          <div key={opt.id || optIdx} className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Item #{optIdx + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeOptionFromGroup(groupIdx, optIdx)}
+                                className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer flex items-center gap-1 text-[10px] font-bold"
+                                title="Remove option"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => removeOptionFromGroup(groupIdx, optIdx)}
-                              className="p-1 text-slate-400 hover:text-rose-500 rounded cursor-pointer"
-                              title="Remove option"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <div className="sm:col-span-2">
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Item Name (নাম)</label>
+                                <input
+                                  type="text"
+                                  value={opt.name}
+                                  onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { name: e.target.value })}
+                                  placeholder="e.g. Extra Rice, Half (1:1), Sauce"
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold border border-slate-200 bg-slate-50/50 rounded-lg focus:outline-hidden focus:bg-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Extra Price (অতিরিক্ত মূল্য)</label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-500">৳</span>
+                                  <input
+                                    type="number"
+                                    value={opt.price}
+                                    onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: Number(e.target.value) || 0 })}
+                                    placeholder="0"
+                                    className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-bold border border-slate-200 bg-slate-50/50 rounded-lg focus:outline-hidden focus:bg-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         ))}
 
                         <button
                           type="button"
                           onClick={() => addOptionToGroup(groupIdx)}
-                          className="text-[11px] font-extrabold text-orange-600 hover:underline flex items-center gap-1 pt-1 cursor-pointer"
+                          className="w-full py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-xs rounded-xl border border-orange-200 flex items-center justify-center gap-1 cursor-pointer transition mt-1"
                         >
-                          <Plus className="w-3 h-3" />
-                          <span>Add Item / Extra</span>
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add More Item / Extra (নতুন আইটেম যোগ করুন)</span>
                         </button>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-
-
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button
