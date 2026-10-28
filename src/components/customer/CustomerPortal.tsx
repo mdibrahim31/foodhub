@@ -249,8 +249,8 @@ export const CustomerPortal: React.FC = () => {
     // 2. Fallback: portion_options JSON column on MenuItem
     if (dish.portion_options && Array.isArray(dish.portion_options) && dish.portion_options.length > 0) {
       return [{
-        id: 'portion-group',
-        name: 'Portion / Size',
+        id: 'variation-group',
+        name: 'Variation',
         type: 'single',
         required: true,
         options: dish.portion_options.map(po => ({
@@ -268,20 +268,62 @@ export const CustomerPortal: React.FC = () => {
     setSelectedMenuItemForModal(dish);
     setModalQuantity(1);
     setModalSpecialInstructions('');
-    setSelectedModalVariations({});
+    
+    const effectiveVars = getItemEffectiveVariations(dish);
+    const initialSelected: Record<string, import('../../context/DeliveryContext').CartItemOption> = {};
+    
+    if (effectiveVars.length > 0) {
+      const firstGroup = effectiveVars[0];
+      if (firstGroup.options && firstGroup.options.length > 0) {
+        const firstOpt = firstGroup.options[0];
+        initialSelected[`${firstGroup.id || firstGroup.name}_${firstOpt.name}`] = {
+          groupName: firstGroup.name,
+          optionName: firstOpt.name,
+          price: Number(firstOpt.price) || 0
+        };
+      }
+    }
+    
+    setSelectedModalVariations(initialSelected);
   };
 
   const calculatedModalUnitPrice = useMemo(() => {
     if (!selectedMenuItemForModal) return 0;
     
-    // Main dish base price strictly from menu_items.price column
-    const basePrice = Number(selectedMenuItemForModal.price) || 0;
+    const effectiveVars = getItemEffectiveVariations(selectedMenuItemForModal);
+    const hasVariations = effectiveVars.length > 0;
     
-    const extraPriceTotal = Object.values(selectedModalVariations).reduce((sum, opt) => {
-      return sum + (Number(opt.price) || 0);
-    }, 0);
+    let baseOrVarPrice = Number(selectedMenuItemForModal.price) || 0;
+    let extrasPrice = 0;
 
-    return basePrice + extraPriceTotal;
+    if (hasVariations) {
+      const firstGroup = effectiveVars[0];
+      const groupKey = firstGroup.id || firstGroup.name;
+      const selectedVarOpt = firstGroup.options.find(opt => {
+        const optKey = `${groupKey}_${opt.name}`;
+        return Boolean(selectedModalVariations[optKey]);
+      });
+
+      if (selectedVarOpt) {
+        baseOrVarPrice = Number(selectedVarOpt.price) || 0;
+      } else if (firstGroup.options.length > 0) {
+        baseOrVarPrice = Number(firstGroup.options[0].price) || 0;
+      }
+
+      // Add extras / recommendations (multi-choice add-ons)
+      Object.entries(selectedModalVariations).forEach(([key, opt]) => {
+        if (!key.startsWith(`${groupKey}_`)) {
+          extrasPrice += Number(opt.price) || 0;
+        }
+      });
+    } else {
+      baseOrVarPrice = Number(selectedMenuItemForModal.price) || 0;
+      extrasPrice = Object.values(selectedModalVariations).reduce((sum, opt) => {
+        return sum + (Number(opt.price) || 0);
+      }, 0);
+    }
+
+    return baseOrVarPrice + extrasPrice;
   }, [selectedMenuItemForModal, selectedModalVariations]);
 
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
