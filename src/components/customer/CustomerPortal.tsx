@@ -3632,9 +3632,9 @@ export const CustomerPortal: React.FC = () => {
                 {/* Price & Rating */}
                 <div className="pt-1 flex items-center space-x-2">
                   <span className="text-base font-black text-[#d70f64] font-mono">
-                    Tk {calculatedModalUnitPrice > 0 ? calculatedModalUnitPrice : selectedMenuItemForModal.price}
+                    Tk {selectedMenuItemForModal.price}
                   </span>
-                  {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > (calculatedModalUnitPrice || selectedMenuItemForModal.price)) && (
+                  {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > selectedMenuItemForModal.price) && (
                     <span className="text-xs text-slate-400 line-through font-semibold font-mono">
                       Tk {selectedMenuItemForModal.original_price}
                     </span>
