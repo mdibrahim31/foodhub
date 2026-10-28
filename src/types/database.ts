@@ -188,6 +188,7 @@ export interface MenuItem {
   category: string;
   is_available: boolean;
   variations?: MenuVariationGroup[];
+  recommendation_category?: string;
 }
 
 export interface CustomerAddress {

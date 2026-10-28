@@ -258,16 +258,29 @@ export const VendorPortal: React.FC = () => {
   const [dishDescription, setDishDescription] = useState('');
   const [dishImageUrl, setDishImageUrl] = useState('');
   const [dishVariations, setDishVariations] = useState<import('../../types/database').MenuVariationGroup[]>([]);
+  const [recommendationCategory, setRecommendationCategory] = useState<string>('');
 
   const openAddDishModal = () => {
     setEditingDish(null);
     setDishName('');
     setDishPrice('');
     setDishOriginalPrice('');
-    setDishCategory('Burger');
+    setDishCategory(allCategoryNames[0] || 'Burger');
     setDishDescription('');
     setDishImageUrl('');
-    setDishVariations([]);
+    setDishVariations([
+      {
+        id: `var-${Date.now()}`,
+        name: 'Variation',
+        type: 'single' as const,
+        required: true,
+        options: [
+          { id: `opt-${Date.now()}-1`, name: 'Full', price: 0 },
+          { id: `opt-${Date.now()}-2`, name: 'Half', price: 0 }
+        ]
+      }
+    ]);
+    setRecommendationCategory('');
     setIsAddDishOpen(true);
   };
 
@@ -281,66 +294,51 @@ export const VendorPortal: React.FC = () => {
     setDishImageUrl(item.image_url || '');
     const initialVariations = (item.variations && item.variations.length > 0)
       ? item.variations
-      : [];
+      : [{
+          id: `var-${Date.now()}`,
+          name: 'Variation',
+          type: 'single' as const,
+          required: true,
+          options: [
+            { id: `opt-${Date.now()}-1`, name: 'Full', price: 0 },
+            { id: `opt-${Date.now()}-2`, name: 'Half', price: 0 }
+          ]
+        }];
     setDishVariations(initialVariations);
+    setRecommendationCategory(item.recommendation_category || '');
     setIsAddDishOpen(true);
   };
 
-  const addVariationGroup = () => {
-    setDishVariations(prev => [
-      ...prev,
-      {
-        id: `var-${Date.now()}`,
-        name: 'Portion / Size',
-        type: 'single',
-        required: true,
-        options: [
-          { id: `opt-${Date.now()}-1`, name: 'Full (1:2)', price: 0 },
-          { id: `opt-${Date.now()}-2`, name: 'Half (1:1)', price: 0 }
-        ]
+  const addVariationOption = () => {
+    setDishVariations(prev => {
+      if (prev.length === 0) {
+        return [{
+          id: `var-${Date.now()}`,
+          name: 'Variation',
+          type: 'single' as const,
+          required: true,
+          options: [{ id: `opt-${Date.now()}-1`, name: '', price: 0 }]
+        }];
       }
-    ]);
-  };
-
-  const updateVariationGroup = (index: number, updates: Partial<import('../../types/database').MenuVariationGroup>) => {
-    setDishVariations(prev => prev.map((g, i) => i === index ? { ...g, ...updates } : g));
-  };
-
-  const removeVariationGroup = (index: number) => {
-    setDishVariations(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const addOptionToGroup = (groupIndex: number) => {
-    setDishVariations(prev => prev.map((g, i) => {
-      if (i !== groupIndex) return g;
-      return {
+      return prev.map((g, i) => i === 0 ? {
         ...g,
-        options: [
-          ...g.options,
-          { id: `opt-${Date.now()}`, name: 'New Option', price: 0 }
-        ]
-      };
-    }));
+        options: [...g.options, { id: `opt-${Date.now()}`, name: '', price: 0 }]
+      } : g);
+    });
   };
 
-  const updateOptionInGroup = (groupIndex: number, optionIndex: number, updates: Partial<import('../../types/database').MenuVariationOption>) => {
-    setDishVariations(prev => prev.map((g, i) => {
-      if (i !== groupIndex) return g;
-      return {
-        ...g,
-        options: g.options.map((opt, oi) => oi === optionIndex ? { ...opt, ...updates } : opt)
-      };
-    }));
+  const updateVariationOption = (optionIndex: number, updates: Partial<import('../../types/database').MenuVariationOption>) => {
+    setDishVariations(prev => prev.map((g, i) => i === 0 ? {
+      ...g,
+      options: g.options.map((opt, oi) => oi === optionIndex ? { ...opt, ...updates } : opt)
+    } : g));
   };
 
-  const removeOptionFromGroup = (groupIndex: number, optionIndex: number) => {
-    setDishVariations(prev => prev.map((g, i) => {
-      if (i !== groupIndex) return g;
-      return {
-        ...g,
-        options: g.options.filter((_, oi) => oi !== optionIndex)
-      };
-    }));
+  const removeVariationOption = (optionIndex: number) => {
+    setDishVariations(prev => prev.map((g, i) => i === 0 ? {
+      ...g,
+      options: g.options.filter((_, oi) => oi !== optionIndex)
+    } : g));
   };
 
   // Auth Handlers
@@ -640,7 +638,8 @@ export const VendorPortal: React.FC = () => {
         original_price: finalOriginalPrice,
         category: selectedCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined
+        variations: dishVariations.length > 0 ? dishVariations : undefined,
+        recommendation_category: recommendationCategory || undefined
       });
     } else {
       addMenuItem({
@@ -653,7 +652,8 @@ export const VendorPortal: React.FC = () => {
         category: selectedCategory,
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined
+        variations: dishVariations.length > 0 ? dishVariations : undefined,
+        recommendation_category: recommendationCategory || undefined
       });
     }
 
@@ -2017,111 +2017,118 @@ export const VendorPortal: React.FC = () => {
                 )}
               </div>
 
-              {/* Add-ons & Variations Manager (অতিরিক্ত রাইস, সস, সাইজ ইত্যাদি) */}
-              <div className="pt-3 border-t border-slate-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-black text-slate-900">Add-ons & Options (এড-অনস / অপশন)</h4>
-                    <p className="text-[10px] text-slate-500 font-medium">Add extra rice, sauce, portion size or extras with prices</p>
+              {/* Add Variation & Optional Recommendation */}
+              <div className="pt-3 border-t border-slate-100 space-y-4">
+                {/* 1. Add Variation Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900">Add Variation (ভ্যারিয়েশন / সাইজ)</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Add variation name and price (e.g. Full, Half)</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addVariationOption}
+                      className="px-2.5 py-1 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-black flex items-center gap-1 border border-orange-200 cursor-pointer transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Variation</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={addVariationGroup}
-                    className="px-2.5 py-1 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-black flex items-center gap-1 border border-orange-200 cursor-pointer transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Option Group</span>
-                  </button>
-                </div>
 
-                {dishVariations.length === 0 ? (
-                  <p className="text-[11px] text-slate-400 italic bg-slate-50 p-2.5 rounded-xl border border-dashed border-slate-200 text-center">
-                    No extra add-ons added yet. Click &quot;Add Option Group&quot; to add choices like Extra Rice, Sauce, or Size.
-                  </p>
-                ) : (
-                  dishVariations.map((group, groupIdx) => (
-                    <div key={group.id || groupIdx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-                      {/* Group Title Input + Delete Button */}
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <label className="block text-[11px] font-bold text-slate-700">Group Title (অপশন/গ্রুপ নাম):</label>
-                          <button
-                            type="button"
-                            onClick={() => removeVariationGroup(groupIdx)}
-                            className="p-1 px-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition text-[10px] font-extrabold flex items-center gap-1 border border-rose-200 cursor-pointer shrink-0"
-                            title="Delete Option Group"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Delete Group</span>
-                          </button>
-                        </div>
-                        <input
-                          type="text"
-                          value={group.name}
-                          onChange={(e) => updateVariationGroup(groupIdx, { name: e.target.value })}
-                          placeholder="e.g. Portion / Size, Choice of Add-ons, Sauce"
-                          className="w-full px-2.5 py-1.5 text-xs font-extrabold border border-slate-200 bg-white rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
-                        />
-                      </div>
+                  {dishVariations.length === 0 || !dishVariations[0]?.options || dishVariations[0].options.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic bg-slate-50 p-2.5 rounded-xl border border-dashed border-slate-200 text-center">
+                      No variations added yet. Click &quot;Add Variation&quot; to add options like Full or Half with prices.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {dishVariations[0].options.map((opt, optIdx) => (
+                        <div key={opt.id || optIdx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Variation #{optIdx + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeVariationOption(optIdx)}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer flex items-center gap-1 text-[10px] font-bold"
+                              title="Remove variation"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
 
-                      {/* Options List */}
-                      <div className="space-y-2">
-                        <label className="block text-[11px] font-black text-slate-700">Items / Add-ons (পছন্দের আইটেম ও অতিরিক্ত দাম):</label>
-                        {group.options.map((opt, optIdx) => (
-                          <div key={opt.id || optIdx} className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Item #{optIdx + 1}</span>
-                              <button
-                                type="button"
-                                onClick={() => removeOptionFromGroup(groupIdx, optIdx)}
-                                className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer flex items-center gap-1 text-[10px] font-bold"
-                                title="Remove option"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                                <span>Remove</span>
-                              </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="sm:col-span-2">
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Variation Name (যেমন: Full / Half)</label>
+                              <input
+                                type="text"
+                                value={opt.name}
+                                onChange={(e) => updateVariationOption(optIdx, { name: e.target.value })}
+                                placeholder="e.g. Full, Half, 1:1, 1:2"
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold border border-slate-200 bg-white rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                              />
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              <div className="sm:col-span-2">
-                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Item Name (নাম)</label>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Price (মূল্য)</label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-500">৳</span>
                                 <input
-                                  type="text"
-                                  value={opt.name}
-                                  onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { name: e.target.value })}
-                                  placeholder="e.g. Extra Rice, Half (1:1), Sauce"
-                                  className="w-full px-2.5 py-1.5 text-xs font-semibold border border-slate-200 bg-slate-50/50 rounded-lg focus:outline-hidden focus:bg-white"
+                                  type="number"
+                                  value={opt.price}
+                                  onChange={(e) => updateVariationOption(optIdx, { price: Number(e.target.value) || 0 })}
+                                  placeholder="0"
+                                  className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-bold border border-slate-200 bg-white rounded-lg focus:outline-hidden focus:ring-2 focus:ring-orange-500"
                                 />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Extra Price (অতিরিক্ত মূল্য)</label>
-                                <div className="relative">
-                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-500">৳</span>
-                                  <input
-                                    type="number"
-                                    value={opt.price}
-                                    onChange={(e) => updateOptionInGroup(groupIdx, optIdx, { price: Number(e.target.value) || 0 })}
-                                    placeholder="0"
-                                    className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-bold border border-slate-200 bg-slate-50/50 rounded-lg focus:outline-hidden focus:bg-white"
-                                  />
-                                </div>
                               </div>
                             </div>
                           </div>
-                        ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                        <button
-                          type="button"
-                          onClick={() => addOptionToGroup(groupIdx)}
-                          className="w-full py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-xs rounded-xl border border-orange-200 flex items-center justify-center gap-1 cursor-pointer transition mt-1"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add More Item / Extra (নতুন আইটেম যোগ করুন)</span>
-                        </button>
+                {/* 2. Optional Recommendation Section */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900">Optional Recommendation (রিকমেন্ডেশন ক্যাটাগরি)</h4>
+                    <p className="text-[10px] text-slate-500 font-medium">Choose a category to display its menu items as optional recommendations</p>
+                  </div>
+
+                  <select
+                    value={recommendationCategory}
+                    onChange={(e) => setRecommendationCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-semibold bg-white cursor-pointer"
+                  >
+                    <option value="">-- No Recommendation Category (Optional) --</option>
+                    {allCategoryNames.map((catName) => (
+                      <option key={catName} value={catName}>
+                        📁 {catName}
+                      </option>
+                    ))}
+                  </select>
+
+                  {recommendationCategory && (
+                    <div className="p-3 bg-orange-50/50 rounded-2xl border border-orange-200 space-y-2">
+                      <p className="text-[11px] font-bold text-orange-900">
+                        Items in &quot;{recommendationCategory}&quot; will be shown as optional recommendations (Frequently bought together):
+                      </p>
+                      <div className="max-h-32 overflow-y-auto space-y-1.5">
+                        {currentMenuItems
+                          .filter(m => m.category === recommendationCategory && m.name !== dishName)
+                          .map(rec => (
+                            <div key={rec.id} className="flex items-center justify-between bg-white p-2 rounded-xl border border-orange-100 text-xs">
+                              <span className="font-bold text-slate-800">{rec.name}</span>
+                              <span className="font-mono text-orange-600 font-black">৳{rec.price}</span>
+                            </div>
+                          ))}
+                        {currentMenuItems.filter(m => m.category === recommendationCategory && m.name !== dishName).length === 0 && (
+                          <p className="text-[11px] text-slate-500 italic">No other items found in this category yet.</p>
+                        )}
                       </div>
                     </div>
-                  ))
-                )}
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">

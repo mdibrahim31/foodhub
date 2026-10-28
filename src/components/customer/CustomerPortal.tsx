@@ -3709,6 +3709,84 @@ export const CustomerPortal: React.FC = () => {
                 );
               })()}
 
+              {/* Optional Recommendations (Frequently bought together from selected recommendation category) */}
+              {selectedMenuItemForModal.recommendation_category && (
+                <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div>
+                      <h3 className="font-black text-sm text-slate-900 tracking-tight">
+                        Frequently bought together
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Other customers also ordered these from {selectedMenuItemForModal.recommendation_category}
+                      </p>
+                    </div>
+                    <span className="bg-slate-100 text-slate-800 text-[10px] font-black uppercase px-2.5 py-1 rounded-full tracking-wider">
+                      Optional
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {menuItems
+                      .filter(m => m.vendor_id === selectedVendorForMenu.id && m.category === selectedMenuItemForModal.recommendation_category && m.id !== selectedMenuItemForModal.id)
+                      .map((recItem) => {
+                        const recKey = `rec_${recItem.id}`;
+                        const isSelected = Boolean(selectedModalVariations[recKey]);
+                        const recPrice = Number(recItem.price) || 0;
+
+                        return (
+                          <div
+                            key={recItem.id}
+                            onClick={() => {
+                              setSelectedModalVariations(prev => {
+                                const next = { ...prev };
+                                if (isSelected) {
+                                  delete next[recKey];
+                                } else {
+                                  next[recKey] = {
+                                    groupName: 'Frequently bought together',
+                                    optionName: recItem.name,
+                                    price: recPrice
+                                  };
+                                }
+                                return next;
+                              });
+                            }}
+                            className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 border border-slate-100 transition cursor-pointer select-none"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100">
+                                <img
+                                  src={recItem.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}
+                                  alt={recItem.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <h4 className="font-extrabold text-xs text-slate-900">{recItem.name}</h4>
+                                <div className="flex items-center space-x-1.5 font-mono text-xs mt-0.5">
+                                  <span className="font-black text-[#d70f64]">
+                                    + Tk {recPrice}
+                                  </span>
+                                  {recItem.original_price && recItem.original_price > recPrice && (
+                                    <span className="text-[10px] text-slate-400 line-through">Tk {recItem.original_price}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
+                              isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300 bg-white'
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
               {/* Special Instructions Input - Compact */}
               <div className="space-y-1">
                 <label className="font-extrabold text-xs text-slate-900 block">
