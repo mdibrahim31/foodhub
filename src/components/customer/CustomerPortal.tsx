@@ -2899,13 +2899,6 @@ export const CustomerPortal: React.FC = () => {
                   </span>
                   <span className="text-slate-500 font-semibold">(500+ ratings)</span>
                 </div>
-
-                {selectedVendorForMenu.discount_title && typeof selectedVendorForMenu.discount_title === 'string' && selectedVendorForMenu.discount_title.trim() && selectedVendorForMenu.discount_title !== 'null' && selectedVendorForMenu.discount_title !== 'undefined' && (
-                  <div className="flex items-center gap-1.5 bg-rose-50 text-rose-600 px-3 py-1 rounded-full border border-rose-200 text-xs font-black shadow-sm">
-                    <Tag className="w-3.5 h-3.5" />
-                    <span>{selectedVendorForMenu.discount_title}</span>
-                  </div>
-                )}
               </div>
             </div>
 
