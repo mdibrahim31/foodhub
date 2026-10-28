@@ -17,7 +17,9 @@ import {
   Briefcase, 
   Search,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  DoorOpen,
+  Fence
 } from 'lucide-react';
 
 interface AddressBookModalProps {
@@ -145,7 +147,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
   const [customSearchResults, setCustomSearchResults] = useState<typeof KNOWN_LOCATIONS>([]);
 
   // Address Details Form States
-  const [label, setLabel] = useState<'Home' | 'Office' | 'Other'>('Home');
+  const [label, setLabel] = useState<string>('At door');
   const [addressLine, setAddressLine] = useState('');
   const [cityField, setCityField] = useState('Chittagong');
   const [noteToRider, setNoteToRider] = useState('');
@@ -314,7 +316,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     setPinnedLng(addr.longitude);
     setPinnedTitle(addr.address_line);
     setPinnedCity(addr.details || 'Chittagong');
-    setLabel((addr.label as 'Home' | 'Office' | 'Other') || 'Home');
+    setLabel(addr.label || 'At door');
     setNoteToRider(addr.details || '');
     setCustomerPhone(addr.customer_phone || '');
     setView('map');
@@ -464,6 +466,12 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                             <h3 className="text-sm font-extrabold text-slate-900 leading-snug">
                               {addr.address_line}
                             </h3>
+                            {addr.label && (
+                              <span className="text-[10px] font-extrabold bg-orange-50 text-orange-700 border border-orange-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                {addr.label.toLowerCase().includes('gate') ? <Fence className="w-2.5 h-2.5" /> : <DoorOpen className="w-2.5 h-2.5" />}
+                                <span>{addr.label}</span>
+                              </span>
+                            )}
                             {isActive ? (
                               <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs tracking-wide">
                                 <Check className="w-2.5 h-2.5 stroke-[3]" /> Active
@@ -754,24 +762,22 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                 </button>
               </div>
 
-              {/* Label Chips: Home / Office / Other */}
+              {/* Delivery Option: At gate / At door */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Address Label</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['Home', 'Office', 'Other'] as const).map((l) => (
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Delivery Option</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {(['At gate', 'At door'] as const).map((l) => (
                     <button
                       key={l}
                       type="button"
                       onClick={() => setLabel(l)}
-                      className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 border transition ${
-                        label === l
-                          ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
+                      className={`py-2.5 px-3.5 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 border transition cursor-pointer ${
+                        label.toLowerCase() === l.toLowerCase()
+                          ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {l === 'Home' && <Home className="w-3.5 h-3.5" />}
-                      {l === 'Office' && <Briefcase className="w-3.5 h-3.5" />}
-                      {l === 'Other' && <MapPin className="w-3.5 h-3.5" />}
+                      {l === 'At gate' ? <Fence className="w-4 h-4" /> : <DoorOpen className="w-4 h-4" />}
                       <span>{l}</span>
                     </button>
                   ))}
