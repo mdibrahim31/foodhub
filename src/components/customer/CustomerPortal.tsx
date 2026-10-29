@@ -137,6 +137,12 @@ export const CustomerPortal: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showBillSummary, setShowBillSummary] = useState(false);
   const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+  const [isCheckoutScreen, setIsCheckoutScreen] = useState(false);
+  const [deliveryOption, setDeliveryOption] = useState<'standard' | 'priority'>('standard');
+  const [riderTip, setRiderTip] = useState<number>(0);
+  const [isCustomTipActive, setIsCustomTipActive] = useState<boolean>(false);
+  const [isContactless, setIsContactless] = useState<boolean>(false);
+  const [checkoutInstructions, setCheckoutInstructions] = useState<string>('');
 
   // Cart summary totals for "All Carts" card view
   const cartSubtotal = useMemo(() => {
@@ -1079,12 +1085,28 @@ export const CustomerPortal: React.FC = () => {
         : 0);
   const totalCashPayable = foodTotal + deliveryFee;
   const regularTotalWithFee = regularFoodTotal + deliveryFee;
+  const platformFee = 18;
+  const priorityFee = deliveryOption === 'priority' ? 28 : 0;
+  const finalCheckoutPayable = foodTotal + (orderType === 'pickup' ? 0 : deliveryFee) + priorityFee + riderTip + platformFee;
+
   const totalCartCount = cart.reduce((sum, i) => {
     const optionCount = (i.selectedVariations && Array.isArray(i.selectedVariations)) ? i.selectedVariations.length : 0;
     return sum + (i.quantity * (1 + optionCount));
   }, 0);
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
+    if (!currentUser || currentUser.role !== 'customer') {
+      setIsCustomerLoginModalOpen(true);
+      return;
+    }
+    if (!selectedAddress) {
+      setIsAddressModalOpen(true);
+      return;
+    }
+    setIsCheckoutScreen(true);
+  };
+
+  const handlePlaceFinalOrder = async () => {
     if (!currentUser || currentUser.role !== 'customer') {
       setIsCustomerLoginModalOpen(true);
       return;
@@ -1095,13 +1117,21 @@ export const CustomerPortal: React.FC = () => {
     }
     setIsPlacingOrder(true);
     try {
-      const placed = await placeOrder(orderInstructions);
+      const combinedInstructions = [
+        checkoutInstructions || orderInstructions,
+        deliveryOption === 'priority' ? '[Priority Delivery (+Tk 28)]' : '',
+        riderTip > 0 ? `[Rider Tip: Tk ${riderTip}]` : '',
+        isContactless ? '[Contactless Delivery Requested]' : ''
+      ].filter(Boolean).join(' | ');
+
+      const placed = await placeOrder(combinedInstructions);
       if (placed) {
         setIsCartOpen(false);
         setIsViewingCartDetail(false);
+        setIsCheckoutScreen(false);
         setActiveBottomNav('account');
         setAccountSubView('orders');
-        alert(`✅ Order Placed Successfully!\n\nOrder Code: ${placed.order_code}\nTotal payable (COD): Tk${placed.total_cash_payable}\n\nYour order has been sent to the vendor for confirmation. We have opened your live Order history page so you can track it in real time!`);
+        alert(`✅ Order Placed Successfully!\n\nOrder Code: ${placed.order_code}\nTotal payable (COD): Tk${placed.total_cash_payable || finalCheckoutPayable}\n\nYour order has been sent to the vendor for confirmation. We have opened your live Order history page so you can track it in real time!`);
       }
     } finally {
       setIsPlacingOrder(false);
@@ -2009,7 +2039,368 @@ export const CustomerPortal: React.FC = () => {
           </div>
         )
       ) : activeBottomNav === 'carts' ? (
-        !isViewingCartDetail ? (
+        isCheckoutScreen ? (
+          // ========================================================================
+          // DEDICATED CHECKOUT PAGE (100% Matching Screenshot_20261029_171814_424bb053.jpg & Screenshot_20261029_171829_99a15dfa.jpg)
+          // ========================================================================
+          <div className="min-h-screen bg-slate-50/60 pb-36 select-none font-sans">
+            <div className="max-w-md mx-auto">
+              {/* Top Header Row: Circular Back Arrow + Checkout Title & Restaurant Name */}
+              <header className="px-4 pt-4 pb-3 flex items-center space-x-3.5 bg-white sticky top-0 z-10 border-b border-slate-100 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setIsCheckoutScreen(false)}
+                  className="w-11 h-11 rounded-full border border-slate-200/90 bg-white flex items-center justify-center text-slate-900 hover:bg-slate-50 transition cursor-pointer shrink-0 active:scale-95 shadow-2xs"
+                  title="Back to Cart"
+                >
+                  <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-xl font-black text-slate-950 tracking-tight leading-tight">
+                    Checkout
+                  </h1>
+                  <p className="text-xs font-semibold text-slate-700 leading-tight truncate mt-0.5">
+                    {cartVendor?.name || 'Special Bhai Bhai Biriyani House'}
+                  </p>
+                </div>
+              </header>
+
+              <div className="p-4 space-y-6">
+                {/* 1. Delivering to */}
+                <section className="space-y-2">
+                  <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                    Delivering to
+                  </h2>
+                  <div
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="bg-white border border-slate-200/90 rounded-3xl p-4 flex items-center justify-between shadow-2xs cursor-pointer hover:border-slate-300 transition"
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-900 shrink-0 bg-slate-50">
+                        <MapPin className="w-5 h-5 stroke-[2.2]" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-slate-950 text-base leading-snug truncate">
+                          {activeCustomerAddress?.label || '2'}
+                        </div>
+                        <div className="text-sm font-medium text-slate-600 truncate">
+                          {activeCustomerAddress?.address_line || 'Dhaka'}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-800 shrink-0 stroke-[2.2]" />
+                  </div>
+                </section>
+
+                {/* 2. Delivery instructions */}
+                <section className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                    Delivery instructions
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={checkoutInstructions}
+                      onChange={(e) => setCheckoutInstructions(e.target.value)}
+                      placeholder="(Optional) Floor or Apt No or tell us ho..."
+                      className="w-full bg-white border-2 border-slate-900 rounded-2xl px-4 py-3.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden"
+                    />
+                  </div>
+                </section>
+
+                {/* 3. Contactless delivery toggle */}
+                <section className="flex items-center justify-between gap-4 py-1">
+                  <span className="text-sm font-semibold text-slate-900 leading-snug">
+                    Contactless delivery: switch to online payment for this option
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsContactless(!isContactless)}
+                    className={`w-12 h-7 rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                      isContactless ? 'bg-[#e21b70]' : 'bg-slate-200'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${
+                        isContactless ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </section>
+
+                {/* 4. Delivery options */}
+                <section className="space-y-3">
+                  <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                    Delivery options
+                  </h2>
+
+                  {/* Priority Option */}
+                  <div
+                    onClick={() => setDeliveryOption('priority')}
+                    className={`bg-white rounded-2xl p-4 border transition cursor-pointer flex items-center justify-between ${
+                      deliveryOption === 'priority'
+                        ? 'border-2 border-slate-900 shadow-2xs'
+                        : 'border-slate-200/90'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3.5">
+                      <div
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          deliveryOption === 'priority'
+                            ? 'border-slate-900'
+                            : 'border-slate-300'
+                        }`}
+                      >
+                        {deliveryOption === 'priority' && (
+                          <div className="w-3 h-3 rounded-full bg-slate-900" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-950 text-base flex items-center gap-1.5">
+                          <span>Priority</span>
+                          <span className="text-amber-500 text-sm">⚡</span>
+                        </div>
+                        <div className="text-xs font-medium text-slate-600 underline decoration-slate-300 underline-offset-2">
+                          Get your order faster
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200/80">
+                      + Tk 28
+                    </span>
+                  </div>
+
+                  {/* Standard Option (Selected by default) */}
+                  <div
+                    onClick={() => setDeliveryOption('standard')}
+                    className={`bg-white rounded-2xl p-4 border transition cursor-pointer flex items-center justify-between ${
+                      deliveryOption === 'standard'
+                        ? 'border-2 border-slate-900 shadow-2xs'
+                        : 'border-slate-200/90'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3.5">
+                      <div
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          deliveryOption === 'standard'
+                            ? 'border-slate-900'
+                            : 'border-slate-300'
+                        }`}
+                      >
+                        {deliveryOption === 'standard' && (
+                          <div className="w-3 h-3 rounded-full bg-slate-900" />
+                        )}
+                      </div>
+                      <div className="font-extrabold text-slate-950 text-base">
+                        Standard <span className="font-semibold text-slate-700 text-sm">40 - 60 mins</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 5. Tip your rider */}
+                <section className="space-y-2.5">
+                  <div>
+                    <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                      Tip your rider
+                    </h2>
+                    <p className="text-xs font-semibold text-slate-500">
+                      Your rider receives 100% of the tip
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
+                    {[10, 20, 30, 50].map((amt) => {
+                      const isSelected = !isCustomTipActive && riderTip === amt;
+                      return (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => {
+                            setIsCustomTipActive(false);
+                            setRiderTip(isSelected ? 0 : amt);
+                          }}
+                          className={`py-2.5 px-4 rounded-full font-extrabold text-xs transition shrink-0 cursor-pointer border ${
+                            isSelected
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          Tk {amt}
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom Tip Pill */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomTipActive(true);
+                        const val = prompt('Enter tip amount in Tk:', String(riderTip || ''));
+                        if (val !== null) {
+                          const parsed = parseInt(val, 10);
+                          setRiderTip(isNaN(parsed) || parsed < 0 ? 0 : parsed);
+                        }
+                      }}
+                      className={`py-2.5 px-4 rounded-full font-extrabold text-xs transition shrink-0 cursor-pointer border ${
+                        isCustomTipActive
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                          : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {isCustomTipActive && riderTip > 0 ? `Tk ${riderTip}` : 'Custom'}
+                    </button>
+                  </div>
+                </section>
+
+                {/* 6. Payment method */}
+                <section className="space-y-2">
+                  <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                    Payment method
+                  </h2>
+                  <div className="bg-white border border-slate-200/90 rounded-3xl p-4 flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center space-x-3.5">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 text-xl shrink-0">
+                        💵
+                      </div>
+                      <span className="font-extrabold text-slate-950 text-base">
+                        Cash
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2 font-mono">
+                      <span className="font-black text-slate-950 text-base">
+                        Tk {finalCheckoutPayable}
+                      </span>
+                      <ChevronRight className="w-5 h-5 text-slate-800 shrink-0 stroke-[2.2]" />
+                    </div>
+                  </div>
+                </section>
+
+                {/* 7. Order summary */}
+                <section className="space-y-3 bg-white border border-slate-200/90 rounded-3xl p-4 shadow-2xs">
+                  <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                    Order summary
+                  </h2>
+
+                  {/* Items list */}
+                  <div className="space-y-2.5 pb-3 border-b border-slate-100">
+                    {cart.map((item, idx) => {
+                      const itemEffectivePrice = item.unitPrice ?? item.menuItem.price;
+                      const itemSubtotal = itemEffectivePrice * item.quantity;
+                      return (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-2 min-w-0 pr-2">
+                            <span className="font-black text-slate-950 text-sm font-mono shrink-0">
+                              {item.quantity}x
+                            </span>
+                            <span className="font-bold text-slate-800 truncate">
+                              {item.menuItem.name}
+                            </span>
+                          </div>
+                          <span className="font-black text-slate-950 font-mono shrink-0">
+                            Tk {itemSubtotal}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Price Calculation breakdown */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Subtotal</span>
+                      <span className="font-mono font-bold">Tk {cartRegularTotal}</span>
+                    </div>
+
+                    {cartTotalSavings > 0 && (
+                      <div className="flex justify-between text-[#e21b70] font-extrabold">
+                        <span className="flex items-center space-x-1">
+                          <span>Discounts</span>
+                          <Info className="w-3.5 h-3.5 inline text-slate-400" />
+                        </span>
+                        <span className="font-mono">- Tk {cartTotalSavings}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>{deliveryOption === 'priority' ? 'Priority delivery' : 'Standard delivery'}</span>
+                      <span className="font-extrabold text-[#e21b70] font-mono">
+                        {deliveryOption === 'priority'
+                          ? `Tk ${28 + deliveryFee}`
+                          : (deliveryFee > 0 ? `Tk ${deliveryFee}` : 'Free')}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Platform Fee</span>
+                      <span className="font-mono font-bold">Tk {platformFee}</span>
+                    </div>
+
+                    {riderTip > 0 && (
+                      <div className="flex justify-between text-slate-800 font-semibold">
+                        <span>Rider Tip</span>
+                        <span className="font-mono font-bold">Tk {riderTip}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Terms text */}
+                  <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                    By completing this order, I agree to all{' '}
+                    <button
+                      type="button"
+                      onClick={() => alert('Terms & Conditions: 100% Cash on Delivery on arrival.')}
+                      className="text-slate-900 font-extrabold underline underline-offset-2 hover:text-[#e21b70]"
+                    >
+                      terms & conditions
+                    </button>
+                    .
+                  </p>
+                </section>
+              </div>
+
+              {/* Sticky Bottom Bar */}
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/90 p-4 z-30 shadow-2xl">
+                <div className="max-w-md mx-auto space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-extrabold text-slate-950">
+                        Total <span className="font-normal text-slate-500 text-xs">(incl. fees and tax)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowBillSummary(s => !s)}
+                        className="text-xs font-extrabold text-slate-950 underline underline-offset-2 hover:text-[#e21b70] transition block cursor-pointer"
+                      >
+                        See summary
+                      </button>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-[#e21b70] text-xl font-black font-mono">
+                        Tk {finalCheckoutPayable}
+                      </div>
+                      {cartRegularTotal > cartSubtotal && (
+                        <div className="text-xs font-semibold text-slate-400 line-through font-mono">
+                          Tk {cartRegularTotal + platformFee + (deliveryOption === 'priority' ? 28 : deliveryFee) + riderTip}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isPlacingOrder}
+                    onClick={handlePlaceFinalOrder}
+                    className="w-full py-4 bg-[#e21b70] hover:bg-[#c2135d] disabled:opacity-50 text-white font-extrabold text-base rounded-full shadow-lg shadow-pink-500/25 transition active:scale-[0.98] cursor-pointer text-center"
+                  >
+                    {isPlacingOrder ? 'Confirming Order...' : 'Place order'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : !isViewingCartDetail ? (
           // ========================================================================
           // ALL CARTS SUMMARY LIST VIEW (100% Matching Screenshot_20261029_163511_73a6044b.jpg)
           // ========================================================================
