@@ -4488,13 +4488,17 @@ export const CustomerPortal: React.FC = () => {
 
       {selectedMenuItemForModal && selectedVendorForMenu && (
         <div 
-          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedMenuItemForModal(null)}
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         >
           {/* Main Modal Card Container */}
-          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[96vh] relative animate-in slide-in-from-bottom-6 duration-300">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[88vh] sm:max-h-[85vh] relative animate-in slide-in-from-bottom-6 duration-300"
+          >
             
-            {/* Top Full Banner Image Header (Fills the top area matching red box) */}
-            <div className="relative w-full h-48 sm:h-56 bg-slate-900 shrink-0 overflow-hidden">
+            {/* Top Full Banner Image Header */}
+            <div className="relative w-full h-36 sm:h-44 bg-slate-900 shrink-0 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600'}
                 alt={selectedMenuItemForModal.name}
@@ -4502,22 +4506,22 @@ export const CustomerPortal: React.FC = () => {
               />
               
               {/* Gradient Overlay for Controls */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/30 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/30 pointer-events-none" />
 
               {/* Floating Top Left Pill Badge */}
-              <div className="absolute top-3.5 left-3.5 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40">
+              <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40">
                 <Sparkles className="w-3 h-3 text-orange-600 fill-orange-600" />
                 <span>Customize Item</span>
               </div>
 
-              {/* Floating Top Right Close Button */}
+              {/* Floating Top Right Close Button (Permanently visible z-30 with high contrast circle) */}
               <button
                 type="button"
                 onClick={() => setSelectedMenuItemForModal(null)}
-                className="absolute top-3.5 right-3.5 w-9 h-9 rounded-full bg-white/90 text-slate-800 hover:bg-white flex items-center justify-center transition cursor-pointer shadow-md backdrop-blur-md active:scale-95"
+                className="absolute top-3 right-3 z-30 w-9 h-9 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white border border-white/30 flex items-center justify-center transition cursor-pointer shadow-xl backdrop-blur-md active:scale-90"
                 title="Close"
               >
-                <X className="w-5 h-5 stroke-[2.5]" />
+                <X className="w-5 h-5 stroke-[2.8]" />
               </button>
             </div>
 
