@@ -141,8 +141,10 @@ export const CustomerPortal: React.FC = () => {
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'priority'>('standard');
   const [riderTip, setRiderTip] = useState<number>(0);
   const [isCustomTipActive, setIsCustomTipActive] = useState<boolean>(false);
-  const [isContactless, setIsContactless] = useState<boolean>(false);
   const [checkoutInstructions, setCheckoutInstructions] = useState<string>('');
+  const [isPaymentSelectionOpen, setIsPaymentSelectionOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'bkash' | 'nagad' | 'rocket' | 'upay' | 'card' | 'other'>('cash');
+  const [tempPaymentMethod, setTempPaymentMethod] = useState<'cash' | 'bkash' | 'nagad' | 'rocket' | 'upay' | 'card' | 'other'>('cash');
 
   // Cart summary totals for "All Carts" card view
   const cartSubtotal = useMemo(() => {
@@ -1121,7 +1123,7 @@ export const CustomerPortal: React.FC = () => {
         checkoutInstructions || orderInstructions,
         deliveryOption === 'priority' ? '[Priority Delivery (+Tk 28)]' : '',
         riderTip > 0 ? `[Rider Tip: Tk ${riderTip}]` : '',
-        isContactless ? '[Contactless Delivery Requested]' : ''
+        `[Payment: ${selectedPaymentMethod.toUpperCase()}]`
       ].filter(Boolean).join(' | ');
 
       const placed = await placeOrder(combinedInstructions);
@@ -2039,9 +2041,220 @@ export const CustomerPortal: React.FC = () => {
           </div>
         )
       ) : activeBottomNav === 'carts' ? (
-        isCheckoutScreen ? (
+        isPaymentSelectionOpen ? (
           // ========================================================================
-          // DEDICATED CHECKOUT PAGE (100% Matching Screenshot_20261029_171814_424bb053.jpg & Screenshot_20261029_171829_99a15dfa.jpg)
+          // PAYMENT METHOD SELECTION PAGE (100% Matching Screenshot_20261029_174133.jpg)
+          // ========================================================================
+          <div className="min-h-screen bg-white pb-36 select-none font-sans">
+            <div className="max-w-md mx-auto">
+              {/* Header Row */}
+              <header className="px-4 pt-4 pb-3 flex items-center space-x-3.5 bg-white border-b border-slate-100 sticky top-0 z-10">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentSelectionOpen(false)}
+                  className="w-11 h-11 rounded-full border border-slate-200/90 bg-white flex items-center justify-center text-slate-900 hover:bg-slate-50 transition cursor-pointer shrink-0 active:scale-95 shadow-2xs"
+                  title="Back"
+                >
+                  <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                </button>
+                <h1 className="text-xl font-extrabold text-slate-950 tracking-tight">
+                  Select a payment method
+                </h1>
+              </header>
+
+              {/* Payment Options List */}
+              <div className="p-4 space-y-5">
+                {/* Rocket */}
+                <div
+                  onClick={() => setTempPaymentMethod('rocket')}
+                  className="flex items-center justify-between py-2.5 cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs shrink-0 overflow-hidden">
+                      <span className="font-mono text-[10px] font-black tracking-tighter">Rocket</span>
+                    </div>
+                    <span className="font-extrabold text-base text-slate-900">
+                      Rocket
+                    </span>
+                  </div>
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tempPaymentMethod === 'rocket' ? 'border-slate-900' : 'border-slate-300'
+                    }`}
+                  >
+                    {tempPaymentMethod === 'rocket' && (
+                      <div className="w-3 h-3 rounded-full bg-slate-900" />
+                    )}
+                  </div>
+                </div>
+
+                {/* upay */}
+                <div
+                  onClick={() => setTempPaymentMethod('upay')}
+                  className="flex items-center justify-between py-2.5 cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 font-black text-xs shrink-0 overflow-hidden">
+                      <span className="font-mono text-[11px]">upay</span>
+                    </div>
+                    <span className="font-extrabold text-base text-slate-900">
+                      upay
+                    </span>
+                  </div>
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tempPaymentMethod === 'upay' ? 'border-slate-900' : 'border-slate-300'
+                    }`}
+                  >
+                    {tempPaymentMethod === 'upay' && (
+                      <div className="w-3 h-3 rounded-full bg-slate-900" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Nagad */}
+                <div
+                  onClick={() => setTempPaymentMethod('nagad')}
+                  className="flex items-center justify-between py-2.5 cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 font-black text-xs shrink-0 overflow-hidden">
+                      <span className="font-mono text-[11px]">Nagad</span>
+                    </div>
+                    <span className="font-extrabold text-base text-slate-900">
+                      Nagad
+                    </span>
+                  </div>
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tempPaymentMethod === 'nagad' ? 'border-slate-900' : 'border-slate-300'
+                    }`}
+                  >
+                    {tempPaymentMethod === 'nagad' && (
+                      <div className="w-3 h-3 rounded-full bg-slate-900" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Cash */}
+                <div
+                  onClick={() => setTempPaymentMethod('cash')}
+                  className="flex items-center justify-between py-2.5 cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-slate-200 flex items-center justify-center text-slate-800 text-lg shrink-0">
+                      💵
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-extrabold text-base text-slate-900">
+                        Cash
+                      </span>
+                      <span className="bg-slate-200/80 text-slate-800 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Info className="w-3 h-3 text-slate-600" />
+                        <span>Primary</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tempPaymentMethod === 'cash' ? 'border-slate-900' : 'border-slate-300'
+                    }`}
+                  >
+                    {tempPaymentMethod === 'cash' && (
+                      <div className="w-3 h-3 rounded-full bg-slate-900" />
+                    )}
+                  </div>
+                </div>
+
+                {/* bKash */}
+                <div
+                  onClick={() => setTempPaymentMethod('bkash')}
+                  className="flex items-center justify-between py-2.5 cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-[#e21b70] font-black text-xs shrink-0 overflow-hidden">
+                      <span className="font-mono text-[11px]">bKash</span>
+                    </div>
+                    <span className="font-extrabold text-base text-slate-900">
+                      bKash
+                    </span>
+                  </div>
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      tempPaymentMethod === 'bkash' ? 'border-slate-900' : 'border-slate-300'
+                    }`}
+                  >
+                    {tempPaymentMethod === 'bkash' && (
+                      <div className="w-3 h-3 rounded-full bg-slate-900" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Credit or debit card */}
+                <div
+                  onClick={() => setTempPaymentMethod('card')}
+                  className="flex items-center justify-between py-3 cursor-pointer group border-t border-slate-100 pt-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-3.5">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 text-sm shrink-0">
+                        💳
+                      </div>
+                      <span className="font-extrabold text-base text-slate-900">
+                        Credit or debit card
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 pl-11">
+                      <span className="bg-slate-100 text-slate-600 font-black text-[9px] px-1.5 py-0.5 rounded">VISA</span>
+                      <span className="bg-slate-100 text-slate-600 font-black text-[9px] px-1.5 py-0.5 rounded">MC</span>
+                      <span className="bg-slate-100 text-slate-600 font-black text-[9px] px-1.5 py-0.5 rounded">AMEX</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-800 shrink-0 stroke-[2.2]" />
+                </div>
+
+                {/* Other online payment methods */}
+                <div
+                  onClick={() => setTempPaymentMethod('other')}
+                  className="flex items-center justify-between py-3 cursor-pointer group border-t border-slate-100 pt-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-3.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-xs shrink-0">
+                        Z
+                      </div>
+                      <span className="font-extrabold text-base text-slate-900">
+                        Other online payment methods
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1 pl-11 text-[9px] font-bold text-slate-400">
+                      <span>MYCash • Tap • DBBL • CellFin</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-800 shrink-0 stroke-[2.2]" />
+                </div>
+              </div>
+
+              {/* Sticky Bottom Confirm Button */}
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/90 p-4 z-30 shadow-2xl">
+                <div className="max-w-md mx-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPaymentMethod(tempPaymentMethod);
+                      setIsPaymentSelectionOpen(false);
+                    }}
+                    className="w-full py-4 bg-[#e21b70] hover:bg-[#c2135d] text-white font-extrabold text-base rounded-full shadow-lg shadow-pink-500/25 transition active:scale-[0.98] cursor-pointer text-center"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : isCheckoutScreen ? (
+          // ========================================================================
+          // DEDICATED CHECKOUT PAGE
           // ========================================================================
           <div className="min-h-screen bg-slate-50/60 pb-36 select-none font-sans">
             <div className="max-w-md mx-auto">
@@ -2108,88 +2321,19 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </section>
 
-                {/* 3. Contactless delivery toggle */}
-                <section className="flex items-center justify-between gap-4 py-1">
-                  <span className="text-sm font-semibold text-slate-900 leading-snug">
-                    Contactless delivery: switch to online payment for this option
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsContactless(!isContactless)}
-                    className={`w-12 h-7 rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                      isContactless ? 'bg-[#e21b70]' : 'bg-slate-200'
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${
-                        isContactless ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </section>
-
-                {/* 4. Delivery options */}
+                {/* 3. Delivery options (Standard only) */}
                 <section className="space-y-3">
                   <h2 className="text-lg font-black text-slate-950 tracking-tight">
                     Delivery options
                   </h2>
 
-                  {/* Priority Option */}
+                  {/* Standard Option */}
                   <div
-                    onClick={() => setDeliveryOption('priority')}
-                    className={`bg-white rounded-2xl p-4 border transition cursor-pointer flex items-center justify-between ${
-                      deliveryOption === 'priority'
-                        ? 'border-2 border-slate-900 shadow-2xs'
-                        : 'border-slate-200/90'
-                    }`}
+                    className="bg-white rounded-2xl p-4 border border-2 border-slate-900 shadow-2xs flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-3.5">
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          deliveryOption === 'priority'
-                            ? 'border-slate-900'
-                            : 'border-slate-300'
-                        }`}
-                      >
-                        {deliveryOption === 'priority' && (
-                          <div className="w-3 h-3 rounded-full bg-slate-900" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-950 text-base flex items-center gap-1.5">
-                          <span>Priority</span>
-                          <span className="text-amber-500 text-sm">⚡</span>
-                        </div>
-                        <div className="text-xs font-medium text-slate-600 underline decoration-slate-300 underline-offset-2">
-                          Get your order faster
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200/80">
-                      + Tk 28
-                    </span>
-                  </div>
-
-                  {/* Standard Option (Selected by default) */}
-                  <div
-                    onClick={() => setDeliveryOption('standard')}
-                    className={`bg-white rounded-2xl p-4 border transition cursor-pointer flex items-center justify-between ${
-                      deliveryOption === 'standard'
-                        ? 'border-2 border-slate-900 shadow-2xs'
-                        : 'border-slate-200/90'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3.5">
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          deliveryOption === 'standard'
-                            ? 'border-slate-900'
-                            : 'border-slate-300'
-                        }`}
-                      >
-                        {deliveryOption === 'standard' && (
-                          <div className="w-3 h-3 rounded-full bg-slate-900" />
-                        )}
+                      <div className="w-6 h-6 rounded-full border-2 border-slate-900 flex items-center justify-center shrink-0">
+                        <div className="w-3 h-3 rounded-full bg-slate-900" />
                       </div>
                       <div className="font-extrabold text-slate-950 text-base">
                         Standard <span className="font-semibold text-slate-700 text-sm">40 - 60 mins</span>
@@ -2198,7 +2342,7 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </section>
 
-                {/* 5. Tip your rider */}
+                {/* 4. Tip your rider */}
                 <section className="space-y-2.5">
                   <div>
                     <h2 className="text-lg font-black text-slate-950 tracking-tight">
@@ -2253,18 +2397,24 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </section>
 
-                {/* 6. Payment method */}
+                {/* 5. Payment method */}
                 <section className="space-y-2">
                   <h2 className="text-lg font-black text-slate-950 tracking-tight">
                     Payment method
                   </h2>
-                  <div className="bg-white border border-slate-200/90 rounded-3xl p-4 flex items-center justify-between shadow-2xs">
+                  <div
+                    onClick={() => {
+                      setTempPaymentMethod(selectedPaymentMethod);
+                      setIsPaymentSelectionOpen(true);
+                    }}
+                    className="bg-white border border-slate-200/90 rounded-3xl p-4 flex items-center justify-between shadow-2xs cursor-pointer hover:border-slate-300 transition"
+                  >
                     <div className="flex items-center space-x-3.5">
                       <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 text-xl shrink-0">
-                        💵
+                        {selectedPaymentMethod === 'cash' ? '💵' : selectedPaymentMethod === 'card' ? '💳' : '📱'}
                       </div>
-                      <span className="font-extrabold text-slate-950 text-base">
-                        Cash
+                      <span className="font-extrabold text-slate-950 text-base capitalize">
+                        {selectedPaymentMethod}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2 font-mono">
