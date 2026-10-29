@@ -134,6 +134,8 @@ export const CustomerPortal: React.FC = () => {
   const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
   const [isViewingCartDetail, setIsViewingCartDetail] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+  const [showBillSummary, setShowBillSummary] = useState(false);
 
   // Account Page States
   const [accountSubView, setAccountSubViewState] = useState<'none' | 'orders' | 'favourites'>(() => {
@@ -1001,10 +1003,13 @@ export const CustomerPortal: React.FC = () => {
   const cartDistanceKm = cartVendor 
     ? calculateDistanceKm(cartVendor.latitude, cartVendor.longitude, customerLat, customerLng)
     : 0;
-  const deliveryFee = cartVendor
-    ? (cartVendor.is_free_delivery ? 0 : calculateDeliveryFee(cartDistanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge))
-    : 0;
+  const deliveryFee = (orderType === 'pickup')
+    ? 0
+    : (cartVendor
+        ? (cartVendor.is_free_delivery ? 0 : calculateDeliveryFee(cartDistanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge))
+        : 0);
   const totalCashPayable = foodTotal + deliveryFee;
+  const regularTotalWithFee = regularFoodTotal + deliveryFee;
   const totalCartCount = cart.reduce((sum, i) => {
     const optionCount = (i.selectedVariations && Array.isArray(i.selectedVariations)) ? i.selectedVariations.length : 0;
     return sum + (i.quantity * (1 + optionCount));
@@ -1936,318 +1941,282 @@ export const CustomerPortal: React.FC = () => {
         )
       ) : activeBottomNav === 'carts' ? (
         // ========================================================================
-        // DEDICATED CARTS PAGE VIEW (User Cart Tied to Customer Account & DB)
+        // DEDICATED CARTS PAGE VIEW (100% Matching Screenshot_20261029_152222_33bbc37c.jpg)
         // ========================================================================
-        <div className="min-h-screen bg-slate-50 pb-28 select-none">
-          {/* Cart Header - Matches Screenshot */}
-          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3.5 shadow-2xs">
-            <div className="max-w-md mx-auto flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <button 
-                  onClick={() => {
-                    if (isViewingCartDetail) {
-                      setIsViewingCartDetail(false);
-                    } else {
-                      setActiveBottomNav('food');
-                    }
-                  }}
-                  className="p-2 rounded-full hover:bg-slate-100 text-slate-700 transition flex items-center justify-center cursor-pointer"
-                >
-                  <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-                </button>
-                <div>
-                  <h1 className="text-lg font-black text-slate-900 leading-tight">
-                    {isViewingCartDetail ? 'My Cart' : 'All carts'}
-                  </h1>
-                  {!isViewingCartDetail && selectedAddress && (
-                    <p className="text-[11px] font-bold text-slate-500 flex items-center">
-                      Deliver to: <span className="text-orange-600 ml-1 truncate max-w-[150px]">{selectedAddress.address_line}</span>
-                    </p>
-                  )}
-                </div>
+        <div className="min-h-screen bg-white pb-32 select-none">
+          <div className="max-w-md mx-auto">
+            {/* Top Header Row: Circular X Button + Cart Title & Restaurant Name */}
+            <header className="px-4 pt-4 pb-3 flex items-center space-x-3.5 bg-white">
+              <button
+                type="button"
+                onClick={() => setActiveBottomNav('food')}
+                className="w-11 h-11 rounded-full border border-slate-200/90 bg-white flex items-center justify-center text-slate-800 shadow-2xs hover:bg-slate-50 transition cursor-pointer shrink-0 active:scale-95"
+                title="Close Cart"
+              >
+                <X className="w-5 h-5 stroke-[2.2]" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-black text-slate-950 tracking-tight leading-tight">
+                  Cart
+                </h1>
+                <p className="text-sm font-semibold text-slate-800 leading-tight truncate mt-0.5">
+                  {cartVendor?.name || 'Special Bhai Bhai Biriyani House'}
+                </p>
               </div>
-
-              {cart.length > 0 && isViewingCartDetail && (
+              {cart.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => {
                     if (window.confirm('Are you sure you want to clear your cart?')) {
                       clearCart();
-                      setIsViewingCartDetail(false);
                     }
                   }}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-rose-600 rounded-full transition cursor-pointer"
+                  title="Clear Cart"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Clear</span>
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
-            </div>
-          </header>
+            </header>
 
-          <main className="max-w-md mx-auto p-4 space-y-4">
-            {/* 1. All Carts List View (Matches Screenshot_20261005_024412.jpg) */}
-            {!isViewingCartDetail ? (
-              <div className="space-y-4">
-                {cart.length === 0 ? (
-                  <div className="bg-white rounded-3xl border border-slate-200/90 p-8 text-center space-y-4 shadow-xs my-4">
-                    <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-orange-100">
-                      <ShoppingBag className="w-10 h-10 stroke-[2]" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-black text-slate-900">Your cart is empty</h3>
-                      <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                        Explore delicious food from local restaurants and shops to add them to your cart.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setActiveBottomNav('food')}
-                      className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-md shadow-orange-600/20 active:scale-95 cursor-pointer inline-flex items-center space-x-2"
-                    >
-                      <UtensilsCrossed className="w-4 h-4" />
-                      <span>Explore Restaurants</span>
-                    </button>
-                  </div>
-                ) : (
-                  /* Single Vendor Cart Card (Matches Screenshot exactly, made more compact and thinner as requested) */
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3.5">
-                    {/* Vendor Info Row */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
-                          <img 
-                            src={cartVendor?.cover_image || cartVendor?.logo_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150'} 
-                            alt={cartVendor?.name} 
-                            className="w-full h-full object-cover" 
-                          />
-                        </div>
-                        <div className="truncate">
-                          <h3 className="font-black text-sm text-slate-900 truncate leading-tight">{cartVendor?.name || 'Restaurant'}</h3>
-                          <div className="flex items-center text-[10px] font-bold text-slate-500 space-x-1.5 mt-0.5">
-                            <span>15-30 mins</span>
-                            <span>•</span>
-                            <div className="flex items-center text-pink-600">
-                              <Bike className="w-3 h-3 mr-1" />
-                              <span>Free</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Remove Cart Option Button */}
-                      <button 
-                        onClick={() => {
-                          if (window.confirm('Are you sure you want to remove this cart? (কার্ট রিমুভ করতে চান?)')) {
-                            clearCart();
-                          }
-                        }}
-                        className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition cursor-pointer text-xs font-bold active:scale-95 shrink-0"
-                        title="Remove Cart"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-
-                    {/* Items Row with Plus Button */}
-                    <div className="flex items-center space-x-2.5 overflow-x-auto pb-1 scrollbar-hide">
-                      {cart.slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="w-11 h-11 rounded-lg border border-slate-100 overflow-hidden shrink-0 bg-slate-50">
-                          <img src={item.menuItem.image_url} alt="" className="w-full h-full object-cover" />
-                        </div>
-                      ))}
-                      <button 
-                        onClick={() => cartVendor && setSelectedVendorForMenu(cartVendor)}
-                        className="w-8 h-8 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-colors shrink-0"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Subtotal Row */}
-                    <div className="flex justify-between items-center pt-1">
-                      <span className="text-xs font-bold text-slate-800">Subtotal</span>
-                      <span className="text-sm font-black text-slate-900">Tk{foodTotal}</span>
-                    </div>
-
-                    {/* View Cart CTA - Thinner "View your cart" button as requested */}
-                    <button
-                      onClick={() => setIsViewingCartDetail(true)}
-                      className="w-full py-2.5 bg-white border-2 border-slate-900 hover:bg-slate-50 text-slate-900 font-black text-sm rounded-xl transition shadow-2xs active:scale-[0.98]"
-                    >
-                      View your cart
-                    </button>
-                  </div>
-                )}
+            {cart.length === 0 ? (
+              <div className="p-8 text-center space-y-4 my-8">
+                <div className="w-20 h-20 bg-pink-50 text-[#e21b70] rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-pink-100">
+                  <ShoppingBag className="w-10 h-10 stroke-[2]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-slate-900">Your cart is empty</h3>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                    Explore delicious food from restaurants and add your favorite dishes to your cart.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveBottomNav('food')}
+                  className="px-6 py-3 bg-[#e21b70] hover:bg-[#c2135d] text-white font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-md shadow-pink-500/20 active:scale-95 cursor-pointer inline-flex items-center space-x-2"
+                >
+                  <UtensilsCrossed className="w-4 h-4" />
+                  <span>Explore Restaurants</span>
+                </button>
               </div>
             ) : (
-              /* 2. Detailed Checkout View (The original detailed view) */
-              <div className="space-y-4">
-                {/* Account Isolation Banner */}
-                {currentUser && currentUser.role === 'customer' && (
-                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-2xs flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2 truncate pr-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                      <span className="font-bold text-emerald-800 truncate">
-                        Securely synced with your account
+              <div className="space-y-4 pt-1">
+                {/* 1. Delivery / Pick-Up Pill Segmented Control */}
+                <div className="px-4">
+                  <div className="bg-[#f3f4f6] p-1 rounded-full flex items-center relative">
+                    {/* Delivery Pill */}
+                    <button
+                      type="button"
+                      onClick={() => setOrderType('delivery')}
+                      className={`flex items-center justify-center space-x-2 py-2.5 px-6 rounded-full font-extrabold text-sm flex-1 transition-all cursor-pointer ${
+                        orderType === 'delivery'
+                          ? 'bg-[#0f172a] text-white shadow-sm'
+                          : 'text-slate-800 hover:text-slate-950'
+                      }`}
+                    >
+                      <Bike className="w-4 h-4 stroke-[2.5]" />
+                      <span>Delivery</span>
+                    </button>
+
+                    {/* Pick-Up Pill */}
+                    <button
+                      type="button"
+                      onClick={() => setOrderType('pickup')}
+                      className={`flex items-center justify-center space-x-2 py-2.5 px-6 rounded-full font-extrabold text-sm flex-1 transition-all cursor-pointer relative ${
+                        orderType === 'pickup'
+                          ? 'bg-[#0f172a] text-white shadow-sm'
+                          : 'text-slate-800 hover:text-slate-950'
+                      }`}
+                    >
+                      <User className="w-4 h-4 stroke-[2.5]" />
+                      <span>Pick-Up</span>
+                    </button>
+
+                    {/* Floating 15% off badge above Pick-Up */}
+                    <div className="absolute -top-2.5 right-10 sm:right-14 bg-[#fce7f3] text-[#e21b70] text-[10px] font-black px-2 py-0.5 rounded-full border border-pink-200 shadow-2xs pointer-events-none">
+                      {cartVendor?.discount_percentage ? `${cartVendor.discount_percentage}% off` : '15% off'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Delivery / Prep Time Card Pill */}
+                <div className="px-4">
+                  <div className="border border-slate-200/90 rounded-full px-5 py-3 flex items-center justify-between bg-white shadow-2xs">
+                    <div className="text-sm text-slate-900 font-medium">
+                      <span>{orderType === 'delivery' ? 'Delivery:' : 'Pick-Up:'} </span>
+                      <span className="font-extrabold text-slate-950">
+                        {orderType === 'delivery' 
+                          ? `${(cartVendor?.estimated_prep_time_minutes || 20) + 15} - ${(cartVendor?.estimated_prep_time_minutes || 20) + 35} min`
+                          : `${cartVendor?.estimated_prep_time_minutes || 20} min`
+                        }
                       </span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddressModalOpen(true)}
+                      className="font-extrabold text-sm text-slate-950 underline underline-offset-4 hover:text-[#e21b70] transition cursor-pointer"
+                    >
+                      Change
+                    </button>
                   </div>
-                )}
+                </div>
 
-                {/* Items List */}
-                <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-                  <div className="p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
-                    <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">Selected Items</h4>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-bold text-orange-600">{totalCartCount} items</span>
-                      <button
-                        onClick={() => {
-                          if (window.confirm('Are you sure you want to remove all items from cart? (কার্ট রিমুভ করতে চান?)')) {
-                            clearCart();
-                            setIsViewingCartDetail(false);
-                          }
-                        }}
-                        className="flex items-center space-x-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer"
-                        title="Remove Cart"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                        <span>Remove Cart</span>
-                      </button>
-                    </div>
-                  </div>
+                {/* 3. Items List with Dashed Dividers */}
+                <div className="px-5 divide-y divide-dashed divide-slate-200/90 bg-white pt-2">
                   {cart.map((item, cartIdx) => {
                     const itemVarKey = JSON.stringify(item.selectedVariations || []);
                     const itemEffectivePrice = item.unitPrice ?? item.menuItem.price;
                     const itemSubtotal = itemEffectivePrice * item.quantity;
                     const itemExtrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
                     const itemPricing = getItemPricing(item.menuItem, cartVendor, itemExtrasPrice);
+                    const regularItemSubtotal = itemPricing.regularPrice * item.quantity;
 
                     return (
-                      <div key={`${item.menuItem.id}-${cartIdx}`} className="p-4 flex items-center justify-between gap-3 border-b border-slate-100 last:border-b-0">
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                          {item.menuItem.image_url && (
-                            <img
-                              src={item.menuItem.image_url}
-                              alt={item.menuItem.name}
-                              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-100"
-                            />
+                      <div
+                        key={`${item.menuItem.id}-${cartIdx}`}
+                        className="py-4.5 flex items-center justify-between gap-3.5"
+                      >
+                        {/* Circular Dish Image */}
+                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-slate-200/80 bg-slate-100 shadow-2xs">
+                          <img
+                            src={item.menuItem.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'}
+                            alt={item.menuItem.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        {/* Middle: Title & Quantity Capsule */}
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h4 className="font-extrabold text-base text-slate-900 leading-snug truncate">
+                            {item.menuItem.name}
+                          </h4>
+                          {item.selectedVariations && item.selectedVariations.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {item.selectedVariations.map((v, vIdx) => (
+                                <span key={vIdx} className="text-[10px] text-slate-500 font-medium">
+                                  {v.optionName} {v.price > 0 ? `(+Tk ${v.price})` : ''}
+                                </span>
+                              ))}
+                            </div>
                           )}
-                          <div className="min-w-0">
-                            <h5 className="font-extrabold text-xs text-slate-900 truncate">{item.menuItem.name}</h5>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                              Base: {settings.currency_symbol}{itemPricing.regularPrice}
-                              {itemPricing.hasDiscount && (
-                                <span className="ml-1 text-rose-600 font-bold">(-{itemPricing.discountPercent}%: {settings.currency_symbol}{itemEffectivePrice})</span>
-                              )}
-                            </p>
-                            {item.selectedVariations && item.selectedVariations.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-0.5">
-                                {item.selectedVariations.map((v, vIdx) => (
-                                  <span key={vIdx} className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                    {v.optionName} {v.price > 0 ? `(+${settings.currency_symbol}${v.price})` : ''}
-                                  </span>
-                                ))}
-                              </div>
+
+                          {/* Stepper Capsule: Trash if qty=1, Minus if qty>1, Digit, Plus */}
+                          <div className="flex items-center space-x-3.5 rounded-full border border-slate-200/90 bg-white px-3 py-1 mt-2.5 w-fit shadow-2xs">
+                            {item.quantity === 1 ? (
+                              <button
+                                type="button"
+                                onClick={() => removeFromCart(item.menuItem.id, itemVarKey)}
+                                className="text-slate-800 hover:text-rose-600 transition cursor-pointer p-0.5"
+                                title="Remove item"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1, itemVarKey)}
+                                className="text-slate-800 hover:text-slate-950 transition cursor-pointer p-0.5"
+                                title="Decrease quantity"
+                              >
+                                <Minus className="w-3.5 h-3.5 stroke-[2.2]" />
+                              </button>
                             )}
-                            <p className="text-[11px] font-bold text-orange-600 font-mono mt-0.5">
-                              {settings.currency_symbol}{itemEffectivePrice} × {item.quantity} = {settings.currency_symbol}{itemSubtotal}
-                            </p>
+                            <span className="font-extrabold text-sm text-slate-950 min-w-[12px] text-center font-mono">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1, itemVarKey)}
+                              className="text-slate-800 hover:text-emerald-600 transition cursor-pointer p-0.5"
+                              title="Increase quantity"
+                            >
+                              <Plus className="w-3.5 h-3.5 stroke-[2.2]" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 shrink-0">
-                          <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
-                            <button
-                              onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1, itemVarKey)}
-                              className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer hover:bg-slate-50"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-6 text-center text-xs font-black text-slate-900">{item.quantity}</span>
-                            <button
-                              onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1, itemVarKey)}
-                              className="w-6 h-6 rounded-lg bg-white text-slate-700 flex items-center justify-center shadow-2xs cursor-pointer hover:bg-slate-50"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
+                        {/* Right: Discounted Price & Strikethrough Regular Price */}
+                        <div className="text-right shrink-0">
+                          <div className="text-[#e21b70] font-black text-base font-mono">
+                            Tk {itemSubtotal}
                           </div>
-                          {/* Remove item button */}
-                          <button
-                            onClick={() => removeFromCart(item.menuItem.id, itemVarKey)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                            title="Remove item"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {itemPricing.hasDiscount && (
+                            <div className="text-xs font-semibold text-slate-400 line-through font-mono mt-0.5">
+                              Tk {regularItemSubtotal}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Delivery Address Card */}
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-orange-600" />
-                      <span>Delivery Address</span>
-                    </span>
-                    <button onClick={() => setIsAddressModalOpen(true)} className="text-xs font-bold text-orange-600 hover:underline">Change</button>
+                {/* 4. Total Section */}
+                <div className="px-5 pt-3 pb-2 bg-white">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-sm font-extrabold text-slate-950">
+                        Total <span className="font-normal text-slate-500 text-xs">(incl. fees and tax)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowBillSummary(s => !s)}
+                        className="text-xs font-extrabold text-slate-950 underline underline-offset-2 hover:text-[#e21b70] transition mt-1 block cursor-pointer"
+                      >
+                        See summary
+                      </button>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[#e21b70] text-xl font-black font-mono">
+                        Tk {totalCashPayable}
+                      </div>
+                      {totalDiscountSaved > 0 && (
+                        <div className="text-xs font-semibold text-slate-400 line-through font-mono mt-0.5">
+                          Tk {regularTotalWithFee}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
-                    <p className="font-extrabold text-slate-900">{selectedAddress?.label || 'Current Location'}</p>
-                    <p className="text-slate-500 mt-0.5">{selectedAddress?.address_line}</p>
-                  </div>
+
+                  {/* Collapsible Detailed Breakdown */}
+                  {showBillSummary && (
+                    <div className="mt-3.5 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-xs animate-in fade-in">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Items Subtotal</span>
+                        <span className="font-mono font-bold">Tk {regularFoodTotal}</span>
+                      </div>
+                      {totalDiscountSaved > 0 && (
+                        <div className="flex justify-between text-[#e21b70] font-bold">
+                          <span>Discount ({cartVendor?.discount_percentage || 15}% OFF)</span>
+                          <span className="font-mono">-Tk {totalDiscountSaved}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-slate-600">
+                        <span>{orderType === 'delivery' ? 'Delivery Fee' : 'Pick-Up Service Fee'}</span>
+                        <span className="font-mono font-bold">{deliveryFee > 0 ? `Tk ${deliveryFee}` : 'Free'}</span>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-slate-900 text-sm">
+                        <span>Total Payable</span>
+                        <span className="text-[#e21b70] font-mono">Tk {totalCashPayable}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Bill Breakdown */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3 text-xs">
-                  <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">Bill Details</h4>
-                  {totalDiscountSaved > 0 && (
-                    <div className="flex justify-between text-slate-500 font-medium">
-                      <span>Subtotal (Regular)</span>
-                      <span className="font-mono line-through">{settings.currency_symbol}{regularFoodTotal}</span>
-                    </div>
-                  )}
-                  {totalDiscountSaved > 0 && (
-                    <div className="flex justify-between text-rose-600 font-bold">
-                      <span className="flex items-center gap-1">
-                        <Tag className="w-3 h-3" />
-                        <span>Vendor Discount ({cartVendor?.discount_percentage ? `${cartVendor.discount_percentage}% OFF` : 'Special Offer'})</span>
-                      </span>
-                      <span className="font-mono">-{settings.currency_symbol}{totalDiscountSaved}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-slate-600 font-bold">
-                    <span>{totalDiscountSaved > 0 ? 'Discounted Items Total' : 'Subtotal'}</span>
-                    <span className="font-mono">{settings.currency_symbol}{foodTotal}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600 font-bold">
-                    <span>Delivery Fee</span>
-                    <span className="font-mono">{settings.currency_symbol}{deliveryFee}</span>
-                  </div>
-                  <div className="pt-3 border-t border-slate-100 flex justify-between font-black text-base text-slate-900">
-                    <span>Total</span>
-                    <span className="font-mono text-orange-600">{settings.currency_symbol}{totalCashPayable}</span>
-                  </div>
-                  {totalDiscountSaved > 0 && (
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200/70 rounded-2xl text-emerald-800 text-xs font-bold text-center">
-                      🎉 You saved {settings.currency_symbol}{totalDiscountSaved} with {cartVendor?.discount_percentage || 15}% OFF!
-                    </div>
-                  )}
+                {/* 5. Checkout CTA Button */}
+                <div className="px-5 pt-3 pb-8 bg-white">
+                  <button
+                    type="button"
+                    disabled={isPlacingOrder}
+                    onClick={handleCheckout}
+                    className="w-full py-4 bg-[#e21b70] hover:bg-[#c2135d] disabled:opacity-50 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-pink-500/25 transition active:scale-[0.98] cursor-pointer flex items-center justify-center space-x-2"
+                  >
+                    <span>{isPlacingOrder ? 'Confirming Order...' : 'Review payment and address'}</span>
+                  </button>
                 </div>
-
-                {/* Checkout CTA */}
-                <button
-                  disabled={isPlacingOrder}
-                  onClick={handleCheckout}
-                  className="w-full py-4 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-orange-600/30 transition flex items-center justify-center space-x-2 active:scale-[0.98]"
-                >
-                  <Banknote className="w-5 h-5" />
-                  <span>{isPlacingOrder ? 'Confirming Order...' : `Confirm Cash on Delivery`}</span>
-                </button>
               </div>
             )}
-          </main>
+          </div>
         </div>
       ) : (
         <>
