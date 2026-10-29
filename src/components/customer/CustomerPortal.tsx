@@ -4497,12 +4497,12 @@ export const CustomerPortal: React.FC = () => {
             className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[88vh] sm:max-h-[85vh] relative animate-in slide-in-from-bottom-6 duration-300"
           >
             
-            {/* Top Full Banner Image Header */}
-            <div className="relative w-full h-48 sm:h-52 bg-slate-900 shrink-0 overflow-hidden">
+            {/* Top Fixed Height Banner Image Header */}
+            <div className="relative w-full h-32 sm:h-36 bg-slate-900 shrink-0 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600'}
                 alt={selectedMenuItemForModal.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover block"
                 onError={(e) => {
                   e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600';
                 }}
@@ -4512,7 +4512,7 @@ export const CustomerPortal: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/30 pointer-events-none" />
 
               {/* Floating Top Left Pill Badge */}
-              <div className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40 z-20">
+              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40 z-20">
                 <Sparkles className="w-3 h-3 text-orange-600 fill-orange-600" />
                 <span>Customize Item</span>
               </div>
@@ -4521,10 +4521,10 @@ export const CustomerPortal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedMenuItemForModal(null)}
-                className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-white text-slate-900 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shadow-lg active:scale-90"
+                className="absolute top-2.5 right-2.5 z-30 w-8.5 h-8.5 rounded-full bg-white text-slate-900 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shadow-lg active:scale-90"
                 title="Close"
               >
-                <X className="w-5 h-5 stroke-[2.8]" />
+                <X className="w-4 h-4 stroke-[2.8]" />
               </button>
             </div>
 
