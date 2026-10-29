@@ -428,6 +428,45 @@ export const CustomerPortal: React.FC = () => {
   const [profileTargetPhone, setProfileTargetPhone] = useState('');
   const [profileOtpTimer, setProfileOtpTimer] = useState(0);
 
+  // Lock body scroll when any modal or sheet is open so background never scrolls
+  useEffect(() => {
+    const isAnyModalActive = Boolean(
+      selectedMenuItemForModal || 
+      isChooseAreaModalOpen || 
+      isAddressModalOpen || 
+      isCustomerLoginModalOpen || 
+      isAuthModalOpen || 
+      isRestaurantReviewsOpen || 
+      isEditProfileOpen || 
+      isSettingsModalOpen || 
+      isLogoutConfirmOpen || 
+      isUnavailPopupOpen || 
+      isSortMenuOpen
+    );
+
+    if (isAnyModalActive) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [
+    selectedMenuItemForModal, 
+    isChooseAreaModalOpen, 
+    isAddressModalOpen, 
+    isCustomerLoginModalOpen, 
+    isAuthModalOpen, 
+    isRestaurantReviewsOpen, 
+    isEditProfileOpen, 
+    isSettingsModalOpen, 
+    isLogoutConfirmOpen, 
+    isUnavailPopupOpen, 
+    isSortMenuOpen
+  ]);
+
   useEffect(() => {
     if (profileOtpTimer <= 0) return;
     const interval = setInterval(() => {
@@ -4489,7 +4528,7 @@ export const CustomerPortal: React.FC = () => {
       {selectedMenuItemForModal && selectedVendorForMenu && (
         <div 
           onClick={() => setSelectedMenuItemForModal(null)}
-          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 overscroll-contain"
         >
           {/* Main Modal Card Container */}
           <div 
