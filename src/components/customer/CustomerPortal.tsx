@@ -286,29 +286,79 @@ export const CustomerPortal: React.FC = () => {
     setSelectedModalVariations({});
   };
 
+  // Separate pure dish variations (portions/sizes) from recommended menu items
+  const dishVariations = useMemo(() => {
+    return Object.entries(selectedModalVariations)
+      .filter(([k, opt]) => !k.startsWith('rec_') && opt.groupName !== 'Frequently bought together')
+      .map(([_, opt]) => opt);
+  }, [selectedModalVariations]);
+
+  const selectedRecItems = useMemo(() => {
+    return Object.entries(selectedModalVariations)
+      .filter(([k, opt]) => k.startsWith('rec_') || opt.groupName === 'Frequently bought together')
+      .map(([k, opt]) => {
+        const id = k.startsWith('rec_') ? k.replace('rec_', '') : '';
+        return menuItems.find(m => m.id === id || m.name.toLowerCase() === opt.optionName.toLowerCase());
+      })
+      .filter((m): m is MenuItem => Boolean(m));
+  }, [selectedModalVariations, menuItems]);
+
   const modalPricing = useMemo(() => {
     if (!selectedMenuItemForModal) {
       return { regularPrice: 0, discountedPrice: 0, discountPercent: 0, hasDiscount: false, discountAmount: 0 };
     }
-    const extrasPrice = Object.values(selectedModalVariations).reduce((sum, opt) => {
+    const extrasPrice = dishVariations.reduce((sum, opt) => {
       return sum + (Number(opt.price) || 0);
     }, 0);
     return getItemPricing(selectedMenuItemForModal, selectedVendorForMenu, extrasPrice);
-  }, [selectedMenuItemForModal, selectedVendorForMenu, selectedModalVariations]);
+  }, [selectedMenuItemForModal, selectedVendorForMenu, dishVariations]);
 
   const calculatedModalUnitPrice = modalPricing.discountedPrice;
-  const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
+
+  const calculatedModalTotal = useMemo(() => {
+    const dishSubtotal = calculatedModalUnitPrice * modalQuantity;
+    const recsSubtotal = selectedRecItems.reduce((sum, recItem) => {
+      const p = getItemPricing(recItem, selectedVendorForMenu);
+      return sum + p.discountedPrice;
+    }, 0);
+    return dishSubtotal + recsSubtotal;
+  }, [calculatedModalUnitPrice, modalQuantity, selectedRecItems, selectedVendorForMenu]);
+
+  const calculatedModalRegularTotal = useMemo(() => {
+    const dishReg = modalPricing.regularPrice * modalQuantity;
+    const recsReg = selectedRecItems.reduce((sum, recItem) => {
+      const p = getItemPricing(recItem, selectedVendorForMenu);
+      return sum + p.regularPrice;
+    }, 0);
+    return dishReg + recsReg;
+  }, [modalPricing, modalQuantity, selectedRecItems, selectedVendorForMenu]);
 
   const handleConfirmAddToCartFromModal = () => {
     if (!selectedMenuItemForModal || !selectedVendorForMenu) return;
+
+    // 1. Add main dish with only its portion/size variations
     addToCart(
       selectedMenuItemForModal,
       selectedVendorForMenu,
       modalQuantity,
-      Object.values(selectedModalVariations),
+      dishVariations,
       modalSpecialInstructions,
       calculatedModalUnitPrice
     );
+
+    // 2. Add each selected recommendation item as its own MenuItem with image into the cart!
+    selectedRecItems.forEach(recItem => {
+      const recPricing = getItemPricing(recItem, selectedVendorForMenu);
+      addToCart(
+        recItem,
+        selectedVendorForMenu,
+        1,
+        [],
+        '',
+        recPricing.discountedPrice
+      );
+    });
+
     setSelectedMenuItemForModal(null);
   };
 
@@ -2093,6 +2143,9 @@ export const CustomerPortal: React.FC = () => {
                             src={item.menuItem.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'}
                             alt={item.menuItem.name}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150';
+                            }}
                           />
                         </div>
 
@@ -2109,9 +2162,12 @@ export const CustomerPortal: React.FC = () => {
                           </div>
 
                           {/* Options if present */}
-                          {item.selectedVariations && item.selectedVariations.length > 0 && (
+                          {item.selectedVariations && item.selectedVariations.filter(v => v.groupName !== 'Frequently bought together').length > 0 && (
                             <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                              {item.selectedVariations.map(v => `${v.optionName}${v.price > 0 ? ` (+Tk ${v.price})` : ''}`).join(', ')}
+                              {item.selectedVariations
+                                .filter(v => v.groupName !== 'Frequently bought together')
+                                .map(v => `${v.optionName}${v.price > 0 ? ` (+Tk ${v.price})` : ''}`)
+                                .join(', ')}
                             </p>
                           )}
 

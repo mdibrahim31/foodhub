@@ -1588,6 +1588,66 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  // Auto-migrate any cart items that have recommendation menu items lumped into selectedVariations
+  useEffect(() => {
+    if (!cart || cart.length === 0 || !cartVendor) return;
+    const hasLumpedRecs = cart.some(ci => 
+      ci.selectedVariations?.some(v => v.groupName === 'Frequently bought together')
+    );
+    if (!hasLumpedRecs) return;
+
+    let modified = false;
+    const newCart: CartItem[] = [];
+
+    cart.forEach(ci => {
+      const recs = ci.selectedVariations?.filter(v => v.groupName === 'Frequently bought together') || [];
+      const nonRecs = ci.selectedVariations?.filter(v => v.groupName !== 'Frequently bought together') || [];
+
+      if (recs.length === 0) {
+        newCart.push(ci);
+      } else {
+        modified = true;
+        // Recalculate main dish price without recommended items
+        const extrasPrice = nonRecs.reduce((s, o) => s + (Number(o.price) || 0), 0);
+        const mainPricing = getItemPricing(ci.menuItem, cartVendor, extrasPrice);
+        newCart.push({
+          ...ci,
+          selectedVariations: nonRecs,
+          unitPrice: mainPricing.discountedPrice
+        });
+
+        // Unpack each recommendation into its own MenuItem cart item
+        recs.forEach(recOpt => {
+          const found = menuItems.find(m => m.name.toLowerCase() === recOpt.optionName.toLowerCase() && m.vendor_id === cartVendor.id)
+            || menuItems.find(m => m.name.toLowerCase() === recOpt.optionName.toLowerCase());
+
+          const menuItemToUse: MenuItem = found || {
+            id: `rec-dish-${recOpt.optionName.replace(/\s+/g, '-').toLowerCase()}`,
+            vendor_id: cartVendor.id,
+            name: recOpt.optionName,
+            price: recOpt.price,
+            category: 'Fast Food',
+            is_available: true,
+            image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'
+          };
+
+          const p = getItemPricing(menuItemToUse, cartVendor);
+          newCart.push({
+            menuItem: menuItemToUse,
+            quantity: 1,
+            selectedVariations: [],
+            unitPrice: recOpt.price || p.discountedPrice
+          });
+        });
+      }
+    });
+
+    if (modified) {
+      setCart(newCart);
+      persistCustomerCart(newCart, cartVendor);
+    }
+  }, [cart, cartVendor, menuItems]);
+
   // Sync to local storage
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}settings`, JSON.stringify(settings));
