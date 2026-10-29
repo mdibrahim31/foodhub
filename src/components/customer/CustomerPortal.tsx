@@ -428,9 +428,10 @@ export const CustomerPortal: React.FC = () => {
   const [profileTargetPhone, setProfileTargetPhone] = useState('');
   const [profileOtpTimer, setProfileOtpTimer] = useState(0);
 
-  // Lock body scroll when any modal or sheet is open so background never scrolls
+  // Lock body scroll when any modal or sheet or menu view is open so background never scrolls
   useEffect(() => {
     const isAnyModalActive = Boolean(
+      selectedVendorForMenu ||
       selectedMenuItemForModal || 
       isChooseAreaModalOpen || 
       isAddressModalOpen || 
@@ -454,6 +455,7 @@ export const CustomerPortal: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [
+    selectedVendorForMenu,
     selectedMenuItemForModal, 
     isChooseAreaModalOpen, 
     isAddressModalOpen, 
@@ -3593,7 +3595,7 @@ export const CustomerPortal: React.FC = () => {
                     onClick={() => setSelectedVendorForMenu(vendor)}
                     className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group"
                   >
-                    <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
+                    <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
                       <img 
                         src={vendor.cover_image} 
                         alt={vendor.name} 
@@ -3685,15 +3687,15 @@ export const CustomerPortal: React.FC = () => {
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
-          className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden"
+          className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden overscroll-none touch-pan-y"
         >
           {/* Main Scrollable Content */}
           <div 
             ref={menuScrollContainerRef}
-            className="flex-1 overflow-y-auto scrollbar-none pb-36"
+            className="flex-1 overflow-y-auto overscroll-contain scrollbar-none pb-36"
           >
             {/* 1. Header Cover Area */}
-            <div className="relative h-44 sm:h-48 overflow-hidden bg-slate-100">
+            <div className="relative w-full aspect-[16/9] overflow-hidden bg-slate-100 shrink-0">
               <img 
                 src={selectedVendorForMenu.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'} 
                 alt={selectedVendorForMenu.name}
@@ -3866,7 +3868,7 @@ export const CustomerPortal: React.FC = () => {
                           className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                         >
                           {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
-                          <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                          <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                             <img 
                               src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                               alt={dish.name}
@@ -3982,7 +3984,7 @@ export const CustomerPortal: React.FC = () => {
                             className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                           >
                             {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
-                            <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                            <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                               <img 
                                 src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                                 alt={dish.name}
@@ -4537,7 +4539,7 @@ export const CustomerPortal: React.FC = () => {
           >
             
             {/* Top Fixed Aspect Banner Image Header (Identical 16:9 ratio to Restaurant Cards) */}
-            <div className="relative w-full aspect-[16/9] min-h-[175px] max-h-[175px] sm:min-h-[210px] sm:max-h-[210px] bg-slate-900 shrink-0 overflow-hidden">
+            <div className="relative w-full aspect-[16/9] bg-slate-900 shrink-0 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
