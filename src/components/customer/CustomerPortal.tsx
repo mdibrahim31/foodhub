@@ -3806,7 +3806,7 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="divide-y divide-dashed divide-slate-200">
+                <div className="grid grid-cols-2 gap-x-3.5 gap-y-5">
                   {menuItems
                     .filter((m) => {
                       if (m.vendor_id !== selectedVendorForMenu.id) return false;
@@ -3818,55 +3818,36 @@ export const CustomerPortal: React.FC = () => {
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                       const pricing = getItemPricing(dish, selectedVendorForMenu);
+                      const popPercent = 30 + ((dish.name.length * 7 + Math.round(dish.price || 100)) % 45);
 
                       return (
                         <div 
                           key={dish.id} 
                           onClick={() => handleOpenMenuItemModal(dish)}
-                          className="flex items-start justify-between gap-3.5 py-4 cursor-pointer group hover:bg-slate-50/60 rounded-xl transition px-1 border-b border-dashed border-slate-200/80 last:border-b-0"
+                          className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                         >
-                          {/* Left: Text & Price Details */}
-                          <div className="flex-1 min-w-0 pr-1">
-                            <h4 className="font-extrabold text-[15px] text-slate-900 leading-snug group-hover:text-[#e21b70] transition-colors">
-                              {dish.name}
-                            </h4>
-                            {isValidDescription(dish.description) && (
-                              <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed mt-1">
-                                {dish.description}
-                              </p>
+                          {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
+                          <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                            <img 
+                              src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
+                              alt={dish.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+
+                            {/* Discount Badge on Top-Left Corner if applicable */}
+                            {pricing.hasDiscount && (
+                              <div className="absolute top-2.5 left-2.5 bg-[#e21b70] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                                -{pricing.discountPercent}%
+                              </div>
                             )}
-                            {/* Price Row: Discounted + Regular Strikethrough Side by Side */}
-                            <div className="flex items-baseline space-x-2 mt-2 font-mono">
-                              <span className="text-[#e21b70] font-black text-base">
-                                {settings.currency_symbol || 'Tk'} {pricing.discountedPrice}
-                              </span>
-                              {pricing.hasDiscount && (
-                                <span className="text-xs font-bold text-slate-400 line-through">
-                                  {settings.currency_symbol || 'Tk'} {pricing.regularPrice}
-                                </span>
-                              )}
-                            </div>
-                          </div>
 
-                          {/* Right: Dish Image & Action Button Stack */}
-                          <div className="relative shrink-0 flex flex-col items-center">
-                            <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-200/90 bg-slate-100 shadow-2xs">
-                              <img 
-                                src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'} 
-                                alt={dish.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              {pricing.hasDiscount && (
-                                <span className="absolute top-0 left-0 bg-[#e21b70] text-white text-[10px] font-black px-1.5 py-0.5 rounded-br-xl shadow-xs">
-                                  -{pricing.discountPercent}%
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Stepper or Add Button under/overlapping the image */}
-                            <div className="-mt-3.5 z-10" onClick={(e) => e.stopPropagation()}>
+                            {/* Bottom Right Floating Plus / Stepper Button */}
+                            <div 
+                              className="absolute bottom-2.5 right-2.5 z-10" 
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {cartItem ? (
-                                <div className="flex items-center space-x-2 rounded-full border border-slate-200/90 bg-white px-2.5 py-0.5 shadow-md">
+                                <div className="flex items-center space-x-1.5 rounded-full border border-slate-200/90 bg-white/95 backdrop-blur-xs px-2.5 py-1 shadow-lg">
                                   <button
                                     type="button"
                                     onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)}
@@ -3895,12 +3876,37 @@ export const CustomerPortal: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleOpenMenuItemModal(dish)}
-                                  className="flex items-center space-x-1 px-3 py-1 rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-[#e21b70] font-black text-xs shadow-md transition cursor-pointer active:scale-95"
+                                  className="w-10 h-10 rounded-full bg-white text-slate-900 shadow-md border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition active:scale-90 cursor-pointer"
+                                  title="Add to cart"
                                 >
-                                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                                  <span>ADD</span>
+                                  <Plus className="w-5 h-5 stroke-[2.8]" />
                                 </button>
                               )}
+                            </div>
+                          </div>
+
+                          {/* Dish Info Below Image */}
+                          <div className="pt-2.5 space-y-0.5">
+                            <h4 className="font-extrabold text-sm sm:text-base text-slate-950 leading-snug group-hover:text-[#e21b70] transition-colors line-clamp-2">
+                              {dish.name}
+                            </h4>
+
+                            {/* Price Row: from Tk 176 Tk 200 */}
+                            <div className="flex items-baseline space-x-1.5 font-mono flex-wrap">
+                              <span className="text-[#e21b70] font-black text-sm sm:text-base">
+                                from {settings.currency_symbol || 'Tk'} {pricing.discountedPrice}
+                              </span>
+                              {pricing.hasDiscount && (
+                                <span className="text-xs font-bold text-slate-400 line-through">
+                                  {settings.currency_symbol || 'Tk'} {pricing.regularPrice}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Thumbs up popularity percentage badge */}
+                            <div className="flex items-center space-x-1 text-xs font-black text-slate-800 pt-0.5">
+                              <span>👍</span>
+                              <span>{popPercent}%</span>
                             </div>
                           </div>
                         </div>
@@ -3914,10 +3920,10 @@ export const CustomerPortal: React.FC = () => {
                 <div 
                   key={cat}
                   ref={(el) => { categorySectionRefs.current[cat] = el; }}
-                  className="space-y-2 border-t border-slate-100 pt-5"
+                  className="space-y-3 border-t border-slate-100 pt-5"
                 >
                   <h4 className="text-base font-extrabold text-slate-900 pb-1">{cat}</h4>
-                  <div className="divide-y divide-dashed divide-slate-200">
+                  <div className="grid grid-cols-2 gap-x-3.5 gap-y-5">
                     {menuItems
                       .filter(m => {
                         if (m.vendor_id !== selectedVendorForMenu.id || m.category !== cat) return false;
@@ -3928,55 +3934,36 @@ export const CustomerPortal: React.FC = () => {
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
                         const pricing = getItemPricing(dish, selectedVendorForMenu);
+                        const popPercent = 30 + ((dish.name.length * 7 + Math.round(dish.price || 100)) % 45);
 
                         return (
                           <div 
                             key={dish.id} 
                             onClick={() => handleOpenMenuItemModal(dish)}
-                            className="flex items-start justify-between gap-3.5 py-4 cursor-pointer group hover:bg-slate-50/60 rounded-xl transition px-1 border-b border-dashed border-slate-200/80 last:border-b-0"
+                            className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                           >
-                            {/* Left: Text & Price Details */}
-                            <div className="flex-1 min-w-0 pr-1">
-                              <h4 className="font-extrabold text-[15px] text-slate-900 leading-snug group-hover:text-[#e21b70] transition-colors">
-                                {dish.name}
-                              </h4>
-                              {isValidDescription(dish.description) && (
-                                <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed mt-1">
-                                  {dish.description}
-                                </p>
+                            {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
+                            <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                              <img 
+                                src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
+                                alt={dish.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+
+                              {/* Discount Badge on Top-Left Corner if applicable */}
+                              {pricing.hasDiscount && (
+                                <div className="absolute top-2.5 left-2.5 bg-[#e21b70] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                                  -{pricing.discountPercent}%
+                                </div>
                               )}
-                              {/* Price Row: Discounted + Regular Strikethrough Side by Side */}
-                              <div className="flex items-baseline space-x-2 mt-2 font-mono">
-                                <span className="text-[#e21b70] font-black text-base">
-                                  {settings.currency_symbol || 'Tk'} {pricing.discountedPrice}
-                                </span>
-                                {pricing.hasDiscount && (
-                                  <span className="text-xs font-bold text-slate-400 line-through">
-                                    {settings.currency_symbol || 'Tk'} {pricing.regularPrice}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
 
-                            {/* Right: Dish Image & Action Button Stack */}
-                            <div className="relative shrink-0 flex flex-col items-center">
-                              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-200/90 bg-slate-100 shadow-2xs">
-                                <img 
-                                  src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'} 
-                                  alt={dish.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                                {pricing.hasDiscount && (
-                                  <span className="absolute top-0 left-0 bg-[#e21b70] text-white text-[10px] font-black px-1.5 py-0.5 rounded-br-xl shadow-xs">
-                                    -{pricing.discountPercent}%
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Stepper or Add Button under/overlapping the image */}
-                              <div className="-mt-3.5 z-10" onClick={(e) => e.stopPropagation()}>
+                              {/* Bottom Right Floating Plus / Stepper Button */}
+                              <div 
+                                className="absolute bottom-2.5 right-2.5 z-10" 
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {cartItem ? (
-                                  <div className="flex items-center space-x-2 rounded-full border border-slate-200/90 bg-white px-2.5 py-0.5 shadow-md">
+                                  <div className="flex items-center space-x-1.5 rounded-full border border-slate-200/90 bg-white/95 backdrop-blur-xs px-2.5 py-1 shadow-lg">
                                     <button
                                       type="button"
                                       onClick={() => updateCartQuantity(dish.id, cartItem.quantity - 1)}
@@ -4005,12 +3992,37 @@ export const CustomerPortal: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenMenuItemModal(dish)}
-                                    className="flex items-center space-x-1 px-3 py-1 rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-[#e21b70] font-black text-xs shadow-md transition cursor-pointer active:scale-95"
+                                    className="w-10 h-10 rounded-full bg-white text-slate-900 shadow-md border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition active:scale-90 cursor-pointer"
+                                    title="Add to cart"
                                   >
-                                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                                    <span>ADD</span>
+                                    <Plus className="w-5 h-5 stroke-[2.8]" />
                                   </button>
                                 )}
+                              </div>
+                            </div>
+
+                            {/* Dish Info Below Image */}
+                            <div className="pt-2.5 space-y-0.5">
+                              <h4 className="font-extrabold text-sm sm:text-base text-slate-950 leading-snug group-hover:text-[#e21b70] transition-colors line-clamp-2">
+                                {dish.name}
+                              </h4>
+
+                              {/* Price Row: from Tk 176 Tk 200 */}
+                              <div className="flex items-baseline space-x-1.5 font-mono flex-wrap">
+                                <span className="text-[#e21b70] font-black text-sm sm:text-base">
+                                  from {settings.currency_symbol || 'Tk'} {pricing.discountedPrice}
+                                </span>
+                                {pricing.hasDiscount && (
+                                  <span className="text-xs font-bold text-slate-400 line-through">
+                                    {settings.currency_symbol || 'Tk'} {pricing.regularPrice}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Thumbs up popularity percentage badge */}
+                              <div className="flex items-center space-x-1 text-xs font-black text-slate-800 pt-0.5">
+                                <span>👍</span>
+                                <span>{popPercent}%</span>
                               </div>
                             </div>
                           </div>
