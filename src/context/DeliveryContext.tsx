@@ -19,6 +19,7 @@ import {
   Division,
   CityArea
 } from '../types/database';
+import { getItemPricing } from '../utils/pricing';
 import { 
   DEFAULT_SETTINGS, 
   INITIAL_ZONES,
@@ -4953,7 +4954,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     specialInstructions?: string,
     customUnitPrice?: number
   ) => {
-    const finalUnitPrice = customUnitPrice !== undefined ? customUnitPrice : item.price;
+    let finalUnitPrice = customUnitPrice;
+    if (finalUnitPrice === undefined) {
+      const extrasPrice = (selectedVariations || []).reduce((sum, opt) => sum + (Number(opt.price) || 0), 0);
+      const pricing = getItemPricing(item, vendor, extrasPrice);
+      finalUnitPrice = pricing.discountedPrice;
+    }
 
     if (cartVendor && cartVendor.id !== vendor.id && cart.length > 0) {
       const confirmReset = window.confirm(

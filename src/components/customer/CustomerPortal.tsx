@@ -5,6 +5,7 @@ import { AddressBookModal } from './AddressBookModal';
 import { AuthModal } from '../common/AuthModal';
 import { CustomerRestaurantReviewsModal } from './CustomerRestaurantReviewsModal';
 import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone, parseGoogleMapsLinkOrCoords } from '../../utils/geo';
+import { getItemPricing } from '../../utils/pricing';
 import { Vendor, Order, MenuItem } from '../../types/database';
 import { 
   MapPin, 
@@ -215,6 +216,18 @@ export const CustomerPortal: React.FC = () => {
     }
   };
 
+  // Selected Vendor for Menu Modal
+  const [selectedVendorForMenu, setSelectedVendorForMenuState] = useState<Vendor | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('foodiplace_customer_selected_vendor_id');
+      if (savedId) {
+        const found = vendors.find(v => v.id === savedId);
+        if (found) return found;
+      }
+    }
+    return null;
+  });
+
   // Foodpanda Style Menu Item Modal States
   const [selectedMenuItemForModal, setSelectedMenuItemForModal] = useState<MenuItem | null>(null);
   const [selectedModalVariations, setSelectedModalVariations] = useState<Record<string, import('../../context/DeliveryContext').CartItemOption>>({});
@@ -271,15 +284,17 @@ export const CustomerPortal: React.FC = () => {
     setSelectedModalVariations({});
   };
 
-  const calculatedModalUnitPrice = useMemo(() => {
-    if (!selectedMenuItemForModal) return 0;
-    const basePrice = Number(selectedMenuItemForModal.price) || 0;
+  const modalPricing = useMemo(() => {
+    if (!selectedMenuItemForModal) {
+      return { regularPrice: 0, discountedPrice: 0, discountPercent: 0, hasDiscount: false, discountAmount: 0 };
+    }
     const extrasPrice = Object.values(selectedModalVariations).reduce((sum, opt) => {
       return sum + (Number(opt.price) || 0);
     }, 0);
-    return basePrice + extrasPrice;
-  }, [selectedMenuItemForModal, selectedModalVariations]);
+    return getItemPricing(selectedMenuItemForModal, selectedVendorForMenu, extrasPrice);
+  }, [selectedMenuItemForModal, selectedVendorForMenu, selectedModalVariations]);
 
+  const calculatedModalUnitPrice = modalPricing.discountedPrice;
   const calculatedModalTotal = calculatedModalUnitPrice * modalQuantity;
 
   const handleConfirmAddToCartFromModal = () => {
@@ -516,17 +531,6 @@ export const CustomerPortal: React.FC = () => {
       setIsSavingProfile(false);
     }
   };
-
-  const [selectedVendorForMenu, setSelectedVendorForMenuState] = useState<Vendor | null>(() => {
-    if (typeof window !== 'undefined') {
-      const savedId = localStorage.getItem('foodiplace_customer_selected_vendor_id');
-      if (savedId) {
-        const found = vendors.find(v => v.id === savedId);
-        if (found) return found;
-      }
-    }
-    return null;
-  });
 
   // Keep active open vendor menu synchronized with real-time vendor updates
   useEffect(() => {
@@ -988,6 +992,12 @@ export const CustomerPortal: React.FC = () => {
 
   // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => sum + (item.unitPrice ?? item.menuItem.price) * item.quantity, 0);
+  const regularFoodTotal = cart.reduce((sum, item) => {
+    const extrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+    const pricing = getItemPricing(item.menuItem, cartVendor, extrasPrice);
+    return sum + pricing.regularPrice * item.quantity;
+  }, 0);
+  const totalDiscountSaved = Math.max(0, regularFoodTotal - foodTotal);
   const cartDistanceKm = cartVendor 
     ? calculateDistanceKm(cartVendor.latitude, cartVendor.longitude, customerLat, customerLng)
     : 0;
@@ -2108,6 +2118,8 @@ export const CustomerPortal: React.FC = () => {
                     const itemVarKey = JSON.stringify(item.selectedVariations || []);
                     const itemEffectivePrice = item.unitPrice ?? item.menuItem.price;
                     const itemSubtotal = itemEffectivePrice * item.quantity;
+                    const itemExtrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+                    const itemPricing = getItemPricing(item.menuItem, cartVendor, itemExtrasPrice);
 
                     return (
                       <div key={`${item.menuItem.id}-${cartIdx}`} className="p-4 flex items-center justify-between gap-3 border-b border-slate-100 last:border-b-0">
@@ -2121,7 +2133,12 @@ export const CustomerPortal: React.FC = () => {
                           )}
                           <div className="min-w-0">
                             <h5 className="font-extrabold text-xs text-slate-900 truncate">{item.menuItem.name}</h5>
-                            <p className="text-[10px] text-slate-500 font-medium">Base: {settings.currency_symbol}{item.menuItem.price}</p>
+                            <p className="text-[10px] text-slate-500 font-medium">
+                              Base: {settings.currency_symbol}{itemPricing.regularPrice}
+                              {itemPricing.hasDiscount && (
+                                <span className="ml-1 text-rose-600 font-bold">(-{itemPricing.discountPercent}%: {settings.currency_symbol}{itemEffectivePrice})</span>
+                              )}
+                            </p>
                             {item.selectedVariations && item.selectedVariations.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-0.5">
                                 {item.selectedVariations.map((v, vIdx) => (
@@ -2185,8 +2202,23 @@ export const CustomerPortal: React.FC = () => {
                 {/* Bill Breakdown */}
                 <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3 text-xs">
                   <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">Bill Details</h4>
+                  {totalDiscountSaved > 0 && (
+                    <div className="flex justify-between text-slate-500 font-medium">
+                      <span>Subtotal (Regular)</span>
+                      <span className="font-mono line-through">{settings.currency_symbol}{regularFoodTotal}</span>
+                    </div>
+                  )}
+                  {totalDiscountSaved > 0 && (
+                    <div className="flex justify-between text-rose-600 font-bold">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3 h-3" />
+                        <span>Vendor Discount ({cartVendor?.discount_percentage ? `${cartVendor.discount_percentage}% OFF` : 'Special Offer'})</span>
+                      </span>
+                      <span className="font-mono">-{settings.currency_symbol}{totalDiscountSaved}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-slate-600 font-bold">
-                    <span>Subtotal</span>
+                    <span>{totalDiscountSaved > 0 ? 'Discounted Items Total' : 'Subtotal'}</span>
                     <span className="font-mono">{settings.currency_symbol}{foodTotal}</span>
                   </div>
                   <div className="flex justify-between text-slate-600 font-bold">
@@ -2197,6 +2229,11 @@ export const CustomerPortal: React.FC = () => {
                     <span>Total</span>
                     <span className="font-mono text-orange-600">{settings.currency_symbol}{totalCashPayable}</span>
                   </div>
+                  {totalDiscountSaved > 0 && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200/70 rounded-2xl text-emerald-800 text-xs font-bold text-center">
+                      🎉 You saved {settings.currency_symbol}{totalDiscountSaved} with {cartVendor?.discount_percentage || 15}% OFF!
+                    </div>
+                  )}
                 </div>
 
                 {/* Checkout CTA */}
@@ -2877,6 +2914,17 @@ export const CustomerPortal: React.FC = () => {
                   </span>
                   <span className="text-slate-500 font-semibold">(500+ ratings)</span>
                 </div>
+
+                {Boolean((selectedVendorForMenu.discount_title && String(selectedVendorForMenu.discount_title).trim() && selectedVendorForMenu.discount_title !== 'null' && selectedVendorForMenu.discount_title !== 'undefined') || (selectedVendorForMenu.discount_percentage && Number(selectedVendorForMenu.discount_percentage) > 0)) && (
+                  <div className="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-200 text-rose-600 text-xs font-black px-3 py-1 rounded-full shadow-2xs">
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>
+                      {(selectedVendorForMenu.discount_title && selectedVendorForMenu.discount_title !== 'null' && selectedVendorForMenu.discount_title !== 'undefined') 
+                        ? selectedVendorForMenu.discount_title 
+                        : `${selectedVendorForMenu.discount_percentage}% OFF on all menu items`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2947,8 +2995,7 @@ export const CustomerPortal: React.FC = () => {
                     .slice(0, 6)
                     .map((dish) => {
                       const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                      const startingPrice = Number(dish.price) || 0;
-                      const hasDiscount = Boolean(dish.original_price && dish.original_price > startingPrice);
+                      const pricing = getItemPricing(dish, selectedVendorForMenu);
 
                       return (
                         <div 
@@ -2962,6 +3009,13 @@ export const CustomerPortal: React.FC = () => {
                               alt={dish.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             />
+                            {/* Discount Badge on Image */}
+                            {pricing.hasDiscount && (
+                              <div className="absolute top-2 left-2 z-10 bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-xs flex items-center gap-0.5">
+                                <Tag className="w-2.5 h-2.5" />
+                                <span>-{pricing.discountPercent}%</span>
+                              </div>
+                            )}
                             {/* Overlay Badge at Bottom Right of Image */}
                             <div className="absolute bottom-2 right-2" onClick={(e) => e.stopPropagation()}>
                               {cartItem ? (
@@ -2987,12 +3041,19 @@ export const CustomerPortal: React.FC = () => {
                                 {dish.description}
                               </p>
                             )}
-                            <div className="flex items-center space-x-1.5">
+                            <div className="flex items-center space-x-1.5 flex-wrap">
                               <span className="text-xs font-black text-[#d70f64]">
-                                {settings.currency_symbol} {dish.price}
+                                {settings.currency_symbol} {pricing.discountedPrice}
                               </span>
-                              {hasDiscount && (
-                                <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
+                              {pricing.hasDiscount && (
+                                <>
+                                  <span className="text-[10px] font-medium text-slate-400 line-through">
+                                    {settings.currency_symbol} {pricing.regularPrice}
+                                  </span>
+                                  <span className="text-[9px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0.2 rounded">
+                                    -{pricing.discountPercent}%
+                                  </span>
+                                </>
                               )}
                             </div>
                             <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
@@ -3026,8 +3087,7 @@ export const CustomerPortal: React.FC = () => {
                       })
                       .map((dish) => {
                         const cartItem = cart.find(ci => ci.menuItem.id === dish.id);
-                        const startingPrice = Number(dish.price) || 0;
-                        const hasDiscount = Boolean(dish.original_price && dish.original_price > startingPrice);
+                        const pricing = getItemPricing(dish, selectedVendorForMenu);
 
                         return (
                           <div 
@@ -3041,6 +3101,13 @@ export const CustomerPortal: React.FC = () => {
                                 alt={dish.name}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                               />
+                              {/* Discount Badge on Image */}
+                              {pricing.hasDiscount && (
+                                <div className="absolute top-2 left-2 z-10 bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-xs flex items-center gap-0.5">
+                                  <Tag className="w-2.5 h-2.5" />
+                                  <span>-{pricing.discountPercent}%</span>
+                                </div>
+                              )}
                               {/* Overlay Badge at Bottom Right of Image */}
                               <div className="absolute bottom-2 right-2" onClick={(e) => e.stopPropagation()}>
                                 {cartItem ? (
@@ -3066,12 +3133,19 @@ export const CustomerPortal: React.FC = () => {
                                   {dish.description}
                                 </p>
                               )}
-                              <div className="flex items-center space-x-1.5">
+                              <div className="flex items-center space-x-1.5 flex-wrap">
                                 <span className="text-xs font-black text-[#d70f64]">
-                                  {settings.currency_symbol} {dish.price}
+                                  {settings.currency_symbol} {pricing.discountedPrice}
                                 </span>
-                                {hasDiscount && (
-                                  <span className="text-[10px] font-medium text-slate-400 line-through">{settings.currency_symbol} {dish.original_price}</span>
+                                {pricing.hasDiscount && (
+                                  <>
+                                    <span className="text-[10px] font-medium text-slate-400 line-through">
+                                      {settings.currency_symbol} {pricing.regularPrice}
+                                    </span>
+                                    <span className="text-[9px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0.2 rounded">
+                                      -{pricing.discountPercent}%
+                                    </span>
+                                  </>
                                 )}
                               </div>
                               <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
@@ -3574,14 +3648,19 @@ export const CustomerPortal: React.FC = () => {
                 )}
 
                 {/* Price & Rating */}
-                <div className="pt-1 flex items-center space-x-2">
+                <div className="pt-1 flex items-center space-x-2 flex-wrap gap-y-1">
                   <span className="text-base font-black text-[#d70f64] font-mono">
-                    Tk {calculatedModalUnitPrice}
+                    Tk {modalPricing.discountedPrice}
                   </span>
-                  {Boolean(selectedMenuItemForModal.original_price && selectedMenuItemForModal.original_price > selectedMenuItemForModal.price) && (
-                    <span className="text-xs text-slate-400 line-through font-semibold font-mono">
-                      Tk {selectedMenuItemForModal.original_price}
-                    </span>
+                  {modalPricing.hasDiscount && (
+                    <>
+                      <span className="text-xs text-slate-400 line-through font-semibold font-mono">
+                        Tk {modalPricing.regularPrice}
+                      </span>
+                      <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tight">
+                        -{modalPricing.discountPercent}%
+                      </span>
+                    </>
                   )}
                   <span className="text-slate-300">•</span>
                   <span className="text-xs font-bold text-slate-700">👍 95%</span>
@@ -3700,7 +3779,7 @@ export const CustomerPortal: React.FC = () => {
                       .map((recItem) => {
                         const recKey = `rec_${recItem.id}`;
                         const isSelected = Boolean(selectedModalVariations[recKey]);
-                        const recPrice = Number(recItem.price) || 0;
+                        const recPricing = getItemPricing(recItem, selectedVendorForMenu);
 
                         return (
                           <div
@@ -3714,7 +3793,7 @@ export const CustomerPortal: React.FC = () => {
                                   next[recKey] = {
                                     groupName: 'Frequently bought together',
                                     optionName: recItem.name,
-                                    price: recPrice
+                                    price: recPricing.discountedPrice
                                   };
                                 }
                                 return next;
@@ -3734,10 +3813,10 @@ export const CustomerPortal: React.FC = () => {
                                 <h4 className="font-extrabold text-xs text-slate-900">{recItem.name}</h4>
                                 <div className="flex items-center space-x-1.5 font-mono text-xs mt-0.5">
                                   <span className="font-black text-[#d70f64]">
-                                    + Tk {recPrice}
+                                    + Tk {recPricing.discountedPrice}
                                   </span>
-                                  {recItem.original_price && recItem.original_price > recPrice && (
-                                    <span className="text-[10px] text-slate-400 line-through">Tk {recItem.original_price}</span>
+                                  {recPricing.hasDiscount && (
+                                    <span className="text-[10px] text-slate-400 line-through">Tk {recPricing.regularPrice}</span>
                                   )}
                                 </div>
                               </div>
@@ -3813,9 +3892,16 @@ export const CustomerPortal: React.FC = () => {
                   className="flex-1 py-2.5 px-4 bg-[#d70f64] hover:bg-[#b00c50] text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-between transition shadow-md shadow-pink-500/20 cursor-pointer active:scale-[0.98]"
                 >
                   <span>Add to cart</span>
-                  <span className="font-mono font-extrabold text-sm">
-                    Tk {calculatedModalTotal}
-                  </span>
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <span className="font-extrabold text-sm">
+                      Tk {calculatedModalTotal}
+                    </span>
+                    {modalPricing.hasDiscount && (
+                      <span className="text-xs line-through opacity-75 font-normal">
+                        Tk {modalPricing.regularPrice * modalQuantity}
+                      </span>
+                    )}
+                  </div>
                 </button>
               </div>
 
