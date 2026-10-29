@@ -4498,27 +4498,30 @@ export const CustomerPortal: React.FC = () => {
           >
             
             {/* Top Full Banner Image Header */}
-            <div className="relative w-full h-36 sm:h-44 bg-slate-900 shrink-0 overflow-hidden">
+            <div className="relative w-full h-48 sm:h-52 bg-slate-900 shrink-0 overflow-hidden">
               <img
                 src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600'}
                 alt={selectedMenuItemForModal.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600';
+                }}
               />
               
               {/* Gradient Overlay for Controls */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/30 pointer-events-none" />
 
               {/* Floating Top Left Pill Badge */}
-              <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40">
+              <div className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40 z-20">
                 <Sparkles className="w-3 h-3 text-orange-600 fill-orange-600" />
                 <span>Customize Item</span>
               </div>
 
-              {/* Floating Top Right Close Button (Permanently visible z-30 with high contrast circle) */}
+              {/* Floating Top Right Close Button */}
               <button
                 type="button"
                 onClick={() => setSelectedMenuItemForModal(null)}
-                className="absolute top-3 right-3 z-30 w-9 h-9 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white border border-white/30 flex items-center justify-center transition cursor-pointer shadow-xl backdrop-blur-md active:scale-90"
+                className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-white text-slate-900 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shadow-lg active:scale-90"
                 title="Close"
               >
                 <X className="w-5 h-5 stroke-[2.8]" />
