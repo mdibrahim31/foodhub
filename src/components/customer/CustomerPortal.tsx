@@ -2249,7 +2249,7 @@ export const CustomerPortal: React.FC = () => {
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span className="truncate max-w-[110px]">
-                    {activeCustomerAddress ? activeCustomerAddress.label || 'Pin Location' : 'Pin Location'}
+                    {activeCustomerAddress ? activeCustomerAddress.label || 'At door' : 'At door'}
                   </span>
                 </button>
 
