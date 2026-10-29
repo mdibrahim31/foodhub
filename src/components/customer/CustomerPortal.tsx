@@ -4522,7 +4522,7 @@ export const CustomerPortal: React.FC = () => {
             </div>
 
             {/* Modal Scrollable Body */}
-            <div className="p-4 space-y-3.5 overflow-y-auto max-h-[calc(96vh-200px)]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-0">
               
               {/* Item Info Card: Name, Description, Price */}
               <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1.5">
@@ -4755,50 +4755,49 @@ export const CustomerPortal: React.FC = () => {
                   <span>&gt;</span>
                 </button>
               </div>
+            </div>
 
-              {/* Bottom Quantity & Add to Cart Action */}
-              <div className="pt-1 flex items-center gap-2.5">
-                {/* Quantity Controls */}
-                <div className="flex items-center space-x-2 shrink-0 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setModalQuantity(q => Math.max(1, q - 1))}
-                    className="w-8 h-8 rounded-lg bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-50 transition cursor-pointer shadow-2xs"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-center font-black text-xs text-slate-900 font-mono w-4">
-                    {modalQuantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setModalQuantity(q => q + 1)}
-                    className="w-8 h-8 rounded-lg bg-white text-[#d70f64] font-bold flex items-center justify-center hover:bg-pink-50 transition cursor-pointer shadow-2xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Add to Cart Submit Button */}
+            {/* Bottom Quantity & Add to Cart Action Fixed Footer */}
+            <div className="shrink-0 bg-white border-t border-slate-100 p-3.5 sm:p-4 shadow-xl z-20 flex items-center gap-2.5">
+              {/* Quantity Controls */}
+              <div className="flex items-center space-x-2 shrink-0 bg-slate-100 p-1 rounded-xl border border-slate-200">
                 <button
                   type="button"
-                  onClick={handleConfirmAddToCartFromModal}
-                  className="flex-1 py-2.5 px-4 bg-[#d70f64] hover:bg-[#b00c50] text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-between transition shadow-md shadow-pink-500/20 cursor-pointer active:scale-[0.98]"
+                  onClick={() => setModalQuantity(q => Math.max(1, q - 1))}
+                  className="w-8 h-8 rounded-lg bg-white text-slate-700 font-bold flex items-center justify-center hover:bg-slate-50 transition cursor-pointer shadow-2xs"
                 >
-                  <span>Add to cart</span>
-                  <div className="flex items-center gap-1.5 font-mono">
-                    <span className="font-extrabold text-sm">
-                      Tk {calculatedModalTotal}
-                    </span>
-                    {modalPricing.hasDiscount && (
-                      <span className="text-xs line-through opacity-75 font-normal">
-                        Tk {modalPricing.regularPrice * modalQuantity}
-                      </span>
-                    )}
-                  </div>
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-center font-black text-xs text-slate-900 font-mono w-4">
+                  {modalQuantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setModalQuantity(q => q + 1)}
+                  className="w-8 h-8 rounded-lg bg-white text-[#d70f64] font-bold flex items-center justify-center hover:bg-pink-50 transition cursor-pointer shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
 
+              {/* Add to Cart Submit Button */}
+              <button
+                type="button"
+                onClick={handleConfirmAddToCartFromModal}
+                className="flex-1 py-3 px-4 bg-[#e21b70] hover:bg-[#c2135d] text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-between transition shadow-md shadow-pink-500/20 cursor-pointer active:scale-[0.98]"
+              >
+                <span>Add to cart</span>
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="font-extrabold text-sm">
+                    Tk {calculatedModalTotal}
+                  </span>
+                  {calculatedModalRegularTotal > calculatedModalTotal && (
+                    <span className="text-xs line-through opacity-75 font-normal">
+                      Tk {calculatedModalRegularTotal}
+                    </span>
+                  )}
+                </div>
+              </button>
             </div>
           </div>
         </div>
