@@ -1963,20 +1963,6 @@ export const CustomerPortal: React.FC = () => {
                   {cartVendor?.name || 'Special Bhai Bhai Biriyani House'}
                 </p>
               </div>
-              {cart.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to clear your cart?')) {
-                      clearCart();
-                    }
-                  }}
-                  className="p-2 text-slate-400 hover:text-rose-600 rounded-full transition cursor-pointer"
-                  title="Clear Cart"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
             </header>
 
             {cart.length === 0 ? (
@@ -2028,7 +2014,12 @@ export const CustomerPortal: React.FC = () => {
                           : 'text-slate-800 hover:text-slate-950'
                       }`}
                     >
-                      <User className="w-4 h-4 stroke-[2.5]" />
+                      <svg className="w-4 h-4 stroke-[2.4]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="4" r="1.5" />
+                        <path d="M10 21v-5l-2-2.5 1.5-3.5L14 12l2.5-1.5" />
+                        <path d="m14 16 2 5" />
+                        <path d="M8 12.5 6 15" />
+                      </svg>
                       <span>Pick-Up</span>
                     </button>
 
@@ -2061,8 +2052,8 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 3. Items List with Dashed Dividers */}
-                <div className="px-5 divide-y divide-dashed divide-slate-200/90 bg-white pt-2">
+                {/* 3. Items List with Dashed Dividers matching reference */}
+                <div className="px-5 bg-white pt-1">
                   {cart.map((item, cartIdx) => {
                     const itemVarKey = JSON.stringify(item.selectedVariations || []);
                     const itemEffectivePrice = item.unitPrice ?? item.menuItem.price;
@@ -2074,10 +2065,10 @@ export const CustomerPortal: React.FC = () => {
                     return (
                       <div
                         key={`${item.menuItem.id}-${cartIdx}`}
-                        className="py-4.5 flex items-center justify-between gap-3.5"
+                        className="flex items-start gap-3.5 py-4 border-b border-dashed border-slate-200"
                       >
                         {/* Circular Dish Image */}
-                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-slate-200/80 bg-slate-100 shadow-2xs">
+                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-slate-200/80 bg-slate-100 shadow-2xs mt-0.5">
                           <img
                             src={item.menuItem.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150'}
                             alt={item.menuItem.name}
@@ -2085,66 +2076,68 @@ export const CustomerPortal: React.FC = () => {
                           />
                         </div>
 
-                        {/* Middle: Title & Quantity Capsule */}
-                        <div className="flex-1 min-w-0 pr-2">
-                          <h4 className="font-extrabold text-base text-slate-900 leading-snug truncate">
-                            {item.menuItem.name}
-                          </h4>
+                        {/* Middle & Right Content */}
+                        <div className="flex-1 min-w-0">
+                          {/* Top row: Name on left, Discounted Price on right */}
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-extrabold text-[15px] text-slate-900 leading-snug">
+                              {item.menuItem.name}
+                            </h4>
+                            <div className="text-[#e21b70] font-black text-base shrink-0 font-mono">
+                              Tk {itemSubtotal}
+                            </div>
+                          </div>
+
+                          {/* Options if present */}
                           {item.selectedVariations && item.selectedVariations.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                              {item.selectedVariations.map((v, vIdx) => (
-                                <span key={vIdx} className="text-[10px] text-slate-500 font-medium">
-                                  {v.optionName} {v.price > 0 ? `(+Tk ${v.price})` : ''}
-                                </span>
-                              ))}
-                            </div>
+                            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                              {item.selectedVariations.map(v => `${v.optionName}${v.price > 0 ? ` (+Tk ${v.price})` : ''}`).join(', ')}
+                            </p>
                           )}
 
-                          {/* Stepper Capsule: Trash if qty=1, Minus if qty>1, Digit, Plus */}
-                          <div className="flex items-center space-x-3.5 rounded-full border border-slate-200/90 bg-white px-3 py-1 mt-2.5 w-fit shadow-2xs">
-                            {item.quantity === 1 ? (
+                          {/* Bottom row: Stepper Pill Capsule on left, Regular Price (strikethrough) on right */}
+                          <div className="flex items-center justify-between mt-2.5">
+                            {/* Stepper Capsule */}
+                            <div className="flex items-center space-x-3 rounded-full border border-slate-200/90 bg-white px-3 py-1 shadow-2xs">
+                              {item.quantity === 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeFromCart(item.menuItem.id, itemVarKey)}
+                                  className="text-slate-800 hover:text-rose-600 transition cursor-pointer p-0.5"
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1, itemVarKey)}
+                                  className="text-slate-800 hover:text-slate-950 transition cursor-pointer p-0.5"
+                                  title="Decrease quantity"
+                                >
+                                  <Minus className="w-3.5 h-3.5 stroke-[2.2]" />
+                                </button>
+                              )}
+                              <span className="font-extrabold text-sm text-slate-950 min-w-[12px] text-center font-mono">
+                                {item.quantity}
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => removeFromCart(item.menuItem.id, itemVarKey)}
-                                className="text-slate-800 hover:text-rose-600 transition cursor-pointer p-0.5"
-                                title="Remove item"
+                                onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1, itemVarKey)}
+                                className="text-slate-800 hover:text-emerald-600 transition cursor-pointer p-0.5"
+                                title="Increase quantity"
                               >
-                                <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                                <Plus className="w-3.5 h-3.5 stroke-[2.2]" />
                               </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => updateCartQuantity(item.menuItem.id, item.quantity - 1, itemVarKey)}
-                                className="text-slate-800 hover:text-slate-950 transition cursor-pointer p-0.5"
-                                title="Decrease quantity"
-                              >
-                                <Minus className="w-3.5 h-3.5 stroke-[2.2]" />
-                              </button>
+                            </div>
+
+                            {/* Strikethrough regular price aligned with stepper */}
+                            {itemPricing.hasDiscount && (
+                              <div className="text-xs font-semibold text-slate-400 line-through font-mono">
+                                Tk {regularItemSubtotal}
+                              </div>
                             )}
-                            <span className="font-extrabold text-sm text-slate-950 min-w-[12px] text-center font-mono">
-                              {item.quantity}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateCartQuantity(item.menuItem.id, item.quantity + 1, itemVarKey)}
-                              className="text-slate-800 hover:text-emerald-600 transition cursor-pointer p-0.5"
-                              title="Increase quantity"
-                            >
-                              <Plus className="w-3.5 h-3.5 stroke-[2.2]" />
-                            </button>
                           </div>
-                        </div>
-
-                        {/* Right: Discounted Price & Strikethrough Regular Price */}
-                        <div className="text-right shrink-0">
-                          <div className="text-[#e21b70] font-black text-base font-mono">
-                            Tk {itemSubtotal}
-                          </div>
-                          {itemPricing.hasDiscount && (
-                            <div className="text-xs font-semibold text-slate-400 line-through font-mono mt-0.5">
-                              Tk {regularItemSubtotal}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
