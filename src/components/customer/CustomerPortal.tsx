@@ -3872,8 +3872,8 @@ export const CustomerPortal: React.FC = () => {
                           onClick={() => handleOpenMenuItemModal(dish)}
                           className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                         >
-                          {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner (Fixed 16:9 ratio like restaurant cover photo) */}
-                          <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                          {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
+                          <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                             <img 
                               src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                               alt={dish.name}
@@ -3988,8 +3988,8 @@ export const CustomerPortal: React.FC = () => {
                             onClick={() => handleOpenMenuItemModal(dish)}
                             className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                           >
-                            {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner (Fixed 16:9 ratio like restaurant cover photo) */}
-                            <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                            {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
+                            <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                               <img 
                                 src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                                 alt={dish.name}
@@ -4543,8 +4543,8 @@ export const CustomerPortal: React.FC = () => {
             className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[88vh] sm:max-h-[85vh] relative animate-in slide-in-from-bottom-6 duration-300"
           >
             
-            {/* Top Fixed Aspect Banner Image Header (16:9 ratio regardless of vendor upload size) */}
-            <div className="relative w-full aspect-[16/9] bg-slate-900 shrink-0 overflow-hidden">
+            {/* Top Fixed Aspect Banner Image Header (16:9 fixed cover photo banner) */}
+            <div className="relative w-full aspect-[16/9] bg-slate-900 shrink-0 overflow-hidden border-b border-slate-200 shadow-2xs">
               <img
                 src={selectedMenuItemForModal.image_url || selectedVendorForMenu?.cover_image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
@@ -4554,8 +4554,8 @@ export const CustomerPortal: React.FC = () => {
                 }}
               />
               
-              {/* Gradient Overlay for Controls */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/30 pointer-events-none z-10" />
+              {/* Gradient Overlay for Top Controls and Bottom Edge Separation */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/40 pointer-events-none z-10" />
 
               {/* Floating Top Left Pill Badge */}
               <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40 z-20">
