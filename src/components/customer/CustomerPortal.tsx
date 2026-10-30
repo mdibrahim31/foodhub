@@ -3872,8 +3872,8 @@ export const CustomerPortal: React.FC = () => {
                           onClick={() => handleOpenMenuItemModal(dish)}
                           className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                         >
-                          {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
-                          <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                          {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner (Fixed 16:9 ratio like restaurant cover photo) */}
+                          <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                             <img 
                               src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                               alt={dish.name}
@@ -3988,8 +3988,8 @@ export const CustomerPortal: React.FC = () => {
                             onClick={() => handleOpenMenuItemModal(dish)}
                             className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                           >
-                            {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
-                            <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                            {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner (Fixed 16:9 ratio like restaurant cover photo) */}
+                            <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                               <img 
                                 src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                                 alt={dish.name}
