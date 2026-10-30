@@ -4535,16 +4535,16 @@ export const CustomerPortal: React.FC = () => {
       {selectedMenuItemForModal && selectedVendorForMenu && (
         <div 
           onClick={() => setSelectedMenuItemForModal(null)}
-          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 overscroll-contain"
+          className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 overscroll-contain"
         >
           {/* Main Modal Card Container */}
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[88vh] sm:max-h-[85vh] relative animate-in slide-in-from-bottom-6 duration-300"
+            className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh] sm:max-h-[85vh] relative animate-in slide-in-from-bottom-6 duration-300"
           >
             
             {/* Top Fixed Aspect Banner Image Header (16:9 fixed cover photo banner) */}
-            <div className="relative w-full aspect-[16/9] bg-slate-900 shrink-0 overflow-hidden border-b border-slate-200 shadow-2xs">
+            <div className="relative w-full aspect-[16/9] bg-slate-100 shrink-0 overflow-hidden border-b border-slate-200">
               <img
                 src={selectedMenuItemForModal.image_url || selectedVendorForMenu?.cover_image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
@@ -4553,12 +4553,9 @@ export const CustomerPortal: React.FC = () => {
                   e.currentTarget.src = selectedVendorForMenu?.cover_image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800';
                 }}
               />
-              
-              {/* Gradient Overlay for Top Controls and Bottom Edge Separation */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/40 pointer-events-none z-10" />
 
               {/* Floating Top Left Pill Badge */}
-              <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-md flex items-center gap-1.5 border border-white/40 z-20">
+              <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-slate-800 shadow-lg flex items-center gap-1.5 border border-slate-200/80 z-20">
                 <Sparkles className="w-3 h-3 text-orange-600 fill-orange-600" />
                 <span>Customize Item</span>
               </div>
@@ -4567,7 +4564,7 @@ export const CustomerPortal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedMenuItemForModal(null)}
-                className="absolute top-3 right-3 z-30 w-9 h-9 rounded-full bg-white text-slate-900 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shadow-lg active:scale-90"
+                className="absolute top-3 right-3 z-30 w-9 h-9 rounded-full bg-white/95 text-slate-900 border border-slate-200 hover:bg-white flex items-center justify-center transition cursor-pointer shadow-xl active:scale-90"
                 title="Close"
               >
                 <X className="w-5 h-5 stroke-[2.8]" />
