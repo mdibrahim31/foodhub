@@ -310,7 +310,25 @@ export const CustomerPortal: React.FC = () => {
     setSelectedMenuItemForModal(dish);
     setModalQuantity(1);
     setModalSpecialInstructions('');
-    setSelectedModalVariations({});
+    
+    // Auto-select the first variation option so one choice is always active
+    const effectiveVariations = getItemEffectiveVariations(dish);
+    const initialVariations: Record<string, { groupName: string; optionName: string; price: number }> = {};
+    
+    effectiveVariations.forEach((group) => {
+      if (group.options && group.options.length > 0) {
+        const groupKey = group.id || group.name;
+        const firstOpt = group.options[0];
+        const optKey = `${groupKey}_${firstOpt.name}`;
+        initialVariations[optKey] = {
+          groupName: group.name,
+          optionName: firstOpt.name,
+          price: Number(firstOpt.price) || 0
+        };
+      }
+    });
+
+    setSelectedModalVariations(initialVariations);
   };
 
   // Separate pure dish variations (portions/sizes) from recommended menu items
@@ -4624,11 +4642,11 @@ export const CustomerPortal: React.FC = () => {
                                 {group.name}
                               </h3>
                               <p className="text-[11px] text-slate-500 font-medium">
-                                Select multiple options if needed
+                                Select 1 option
                               </p>
                             </div>
-                            <span className="bg-slate-100 text-slate-800 text-[10px] font-black uppercase px-2.5 py-1 rounded-full tracking-wider">
-                              Optional
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
+                              Required
                             </span>
                           </div>
 
@@ -4647,26 +4665,30 @@ export const CustomerPortal: React.FC = () => {
                                   onClick={() => {
                                     setSelectedModalVariations(prev => {
                                       const next = { ...prev };
-                                      const existingKey = Object.keys(next).find(k => 
-                                        next[k].groupName === group.name && next[k].optionName === opt.name
-                                      );
-                                      if (existingKey) {
-                                        delete next[existingKey];
-                                      } else {
-                                        next[optKey] = {
-                                          groupName: group.name,
-                                          optionName: opt.name,
-                                          price: optionPriceNum
-                                        };
-                                      }
+                                      // Single select: clear previous selection in this group
+                                      Object.keys(next).forEach(k => {
+                                        if (next[k].groupName === group.name) {
+                                          delete next[k];
+                                        }
+                                      });
+                                      // Select clicked option
+                                      next[optKey] = {
+                                        groupName: group.name,
+                                        optionName: opt.name,
+                                        price: optionPriceNum
+                                      };
                                       return next;
                                     });
                                   }}
-                                  className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 border border-slate-100 transition cursor-pointer select-none"
+                                  className={`flex items-center justify-between p-2.5 rounded-2xl border transition cursor-pointer select-none ${
+                                    isSelected 
+                                      ? 'border-[#d70f64]/40 bg-pink-50/25' 
+                                      : 'border-slate-100 hover:bg-slate-50'
+                                  }`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div>
-                                      <h4 className="font-extrabold text-xs text-slate-900">{opt.name}</h4>
+                                      <h4 className={`font-extrabold text-xs ${isSelected ? 'text-[#d70f64]' : 'text-slate-900'}`}>{opt.name}</h4>
                                       <div className="flex items-center space-x-1.5 font-mono text-xs mt-0.5">
                                         <span className="font-black text-[#d70f64]">
                                           + Tk {optionPriceNum}
@@ -4675,11 +4697,11 @@ export const CustomerPortal: React.FC = () => {
                                     </div>
                                   </div>
 
-                                  {/* Checkbox Indicator */}
-                                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
-                                    isSelected ? 'border-[#d70f64] bg-[#d70f64]' : 'border-slate-300 bg-white'
+                                  {/* Radio Indicator (Single select required) */}
+                                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+                                    isSelected ? 'border-[#d70f64] bg-white' : 'border-slate-300 bg-white'
                                   }`}>
-                                    {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                                    {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#d70f64]" />}
                                   </div>
                                 </div>
                               );
