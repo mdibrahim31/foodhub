@@ -11,6 +11,12 @@ export interface SystemSettings {
   updated_at: string;
   banner_slide_interval_seconds?: number; // e.g. 3
   banner_slide_auto_play?: boolean;       // e.g. true
+  platform_fee?: number;                  // default 0
+  platform_fee_min_order?: number;        // default 0 (min order amount to apply fee)
+  tax_amount?: number;                    // default 0
+  tax_min_order?: number;                 // default 0 (min order amount to apply tax)
+  vat_amount?: number;                    // default 0
+  vat_min_order?: number;                 // default 0 (min order amount to apply vat)
 }
 
 export const DEFAULT_DELIVERY_ZONE_NAMES = [

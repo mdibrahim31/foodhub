@@ -1148,9 +1148,30 @@ export const CustomerPortal: React.FC = () => {
         : 0);
   const totalCashPayable = foodTotal + deliveryFee;
   const regularTotalWithFee = regularFoodTotal + deliveryFee;
-  const platformFee = 18;
+  // Platform Fee calculation from admin settings (default 0)
+  const platformFee = useMemo(() => {
+    const fee = Number(settings.platform_fee) || 0;
+    const minOrder = Number(settings.platform_fee_min_order) || 0;
+    if (minOrder > 0 && foodTotal < minOrder) return 0;
+    return fee;
+  }, [settings.platform_fee, settings.platform_fee_min_order, foodTotal]);
+
+  // Tax calculation from admin settings (default 0)
+  const taxFee = useMemo(() => {
+    const minOrder = Number(settings.tax_min_order) || 0;
+    if (minOrder > 0 && foodTotal < minOrder) return 0;
+    return Number(settings.tax_amount) || 0;
+  }, [settings.tax_amount, settings.tax_min_order, foodTotal]);
+
+  // VAT calculation from admin settings (default 0)
+  const vatFee = useMemo(() => {
+    const minOrder = Number(settings.vat_min_order) || 0;
+    if (minOrder > 0 && foodTotal < minOrder) return 0;
+    return Number(settings.vat_amount) || 0;
+  }, [settings.vat_amount, settings.vat_min_order, foodTotal]);
+
   const priorityFee = deliveryOption === 'priority' ? 28 : 0;
-  const finalCheckoutPayable = foodTotal + (orderType === 'pickup' ? 0 : deliveryFee) + priorityFee + riderTip + platformFee;
+  const finalCheckoutPayable = foodTotal + (orderType === 'pickup' ? 0 : deliveryFee) + priorityFee + riderTip + platformFee + taxFee + vatFee;
 
   const totalCartCount = cart.reduce((sum, i) => {
     const optionCount = (i.selectedVariations && Array.isArray(i.selectedVariations)) ? i.selectedVariations.length : 0;
@@ -2317,7 +2338,7 @@ export const CustomerPortal: React.FC = () => {
           // ========================================================================
           // DEDICATED CHECKOUT PAGE
           // ========================================================================
-          <div className="min-h-screen bg-slate-50/60 pb-36 select-none font-sans">
+          <div className="min-h-screen bg-slate-50/60 pb-56 select-none font-sans">
             <div className="max-w-md mx-auto">
               {/* Top Header Row: Circular Back Arrow + Checkout Title & Restaurant Name */}
               <header className="px-4 pt-4 pb-3 flex items-center space-x-3.5 bg-white sticky top-0 z-10 border-b border-slate-100 shadow-2xs">
@@ -2561,6 +2582,16 @@ export const CustomerPortal: React.FC = () => {
                       <span className="font-mono font-bold">Tk {platformFee}</span>
                     </div>
 
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Tax</span>
+                      <span className="font-mono font-bold">Tk {taxFee}</span>
+                    </div>
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>VAT</span>
+                      <span className="font-mono font-bold">Tk {vatFee}</span>
+                    </div>
+
                     {riderTip > 0 && (
                       <div className="flex justify-between text-slate-800 font-semibold">
                         <span>Rider Tip</span>
@@ -2585,7 +2616,7 @@ export const CustomerPortal: React.FC = () => {
               </div>
 
               {/* Sticky Bottom Bar */}
-              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/90 p-4 z-30 shadow-2xl">
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/90 p-4 z-50 shadow-2xl">
                 <div className="max-w-md mx-auto space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -2607,7 +2638,7 @@ export const CustomerPortal: React.FC = () => {
                       </div>
                       {cartRegularTotal > cartSubtotal && (
                         <div className="text-xs font-semibold text-slate-400 line-through font-mono">
-                          Tk {cartRegularTotal + platformFee + (deliveryOption === 'priority' ? 28 : deliveryFee) + riderTip}
+                          Tk {cartRegularTotal + platformFee + taxFee + vatFee + (deliveryOption === 'priority' ? 28 : deliveryFee) + riderTip}
                         </div>
                       )}
                     </div>
@@ -5183,85 +5214,87 @@ export const CustomerPortal: React.FC = () => {
         Food, Grocery, Search, Carts, Account
         ========================================================================
       */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-4 shadow-xl">
-        <div className="max-w-md mx-auto flex items-center justify-around">
-          {/* 1. Food (Active in Orange) */}
-          <button
-            onClick={() => setActiveBottomNav('food')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
-              activeBottomNav === 'food' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
-            }`}
-          >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'food' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <UtensilsCrossed className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">Food</span>
-          </button>
+      {!isCheckoutScreen && !selectedVendorForMenu && !selectedMenuItemForModal && (
+        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-4 shadow-xl">
+          <div className="max-w-md mx-auto flex items-center justify-around">
+            {/* 1. Food (Active in Orange) */}
+            <button
+              onClick={() => setActiveBottomNav('food')}
+              className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                activeBottomNav === 'food' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+              }`}
+            >
+              <div className={`p-1 rounded-xl ${activeBottomNav === 'food' ? 'bg-orange-50 text-orange-600' : ''}`}>
+                <UtensilsCrossed className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5">Food</span>
+            </button>
 
-          {/* 2. Grocery */}
-          <button
-            onClick={() => {
-              setActiveBottomNav('grocery');
-              setSearchQuery('Grocery');
-            }}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
-              activeBottomNav === 'grocery' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
-            }`}
-          >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'grocery' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <Store className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">Grocery</span>
-          </button>
+            {/* 2. Grocery */}
+            <button
+              onClick={() => {
+                setActiveBottomNav('grocery');
+                setSearchQuery('Grocery');
+              }}
+              className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                activeBottomNav === 'grocery' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+              }`}
+            >
+              <div className={`p-1 rounded-xl ${activeBottomNav === 'grocery' ? 'bg-orange-50 text-orange-600' : ''}`}>
+                <Store className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5">Grocery</span>
+            </button>
 
-          {/* 3. Carts (Middle Tab) */}
-          <button
-            onClick={() => setActiveBottomNav('carts')}
-            className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
-              activeBottomNav === 'carts' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
-            }`}
-          >
-            <div className={`relative p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <ShoppingBag className="w-5 h-5" />
-              {totalCartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
-                  {totalCartCount}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] mt-0.5">Carts</span>
-          </button>
+            {/* 3. Carts (Middle Tab) */}
+            <button
+              onClick={() => setActiveBottomNav('carts')}
+              className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                activeBottomNav === 'carts' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+              }`}
+            >
+              <div className={`relative p-1 rounded-xl ${activeBottomNav === 'carts' ? 'bg-orange-50 text-orange-600' : ''}`}>
+                <ShoppingBag className="w-5 h-5" />
+                {totalCartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-600 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-xs">
+                    {totalCartCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] mt-0.5">Carts</span>
+            </button>
 
-          {/* 4. Orders (Replaced Carts) */}
-          <button
-            onClick={() => {
-              setAccountSubView('none');
-              setActiveBottomNav('orders');
-            }}
-            className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
-              activeBottomNav === 'orders' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
-            }`}
-          >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'orders' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <Receipt className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">Orders</span>
-          </button>
+            {/* 4. Orders (Replaced Carts) */}
+            <button
+              onClick={() => {
+                setAccountSubView('none');
+                setActiveBottomNav('orders');
+              }}
+              className={`relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                activeBottomNav === 'orders' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+              }`}
+            >
+              <div className={`p-1 rounded-xl ${activeBottomNav === 'orders' ? 'bg-orange-50 text-orange-600' : ''}`}>
+                <Receipt className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5">Orders</span>
+            </button>
 
-          {/* 5. Account */}
-          <button
-            onClick={() => setActiveBottomNav('account')}
-            className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
-              activeBottomNav === 'account' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
-            }`}
-          >
-            <div className={`p-1 rounded-xl ${activeBottomNav === 'account' ? 'bg-orange-50 text-orange-600' : ''}`}>
-              <User className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">Account</span>
-          </button>
-        </div>
-      </nav>
+            {/* 5. Account */}
+            <button
+              onClick={() => setActiveBottomNav('account')}
+              className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                activeBottomNav === 'account' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
+              }`}
+            >
+              <div className={`p-1 rounded-xl ${activeBottomNav === 'account' ? 'bg-orange-50 text-orange-600' : ''}`}>
+                <User className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5">Account</span>
+            </button>
+          </div>
+        </nav>
+      )}
     </div>
   );
 };

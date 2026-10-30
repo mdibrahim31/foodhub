@@ -102,6 +102,12 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   updated_at: new Date().toISOString(),
   banner_slide_interval_seconds: 3,
   banner_slide_auto_play: true,
+  platform_fee: 0,
+  platform_fee_min_order: 0,
+  tax_amount: 0,
+  tax_min_order: 0,
+  vat_amount: 0,
+  vat_min_order: 0,
 };
 
 export const INITIAL_VENDORS: Vendor[] = [];

@@ -5145,7 +5145,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       settings.base_delivery_charge,
       settings.per_km_delivery_charge
     );
-    const totalCashPayable = foodTotal + deliveryFee;
+    const platformFee = Number(settings.platform_fee) || 0;
+    const minOrderPlatform = Number(settings.platform_fee_min_order) || 0;
+    const effectivePlatformFee = (minOrderPlatform > 0 && foodTotal < minOrderPlatform) ? 0 : platformFee;
+
+    const taxMin = Number(settings.tax_min_order) || 0;
+    const effectiveTax = (taxMin > 0 && foodTotal < taxMin) ? 0 : (Number(settings.tax_amount) || 0);
+
+    const vatMin = Number(settings.vat_min_order) || 0;
+    const effectiveVat = (vatMin > 0 && foodTotal < vatMin) ? 0 : (Number(settings.vat_amount) || 0);
+
+    const totalCashPayable = foodTotal + deliveryFee + effectivePlatformFee + effectiveTax + effectiveVat;
 
     // Use a clean valid UUID for orderId so it never fails Supabase UUID constraints
     const orderId = typeof crypto !== 'undefined' && crypto.randomUUID 

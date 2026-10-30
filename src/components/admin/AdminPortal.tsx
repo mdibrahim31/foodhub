@@ -390,6 +390,12 @@ export const AdminPortal: React.FC = () => {
   const [perKmCharge, setPerKmCharge] = useState(settings?.per_km_delivery_charge || 15);
   const [baseCharge, setBaseCharge] = useState(settings?.base_delivery_charge || 30);
   const [riderRadius, setRiderRadius] = useState(settings?.rider_match_radius_km || 1.0);
+  const [adminPlatformFee, setAdminPlatformFee] = useState(settings?.platform_fee ?? 0);
+  const [adminPlatformMinOrder, setAdminPlatformMinOrder] = useState(settings?.platform_fee_min_order ?? 0);
+  const [adminTax, setAdminTax] = useState(settings?.tax_amount ?? 0);
+  const [adminTaxMinOrder, setAdminTaxMinOrder] = useState(settings?.tax_min_order ?? 0);
+  const [adminVat, setAdminVat] = useState(settings?.vat_amount ?? 0);
+  const [adminVatMinOrder, setAdminVatMinOrder] = useState(settings?.vat_min_order ?? 0);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   const handleMoveAdBanner = async (adId: string, direction: 'up' | 'down') => {
@@ -464,6 +470,12 @@ export const AdminPortal: React.FC = () => {
       per_km_delivery_charge: perKmCharge,
       base_delivery_charge: baseCharge,
       rider_match_radius_km: riderRadius,
+      platform_fee: adminPlatformFee,
+      platform_fee_min_order: adminPlatformMinOrder,
+      tax_amount: adminTax,
+      tax_min_order: adminTaxMinOrder,
+      vat_amount: adminVat,
+      vat_min_order: adminVatMinOrder,
     });
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 3000);
@@ -987,6 +999,93 @@ export const AdminPortal: React.FC = () => {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
                     required
                   />
+                </div>
+              </div>
+
+              {/* Platform Fee & Order Threshold */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider">Platform Fee Settings</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-slate-600 text-[11px] block">FEE AMOUNT (৳)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adminPlatformFee}
+                      onChange={(e) => setAdminPlatformFee(Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-600 text-[11px] block">MIN ORDER (৳) FOR FEE</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adminPlatformMinOrder}
+                      onChange={(e) => setAdminPlatformMinOrder(Number(e.target.value))}
+                      placeholder="0 (all orders)"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tax Settings */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider">Tax Settings</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-slate-600 text-[11px] block">TAX AMOUNT (৳)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adminTax}
+                      onChange={(e) => setAdminTax(Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-600 text-[11px] block">MIN ORDER (৳) FOR TAX</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adminTaxMinOrder}
+                      onChange={(e) => setAdminTaxMinOrder(Number(e.target.value))}
+                      placeholder="0 (all orders)"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* VAT Settings */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider">VAT Settings</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-slate-600 text-[11px] block">VAT AMOUNT (৳)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adminVat}
+                      onChange={(e) => setAdminVat(Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-600 text-[11px] block">MIN ORDER (৳) FOR VAT</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adminVatMinOrder}
+                      onChange={(e) => setAdminVatMinOrder(Number(e.target.value))}
+                      placeholder="0 (all orders)"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
