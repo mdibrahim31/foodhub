@@ -3297,8 +3297,8 @@ export const CustomerPortal: React.FC = () => {
                   )}
                 </div>
 
-                {/* Restaurant Type Filter Cards - Same single line row */}
-                <div className="flex space-x-2 overflow-x-auto scrollbar-none pb-1 pt-0.5">
+                {/* Restaurant Type Filter Cards - 5 cards fitted in 1 single row without sliding */}
+                <div className="grid grid-cols-5 gap-1 sm:gap-1.5 w-full">
                   {[
                     { id: 'All', name: 'All', icon: '🍽️' },
                     { id: 'restaurant', name: 'Restaurant', icon: '🏬' },
@@ -3311,14 +3311,16 @@ export const CustomerPortal: React.FC = () => {
                       <button
                         key={type.id}
                         onClick={() => setActiveRestaurantTypeFilter(isSelected ? 'All' : type.id)}
-                        className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl border transition-all cursor-pointer select-none shrink-0 flex-1 min-w-[70px] sm:min-w-[78px] ${
+                        className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-2xl border transition-all cursor-pointer select-none min-w-0 w-full ${
                           isSelected
-                            ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 scale-102 font-black'
+                            ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 font-black'
                             : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
                         }`}
                       >
-                        <span className="text-lg sm:text-xl mb-0.5">{type.icon}</span>
-                        <span className="text-[10px] leading-tight text-center font-bold">{type.name}</span>
+                        <span className="text-base sm:text-lg mb-0.5">{type.icon}</span>
+                        <span className="text-[9px] sm:text-[10px] leading-tight text-center font-bold px-0.5 break-words">
+                          {type.name}
+                        </span>
                       </button>
                     );
                   })}
