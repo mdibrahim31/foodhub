@@ -3040,28 +3040,15 @@ export const CustomerPortal: React.FC = () => {
                   <div className="px-5 pt-2">
                     <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 mb-1.5">
                       <FileText className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Special instructions for restaurant / rider</span>
+                      <span>Special instructions for restaurant</span>
                     </div>
                     <input
                       type="text"
                       value={orderInstructions}
                       onChange={(e) => setOrderInstructions(e.target.value)}
-                      placeholder="e.g. Less spicy, don't ring the bell, call upon arrival"
+                      placeholder="e.g. Less spicy, well cooked, extra cutlery"
                       className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#e21b70] focus:ring-1 focus:ring-[#e21b70] outline-hidden text-slate-800 placeholder-slate-400"
                     />
-                  </div>
-
-                  {/* Payment Method Badge */}
-                  <div className="px-5 pt-1">
-                    <div className="flex items-center justify-between text-xs bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2.5">
-                      <div className="flex items-center space-x-2 text-slate-800 font-bold">
-                        <Banknote className="w-4 h-4 text-emerald-600" />
-                        <span>Payment Method</span>
-                      </div>
-                      <span className="font-black text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full text-[11px]">
-                        Cash on Delivery (COD)
-                      </span>
-                    </div>
                   </div>
 
                   {/* 4. Total Section */}
