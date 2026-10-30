@@ -90,7 +90,7 @@ export interface Vendor {
   is_password_set?: boolean;
   password?: string;
   vendor_type?: 'restaurant' | 'shop'; // Categorize vendor as restaurant or grocery shop
-  restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen'; // Sub-type for restaurant (Restaurant, Cloud Kitchen, Home Kitchen)
+  restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery'; // Sub-type for restaurant (Restaurant, Cloud Kitchen, Home Kitchen, Sweets & Bakery)
   opening_schedule?: WeeklySchedule; // 1-week opening/closing schedule
   is_permanently_closed?: boolean; // Manual permanent close toggle (until vendor manually reopens)
   discount_percentage?: number; // e.g. 15 for 15% OFF

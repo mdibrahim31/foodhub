@@ -1069,7 +1069,7 @@ export const CustomerPortal: React.FC = () => {
         ? (vType === 'shop' || vType === 'grocery')
         : true;
 
-    // Filter by Restaurant Sub-Type (Restaurant, Cloud Kitchen, Home Kitchen)
+    // Filter by Restaurant Sub-Type (Restaurant, Cloud Kitchen, Home Kitchen, Sweets & Bakery)
     const restType = (v.restaurant_type || 'restaurant').toLowerCase();
     const matchesRestType = (activeBottomNav !== 'food' || activeRestaurantTypeFilter === 'All')
       ? true
@@ -1079,7 +1079,9 @@ export const CustomerPortal: React.FC = () => {
           ? (restType === 'cloud_kitchen' || (v.cuisine && v.cuisine.toLowerCase().includes('cloud')) || (v.name && v.name.toLowerCase().includes('cloud')))
           : activeRestaurantTypeFilter === 'home_kitchen'
             ? (restType === 'home_kitchen' || (v.cuisine && v.cuisine.toLowerCase().includes('home')) || (v.name && v.name.toLowerCase().includes('home')))
-            : true;
+            : activeRestaurantTypeFilter === 'sweets_bakery'
+              ? (restType === 'sweets_bakery' || (v.cuisine && (v.cuisine.toLowerCase().includes('sweet') || v.cuisine.toLowerCase().includes('bakery') || v.cuisine.toLowerCase().includes('cake') || v.cuisine.toLowerCase().includes('pastry') || v.cuisine.toLowerCase().includes('confectionery'))) || (v.name && (v.name.toLowerCase().includes('sweet') || v.name.toLowerCase().includes('bakery') || v.name.toLowerCase().includes('cake') || v.name.toLowerCase().includes('pastry') || v.name.toLowerCase().includes('confectionery'))))
+              : true;
 
     // Filter by New Vendors (within last 30 days)
     const matchesNew = (!isNewOnly && selectedSort !== 'new') || isVendorNew(v);
@@ -3295,26 +3297,27 @@ export const CustomerPortal: React.FC = () => {
                   )}
                 </div>
 
-                {/* Restaurant Type Filter Cards Grid */}
-                <div className="grid grid-cols-4 gap-2">
+                {/* Restaurant Type Filter Cards - Same single line row */}
+                <div className="flex space-x-2 overflow-x-auto scrollbar-none pb-1 pt-0.5">
                   {[
                     { id: 'All', name: 'All', icon: '🍽️' },
                     { id: 'restaurant', name: 'Restaurant', icon: '🏬' },
                     { id: 'cloud_kitchen', name: 'Cloud Kitchen', icon: '🍳' },
                     { id: 'home_kitchen', name: 'Home Kitchen', icon: '🏠' },
+                    { id: 'sweets_bakery', name: 'Sweets & Bakery', icon: '🧁' },
                   ].map((type) => {
                     const isSelected = activeRestaurantTypeFilter === type.id;
                     return (
                       <button
                         key={type.id}
                         onClick={() => setActiveRestaurantTypeFilter(isSelected ? 'All' : type.id)}
-                        className={`flex flex-col items-center justify-center py-3 px-1 rounded-2xl border transition-all cursor-pointer select-none ${
+                        className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl border transition-all cursor-pointer select-none shrink-0 flex-1 min-w-[70px] sm:min-w-[78px] ${
                           isSelected
                             ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 scale-102 font-black'
                             : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
                         }`}
                       >
-                        <span className="text-xl mb-1">{type.icon}</span>
+                        <span className="text-lg sm:text-xl mb-0.5">{type.icon}</span>
                         <span className="text-[10px] leading-tight text-center font-bold">{type.name}</span>
                       </button>
                     );
@@ -3868,7 +3871,7 @@ export const CustomerPortal: React.FC = () => {
                           className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                         >
                           {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
-                          <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                          <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                             <img 
                               src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                               alt={dish.name}
@@ -3984,7 +3987,7 @@ export const CustomerPortal: React.FC = () => {
                             className="flex flex-col cursor-pointer group active:scale-[0.98] transition-transform select-none"
                           >
                             {/* Rounded Image Container with Circular Plus Button in Bottom-Right Corner */}
-                            <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
+                            <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-slate-100 shadow-2xs border border-slate-200/80">
                               <img 
                                 src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} 
                                 alt={dish.name}
@@ -4538,14 +4541,14 @@ export const CustomerPortal: React.FC = () => {
             className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[88vh] sm:max-h-[85vh] relative animate-in slide-in-from-bottom-6 duration-300"
           >
             
-            {/* Top Fixed Aspect Banner Image Header (Identical 16:9 ratio to Restaurant Cards) */}
+            {/* Top Fixed Aspect Banner Image Header (16:9 ratio regardless of vendor upload size) */}
             <div className="relative w-full aspect-[16/9] bg-slate-900 shrink-0 overflow-hidden">
               <img
-                src={selectedMenuItemForModal.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
+                src={selectedMenuItemForModal.image_url || selectedVendorForMenu?.cover_image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800'}
                 alt={selectedMenuItemForModal.name}
                 className="w-full h-full object-cover block absolute inset-0"
                 onError={(e) => {
-                  e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800';
+                  e.currentTarget.src = selectedVendorForMenu?.cover_image || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800';
                 }}
               />
               
@@ -4570,7 +4573,7 @@ export const CustomerPortal: React.FC = () => {
             </div>
 
             {/* Modal Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-0">
+            <div ref={modalScrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-0">
               
               {/* Item Info Card: Name, Description, Price */}
               <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1.5">
