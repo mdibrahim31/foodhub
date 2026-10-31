@@ -1535,14 +1535,14 @@ export const VendorPortal: React.FC = () => {
             {/* 3 Quick Action Cards */}
             <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => setIsOrderHistoryOpen(true)}
+                onClick={() => setIsOpeningTimesOpen(true)}
                 className="flex flex-col items-start justify-between p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-orange-300 transition text-left h-24 cursor-pointer"
               >
                 <div className="w-7 h-7 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <History className="w-4 h-4 stroke-[2.2]" />
+                  <Clock className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 leading-tight">
-                  Order history
+                  Opening times
                 </span>
               </button>
 
@@ -1569,72 +1569,6 @@ export const VendorPortal: React.FC = () => {
                   Help
                 </span>
               </button>
-            </div>
-
-            {/* Order History Summary Card */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
-                    <History className="w-5 h-5 stroke-[2.2]" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-900 text-sm sm:text-base leading-tight">Order History</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Past orders & transactions ({vendorOrders.length})</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsOrderHistoryOpen(true)}
-                  className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center cursor-pointer"
-                >
-                  <span>View all</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                </button>
-              </div>
-
-              {vendorOrders.length === 0 ? (
-                <div className="py-6 text-center text-slate-400 text-xs">
-                  No orders recorded yet
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {vendorOrders.slice(0, 3).map((order) => (
-                    <div 
-                      key={order.id}
-                      onClick={() => setIsOrderHistoryOpen(true)}
-                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 flex items-center justify-between transition cursor-pointer"
-                    >
-                      <div className="space-y-0.5 min-w-0 pr-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs font-black text-slate-900 font-mono">
-                            {order.order_code || `#${order.id.slice(-6).toUpperCase()}`}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                            order.status === 'delivered'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : order.status === 'cancelled'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}>
-                            {order.status.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate">
-                          {order.items?.map(it => `${it.quantity}x ${it.item_name}`).join(', ') || 'Order details'}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-black text-slate-900 block font-mono">
-                          ৳{order.total_cash_payable || order.food_total || 0}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Reviews */}
