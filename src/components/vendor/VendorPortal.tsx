@@ -1248,16 +1248,19 @@ export const VendorPortal: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>
 
-                <button
-                  onClick={() => setIsOrderHistoryOpen(true)}
-                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                <a
+                  href="./order.html"
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-orange-50/50 transition cursor-pointer group"
                 >
                   <div className="flex items-center space-x-3.5">
-                    <History className="w-5 h-5 text-slate-800 stroke-[2]" />
-                    <span className="text-[15px] font-bold text-slate-900">Order history</span>
+                    <ChefHat className="w-5 h-5 text-orange-600 stroke-[2]" />
+                    <div>
+                      <span className="text-[15px] font-bold text-slate-900 block">Live Orders (order.html)</span>
+                      <span className="text-[11px] text-slate-400">Manage kitchen orders in Order Terminal</span>
+                    </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                </button>
+                </a>
 
                 <button
                   onClick={() => setIsReviewsModalOpen(true)}
@@ -1533,14 +1536,14 @@ export const VendorPortal: React.FC = () => {
             {/* 3 Quick Action Cards */}
             <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => setIsOrderHistoryOpen(true)}
-                className="flex flex-col items-start justify-between p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-orange-300 transition text-left h-24"
+                onClick={() => setIsOpeningTimesOpen(true)}
+                className="flex flex-col items-start justify-between p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-orange-300 transition text-left h-24 cursor-pointer"
               >
                 <div className="w-7 h-7 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <History className="w-4 h-4 stroke-[2.2]" />
+                  <Clock className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 leading-tight">
-                  Order history
+                  Opening times
                 </span>
               </button>
 
@@ -1569,170 +1572,28 @@ export const VendorPortal: React.FC = () => {
               </button>
             </div>
 
-
-
-            {/* Live Kitchen Queue */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center space-x-2">
-                  <span>Live Kitchen Queue</span>
-                  {pendingOrders.length > 0 && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                  )}
-                </h3>
-                <span className="text-xs font-bold text-orange-600">
-                  {pendingOrders.length + preparingOrders.length + readyForPickupOrders.length} Active
-                </span>
+            {/* Live Order Terminal Callout Banner (Shop only on vendor portal, orders on order.html) */}
+            <div className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-5 text-white shadow-md space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                  <ChefHat className="w-5 h-5 text-white stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base leading-tight">Order Management Terminal</h3>
+                  <p className="text-[11px] text-white/90">অর্ডার গ্রহণ ও প্রসেস করতে order.html সাইট ব্যবহার করুন</p>
+                </div>
               </div>
-
-              {pendingOrders.length === 0 && preparingOrders.length === 0 && readyForPickupOrders.length === 0 ? (
-                <div className="p-5 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
-                  No orders cooking right now. New customer orders will appear here automatically!
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Incoming */}
-                  {pendingOrders.map((ord) => (
-                    <div
-                      key={ord.id}
-                      className="bg-white p-4 rounded-2xl border-2 border-rose-300 shadow-sm space-y-3"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-black text-slate-900 text-sm">#{ord.order_code}</span>
-                          <p className="text-[11px] text-slate-500 font-mono">
-                            {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                          Incoming New Order
-                        </span>
-                      </div>
-
-                      <div className="space-y-1 text-xs border-y border-slate-100 py-2">
-                        {ord.items?.map((it) => (
-                          <div key={it.id} className="flex justify-between text-slate-700">
-                            <span>{it.quantity}x {it.item_name}</span>
-                            <span className="font-mono font-bold">{settings.currency_symbol}{it.subtotal}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-900">
-                        <span>Collect Cash from Rider:</span>
-                        <span className="font-mono text-orange-600 text-base">
-                          {settings.currency_symbol}{ord.food_total}
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => updateOrderStatus(ord.id, 'food_preparing')}
-                        className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-black shadow-xs transition"
-                      >
-                        Accept & Start Preparing
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* In Kitchen */}
-                  {preparingOrders.map((ord) => (
-                    <div
-                      key={ord.id}
-                      className="bg-white p-4 rounded-2xl border border-orange-200 shadow-xs space-y-3"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-2">
-                          <ChefHat className="w-4 h-4 text-orange-600" />
-                          <span className="font-black text-slate-900 text-sm">#{ord.order_code}</span>
-                        </div>
-                        <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          Cooking in Kitchen
-                        </span>
-                      </div>
-
-                      <div className="space-y-1 text-xs border-y border-slate-100 py-2">
-                        {ord.items?.map((it) => (
-                          <div key={it.id} className="flex justify-between text-slate-700">
-                            <span>{it.quantity}x {it.item_name}</span>
-                            <span className="font-mono">{settings.currency_symbol}{it.subtotal}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => updateOrderStatus(ord.id, 'ready_for_pickup')}
-                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-xs transition"
-                      >
-                        Mark Ready for Rider Pickup
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Ready for Pickup */}
-                  {readyForPickupOrders.map((ord) => {
-                    const assignedRider = riders.find((r) => r.id === ord.rider_id);
-
-                    return (
-                      <div
-                        key={ord.id}
-                        className="bg-white p-4 rounded-2xl border border-blue-200 shadow-xs space-y-3"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center space-x-2">
-                            <Bike className="w-4 h-4 text-blue-600" />
-                            <span className="font-black text-slate-900 text-sm">#{ord.order_code}</span>
-                          </div>
-                          <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            {ord.rider_id ? 'Rider On The Way' : 'Searching Nearby Rider'}
-                          </span>
-                        </div>
-
-                        {assignedRider ? (
-                          <div className="p-2.5 bg-blue-50 rounded-xl text-xs">
-                            <p className="font-bold text-blue-900">Rider: {assignedRider.name}</p>
-                            <p className="text-blue-700 text-[11px]">Phone: {assignedRider.phone} ({assignedRider.vehicle_type})</p>
-                          </div>
-                        ) : (
-                          <div className="p-2.5 bg-amber-50 rounded-xl text-xs text-amber-800">
-                            Dispatching to delivery riders within {settings.rider_match_radius_km} km radius...
-                          </div>
-                        )}
-
-                        <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-xl text-xs flex justify-between items-center">
-                          <div>
-                            <span className="text-[10px] text-orange-700 font-bold block uppercase">Cash from Rider:</span>
-                            <span className="text-base font-black font-mono text-orange-900">
-                              {settings.currency_symbol}{ord.food_total}
-                            </span>
-                          </div>
-                          <span className="text-[10px] bg-orange-200 text-orange-900 px-2 py-0.5 rounded-md font-bold">
-                            Cash on Counter
-                          </span>
-                        </div>
-
-                        {ord.food_cash_paid_to_vendor ? (
-                          <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl text-center text-xs font-bold flex items-center justify-center space-x-1">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Cash Paid by Rider & Handed Over</span>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              updateOrderStatus(ord.id, 'rider_on_way_to_customer', {
-                                food_cash_paid_to_vendor: true,
-                              });
-                            }}
-                            className="w-full py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black shadow-xs transition"
-                          >
-                            Confirm Cash Received & Hand Over Food
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
+              <p className="text-xs text-white/90 leading-relaxed">
+                ভেন্ডর সাইট থেকে শুধুমাত্র দোকান ও মেনু পরিচালনা করা হবে। লাইভ কিচেন অর্ডার দেখতে ও হ্যান্ডওভার করতে ডেডিকেটেড টার্মিনালে প্রবেশ করুন।
+              </p>
+              <a
+                href="./order.html"
+                className="w-full py-2.5 px-4 bg-white text-orange-600 hover:bg-orange-50 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-2"
+              >
+                <span>Go to Live Order Terminal (order.html)</span>
+                <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+              </a>
+            </div>
 
             {/* Reviews */}
             <section className="space-y-3">
