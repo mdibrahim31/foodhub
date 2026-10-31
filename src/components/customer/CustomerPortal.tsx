@@ -5326,7 +5326,6 @@ export const CustomerPortal: React.FC = () => {
         const ord = selectedOrderDetail;
         const orderVendor = ord.vendor || vendors.find(v => v.id === ord.vendor_id);
         const coverImg = orderVendor?.cover_image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&auto=format&fit=crop&q=80';
-        const logoImg = orderVendor?.logo_url;
         
         const formattedDate = new Date(ord.created_at).toLocaleDateString('en-GB', {
           day: 'numeric',
@@ -5346,20 +5345,32 @@ export const CustomerPortal: React.FC = () => {
           ? `Cancelled on ${formattedDate}`
           : `Placed on ${formattedDate}`;
 
-        const itemsSubtotal = (ord.items || []).reduce((sum, it) => sum + (it.subtotal || it.item_price * it.quantity), 0) || ord.food_total || 0;
+        // Item level calculations matching cart summary (Regular price subtotal before discount)
+        const itemsRegularSubtotal = (ord.items || []).reduce((sum, it) => {
+          const itemRegPrice = (it.original_price && Number(it.original_price) > Number(it.item_price))
+            ? Number(it.original_price)
+            : Number(it.item_price);
+          return sum + (itemRegPrice * it.quantity);
+        }, 0);
+
+        const itemsEffectiveSubtotal = (ord.items || []).reduce((sum, it) => sum + (it.subtotal || it.item_price * it.quantity), 0) || ord.food_total || 0;
+        const subtotalToDisplay = itemsRegularSubtotal > itemsEffectiveSubtotal ? itemsRegularSubtotal : itemsEffectiveSubtotal;
+
         const deliveryCost = ord.delivery_fee || 0;
         const platFee = settings?.platform_fee ?? 0;
         const taxCost = settings?.tax_amount ?? 0;
         const vatCost = settings?.vat_amount ?? 0;
-        const totalPayable = ord.total_cash_payable || (itemsSubtotal + deliveryCost + platFee + taxCost + vatCost);
-        const expectedTotalBeforeDiscount = itemsSubtotal + deliveryCost + platFee + taxCost + vatCost;
-        const discountCost = expectedTotalBeforeDiscount > totalPayable ? expectedTotalBeforeDiscount - totalPayable : 0;
+        const totalPayable = ord.total_cash_payable || (itemsEffectiveSubtotal + deliveryCost + platFee + taxCost + vatCost);
+        
+        // Total discount = (Regular subtotal + fees) - totalPayable
+        const totalBeforeDiscount = subtotalToDisplay + deliveryCost + platFee + taxCost + vatCost;
+        const totalDiscount = Math.max(0, totalBeforeDiscount - totalPayable);
 
         return (
           <div className="fixed inset-0 z-50 bg-white overflow-y-auto pb-28 select-none font-sans animate-in fade-in duration-200">
             <div className="max-w-md mx-auto min-h-screen bg-white relative flex flex-col">
               
-              {/* 1. TOP COVER BANNER WITH VENDOR LOGO BADGE */}
+              {/* 1. TOP COVER BANNER WITHOUT PROFILE PHOTO OVERLAY */}
               <div className="relative w-full h-52 sm:h-60 bg-slate-100 overflow-hidden shrink-0">
                 <img
                   src={coverImg}
@@ -5385,29 +5396,6 @@ export const CustomerPortal: React.FC = () => {
                   >
                     Help
                   </button>
-                </div>
-
-                {/* Center Vendor Logo Badge (Exact same as Screenshot 3) */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white p-2.5 shadow-xl flex items-center justify-center border-2 border-white/90 overflow-hidden pointer-events-auto">
-                    {logoImg ? (
-                      <img
-                        src={logoImg}
-                        alt={orderVendor?.name || 'Logo'}
-                        className="w-full h-full object-cover rounded-2xl"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#e21b70] to-rose-600 flex flex-col items-center justify-center text-white font-black p-1 text-center">
-                        <Store className="w-7 h-7 mb-0.5" />
-                        <span className="text-[10px] leading-tight uppercase font-extrabold line-clamp-1">
-                          {orderVendor?.name || 'Store'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
 
@@ -5457,41 +5445,58 @@ export const CustomerPortal: React.FC = () => {
 
                 {/* Ordered Items List */}
                 <div className="pt-2 divide-y divide-slate-100">
-                  {(ord.items || []).map((item, idx) => (
-                    <div key={idx} className="py-3 flex items-start justify-between gap-3">
-                      <div className="flex items-start space-x-2.5 min-w-0">
-                        <span className="font-black text-sm text-slate-950 shrink-0">
-                          {item.quantity}x
-                        </span>
-                        <div className="min-w-0">
-                          <span className="font-extrabold text-sm text-slate-900 block leading-snug">
-                            {item.item_name}
+                  {(ord.items || []).map((item, idx) => {
+                    const itemRegPrice = (item.original_price && Number(item.original_price) > Number(item.item_price))
+                      ? Number(item.original_price)
+                      : Number(item.item_price);
+                    const itemDisplayTotal = itemRegPrice * item.quantity;
+
+                    return (
+                      <div key={idx} className="py-3 flex items-start justify-between gap-3">
+                        <div className="flex items-start space-x-2.5 min-w-0">
+                          <span className="font-black text-sm text-slate-950 shrink-0">
+                            {item.quantity}x
                           </span>
-                          {item.selected_portion && (
-                            <span className="text-[11px] text-slate-500 block">
-                              {item.selected_portion}
+                          <div className="min-w-0">
+                            <span className="font-extrabold text-sm text-slate-900 block leading-snug">
+                              {item.item_name}
                             </span>
-                          )}
-                          {item.selected_variations && item.selected_variations.length > 0 && (
-                            <span className="text-[11px] text-slate-500 block">
-                              {item.selected_variations.join(', ')}
-                            </span>
-                          )}
+                            {item.selected_portion && (
+                              <span className="text-[11px] text-slate-500 block">
+                                {item.selected_portion}
+                              </span>
+                            )}
+                            {item.selected_variations && item.selected_variations.length > 0 && (
+                              <span className="text-[11px] text-slate-500 block">
+                                {item.selected_variations.join(', ')}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        <span className="font-bold text-sm text-slate-900 font-mono shrink-0">
+                          Tk {itemDisplayTotal}
+                        </span>
                       </div>
-                      <span className="font-bold text-sm text-slate-900 font-mono shrink-0">
-                        Tk {item.subtotal || item.item_price * item.quantity}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                {/* Financial Breakdown Table (100% Matching Screenshot 2) */}
+                {/* Financial Breakdown Table (Exact same as Cart Summary) */}
                 <div className="border-t border-slate-200/80 pt-4 space-y-2.5 text-sm">
                   <div className="flex justify-between text-slate-700 font-semibold">
                     <span>Subtotal</span>
-                    <span className="font-mono font-bold text-slate-900">Tk {itemsSubtotal}</span>
+                    <span className="font-mono font-bold text-slate-900">Tk {subtotalToDisplay}</span>
                   </div>
+
+                  {totalDiscount > 0 && (
+                    <div className="flex justify-between text-[#e21b70] font-extrabold">
+                      <span className="flex items-center space-x-1">
+                        <span>Discounts</span>
+                        <Info className="w-3.5 h-3.5 inline text-slate-400" />
+                      </span>
+                      <span className="font-mono">- Tk {totalDiscount}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between text-slate-700 font-semibold">
                     <span>Delivery fee</span>
@@ -5505,26 +5510,15 @@ export const CustomerPortal: React.FC = () => {
                     <span className="font-mono font-bold text-slate-900">Tk {platFee}</span>
                   </div>
 
-                  {taxCost > 0 && (
-                    <div className="flex justify-between text-slate-700 font-semibold">
-                      <span>Tax</span>
-                      <span className="font-mono font-bold text-slate-900">Tk {taxCost}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>Tax</span>
+                    <span className="font-mono font-bold text-slate-900">Tk {taxCost}</span>
+                  </div>
 
-                  {vatCost > 0 && (
-                    <div className="flex justify-between text-slate-700 font-semibold">
-                      <span>VAT</span>
-                      <span className="font-mono font-bold text-slate-900">Tk {vatCost}</span>
-                    </div>
-                  )}
-
-                  {discountCost > 0 && (
-                    <div className="flex justify-between text-[#e21b70] font-extrabold">
-                      <span>Voucher: dealnao</span>
-                      <span className="font-mono">- Tk {discountCost}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>VAT</span>
+                    <span className="font-mono font-bold text-slate-900">Tk {vatCost}</span>
+                  </div>
 
                   <div className="flex justify-between text-slate-950 font-black text-base pt-2 border-t border-slate-100">
                     <span>Total (incl. VAT)</span>
