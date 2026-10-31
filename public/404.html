@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirecting...</title>
+  <script>
+    (function() {
+      var path = window.location.pathname;
+      var repoBase = '/foodhub';
+      var cleanPath = path;
+      if (cleanPath.startsWith(repoBase)) {
+        cleanPath = cleanPath.slice(repoBase.length);
+      }
+      cleanPath = cleanPath.replace(/^\/+|\/+$/g, '');
+
+      // Direct page redirects
+      if (cleanPath === 'order' || cleanPath === 'order.html') {
+        window.location.replace(repoBase + '/orders.html' + window.location.search + window.location.hash);
+        return;
+      }
+      if (cleanPath === 'orders') {
+        window.location.replace(repoBase + '/orders.html' + window.location.search + window.location.hash);
+        return;
+      }
+      if (cleanPath === 'customer') {
+        window.location.replace(repoBase + '/customer.html' + window.location.search + window.location.hash);
+        return;
+      }
+      if (cleanPath === 'vendor') {
+        window.location.replace(repoBase + '/vendor.html' + window.location.search + window.location.hash);
+        return;
+      }
+      if (cleanPath === 'rider') {
+        window.location.replace(repoBase + '/rider.html' + window.location.search + window.location.hash);
+        return;
+      }
+      if (cleanPath === 'admin') {
+        window.location.replace(repoBase + '/admin.html' + window.location.search + window.location.hash);
+        return;
+      }
+      if (cleanPath === 'subadmin') {
+        window.location.replace(repoBase + '/subadmin.html' + window.location.search + window.location.hash);
+        return;
+      }
+      // Default fallback
+      window.location.replace(repoBase + '/orders.html');
+    })();
+  </script>
+</head>
+<body style="font-family: sans-serif; text-align: center; padding: 50px;">
+  <p>Redirecting to orders page...</p>
+</body>
+</html>

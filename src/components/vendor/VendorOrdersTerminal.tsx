@@ -118,15 +118,20 @@ export const VendorOrdersTerminal: React.FC = () => {
     riders,
     currentUser,
     loginUser,
+    setPasswordForUser,
     logoutUser,
     menuItems,
     updateMenuItem
   } = useDelivery();
 
-  // 1. Auth Form States (Only Login)
+  // 1. Auth Form States
   const [authPhone, setAuthPhone] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'set_password'>('login');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   // 2. Terminal UI States (All hooks at top of component)
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'completed'>('pending');
@@ -254,12 +259,18 @@ export const VendorOrdersTerminal: React.FC = () => {
   // Audio Ref tracking previous pending count
   const prevPendingCountRef = useRef<number>(0);
 
-  // Active vendor: logged in vendor, currentVendor, or fallback to first vendor so terminal is always ready
+  // Active vendor: strictly the authenticated vendor matching phone or ID
   const authenticatedVendor = (currentUser && currentUser.role === 'vendor')
-    ? (vendors.find(v => v.id === currentUser.reference_id || v.phone.replace(/\D/g, '') === currentUser.phone.replace(/\D/g, '')) || currentVendor)
+    ? (vendors.find(v => {
+        if (!v) return false;
+        if (v.id === currentUser.reference_id) return true;
+        const vDigits = (v.phone || '').replace(/\D/g, '').slice(-10);
+        const uDigits = (currentUser.phone || '').replace(/\D/g, '').slice(-10);
+        return Boolean(vDigits && uDigits && vDigits === uDigits);
+      }) || currentVendor)
     : null;
 
-  const activeVendor = authenticatedVendor || currentVendor || vendors[0];
+  const activeVendor = authenticatedVendor;
 
   const isAuthenticated = Boolean(currentUser && currentUser.role === 'vendor' && authenticatedVendor);
 
@@ -355,17 +366,43 @@ export const VendorOrdersTerminal: React.FC = () => {
     playNewOrderSound();
   };
 
-  // Auth Handler (Login Only)
+  // Auth Handlers (Login & Password Setup)
   const handleVendorLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    const res = loginUser('vendor', authPhone, authPassword);
+    if (!authPhone.trim() || !authPassword.trim()) {
+      setAuthError('Please enter both phone number and password.');
+      return;
+    }
+    const res = loginUser('vendor', authPhone.trim(), authPassword.trim());
     if (!res.success) {
       if (res.requiresPasswordSetup) {
-        setAuthError('First-time login detected. Please set your password on the Vendor Portal first.');
+        setAuthMode('set_password');
+        setAuthError('First-time login detected. Please set your password below.');
       } else {
         setAuthError(res.message || 'Login failed. Please check phone and password.');
       }
+    }
+  };
+
+  const handleVendorSetPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!authPhone.trim() || !newPassword.trim()) {
+      setAuthError('Please enter phone number and new password.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setAuthError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    const ok = setPasswordForUser('vendor', authPhone.trim(), newPassword.trim());
+    if (!ok) {
+      setAuthError('This phone number is not registered as a Vendor by Admin.');
+    } else {
+      setAuthMode('login');
+      setAuthPassword(newPassword.trim());
     }
   };
 
@@ -909,10 +946,161 @@ export const VendorOrdersTerminal: React.FC = () => {
     setAvailabilityModalItem(null);
   };
 
-  if (!activeVendor) {
+  if (!currentUser || currentUser.role !== 'vendor' || !activeVendor) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6 text-slate-500 font-bold">
-        Loading restaurant terminal...
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 selection:bg-[#d70f64] selection:text-white font-sans">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8 space-y-6 border border-slate-100">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 bg-pink-100 text-[#d70f64] rounded-3xl flex items-center justify-center mx-auto shadow-sm">
+              <Store className="w-8 h-8 stroke-[2.2]" />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">
+              Orders Terminal
+            </h2>
+            <p className="text-xs text-slate-500 font-bold">
+              ভেন্ডর সাইটের ফোন নম্বর ও পাসওয়ার্ড দিয়ে লগইন করুন
+            </p>
+          </div>
+
+          <div className="bg-slate-100 p-1 rounded-2xl flex text-xs font-black">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
+                authMode === 'login' ? 'bg-white text-[#d70f64] shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Partner Login
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('set_password'); setAuthError(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition cursor-pointer ${
+                authMode === 'set_password' ? 'bg-white text-[#d70f64] shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Set Password
+            </button>
+          </div>
+
+          {authError && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-2xl animate-in fade-in flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          {authMode === 'login' ? (
+            <form onSubmit={handleVendorLoginSubmit} className="space-y-4 text-xs font-bold">
+              <div className="space-y-1">
+                <label className="text-slate-700 uppercase tracking-wider text-[10px]">
+                  Phone Number (ফোন নম্বর)
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="tel"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    placeholder="e.g. 01711122233"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-[#d70f64] text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-700 uppercase tracking-wider text-[10px]">
+                  Password (পাসওয়ার্ড)
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="Enter vendor password"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-[#d70f64] text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-[#d70f64] hover:bg-[#b00c52] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-pink-600/30 transition cursor-pointer active:scale-95"
+              >
+                Login to Orders Terminal
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVendorSetPasswordSubmit} className="space-y-4 text-xs font-bold">
+              <div className="space-y-1">
+                <label className="text-slate-700 uppercase tracking-wider text-[10px]">
+                  Admin Registered Phone
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="tel"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    placeholder="e.g. 01711122233"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-[#d70f64] text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-700 uppercase tracking-wider text-[10px]">
+                  Create Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-[#d70f64] text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-700 uppercase tracking-wider text-[10px]">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-[#d70f64] text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-[#d70f64] hover:bg-[#b00c52] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-pink-600/30 transition cursor-pointer active:scale-95"
+              >
+                Set Password & Log In
+              </button>
+            </form>
+          )}
+
+          <div className="pt-2 border-t border-slate-100 text-center">
+            <p className="text-[11px] text-slate-500 font-medium">
+              ভেন্ডর পোর্টালে ব্যবহৃত ফোন নম্বর ও পাসওয়ার্ড দিয়ে অর্ডার টার্মিনালে লগইন হবে।
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1414,18 +1602,60 @@ export const VendorOrdersTerminal: React.FC = () => {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
-                    if (confirm('Are you sure you want to log out from this terminal?')) {
-                      setIsDrawerOpen(false);
-                      logoutUser();
-                    }
+                    setIsDrawerOpen(false);
+                    setIsLogoutConfirmOpen(true);
                   }}
-                  className="block w-full text-left text-rose-600 hover:text-rose-700 transition cursor-pointer"
+                  className="block w-full text-left text-rose-600 hover:text-rose-700 font-bold transition cursor-pointer flex items-center space-x-2"
                 >
-                  Logout
+                  <LogOut className="w-5 h-5 text-rose-600" />
+                  <span>Logout (লগআউট)</span>
                 </button>
               </div>
             </aside>
+          </div>
+        )}
+
+        {/* LOGOUT CONFIRMATION MODAL */}
+        {isLogoutConfirmOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center space-y-4 border border-slate-100">
+              <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <LogOut className="w-7 h-7" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-black text-slate-900">
+                  লগআউট করতে চান?
+                </h3>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  আপনি কি নিশ্চিতভাবে এই অর্ডার টার্মিনাল থেকে লগআউট করতে চান?
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLogoutConfirmOpen(false)}
+                  className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition cursor-pointer"
+                >
+                  বাতিল (Cancel)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLogoutConfirmOpen(false);
+                    setIsDrawerOpen(false);
+                    logoutUser();
+                  }}
+                  className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-md shadow-rose-600/30 cursor-pointer"
+                >
+                  লগআউট (Logout)
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

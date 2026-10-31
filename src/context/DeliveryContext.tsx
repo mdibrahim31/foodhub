@@ -1001,6 +1001,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (updates?.is_free_delivery === false) merged.is_free_delivery = false;
           return merged;
         });
+      } else if (data?.type === 'USER_LOGOUT') {
+        setCurrentUser(null);
+        setCurrentVendorState(null);
       }
     };
     foodiplaceRealtimeChannel.addEventListener('message', handleBroadcastMsg);
@@ -1073,18 +1076,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from('vendors')
             .select('*');
           if (!vError && vData && isSubscribed) {
-            const cleanedList = (vData as Vendor[]).map(v => {
-              const cleaned = { ...v };
-              if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
-                delete cleaned.discount_title;
-                delete cleaned.discount_percentage;
-              }
-              return cleaned;
+            setVendors(prev => {
+              const prevMap = new Map(prev.map(v => [v.id, v]));
+              const cleanedList = (vData as Vendor[]).map(v => {
+                const cleaned = { ...v };
+                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                  delete cleaned.discount_title;
+                  delete cleaned.discount_percentage;
+                }
+                const existing = prevMap.get(cleaned.id);
+                if (!cleaned.password && existing?.password) {
+                  cleaned.password = existing.password;
+                  cleaned.is_password_set = existing.is_password_set ?? true;
+                }
+                return cleaned;
+              });
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
+              } catch {}
+              return cleanedList;
             });
-            setVendors(cleanedList);
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
-            } catch {}
           }
 
           const { data: rData, error: rError } = await supabase
@@ -1185,18 +1196,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (vRes.ok) {
           const vData = await vRes.json();
           if (Array.isArray(vData) && isSubscribed) {
-            const cleanedList = (vData as Vendor[]).map(v => {
-              const cleaned = { ...v };
-              if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
-                delete cleaned.discount_title;
-                delete cleaned.discount_percentage;
-              }
-              return cleaned;
+            setVendors(prev => {
+              const prevMap = new Map(prev.map(v => [v.id, v]));
+              const cleanedList = (vData as Vendor[]).map(v => {
+                const cleaned = { ...v };
+                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
+                  delete cleaned.discount_title;
+                  delete cleaned.discount_percentage;
+                }
+                const existing = prevMap.get(cleaned.id);
+                if (!cleaned.password && existing?.password) {
+                  cleaned.password = existing.password;
+                  cleaned.is_password_set = existing.is_password_set ?? true;
+                }
+                return cleaned;
+              });
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
+              } catch {}
+              return cleanedList;
             });
-            setVendors(cleanedList);
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
-            } catch {}
           }
         }
       } catch {}
@@ -1942,7 +1961,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     if (userRole === 'vendor') {
-      const vendor = vendors.find(v => v.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || v.phone === cleanPhone);
+      const cleanDigits = cleanPhone.replace(/\D/g, '');
+      const cLast10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+      const vendor = vendors.find(v => {
+        if (!v || !v.phone) return false;
+        const vDigits = v.phone.replace(/\D/g, '');
+        const vLast10 = vDigits.length >= 10 ? vDigits.slice(-10) : vDigits;
+        return (vLast10 && cLast10 && vLast10 === cLast10) || v.phone.trim() === cleanPhone;
+      });
       if (!vendor) {
         return { success: false, message: 'This phone number is not registered as a Vendor by Admin.' };
       }
@@ -1956,7 +1982,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       }
 
-      if (vendor.password !== password) {
+      if (vendor.password.trim() !== (password || '').trim()) {
         return { success: false, message: 'Incorrect password. Please try again.' };
       }
 
@@ -1975,11 +2001,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     if (userRole === 'rider') {
+      const cleanDigits = cleanPhone.replace(/\D/g, '');
+      const cLast10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
       const rider = riders.find(r => {
         if (!r || !r.phone) return false;
         const rDigits = String(r.phone).replace(/\D/g, '');
-        const cleanDigits = String(cleanPhone).replace(/\D/g, '');
-        return (rDigits && cleanDigits && rDigits.endsWith(cleanDigits)) || r.phone === cleanPhone;
+        const rLast10 = rDigits.length >= 10 ? rDigits.slice(-10) : rDigits;
+        return (rLast10 && cLast10 && rLast10 === cLast10) || r.phone.trim() === cleanPhone;
       });
       if (!rider) {
         return { 
@@ -1996,7 +2024,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       }
 
-      if (rider.password !== password) {
+      if (rider.password.trim() !== (password || '').trim()) {
         return { success: false, message: 'Incorrect password. Please try again.' };
       }
 
@@ -2016,12 +2044,39 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     if (userRole === 'customer') {
-      const customer = customers.find(c => c.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || c.phone === cleanPhone);
+      const cleanDigits = cleanPhone.replace(/\D/g, '');
+      const cLast10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+      const customer = customers.find(c => {
+        if (!c || !c.phone) return false;
+        const custDigits = c.phone.replace(/\D/g, '');
+        const custLast10 = custDigits.length >= 10 ? custDigits.slice(-10) : custDigits;
+        return (custLast10 && cLast10 && custLast10 === cLast10) || c.phone.trim() === cleanPhone;
+      });
+
       if (!customer) {
+        // Also check if vendor credentials match so vendor can log in on customer site
+        const vendor = vendors.find(v => {
+          if (!v || !v.phone) return false;
+          const vDigits = v.phone.replace(/\D/g, '');
+          const vLast10 = vDigits.length >= 10 ? vDigits.slice(-10) : vDigits;
+          return (vLast10 && cLast10 && vLast10 === cLast10) || v.phone.trim() === cleanPhone;
+        });
+        if (vendor && vendor.password && vendor.password.trim() === (password || '').trim()) {
+          const vendorAccount: UserAccount = {
+            id: `u-c-v-${vendor.id}`,
+            role: 'customer',
+            name: vendor.name,
+            phone: vendor.phone,
+            is_password_set: true,
+            reference_id: vendor.id
+          };
+          setCurrentUser(vendorAccount);
+          return { success: true };
+        }
         return { success: false, message: 'Account not found. Please register first.' };
       }
 
-      if (customer.password && customer.password !== password) {
+      if (customer.password && customer.password.trim() !== (password || '').trim()) {
         return { success: false, message: 'Incorrect password.' };
       }
 
@@ -2062,17 +2117,48 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setPasswordForUser = (userRole: PortalRole, phone: string, newPassword: string): boolean => {
     const cleanPhone = phone.trim();
+    const cleanDigits = cleanPhone.replace(/\D/g, '');
+    const cLast10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
 
     if (userRole === 'vendor') {
-      const vendor = vendors.find(v => v.phone.replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')) || v.phone === cleanPhone);
+      const vendor = vendors.find(v => {
+        if (!v || !v.phone) return false;
+        const vDigits = v.phone.replace(/\D/g, '');
+        const vLast10 = vDigits.length >= 10 ? vDigits.slice(-10) : vDigits;
+        return (vLast10 && cLast10 && vLast10 === cLast10) || v.phone.trim() === cleanPhone;
+      });
       if (!vendor) return false;
       
-      setVendors(prev => prev.map(v => v.id === vendor.id ? { ...v, password: newPassword, is_password_set: true } : v));
+      const updatedVendor = { ...vendor, password: newPassword.trim(), is_password_set: true };
+      
+      setVendors(prev => {
+        const next = prev.map(v => v.id === vendor.id ? updatedVendor : v);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      // Persist to server backend API
+      fetch(`/api/vendors/${vendor.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword.trim(), is_password_set: true })
+      }).catch(console.error);
+
+      // Realtime cross-tab broadcast
+      try {
+        foodiplaceRealtimeChannel?.postMessage({
+          type: 'VENDOR_UPDATE',
+          vendorId: vendor.id,
+          updates: { password: newPassword.trim(), is_password_set: true }
+        });
+      } catch {}
       
       if (isSupabaseConfigured && supabase) {
         supabase
           .from('vendors')
-          .update({ password: newPassword, is_password_set: true })
+          .update({ password: newPassword.trim(), is_password_set: true })
           .eq('id', vendor.id)
           .then(({ error }) => {
             if (error) {
@@ -2091,7 +2177,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         zone: vendor.zone
       };
       setCurrentUser(vendorAccount);
-      setCurrentVendor({ ...vendor, password: newPassword, is_password_set: true });
+      setCurrentVendor(updatedVendor);
       return true;
     }
 
@@ -2981,6 +3067,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.removeItem('foodiplace_selected_vendor_id');
       localStorage.removeItem('active_vendor_id');
       localStorage.removeItem('foodiplace_vendor_tab');
+      localStorage.removeItem('foodiplace_active_portal');
+      localStorage.removeItem('foodvibe_active_user');
+      localStorage.removeItem('foodiplace_auth_token');
+    } catch {}
+
+    try {
+      foodiplaceRealtimeChannel?.postMessage({
+        type: 'USER_LOGOUT'
+      });
     } catch {}
   };
 

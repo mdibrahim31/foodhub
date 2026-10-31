@@ -1364,6 +1364,34 @@ app.delete('/api/favorites/:customerIdentifier', (req, res) => {
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
+  const htmlRoutes: Record<string, string> = {
+    '/order': 'order.html',
+    '/order.html': 'order.html',
+    '/orders': 'orders.html',
+    '/orders.html': 'orders.html',
+    '/vendor': 'vendor.html',
+    '/vendor.html': 'vendor.html',
+    '/rider': 'rider.html',
+    '/rider.html': 'rider.html',
+    '/admin': 'admin.html',
+    '/admin.html': 'admin.html',
+    '/subadmin': 'subadmin.html',
+    '/subadmin.html': 'subadmin.html',
+    '/customer': 'customer.html',
+    '/customer.html': 'customer.html',
+  };
+
+  Object.entries(htmlRoutes).forEach(([routePath, fileName]) => {
+    app.get(routePath, (req, res, next) => {
+      if (isProduction) {
+        res.sendFile(path.resolve(process.cwd(), 'dist', fileName));
+      } else {
+        req.url = `/${fileName}`;
+        next();
+      }
+    });
+  });
+
   if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: false },

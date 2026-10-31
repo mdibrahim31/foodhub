@@ -345,7 +345,11 @@ export const VendorPortal: React.FC = () => {
   const handleVendorLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    const res = loginUser('vendor', authPhone, authPassword);
+    if (!authPhone.trim() || !authPassword.trim()) {
+      setAuthError('Please enter phone number and password.');
+      return;
+    }
+    const res = loginUser('vendor', authPhone.trim(), authPassword.trim());
     if (!res.success) {
       if (res.requiresPasswordSetup) {
         setAuthTab('register');
@@ -363,12 +367,12 @@ export const VendorPortal: React.FC = () => {
       setAuthError('Please enter phone number and password.');
       return;
     }
-    if (authPassword !== authConfirmPassword) {
+    if (authPassword.trim() !== authConfirmPassword.trim()) {
       setAuthError('Passwords do not match. Please re-enter.');
       return;
     }
 
-    const ok = setPasswordForUser('vendor', authPhone, authPassword);
+    const ok = setPasswordForUser('vendor', authPhone.trim(), authPassword.trim());
     if (!ok) {
       setAuthError('This phone number is not registered as a Vendor by Admin. Please contact Admin.');
     }

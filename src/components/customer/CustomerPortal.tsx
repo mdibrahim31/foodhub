@@ -2110,15 +2110,17 @@ export const CustomerPortal: React.FC = () => {
               </div>
 
               {/* Conditional Logout Button */}
-              <div className="pt-2 pb-6">
-                <button
-                  onClick={() => setIsLogoutConfirmOpen(true)}
-                  className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4 stroke-[2.5]" />
-                  <span>Log out</span>
-                </button>
-              </div>
+              {currentUser && (
+                <div className="pt-2 pb-6">
+                  <button
+                    onClick={() => setIsLogoutConfirmOpen(true)}
+                    className="w-full py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 transition shadow-xs active:scale-[0.98] cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 stroke-[2.5]" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )
