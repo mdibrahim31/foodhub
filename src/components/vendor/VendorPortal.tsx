@@ -153,6 +153,8 @@ export const VendorPortal: React.FC = () => {
 
   // Modals for More view items
   const [isTopProgramOpen, setIsTopProgramOpen] = useState(false);
+  const [orderHistoryFilter, setOrderHistoryFilter] = useState<'all' | 'completed' | 'in_progress' | 'cancelled'>('all');
+  const [orderHistorySearch, setOrderHistorySearch] = useState('');
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   const [isInvoicesModalOpen, setIsInvoicesModalOpen] = useState(false);
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
@@ -1248,19 +1250,16 @@ export const VendorPortal: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>
 
-                <a
-                  href="./order.html"
-                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-orange-50/50 transition cursor-pointer group"
+                <button
+                  onClick={() => setIsOrderHistoryOpen(true)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                 >
                   <div className="flex items-center space-x-3.5">
-                    <ChefHat className="w-5 h-5 text-orange-600 stroke-[2]" />
-                    <div>
-                      <span className="text-[15px] font-bold text-slate-900 block">Live Orders (order.html)</span>
-                      <span className="text-[11px] text-slate-400">Manage kitchen orders in Order Terminal</span>
-                    </div>
+                    <History className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Order history</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                </a>
+                </button>
 
                 <button
                   onClick={() => setIsReviewsModalOpen(true)}
@@ -1536,14 +1535,14 @@ export const VendorPortal: React.FC = () => {
             {/* 3 Quick Action Cards */}
             <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => setIsOpeningTimesOpen(true)}
+                onClick={() => setIsOrderHistoryOpen(true)}
                 className="flex flex-col items-start justify-between p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-orange-300 transition text-left h-24 cursor-pointer"
               >
                 <div className="w-7 h-7 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <Clock className="w-4 h-4 stroke-[2.2]" />
+                  <History className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 leading-tight">
-                  Opening times
+                  Order history
                 </span>
               </button>
 
@@ -1572,27 +1571,70 @@ export const VendorPortal: React.FC = () => {
               </button>
             </div>
 
-            {/* Live Order Terminal Callout Banner (Shop only on vendor portal, orders on order.html) */}
-            <div className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-5 text-white shadow-md space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-                  <ChefHat className="w-5 h-5 text-white stroke-[2.2]" />
+            {/* Order History Summary Card */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                    <History className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-sm sm:text-base leading-tight">Order History</h3>
+                    <p className="text-[11px] text-slate-500 font-medium">Past orders & transactions ({vendorOrders.length})</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-black text-sm sm:text-base leading-tight">Order Management Terminal</h3>
-                  <p className="text-[11px] text-white/90">অর্ডার গ্রহণ ও প্রসেস করতে order.html সাইট ব্যবহার করুন</p>
-                </div>
+                <button
+                  onClick={() => setIsOrderHistoryOpen(true)}
+                  className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center cursor-pointer"
+                >
+                  <span>View all</span>
+                  <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                </button>
               </div>
-              <p className="text-xs text-white/90 leading-relaxed">
-                ভেন্ডর সাইট থেকে শুধুমাত্র দোকান ও মেনু পরিচালনা করা হবে। লাইভ কিচেন অর্ডার দেখতে ও হ্যান্ডওভার করতে ডেডিকেটেড টার্মিনালে প্রবেশ করুন।
-              </p>
-              <a
-                href="./order.html"
-                className="w-full py-2.5 px-4 bg-white text-orange-600 hover:bg-orange-50 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-2"
-              >
-                <span>Go to Live Order Terminal (order.html)</span>
-                <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-              </a>
+
+              {vendorOrders.length === 0 ? (
+                <div className="py-6 text-center text-slate-400 text-xs">
+                  No orders recorded yet
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {vendorOrders.slice(0, 3).map((order) => (
+                    <div 
+                      key={order.id}
+                      onClick={() => setIsOrderHistoryOpen(true)}
+                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div className="space-y-0.5 min-w-0 pr-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-black text-slate-900 font-mono">
+                            {order.order_code || `#${order.id.slice(-6).toUpperCase()}`}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            order.status === 'delivered'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : order.status === 'cancelled'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            {order.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {order.items?.map(it => `${it.quantity}x ${it.item_name}`).join(', ') || 'Order details'}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black text-slate-900 block font-mono">
+                          ৳{order.total_cash_payable || order.food_total || 0}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Reviews */}
@@ -2996,6 +3038,224 @@ export const VendorPortal: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/*
+        ========================================================================
+        MODAL: ORDER HISTORY (VIEW ALL PAST ORDERS FOR THIS VENDOR)
+        ========================================================================
+      */}
+      {isOrderHistoryOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 shadow-2xs">
+                  <History className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base leading-tight">
+                    Order History
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Past customer orders and transactions ({vendorOrders.length} total)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOrderHistoryOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition cursor-pointer shadow-2xs"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body & Filters */}
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+              
+              {/* Summary Stats Row */}
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-center">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Orders</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{vendorOrders.length}</span>
+                </div>
+                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-center">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Delivered</span>
+                  <span className="text-xl font-black text-emerald-800 font-mono mt-0.5 block">
+                    {vendorOrders.filter(o => o.status === 'delivered').length}
+                  </span>
+                </div>
+                <div className="bg-orange-50/70 border border-orange-200/80 rounded-2xl p-3 text-center">
+                  <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wider block">Total Sales</span>
+                  <span className="text-xl font-black text-orange-800 font-mono mt-0.5 block">
+                    ৳{vendorOrders.reduce((sum, o) => sum + (o.food_total || o.total_cash_payable || 0), 0)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={orderHistorySearch}
+                  onChange={(e) => setOrderHistorySearch(e.target.value)}
+                  placeholder="Search by Order ID, code or customer phone..."
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:border-orange-500 transition"
+                />
+                {orderHistorySearch && (
+                  <button
+                    onClick={() => setOrderHistorySearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex space-x-1.5 overflow-x-auto pb-1 text-xs font-bold scrollbar-none">
+                {[
+                  { id: 'all', label: 'All Orders' },
+                  { id: 'completed', label: 'Delivered' },
+                  { id: 'in_progress', label: 'In Progress' },
+                  { id: 'cancelled', label: 'Cancelled' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setOrderHistoryFilter(tab.id as any)}
+                    className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
+                      orderHistoryFilter === tab.id
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Orders List */}
+              {(() => {
+                const filtered = vendorOrders.filter(o => {
+                  // Filter by status tab
+                  if (orderHistoryFilter === 'completed' && o.status !== 'delivered') return false;
+                  if (orderHistoryFilter === 'cancelled' && o.status !== 'cancelled') return false;
+                  if (orderHistoryFilter === 'in_progress' && ['delivered', 'cancelled'].includes(o.status)) return false;
+
+                  // Search query
+                  if (orderHistorySearch.trim()) {
+                    const q = orderHistorySearch.trim().toLowerCase();
+                    const code = (o.order_code || o.id).toLowerCase();
+                    const phone = (o.customer_phone || '').toLowerCase();
+                    const name = (o.customer_name || '').toLowerCase();
+                    if (!code.includes(q) && !phone.includes(q) && !name.includes(q)) return false;
+                  }
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-slate-400 space-y-2">
+                      <History className="w-10 h-10 mx-auto text-slate-300 stroke-[1.5]" />
+                      <p className="text-sm font-bold text-slate-600">No orders found</p>
+                      <p className="text-xs text-slate-400">There are no orders matching your current criteria.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {filtered.map(order => (
+                      <div
+                        key={order.id}
+                        className="p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3 transition"
+                      >
+                        {/* Order Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono font-black text-sm text-slate-900">
+                              {order.order_code || `#${order.id.slice(-6).toUpperCase()}`}
+                            </span>
+                            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                              order.status === 'delivered'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : order.status === 'cancelled'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {order.status.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-medium text-slate-400">
+                            {order.created_at ? new Date(order.created_at).toLocaleString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : ''}
+                          </span>
+                        </div>
+
+                        {/* Customer & Address */}
+                        <div className="text-xs text-slate-600 space-y-1 bg-white p-2.5 rounded-xl border border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">{order.customer_name || 'Customer'}</span>
+                            <span className="font-mono text-slate-500">{order.customer_phone || 'No phone'}</span>
+                          </div>
+                          {order.delivery_address && (
+                            <p className="text-[11px] text-slate-500 flex items-start space-x-1">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                              <span className="truncate">{order.delivery_address}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Order Items */}
+                        <div className="space-y-1 border-t border-slate-200/60 pt-2 text-xs">
+                          {order.items?.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-slate-700">
+                              <div className="space-x-1.5 truncate pr-2">
+                                <span className="font-black text-slate-900">{item.quantity}x</span>
+                                <span>{item.item_name}</span>
+                                {item.selected_portion && (
+                                  <span className="text-[10px] text-slate-500 font-medium">({item.selected_portion})</span>
+                                )}
+                              </div>
+                              <span className="font-mono font-bold text-slate-900 shrink-0">৳{item.subtotal || item.item_price * item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Order Totals */}
+                        <div className="border-t border-slate-200/60 pt-2 flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-500">Total Bill:</span>
+                          <span className="font-mono font-black text-base text-slate-900">
+                            ৳{order.total_cash_payable || order.food_total || 0}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsOrderHistoryOpen(false)}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
