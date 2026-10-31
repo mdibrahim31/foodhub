@@ -206,6 +206,7 @@ export const CustomerPortal: React.FC = () => {
 
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isRestaurantReviewsOpen, setIsRestaurantReviewsOpen] = useState(false);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<Order | null>(null);
   const [selectedMentionedDishes, setSelectedMentionedDishes] = useState<string[]>([]);
   const [reviewRating, setReviewRating] = useState(5);
@@ -449,6 +450,7 @@ export const CustomerPortal: React.FC = () => {
   // Lock body scroll when any modal or sheet or menu view is open so background never scrolls
   useEffect(() => {
     const isAnyModalActive = Boolean(
+      selectedOrderDetail ||
       selectedVendorForMenu ||
       selectedMenuItemForModal || 
       isChooseAreaModalOpen || 
@@ -473,6 +475,7 @@ export const CustomerPortal: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [
+    selectedOrderDetail,
     selectedVendorForMenu,
     selectedMenuItemForModal, 
     isChooseAreaModalOpen, 
@@ -1482,6 +1485,30 @@ export const CustomerPortal: React.FC = () => {
     { label: 'Rice', icon: '🍚', filter: 'Biryani', img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=120&auto=format&fit=crop&q=80' },
   ];
 
+  const handleReorderOrder = (ord: Order) => {
+    const orderVendor = ord.vendor || vendors.find(v => v.id === ord.vendor_id);
+    if (orderVendor && ord.items && ord.items.length > 0) {
+      clearCart();
+      ord.items.forEach(it => {
+        const foundMenuItem = menuItems.find(mi => mi.id === it.menu_item_id) || {
+          id: it.menu_item_id || `m-${Date.now()}`,
+          vendor_id: ord.vendor_id,
+          name: it.item_name,
+          price: it.item_price,
+          is_available: true,
+          category: 'Main Course',
+          image_url: orderVendor.cover_image || orderVendor.logo_url
+        };
+        for (let i = 0; i < it.quantity; i++) {
+          addToCart(foundMenuItem as MenuItem, orderVendor);
+        }
+      });
+      setSelectedOrderDetail(null);
+      setActiveBottomNav('carts');
+      alert(`🛒 Reordered items from "${orderVendor.name}"!\nAll items have been added to your cart.`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-24 overflow-x-hidden max-w-full">
       {activeBottomNav === 'orders' || (activeBottomNav === 'account' && accountSubView === 'orders') ? (
@@ -1579,7 +1606,11 @@ export const CustomerPortal: React.FC = () => {
                   const itemsSummary = (ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ');
 
                   return (
-                    <div key={ord.id} className="bg-white rounded-2xl p-4.5 border border-slate-200/90 shadow-2xs space-y-4">
+                    <div 
+                      key={ord.id} 
+                      onClick={() => setSelectedOrderDetail(ord)}
+                      className="bg-white rounded-2xl p-4.5 border border-slate-200/90 shadow-2xs space-y-4 cursor-pointer hover:border-slate-300 transition active:scale-[0.99]"
+                    >
                       {/* Upper Content Row */}
                       <div className="flex items-start gap-4">
                         {/* Left Side: Square Vendor Cover image */}
@@ -1625,7 +1656,8 @@ export const CustomerPortal: React.FC = () => {
                             }
                             return (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setSelectedOrderForReview(ord);
                                   setReviewRating(5);
                                   setReviewComment('');
@@ -1654,26 +1686,9 @@ export const CustomerPortal: React.FC = () => {
 
                       {/* Reorder Button */}
                       <button
-                        onClick={() => {
-                          if (ord.vendor && ord.items && ord.items.length > 0) {
-                            clearCart();
-                            ord.items.forEach(it => {
-                              const foundMenuItem = menuItems.find(mi => mi.id === it.menu_item_id) || {
-                                id: it.menu_item_id || `m-${Date.now()}`,
-                                vendor_id: ord.vendor_id,
-                                name: it.item_name,
-                                price: it.item_price,
-                                is_available: true,
-                                category: 'Main Course',
-                                image_url: vendorImage
-                              };
-                              for (let i = 0; i < it.quantity; i++) {
-                                addToCart(foundMenuItem as MenuItem, ord.vendor!);
-                              }
-                            });
-                            setActiveBottomNav('carts');
-                            alert(`🛒 Reordered items from "${ord.vendor.name}"!\nAll items have been added to your cart.`);
-                          }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReorderOrder(ord);
                         }}
                         className="w-full py-3 bg-orange-600 hover:bg-orange-700 active:scale-[0.98] text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-2xs cursor-pointer flex items-center justify-center"
                       >
@@ -5216,7 +5231,7 @@ export const CustomerPortal: React.FC = () => {
         Food, Grocery, Search, Carts, Account
         ========================================================================
       */}
-      {!isCheckoutScreen && !selectedVendorForMenu && !selectedMenuItemForModal && (
+      {!isCheckoutScreen && !selectedVendorForMenu && !selectedMenuItemForModal && !selectedOrderDetail && (
         <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-4 shadow-xl">
           <div className="max-w-md mx-auto flex items-center justify-around">
             {/* 1. Food (Active in Orange) */}
@@ -5297,6 +5312,259 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </nav>
       )}
+
+      {/* 
+        ========================================================================
+        DEDICATED ORDER DETAILS FULL-PAGE VIEW
+        (100% Matching Screenshot_20261101_025409_13409a03.jpg & Screenshot_20261101_025351_b3692d38.jpg)
+        Top: Vendor Cover Photo with Back Button & Help Button & Center Logo Badge
+        Middle: Order #, Date, Route Journey (Order from -> Delivered to), Items List, Breakdown, Paid with
+        Bottom Sticky: "Select items to reorder"
+        ========================================================================
+      */}
+      {selectedOrderDetail && (() => {
+        const ord = selectedOrderDetail;
+        const orderVendor = ord.vendor || vendors.find(v => v.id === ord.vendor_id);
+        const coverImg = orderVendor?.cover_image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&auto=format&fit=crop&q=80';
+        const logoImg = orderVendor?.logo_url;
+        
+        const formattedDate = new Date(ord.created_at).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        }) + ' ' + new Date(ord.created_at).toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const isDelivered = ord.status === 'delivered';
+        const isCancelled = ord.status === 'cancelled';
+        
+        const statusDateText = isDelivered 
+          ? `Delivered on ${formattedDate}` 
+          : isCancelled
+          ? `Cancelled on ${formattedDate}`
+          : `Placed on ${formattedDate}`;
+
+        const itemsSubtotal = (ord.items || []).reduce((sum, it) => sum + (it.subtotal || it.item_price * it.quantity), 0) || ord.food_total || 0;
+        const deliveryCost = ord.delivery_fee || 0;
+        const platFee = settings?.platform_fee ?? 0;
+        const taxCost = settings?.tax_amount ?? 0;
+        const vatCost = settings?.vat_amount ?? 0;
+        const totalPayable = ord.total_cash_payable || (itemsSubtotal + deliveryCost + platFee + taxCost + vatCost);
+        const expectedTotalBeforeDiscount = itemsSubtotal + deliveryCost + platFee + taxCost + vatCost;
+        const discountCost = expectedTotalBeforeDiscount > totalPayable ? expectedTotalBeforeDiscount - totalPayable : 0;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-white overflow-y-auto pb-28 select-none font-sans animate-in fade-in duration-200">
+            <div className="max-w-md mx-auto min-h-screen bg-white relative flex flex-col">
+              
+              {/* 1. TOP COVER BANNER WITH VENDOR LOGO BADGE */}
+              <div className="relative w-full h-52 sm:h-60 bg-slate-100 overflow-hidden shrink-0">
+                <img
+                  src={coverImg}
+                  alt={orderVendor?.name || 'Restaurant Cover'}
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* Top Overlay Controls: Circular Back Button & Help Button */}
+                <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetail(null)}
+                    className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center text-slate-900 shadow-md hover:bg-white active:scale-95 transition cursor-pointer"
+                    title="Back to Orders"
+                  >
+                    <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => alert(`Need help with Order #${ord.order_code}?\nPlease contact support at 16212 or email support@foodhub.com`)}
+                    className="px-5 py-2 rounded-full bg-white/95 backdrop-blur-md text-slate-900 font-extrabold text-xs shadow-md hover:bg-white active:scale-95 transition cursor-pointer"
+                  >
+                    Help
+                  </button>
+                </div>
+
+                {/* Center Vendor Logo Badge (Exact same as Screenshot 3) */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white p-2.5 shadow-xl flex items-center justify-center border-2 border-white/90 overflow-hidden pointer-events-auto">
+                    {logoImg ? (
+                      <img
+                        src={logoImg}
+                        alt={orderVendor?.name || 'Logo'}
+                        className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#e21b70] to-rose-600 flex flex-col items-center justify-center text-white font-black p-1 text-center">
+                        <Store className="w-7 h-7 mb-0.5" />
+                        <span className="text-[10px] leading-tight uppercase font-extrabold line-clamp-1">
+                          {orderVendor?.name || 'Store'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. MAIN ORDER DETAILS BODY */}
+              <div className="p-5 space-y-6 flex-1">
+                {/* Centered Order Title & Date */}
+                <div className="text-center space-y-1">
+                  <h1 className="text-2xl font-black text-slate-950 tracking-tight font-sans">
+                    Order #{ord.order_code || ord.id.slice(-8)}
+                  </h1>
+                  <p className="text-xs font-semibold text-slate-600">
+                    {statusDateText}
+                  </p>
+                </div>
+
+                {/* Route Journey (Order from -> Delivered to) */}
+                <div className="space-y-1 pt-1">
+                  {/* Order from point */}
+                  <div className="flex items-start space-x-3.5">
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-900 flex items-center justify-center shrink-0 mt-0.5 bg-white">
+                      <div className="w-2 h-2 rounded-full bg-slate-900" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-medium text-slate-500 block leading-tight">Order from</span>
+                      <span className="text-sm font-black text-slate-950 block leading-snug">
+                        {orderVendor?.name || 'Restaurant'}{orderVendor?.city_area ? ` (${orderVendor.city_area})` : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Vertical Dotted Line */}
+                  <div className="ml-2.5 my-0.5 border-l-2 border-dotted border-slate-400 h-6" />
+
+                  {/* Delivered to point */}
+                  <div className="flex items-start space-x-3.5">
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-900 flex items-center justify-center shrink-0 mt-0.5 bg-white">
+                      <MapPin className="w-3 h-3 text-slate-900 stroke-[2.5]" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-medium text-slate-500 block leading-tight">Delivered to</span>
+                      <span className="text-sm font-bold text-slate-900 block leading-snug break-words">
+                        {ord.delivery_address || 'Delivery address'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ordered Items List */}
+                <div className="pt-2 divide-y divide-slate-100">
+                  {(ord.items || []).map((item, idx) => (
+                    <div key={idx} className="py-3 flex items-start justify-between gap-3">
+                      <div className="flex items-start space-x-2.5 min-w-0">
+                        <span className="font-black text-sm text-slate-950 shrink-0">
+                          {item.quantity}x
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-extrabold text-sm text-slate-900 block leading-snug">
+                            {item.item_name}
+                          </span>
+                          {item.selected_portion && (
+                            <span className="text-[11px] text-slate-500 block">
+                              {item.selected_portion}
+                            </span>
+                          )}
+                          {item.selected_variations && item.selected_variations.length > 0 && (
+                            <span className="text-[11px] text-slate-500 block">
+                              {item.selected_variations.join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="font-bold text-sm text-slate-900 font-mono shrink-0">
+                        Tk {item.subtotal || item.item_price * item.quantity}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Financial Breakdown Table (100% Matching Screenshot 2) */}
+                <div className="border-t border-slate-200/80 pt-4 space-y-2.5 text-sm">
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>Subtotal</span>
+                    <span className="font-mono font-bold text-slate-900">Tk {itemsSubtotal}</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>Delivery fee</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {deliveryCost > 0 ? `Tk ${deliveryCost}` : 'Free'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>Platform Fee</span>
+                    <span className="font-mono font-bold text-slate-900">Tk {platFee}</span>
+                  </div>
+
+                  {taxCost > 0 && (
+                    <div className="flex justify-between text-slate-700 font-semibold">
+                      <span>Tax</span>
+                      <span className="font-mono font-bold text-slate-900">Tk {taxCost}</span>
+                    </div>
+                  )}
+
+                  {vatCost > 0 && (
+                    <div className="flex justify-between text-slate-700 font-semibold">
+                      <span>VAT</span>
+                      <span className="font-mono font-bold text-slate-900">Tk {vatCost}</span>
+                    </div>
+                  )}
+
+                  {discountCost > 0 && (
+                    <div className="flex justify-between text-[#e21b70] font-extrabold">
+                      <span>Voucher: dealnao</span>
+                      <span className="font-mono">- Tk {discountCost}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-slate-950 font-black text-base pt-2 border-t border-slate-100">
+                    <span>Total (incl. VAT)</span>
+                    <span className="font-mono text-base font-black text-slate-950">
+                      Tk {totalPayable}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Paid With Section */}
+                <div className="border-t border-slate-200/80 pt-4 space-y-2">
+                  <h4 className="font-black text-sm text-slate-900">Paid with</h4>
+                  <div className="flex items-center justify-between text-sm py-1">
+                    <div className="flex items-center space-x-2.5 text-slate-800 font-semibold">
+                      <span className="text-base">💵</span>
+                      <span className="capitalize">cash on delivery</span>
+                    </div>
+                    <span className="font-mono font-bold text-slate-900">
+                      Tk {totalPayable}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. STICKY BOTTOM BAR: SELECT ITEMS TO REORDER (Matching Screenshot 2 & 3) */}
+              <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-slate-100 z-30 shadow-2xl">
+                <div className="max-w-md mx-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleReorderOrder(ord)}
+                    className="w-full py-4 bg-gradient-to-r from-pink-500 via-[#e21b70] to-rose-600 hover:opacity-95 text-white font-extrabold text-base rounded-full shadow-lg shadow-pink-500/25 transition active:scale-[0.98] cursor-pointer text-center"
+                  >
+                    Select items to reorder
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
