@@ -284,11 +284,11 @@ export const VendorOrdersTerminal: React.FC = () => {
     .filter((o) => o.status === 'pending')
     .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
 
-  // 'New' gets only ONE order at a time
-  const newOrders = pendingOrders.slice(0, 1);
+  // All pending orders come in 'New' arranged in chronological serial order (FIFO)
+  const newOrders = pendingOrders;
 
-  // 'Upcoming' receives all subsequent pending orders waiting in queue
-  const upcomingOrders = pendingOrders.slice(1);
+  // For now, no orders come in 'Upcoming'
+  const upcomingOrders: Order[] = [];
 
   const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
   const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
