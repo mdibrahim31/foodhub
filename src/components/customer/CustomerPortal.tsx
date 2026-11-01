@@ -145,6 +145,10 @@ export const CustomerPortal: React.FC = () => {
   const [isPaymentSelectionOpen, setIsPaymentSelectionOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'bkash' | 'nagad' | 'rocket' | 'upay' | 'card' | 'other'>('cash');
   const [tempPaymentMethod, setTempPaymentMethod] = useState<'cash' | 'bkash' | 'nagad' | 'rocket' | 'upay' | 'card' | 'other'>('cash');
+  const [placedOrderSuccessInfo, setPlacedOrderSuccessInfo] = useState<{
+    orderCode: string;
+    totalPayable: number;
+  } | null>(null);
 
   // Cart summary totals for "All Carts" card view
   const cartSubtotal = useMemo(() => {
@@ -1218,7 +1222,10 @@ export const CustomerPortal: React.FC = () => {
         setIsCheckoutScreen(false);
         setActiveBottomNav('account');
         setAccountSubView('orders');
-        alert(`✅ Order Placed Successfully!\n\nOrder Code: ${placed.order_code}\nTotal payable (COD): Tk${placed.total_cash_payable || finalCheckoutPayable}\n\nYour order has been sent to the vendor for confirmation. We have opened your live Order history page so you can track it in real time!`);
+        setPlacedOrderSuccessInfo({
+          orderCode: placed.order_code || 'FV-00000',
+          totalPayable: placed.total_cash_payable || finalCheckoutPayable
+        });
       }
     } finally {
       setIsPlacingOrder(false);
@@ -5546,6 +5553,74 @@ export const CustomerPortal: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* 
+        ========================================================================
+        ORDER PLACED SUCCESS POPUP MODAL
+        100% matches website design, completely removes 'mdibrahim31.github.io says'
+        ========================================================================
+      */}
+      {placedOrderSuccessInfo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setPlacedOrderSuccessInfo(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 flex flex-col items-center text-center relative animate-in zoom-in-95 duration-150 select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setPlacedOrderSuccessInfo(null)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Success Icon */}
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border-4 border-emerald-100/80 flex items-center justify-center text-emerald-500 mb-3.5 shadow-xs">
+              <Check className="w-8 h-8 stroke-[3]" />
+            </div>
+
+            {/* Heading */}
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">
+              Order Placed Successfully!
+            </h3>
+
+            {/* Order Details Card */}
+            <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-4 my-4 space-y-2 text-left">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-500 uppercase tracking-wider">Order Code</span>
+                <span className="font-mono font-black text-slate-900 bg-white px-2.5 py-1 rounded-xl border border-slate-200 text-sm shadow-2xs">
+                  #{placedOrderSuccessInfo.orderCode}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-2.5 border-t border-slate-200/70">
+                <span className="font-bold text-slate-500 uppercase tracking-wider">Total payable (COD)</span>
+                <span className="font-mono font-black text-[#d70f64] text-base">
+                  Tk {placedOrderSuccessInfo.totalPayable}
+                </span>
+              </div>
+            </div>
+
+            {/* Message Body */}
+            <p className="text-xs text-slate-600 leading-relaxed font-medium mb-6 px-1">
+              Your order has been sent to the vendor for confirmation. We have opened your live Order history page so you can track it in real time!
+            </p>
+
+            {/* Action OK Button */}
+            <button
+              type="button"
+              onClick={() => setPlacedOrderSuccessInfo(null)}
+              className="w-full py-3.5 bg-gradient-to-r from-pink-600 via-[#d70f64] to-rose-600 hover:opacity-95 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-[#d70f64]/25 transition active:scale-[0.98] cursor-pointer text-center"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
