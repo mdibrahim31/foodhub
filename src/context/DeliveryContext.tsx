@@ -5259,6 +5259,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const foodTotal = cart.reduce((sum, ci) => sum + (ci.unitPrice ?? ci.menuItem.price) * ci.quantity, 0);
+    const regularFoodTotal = cart.reduce((sum, ci) => {
+      const extrasPrice = (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+      const pricing = getItemPricing(ci.menuItem, cartVendor, extrasPrice);
+      return sum + pricing.regularPrice * ci.quantity;
+    }, 0);
+    const totalDiscountSaved = Math.max(0, regularFoodTotal - foodTotal);
+
     const distanceKm = calculateDistanceKm(
       cartVendor.latitude,
       cartVendor.longitude,
@@ -5302,9 +5309,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       delivery_address: `${selectedAddress.address_line}${selectedAddress.details ? ` (${selectedAddress.details})` : ''}`,
       delivery_latitude: selectedAddress.latitude,
       delivery_longitude: selectedAddress.longitude,
-      food_total: foodTotal,
+      food_total: regularFoodTotal > 0 ? regularFoodTotal : foodTotal,
+      discount_amount: totalDiscountSaved,
       delivery_distance_km: distanceKm,
       delivery_fee: effectiveDeliveryFee,
+      platform_fee: effectivePlatformFee,
+      tax_fee: effectiveTax,
+      vat_fee: effectiveVat,
       total_cash_payable: totalCashPayable,
       food_cash_paid_to_vendor: false,
       food_and_delivery_cash_collected_from_customer: false,
@@ -5445,8 +5456,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           delivery_latitude: newOrder.delivery_latitude,
           delivery_longitude: newOrder.delivery_longitude,
           food_total: newOrder.food_total,
+          discount_amount: newOrder.discount_amount || 0,
           delivery_distance_km: newOrder.delivery_distance_km,
           delivery_fee: newOrder.delivery_fee,
+          platform_fee: newOrder.platform_fee || 0,
+          tax_fee: newOrder.tax_fee || 0,
+          vat_fee: newOrder.vat_fee || 0,
           total_cash_payable: newOrder.total_cash_payable,
           status: newOrder.status,
           special_instructions: newOrder.special_instructions,

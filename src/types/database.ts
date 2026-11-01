@@ -298,8 +298,12 @@ export interface Order {
   delivery_longitude: number;
   
   food_total: number;
+  discount_amount?: number;
   delivery_distance_km: number;
   delivery_fee: number;
+  platform_fee?: number;
+  tax_fee?: number;
+  vat_fee?: number;
   total_cash_payable: number; // food_total + delivery_fee
   
   food_cash_paid_to_vendor: boolean;

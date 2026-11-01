@@ -1821,8 +1821,12 @@ export const VendorOrdersTerminal: React.FC = () => {
               const totalItemsCount = acceptItems.reduce((s, it) => s + (it.quantity || 1), 0);
               const calculatedSubtotal = acceptItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0);
               const foodSubtotal = selectedAcceptOrder.food_total || calculatedSubtotal;
+              const discountAmount = selectedAcceptOrder.discount_amount || liveMatch?.discount_amount || 0;
               const deliveryFee = selectedAcceptOrder.order_type === 'pickup' ? 0 : (selectedAcceptOrder.delivery_fee || 0);
-              const totalPayable = selectedAcceptOrder.total_cash_payable || (foodSubtotal + deliveryFee);
+              const platformFee = selectedAcceptOrder.platform_fee || liveMatch?.platform_fee || 0;
+              const taxFee = selectedAcceptOrder.tax_fee || liveMatch?.tax_fee || 0;
+              const vatFee = selectedAcceptOrder.vat_fee || liveMatch?.vat_fee || 0;
+              const totalPayable = selectedAcceptOrder.total_cash_payable || (foodSubtotal - discountAmount + deliveryFee + platformFee + taxFee + vatFee);
 
               return (
                 <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
@@ -1850,7 +1854,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                                 </h4>
                                 {item.selected_variations && item.selected_variations.length > 0 && (
                                   <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                    {item.selected_variations.join(' • ')}
+                                    {Array.isArray(item.selected_variations) ? item.selected_variations.join(' • ') : item.selected_variations}
                                   </p>
                                 )}
                                 {item.special_instructions && (
@@ -1877,13 +1881,37 @@ export const VendorOrdersTerminal: React.FC = () => {
                   {/* Order Summary Breakdown */}
                   <div className="border-t border-slate-100 pt-3.5 space-y-2 text-xs font-bold text-slate-700">
                     <div className="flex justify-between items-center text-slate-600">
-                      <span>Items Subtotal</span>
+                      <span>Subtotal</span>
                       <span className="font-mono text-slate-900">৳{foodSubtotal}</span>
                     </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center text-[#e21b70] font-extrabold">
+                        <span>Discounts</span>
+                        <span className="font-mono">- ৳{discountAmount}</span>
+                      </div>
+                    )}
                     {selectedAcceptOrder.order_type !== 'pickup' && (
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Delivery Fee</span>
+                        <span>Standard delivery</span>
                         <span className="font-mono text-slate-900">৳{deliveryFee}</span>
+                      </div>
+                    )}
+                    {platformFee > 0 && (
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>Platform Fee</span>
+                        <span className="font-mono text-slate-900">৳{platformFee}</span>
+                      </div>
+                    )}
+                    {taxFee > 0 && (
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>Tax</span>
+                        <span className="font-mono text-slate-900">৳{taxFee}</span>
+                      </div>
+                    )}
+                    {vatFee > 0 && (
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>VAT</span>
+                        <span className="font-mono text-slate-900">৳{vatFee}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center text-sm font-black text-slate-950 pt-2 border-t border-slate-100">
