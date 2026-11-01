@@ -1155,16 +1155,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .select('*');
           if (!oSupaerror && oSupadata && isSubscribed && Array.isArray(oSupadata) && oSupadata.length > 0) {
             const { data: itemsData } = await supabase.from('order_items').select('*');
-            const resolvedOrders = oSupadata.map(o => {
-              const oItems = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id) : [];
-              return {
-                ...o,
-                items: oItems,
-                vendor: vendors.find(v => v.id === o.vendor_id) || null
-              };
+            setOrders(prev => {
+              const existingMap = new Map(prev.map(o => [o.id, o]));
+              const resolvedOrders = oSupadata.map(o => {
+                const oItems = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id) : [];
+                const existing = existingMap.get(o.id);
+                const hasSupaItems = oItems.length > 0;
+                const hasExistingItems = existing && Array.isArray(existing.items) && existing.items.length > 0;
+                const hasSelfItems = Array.isArray(o.items) && o.items.length > 0;
+                
+                return {
+                  ...o,
+                  items: hasSupaItems ? oItems : (hasSelfItems ? o.items : (hasExistingItems ? existing.items : [])),
+                  vendor: vendors.find(v => v.id === o.vendor_id) || o.vendor || null
+                };
+              });
+              resolvedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              return resolvedOrders;
             });
-            resolvedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            setOrders(resolvedOrders);
           }
         } catch (err) {
           console.error('Failed to load from Supabase:', err);
@@ -1239,8 +1247,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       } catch {}
 
-
-
       try {
         const catRes = await fetch('/api/food-categories');
         if (catRes.ok) {
@@ -1266,8 +1272,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const oRes = await fetch('/api/orders');
         if (oRes.ok) {
           const oData = await oRes.json();
-          if (Array.isArray(oData) && isSubscribed) {
-            setOrders(oData);
+          if (Array.isArray(oData) && isSubscribed && oData.length > 0) {
+            setOrders(prev => {
+              const existingMap = new Map(prev.map(o => [o.id, o]));
+              return oData.map((o: Order) => {
+                const existing = existingMap.get(o.id);
+                const hasNewItems = Array.isArray(o.items) && o.items.length > 0;
+                const hasExistingItems = existing && Array.isArray(existing.items) && existing.items.length > 0;
+                return {
+                  ...o,
+                  items: hasNewItems ? o.items : (hasExistingItems ? existing.items : (o.items || []))
+                };
+              });
+            });
           }
         }
       } catch {}

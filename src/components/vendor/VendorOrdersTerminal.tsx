@@ -460,6 +460,30 @@ export const VendorOrdersTerminal: React.FC = () => {
     }
   }, [autoAccept, pendingOrders]);
 
+  // Keep active modals in sync with live orders array
+  useEffect(() => {
+    if (selectedAcceptOrder) {
+      const match = vendorOrders.find(o => o.id === selectedAcceptOrder.id);
+      if (match) {
+        const currentItemsCount = selectedAcceptOrder.items?.length || 0;
+        const matchItemsCount = match.items?.length || 0;
+        if (matchItemsCount > currentItemsCount || match.status !== selectedAcceptOrder.status) {
+          setSelectedAcceptOrder(match);
+        }
+      }
+    }
+    if (selectedReadyOrder) {
+      const match = vendorOrders.find(o => o.id === selectedReadyOrder.id);
+      if (match) {
+        const currentItemsCount = selectedReadyOrder.items?.length || 0;
+        const matchItemsCount = match.items?.length || 0;
+        if (matchItemsCount > currentItemsCount || match.status !== selectedReadyOrder.status) {
+          setSelectedReadyOrder(match);
+        }
+      }
+    }
+  }, [orders, vendorOrders]);
+
   const handleMarkFoodReady = (orderId: string) => {
     vendorMarkFoodReady(orderId);
     setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready_for_pickup' } : o));
@@ -1789,49 +1813,84 @@ export const VendorOrdersTerminal: React.FC = () => {
             )}
 
             {/* 3. Items List Card */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                  Order Items ({selectedAcceptOrder.items?.reduce((s, it) => s + it.quantity, 0) || 1})
-                </h3>
-                <span className="text-xs font-bold text-slate-400">
-                  {selectedAcceptOrder.order_code === '00' ? 'Dummy Test Order' : 'Live Order'}
-                </span>
-              </div>
+            {(() => {
+              const acceptItems = selectedAcceptOrder.items || [];
+              const totalItemsCount = acceptItems.reduce((s, it) => s + (it.quantity || 1), 0);
+              const calculatedSubtotal = acceptItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0);
+              const foodSubtotal = selectedAcceptOrder.food_total || calculatedSubtotal;
+              const deliveryFee = selectedAcceptOrder.order_type === 'pickup' ? 0 : (selectedAcceptOrder.delivery_fee || 0);
+              const totalPayable = selectedAcceptOrder.total_cash_payable || (foodSubtotal + deliveryFee);
 
-              <div className="divide-y divide-slate-100">
-                {selectedAcceptOrder.items?.map((item, idx) => (
-                  <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3">
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-900 font-black text-xs rounded-lg">
-                          {item.quantity}x
-                        </span>
-                        <div>
-                          <h4 className="text-base font-black text-slate-900 leading-snug">
-                            {item.item_name}
-                          </h4>
-                          {item.selected_variations && item.selected_variations.length > 0 && (
-                            <p className="text-xs text-slate-500 font-medium mt-0.5">
-                              {item.selected_variations.join(' • ')}
-                            </p>
-                          )}
-                          {item.special_instructions && (
-                            <p className="text-xs text-amber-700 font-semibold mt-1 flex items-center gap-1">
-                              <span>•</span> {item.special_instructions}
-                            </p>
-                          )}
+              return (
+                <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                      Order Items ({totalItemsCount})
+                    </h3>
+                    <span className="text-xs font-bold text-slate-400">
+                      {selectedAcceptOrder.order_code === '00' ? 'Dummy Test Order' : 'Live Order'}
+                    </span>
+                  </div>
+
+                  {acceptItems.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      {acceptItems.map((item, idx) => (
+                        <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3">
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-900 font-black text-xs rounded-lg shrink-0">
+                                {item.quantity || 1}x
+                              </span>
+                              <div>
+                                <h4 className="text-base font-black text-slate-900 leading-snug">
+                                  {item.item_name}
+                                </h4>
+                                {item.selected_variations && item.selected_variations.length > 0 && (
+                                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                    {item.selected_variations.join(' • ')}
+                                  </p>
+                                )}
+                                {item.special_instructions && (
+                                  <p className="text-xs text-amber-700 font-semibold mt-1 flex items-center gap-1">
+                                    <span>•</span> {item.special_instructions}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <span className="text-sm font-black text-slate-900 font-mono shrink-0 ml-2">
+                              ৳{item.subtotal || ((item.item_price || 0) * (item.quantity || 1))}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-xs font-bold text-slate-400">
+                      No item details provided
+                    </div>
+                  )}
 
-                      <span className="text-sm font-black text-slate-900 font-mono">
-                        ৳{item.subtotal || 0}
-                      </span>
+                  {/* Order Summary Breakdown */}
+                  <div className="border-t border-slate-100 pt-3.5 space-y-2 text-xs font-bold text-slate-700">
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>Items Subtotal</span>
+                      <span className="font-mono text-slate-900">৳{foodSubtotal}</span>
+                    </div>
+                    {selectedAcceptOrder.order_type !== 'pickup' && (
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>Delivery Fee</span>
+                        <span className="font-mono text-slate-900">৳{deliveryFee}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-sm font-black text-slate-950 pt-2 border-t border-slate-100">
+                      <span>Total Cash Payable</span>
+                      <span className="font-mono text-[#d70f64]">৳{totalPayable}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })()}
 
           </main>
 
