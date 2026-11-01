@@ -5405,6 +5405,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const supabaseOrderPayload = {
           id: newOrder.id,
           order_code: newOrder.order_code,
+          order_type: newOrder.order_type || 'delivery',
           customer_id: sCustomerId,
           customer_name: newOrder.customer_name,
           customer_phone: newOrder.customer_phone,

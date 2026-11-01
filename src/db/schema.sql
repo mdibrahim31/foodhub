@@ -312,6 +312,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     food_and_delivery_cash_collected_from_customer BOOLEAN DEFAULT false,
     
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    order_type VARCHAR(50) DEFAULT 'delivery',
     
     vendor_prep_minutes INT DEFAULT 15,
     prep_ends_at TIMESTAMP WITH TIME ZONE,
@@ -326,6 +327,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure order_type column exists on orders table
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_type VARCHAR(50) DEFAULT 'delivery';
 
 -- ====================================================================
 -- 14. ORDER ITEMS TABLE (Items, Variations & Special Instructions)
