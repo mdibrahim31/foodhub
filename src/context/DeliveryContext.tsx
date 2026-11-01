@@ -5456,17 +5456,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           delivery_latitude: newOrder.delivery_latitude,
           delivery_longitude: newOrder.delivery_longitude,
           food_total: newOrder.food_total,
-          discount_amount: newOrder.discount_amount || 0,
           delivery_distance_km: newOrder.delivery_distance_km,
           delivery_fee: newOrder.delivery_fee,
-          platform_fee: newOrder.platform_fee || 0,
-          tax_fee: newOrder.tax_fee || 0,
-          vat_fee: newOrder.vat_fee || 0,
           total_cash_payable: newOrder.total_cash_payable,
           status: newOrder.status,
           special_instructions: newOrder.special_instructions,
-          items: newOrder.items,
-          order_summary: newOrder.items,
           created_at: newOrder.created_at,
           updated_at: newOrder.updated_at
         };
