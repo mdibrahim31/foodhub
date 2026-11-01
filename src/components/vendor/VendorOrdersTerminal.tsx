@@ -284,8 +284,10 @@ export const VendorOrdersTerminal: React.FC = () => {
     .filter((o) => o.status === 'pending')
     .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
 
-  // All pending orders come in 'New' arranged in chronological serial order (FIFO)
-  const newOrders = pendingOrders;
+  // Total pending count for header badge (New 1, New 2, New 3, etc.)
+  // Only ONE order is displayed in the New slot at a time; others queue in background serial order (FIFO)
+  const displayedNewOrders = pendingOrders.slice(0, 1);
+  const newOrders = displayedNewOrders;
 
   // For now, no orders come in 'Upcoming'
   const upcomingOrders: Order[] = [];
@@ -1341,7 +1343,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div>
               <div className="flex items-center space-x-1.5 mb-2.5">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">New</h2>
-                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{newOrders.length}</span>
+                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{pendingOrders.length}</span>
               </div>
 
               {newOrders.length === 0 ? (
