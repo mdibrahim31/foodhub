@@ -210,7 +210,7 @@ interface DeliveryContextType {
   removeFromCart: (menuItemId: string, varKey?: string) => void;
   updateCartQuantity: (menuItemId: string, qty: number, varKey?: string) => void;
   clearCart: () => void;
-  placeOrder: (instructions?: string) => Promise<Order | null>;
+  placeOrder: (instructions?: string, orderType?: 'delivery' | 'pickup') => Promise<Order | null>;
   
   // Step-by-Step Vendor Prep & Customer Confirmation
   vendorAcceptOrderWithPrepTime: (orderId: string, prepMinutes: number) => void;
@@ -5210,7 +5210,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const placeOrder = async (instructions?: string): Promise<Order | null> => {
+  const placeOrder = async (instructions?: string, orderType: 'delivery' | 'pickup' = 'delivery'): Promise<Order | null> => {
     if (!currentUser || currentUser.role !== 'customer') {
       alert('Please log in first from your Account profile page with your Name, Phone, and Password before placing an order.');
       return null;
@@ -5235,11 +5235,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       selectedAddress.latitude,
       selectedAddress.longitude
     );
-    const deliveryFee = calculateDeliveryFee(
+    const calculatedDeliveryFee = calculateDeliveryFee(
       distanceKm,
       settings.base_delivery_charge,
       settings.per_km_delivery_charge
     );
+    const effectiveDeliveryFee = orderType === 'pickup' ? 0 : calculatedDeliveryFee;
     const platformFee = Number(settings.platform_fee) || 0;
     const minOrderPlatform = Number(settings.platform_fee_min_order) || 0;
     const effectivePlatformFee = (minOrderPlatform > 0 && foodTotal < minOrderPlatform) ? 0 : platformFee;
@@ -5250,7 +5251,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const vatMin = Number(settings.vat_min_order) || 0;
     const effectiveVat = (vatMin > 0 && foodTotal < vatMin) ? 0 : (Number(settings.vat_amount) || 0);
 
-    const totalCashPayable = foodTotal + deliveryFee + effectivePlatformFee + effectiveTax + effectiveVat;
+    const totalCashPayable = foodTotal + effectiveDeliveryFee + effectivePlatformFee + effectiveTax + effectiveVat;
 
     // Use a clean valid UUID for orderId so it never fails Supabase UUID constraints
     const orderId = typeof crypto !== 'undefined' && crypto.randomUUID 
@@ -5262,6 +5263,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const newOrder: Order = {
       id: orderId,
       order_code: orderCode,
+      order_type: orderType,
       customer_id: currentCustomer?.id || currentUser?.id || 'guest',
       customer_name: currentUser?.name || 'Customer',
       customer_phone: currentUser?.phone || '01800000000',
@@ -5272,7 +5274,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       delivery_longitude: selectedAddress.longitude,
       food_total: foodTotal,
       delivery_distance_km: distanceKm,
-      delivery_fee: deliveryFee,
+      delivery_fee: effectiveDeliveryFee,
       total_cash_payable: totalCashPayable,
       food_cash_paid_to_vendor: false,
       food_and_delivery_cash_collected_from_customer: false,
@@ -5474,11 +5476,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const vendorAcceptOrderWithPrepTime = (orderId: string, prepMinutes: number) => {
     setOrders(prev => prev.map(o => {
       if (o.id === orderId) {
+        const prepEndsAt = new Date(Date.now() + prepMinutes * 60 * 1000).toISOString();
         const nextOrder = {
           ...o,
           status: 'vendor_accepted' as OrderStatus,
           vendor_prep_minutes: prepMinutes,
-          customer_confirmed_prep: false,
+          customer_confirmed_prep: true,
+          prep_ends_at: prepEndsAt,
           updated_at: new Date().toISOString()
         };
 
@@ -5496,7 +5500,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .update({
               status: 'vendor_accepted',
               vendor_prep_minutes: prepMinutes,
-              customer_confirmed_prep: false,
+              customer_confirmed_prep: true,
+              prep_ends_at: prepEndsAt,
               updated_at: nextOrder.updated_at
             })
             .eq('id', orderId)

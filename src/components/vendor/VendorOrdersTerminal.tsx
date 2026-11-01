@@ -1420,8 +1420,10 @@ export const VendorOrdersTerminal: React.FC = () => {
                         </div>
 
                         {/* Badge */}
-                        <span className="bg-rose-50 text-[#d70f64] font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-md uppercase tracking-wider">
-                          {isTest ? 'TEST ORDER' : 'DELIVERY'}
+                        <span className={`font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-md uppercase tracking-wider ${
+                          isTest ? 'bg-rose-50 text-[#d70f64]' : order.order_type === 'pickup' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-rose-50 text-[#d70f64]'
+                        }`}>
+                          {isTest ? 'TEST ORDER' : (order.order_type === 'pickup' ? 'PICKUP' : 'DELIVERY')}
                         </span>
                       </div>
 
@@ -1899,8 +1901,16 @@ export const VendorOrdersTerminal: React.FC = () => {
                   <p className="text-base font-bold text-slate-800 mt-1">
                     {selectedReadyOrder.customer_phone || 'XXXX-1234'}
                   </p>
-                  <span className="bg-rose-50 text-[#d70f64] font-black text-[10px] px-2.5 py-1 rounded-md inline-block uppercase tracking-wider mt-2.5">
-                    {selectedReadyOrder.id.startsWith('test-') || selectedReadyOrder.order_code === '00' || selectedReadyOrder.order_code === '01' ? 'TEST ORDER' : 'DELIVERY'}
+                  <span className={`font-black text-[10px] px-2.5 py-1 rounded-md inline-block uppercase tracking-wider mt-2.5 ${
+                    (selectedReadyOrder.id.startsWith('test-') || selectedReadyOrder.order_code === '00' || selectedReadyOrder.order_code === '01')
+                      ? 'bg-rose-50 text-[#d70f64]'
+                      : selectedReadyOrder.order_type === 'pickup'
+                      ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                      : 'bg-rose-50 text-[#d70f64]'
+                  }`}>
+                    {(selectedReadyOrder.id.startsWith('test-') || selectedReadyOrder.order_code === '00' || selectedReadyOrder.order_code === '01')
+                      ? 'TEST ORDER'
+                      : (selectedReadyOrder.order_type === 'pickup' ? 'PICKUP' : 'DELIVERY')}
                   </span>
                 </div>
 

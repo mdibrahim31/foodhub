@@ -306,6 +306,7 @@ export interface Order {
   food_and_delivery_cash_collected_from_customer: boolean;
   
   status: OrderStatus;
+  order_type?: 'delivery' | 'pickup';
   vendor_prep_minutes?: number;
   prep_ends_at?: string;
   customer_confirmed_prep?: boolean;
