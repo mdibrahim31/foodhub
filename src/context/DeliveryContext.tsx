@@ -1166,7 +1166,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 const supaJsonItems = o.items || o.order_summary || o.order_items;
                 const existing = existingMap.get(o.id) || existingMap.get(o.order_code);
                 
-                const finalItems = (Array.isArray(supaJsonItems) && supaJsonItems.length > 0)
+                let finalItems = (Array.isArray(supaJsonItems) && supaJsonItems.length > 0)
                   ? supaJsonItems
                   : (Array.isArray(o.items) && o.items.length > 0
                     ? o.items
@@ -1175,6 +1175,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                       : (existing && Array.isArray(existing.items) && existing.items.length > 0 
                         ? existing.items 
                         : [])));
+
+                if (!finalItems || finalItems.length === 0) {
+                  try {
+                    const localRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}orders`);
+                    if (localRaw) {
+                      const parsed = JSON.parse(localRaw);
+                      const m = parsed.find((ord: any) => ord.id === o.id || ord.order_code === o.order_code);
+                      if (m && Array.isArray(m.items) && m.items.length > 0) {
+                        finalItems = m.items;
+                      }
+                    }
+                  } catch {}
+                }
 
                 return {
                   ...existing,
@@ -5324,12 +5337,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       items: cart.map((ci, index) => {
-        // Use a clean valid UUID for each order item id to satisfy database constraints
         const itemId = typeof crypto !== 'undefined' && crypto.randomUUID 
           ? crypto.randomUUID() 
           : `00000000-0000-4000-9000-${(Date.now() + index).toString(16).padStart(12, '0')}`;
           
         const unitPrice = ci.unitPrice ?? ci.menuItem.price;
+        const extrasPrice = (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+        const pricing = getItemPricing(ci.menuItem, cartVendor, extrasPrice);
+        const itemRegularPrice = pricing.regularPrice;
+        const itemDiscountAmt = Math.max(0, itemRegularPrice - unitPrice);
+
         const portionVar = ci.selectedVariations?.find(v => {
           const g = (v.groupName || '').toLowerCase();
           return g.includes('portion') || g.includes('size') || g.includes('সাইজ') || g.includes('পরিমাণ');
@@ -5340,7 +5357,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const g = (v.groupName || '').toLowerCase();
           const isPortion = g.includes('portion') || g.includes('size') || g.includes('সাইজ') || g.includes('পরিমাণ');
           if (isPortion) {
-            return `${v.groupName}: ${v.optionName} (৳${v.price || unitPrice})`;
+            return `${v.groupName}: ${v.optionName} (৳${v.price || itemRegularPrice})`;
           }
           return `${v.groupName}: ${v.optionName}${v.price > 0 ? ` (+৳${v.price})` : ''}`;
         });
@@ -5350,9 +5367,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           order_id: orderId,
           menu_item_id: ci.menuItem.id,
           item_name: ci.menuItem.name,
-          item_price: unitPrice,
+          item_price: itemRegularPrice,
+          original_price: itemRegularPrice,
+          discount_amount: itemDiscountAmt * ci.quantity,
           quantity: ci.quantity,
-          subtotal: unitPrice * ci.quantity,
+          subtotal: itemRegularPrice * ci.quantity,
           selected_portion: selectedPortionName,
           selected_variations: selectedVarStrings,
           special_instructions: ci.specialInstructions || ''
@@ -5362,6 +5381,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     setOrders(prev => [newOrder, ...prev]);
+
+    try {
+      const existingRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}orders`);
+      const existingList = existingRaw ? JSON.parse(existingRaw) : [];
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}orders`, JSON.stringify([newOrder, ...existingList.filter((o: any) => o.id !== newOrder.id)]));
+    } catch {}
 
     // Save to Database server
     try {

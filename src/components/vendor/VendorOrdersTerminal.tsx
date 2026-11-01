@@ -62,7 +62,8 @@ import {
   Calendar,
   Power,
   CheckCircle,
-  Save
+  Save,
+  Info
 } from 'lucide-react';
 
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
@@ -278,9 +279,22 @@ export const VendorOrdersTerminal: React.FC = () => {
   const allOrdersList = [...dummyOrders, ...orders];
   const vendorOrders = activeVendor ? allOrdersList.filter((o) => o.vendor_id === activeVendor.id) : [];
 
-  const pendingOrders = vendorOrders.filter((o) => o.status === 'pending');
+  // Pending orders sorted chronologically (FIFO queue)
+  const pendingOrders = vendorOrders
+    .filter((o) => o.status === 'pending')
+    .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+
+  // 'New' gets only ONE order at a time
+  const newOrders = pendingOrders.slice(0, 1);
+
+  // 'Upcoming' receives all subsequent pending orders waiting in queue
+  const upcomingOrders = pendingOrders.slice(1);
+
   const preparingOrders = vendorOrders.filter((o) => o.status === 'vendor_accepted' || o.status === 'food_preparing');
   const readyOrders = vendorOrders.filter((o) => o.status === 'ready_for_pickup' || o.status === 'food_picked_up');
+  const acceptedOrders = vendorOrders.filter((o) => 
+    o.status === 'vendor_accepted' || o.status === 'food_preparing' || o.status === 'ready_for_pickup' || o.status === 'food_picked_up'
+  );
   const completedOrders = vendorOrders.filter((o) => o.status === 'delivered');
 
   const handleAcceptOrder = (orderId: string, prepMinutes: number = 9) => {
@@ -468,7 +482,10 @@ export const VendorOrdersTerminal: React.FC = () => {
         const currentItemsCount = selectedAcceptOrder.items?.length || 0;
         const matchItemsCount = match.items?.length || 0;
         if (matchItemsCount > currentItemsCount || match.status !== selectedAcceptOrder.status) {
-          setSelectedAcceptOrder(match);
+          const mergedItems = (match.items && match.items.length > 0)
+            ? match.items
+            : (selectedAcceptOrder.items && selectedAcceptOrder.items.length > 0 ? selectedAcceptOrder.items : []);
+          setSelectedAcceptOrder({ ...match, items: mergedItems });
         }
       }
     }
@@ -1324,16 +1341,16 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div>
               <div className="flex items-center space-x-1.5 mb-2.5">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">New</h2>
-                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{pendingOrders.length}</span>
+                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{newOrders.length}</span>
               </div>
 
-              {pendingOrders.length === 0 ? (
+              {newOrders.length === 0 ? (
                 <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[140px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
                   <span className="text-sm font-bold text-slate-800">No new orders</span>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pendingOrders.map((order, idx) => {
+                  {newOrders.map((order, idx) => {
                     const serialNumber = (order.order_code && order.order_code !== '00')
                       ? order.order_code
                       : String(idx + 1).padStart(2, '0');
@@ -1366,10 +1383,10 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div>
               <div className="flex items-center space-x-1.5 mb-2.5">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Upcoming</h2>
-                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{readyOrders.length}</span>
+                <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{upcomingOrders.length}</span>
               </div>
 
-              {readyOrders.length === 0 ? (
+              {upcomingOrders.length === 0 ? (
                 <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 min-h-[140px] flex items-center justify-center text-center border border-slate-100 shadow-2xs">
                   <span className="text-sm font-bold text-slate-800 leading-snug">
                     No upcoming<br />orders
@@ -1377,28 +1394,31 @@ export const VendorOrdersTerminal: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {readyOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-white border border-blue-200 rounded-2xl p-3.5 shadow-2xs space-y-2"
-                    >
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-mono font-bold text-blue-600">#{order.order_code}</span>
-                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-                          Rider Pickup
+                  {upcomingOrders.map((order, idx) => {
+                    const serialNumber = (order.order_code && order.order_code !== '00')
+                      ? order.order_code
+                      : String(idx + 2).padStart(2, '0');
+                    const itemCount = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 1;
+                    const itemLabel = `${itemCount} item${itemCount > 1 ? 's' : ''}`;
+
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => {
+                          setSelectedAcceptOrder(order);
+                          setSelectedPrepMinutes(order.vendor_prep_minutes || 9);
+                        }}
+                        className="bg-[#b8004f] hover:bg-[#a30046] active:scale-[0.98] transition-all rounded-2xl p-4 sm:p-5 shadow-xs min-h-[140px] flex flex-col justify-start cursor-pointer select-none text-white border-0"
+                      >
+                        <span className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
+                          #{serialNumber}
+                        </span>
+                        <span className="text-base sm:text-lg font-bold text-white/95 mt-2 leading-tight">
+                          {itemLabel}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-700 font-medium leading-snug">
-                        {order.items?.map((it) => `${it.quantity}x ${it.item_name}`).join(', ')}
-                      </div>
-                      <button
-                        onClick={() => handleConfirmHandover(order.id)}
-                        className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
-                      >
-                        Handover
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1409,19 +1429,20 @@ export const VendorOrdersTerminal: React.FC = () => {
           <div className="mt-8 sm:mt-10">
             <div className="flex items-center space-x-1.5 mb-2.5">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Accepted</h2>
-              <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{preparingOrders.length}</span>
+              <span className="text-2xl sm:text-3xl font-black text-[#d70f64]">{acceptedOrders.length}</span>
             </div>
 
-            {preparingOrders.length === 0 ? (
+            {acceptedOrders.length === 0 ? (
               <div className="bg-slate-50/90 rounded-2xl p-5 sm:p-6 min-h-[140px] flex items-center justify-center text-center border border-slate-100 shadow-2xs mt-3">
                 <span className="text-sm font-bold text-slate-800">No accepted orders</span>
               </div>
             ) : (
               <div className="space-y-3 mt-3">
-                {preparingOrders.map((order) => {
+                {acceptedOrders.map((order) => {
                   const totalItems = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 1;
                   const itemLabel = `${totalItems} item${totalItems > 1 ? 's' : ''}`;
                   const isTest = order.id.startsWith('test-') || order.order_code === '00' || order.order_code === '01';
+                  const isReady = order.status === 'ready_for_pickup' || order.status === 'food_picked_up';
 
                   return (
                     <div
@@ -1431,8 +1452,8 @@ export const VendorOrdersTerminal: React.FC = () => {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
-                          {/* Vertical pink bar */}
-                          <div className="w-1.5 h-10 bg-[#d70f64] rounded-full shrink-0" />
+                          {/* Vertical pink/blue bar */}
+                          <div className={`w-1.5 h-10 ${isReady ? 'bg-blue-600' : 'bg-[#d70f64]'} rounded-full shrink-0`} />
                           <div>
                             <h3 className="text-2xl font-black text-slate-950 tracking-tight font-sans leading-none">
                               #{order.order_code}
@@ -1445,14 +1466,30 @@ export const VendorOrdersTerminal: React.FC = () => {
 
                         {/* Badge */}
                         <span className={`font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-md uppercase tracking-wider ${
-                          isTest ? 'bg-rose-50 text-[#d70f64]' : order.order_type === 'pickup' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-rose-50 text-[#d70f64]'
+                          isTest ? 'bg-rose-50 text-[#d70f64]' : isReady ? 'bg-blue-50 text-blue-700 border border-blue-200' : order.order_type === 'pickup' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-rose-50 text-[#d70f64]'
                         }`}>
-                          {isTest ? 'TEST ORDER' : (order.order_type === 'pickup' ? 'PICKUP' : 'DELIVERY')}
+                          {isTest ? 'TEST ORDER' : isReady ? 'READY (RIDER PICKUP)' : (order.order_type === 'pickup' ? 'PICKUP' : 'DELIVERY')}
                         </span>
                       </div>
 
-                      {/* Bottom Right: Prep Time */}
-                      <div className="flex justify-end pt-1">
+                      {/* Bottom Right: Prep Time or Handover button */}
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                        {isReady ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConfirmHandover(order.id);
+                            }}
+                            className="py-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition"
+                          >
+                            Handover to Rider
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-500 font-semibold">
+                            Preparing food
+                          </span>
+                        )}
                         <span className="text-base font-bold text-slate-900">
                           {order.vendor_prep_minutes || 9} mins
                         </span>
@@ -1812,114 +1849,153 @@ export const VendorOrdersTerminal: React.FC = () => {
               </div>
             )}
 
-            {/* 3. Items List Card */}
+            {/* 3. ORDER SUMMARY WINDOW (100% Exact match to Checkout Order summary window) */}
             {(() => {
               const liveMatch = allOrdersList.find(o => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
-              const acceptItems = (selectedAcceptOrder.items && selectedAcceptOrder.items.length > 0)
+              let acceptItems = (selectedAcceptOrder.items && selectedAcceptOrder.items.length > 0)
                 ? selectedAcceptOrder.items
-                : (liveMatch?.items || []);
-              const totalItemsCount = acceptItems.reduce((s, it) => s + (it.quantity || 1), 0);
-              const calculatedSubtotal = acceptItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0);
-              const foodSubtotal = selectedAcceptOrder.food_total || calculatedSubtotal;
-              const discountAmount = selectedAcceptOrder.discount_amount || liveMatch?.discount_amount || 0;
-              const deliveryFee = selectedAcceptOrder.order_type === 'pickup' ? 0 : (selectedAcceptOrder.delivery_fee || 0);
-              const platformFee = selectedAcceptOrder.platform_fee || liveMatch?.platform_fee || 0;
-              const taxFee = selectedAcceptOrder.tax_fee || liveMatch?.tax_fee || 0;
-              const vatFee = selectedAcceptOrder.vat_fee || liveMatch?.vat_fee || 0;
-              const totalPayable = selectedAcceptOrder.total_cash_payable || (foodSubtotal - discountAmount + deliveryFee + platformFee + taxFee + vatFee);
+                : (liveMatch?.items && liveMatch.items.length > 0 ? liveMatch.items : []);
+
+              // Fallback 1: check order_summary.items
+              if (!acceptItems || acceptItems.length === 0) {
+                const summaryItems = (selectedAcceptOrder as any).order_summary?.items || (liveMatch as any)?.order_summary?.items;
+                if (Array.isArray(summaryItems) && summaryItems.length > 0) {
+                  acceptItems = summaryItems;
+                }
+              }
+
+              // Fallback 2: check localStorage orders (foodvibe_v3_orders and foodiplace_orders)
+              if (!acceptItems || acceptItems.length === 0) {
+                try {
+                  const rawOrders = localStorage.getItem('foodvibe_v3_orders') || localStorage.getItem('foodiplace_orders');
+                  if (rawOrders) {
+                    const parsedOrders = JSON.parse(rawOrders);
+                    const found = parsedOrders.find((o: any) => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
+                    if (found && Array.isArray(found.items) && found.items.length > 0) {
+                      acceptItems = found.items;
+                    }
+                  }
+                } catch {}
+              }
+
+              const itemsSubtotalSum = acceptItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0);
+              const subtotalVal = selectedAcceptOrder.food_total || itemsSubtotalSum;
+              const discountAmountVal = selectedAcceptOrder.discount_amount || liveMatch?.discount_amount || 0;
+              const deliveryFeeVal = selectedAcceptOrder.order_type === 'pickup' ? 0 : (selectedAcceptOrder.delivery_fee || 0);
+              const platformFeeVal = selectedAcceptOrder.platform_fee || liveMatch?.platform_fee || 0;
+              const taxFeeVal = selectedAcceptOrder.tax_fee || liveMatch?.tax_fee || 0;
+              const vatFeeVal = selectedAcceptOrder.vat_fee || liveMatch?.vat_fee || 0;
+              const totalPayableVal = selectedAcceptOrder.total_cash_payable || (subtotalVal - discountAmountVal + deliveryFeeVal + platformFeeVal + taxFeeVal + vatFeeVal);
 
               return (
-                <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                      Order Items ({totalItemsCount})
-                    </h3>
+                <section className="space-y-3 bg-white border border-slate-200/90 rounded-3xl p-5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                      Order summary
+                    </h2>
                     <span className="text-xs font-bold text-slate-400">
-                      {selectedAcceptOrder.order_code === '00' ? 'Dummy Test Order' : 'Live Order'}
+                      Live Order
                     </span>
                   </div>
 
-                  {acceptItems.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
-                      {acceptItems.map((item, idx) => (
-                        <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3">
-                              <span className="px-2.5 py-1 bg-slate-100 text-slate-900 font-black text-xs rounded-lg shrink-0">
-                                {item.quantity || 1}x
-                              </span>
-                              <div>
-                                <h4 className="text-base font-black text-slate-900 leading-snug">
+                  {/* Items list */}
+                  <div className="space-y-2.5 pb-3 border-b border-slate-100">
+                    {acceptItems.length > 0 ? (
+                      acceptItems.map((item, idx) => {
+                        const itemSubtotal = item.subtotal || ((item.item_price || 0) * (item.quantity || 1));
+                        const variations = Array.isArray(item.selected_variations)
+                          ? item.selected_variations.join(' • ')
+                          : (item.selected_variations || '');
+
+                        return (
+                          <div key={idx} className="space-y-0.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2 min-w-0 pr-2">
+                                <span className="font-black text-slate-950 text-sm font-mono shrink-0">
+                                  {item.quantity || 1}x
+                                </span>
+                                <span className="font-bold text-slate-800 truncate">
                                   {item.item_name}
-                                </h4>
-                                {item.selected_variations && item.selected_variations.length > 0 && (
-                                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                    {Array.isArray(item.selected_variations) ? item.selected_variations.join(' • ') : item.selected_variations}
-                                  </p>
-                                )}
-                                {item.special_instructions && (
-                                  <p className="text-xs text-amber-700 font-semibold mt-1 flex items-center gap-1">
-                                    <span>•</span> {item.special_instructions}
-                                  </p>
-                                )}
+                                </span>
                               </div>
+                              <span className="font-black text-slate-950 font-mono shrink-0">
+                                Tk {itemSubtotal}
+                              </span>
                             </div>
-
-                            <span className="text-sm font-black text-slate-900 font-mono shrink-0 ml-2">
-                              ৳{item.subtotal || ((item.item_price || 0) * (item.quantity || 1))}
-                            </span>
+                            {variations && (
+                              <p className="text-xs text-slate-500 font-medium pl-6">
+                                {variations}
+                              </p>
+                            )}
+                            {item.special_instructions && (
+                              <p className="text-xs text-amber-700 font-semibold pl-6">
+                                • {item.special_instructions}
+                              </p>
+                            )}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-4 text-center text-xs font-bold text-slate-400">
-                      No item details provided
-                    </div>
-                  )}
+                        );
+                      })
+                    ) : (
+                      <div className="py-4 text-center text-xs font-bold text-slate-400">
+                        No item details provided
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Order Summary Breakdown */}
-                  <div className="border-t border-slate-100 pt-3.5 space-y-2 text-xs font-bold text-slate-700">
-                    <div className="flex justify-between items-center text-slate-600">
-                      <span>Items Subtotal</span>
-                      <span className="font-mono text-slate-900">৳{calculatedSubtotal || foodSubtotal}</span>
+                  {/* Price Calculation breakdown */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Subtotal</span>
+                      <span className="font-mono font-bold">Tk {subtotalVal}</span>
                     </div>
-                    {discountAmount > 0 && foodSubtotal > calculatedSubtotal && (
-                      <div className="flex justify-between items-center text-[#e21b70] font-extrabold">
-                        <span>Discounts</span>
-                        <span className="font-mono">- ৳{discountAmount}</span>
+
+                    {discountAmountVal > 0 && (
+                      <div className="flex justify-between text-[#e21b70] font-extrabold">
+                        <span className="flex items-center space-x-1">
+                          <span>Discounts</span>
+                          <Info className="w-3.5 h-3.5 inline text-slate-400" />
+                        </span>
+                        <span className="font-mono">- Tk {discountAmountVal}</span>
                       </div>
                     )}
-                    {selectedAcceptOrder.order_type !== 'pickup' && (
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>Delivery Fee</span>
-                        <span className="font-mono text-slate-900">৳{deliveryFee}</span>
-                      </div>
-                    )}
-                    {platformFee > 0 && (
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>Platform Fee</span>
-                        <span className="font-mono text-slate-900">৳{platformFee}</span>
-                      </div>
-                    )}
-                    {taxFee > 0 && (
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>Tax</span>
-                        <span className="font-mono text-slate-900">৳{taxFee}</span>
-                      </div>
-                    )}
-                    {vatFee > 0 && (
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>VAT</span>
-                        <span className="font-mono text-slate-900">৳{vatFee}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center text-sm font-black text-slate-950 pt-2 border-t border-slate-100">
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Standard delivery</span>
+                      <span className="font-extrabold text-[#e21b70] font-mono">
+                        Tk {deliveryFeeVal}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Platform Fee</span>
+                      <span className="font-mono font-bold">Tk {platformFeeVal}</span>
+                    </div>
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>Tax</span>
+                      <span className="font-mono font-bold">Tk {taxFeeVal}</span>
+                    </div>
+
+                    <div className="flex justify-between text-slate-800 font-semibold">
+                      <span>VAT</span>
+                      <span className="font-mono font-bold">Tk {vatFeeVal}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-base font-black text-slate-950 pt-2 border-t border-slate-100">
                       <span>Total Cash Payable</span>
-                      <span className="font-mono text-[#d70f64]">৳{totalPayable}</span>
+                      <span className="font-mono text-[#d70f64] text-lg">Tk {totalPayableVal}</span>
                     </div>
                   </div>
-                </div>
+
+                  {/* Terms text */}
+                  <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                    By completing this order, I agree to all{' '}
+                    <span className="text-slate-900 font-extrabold underline underline-offset-2">
+                      terms & conditions
+                    </span>
+                    .
+                  </p>
+                </section>
               );
             })()}
 

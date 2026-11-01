@@ -2544,125 +2544,111 @@ export const CustomerPortal: React.FC = () => {
                   const totalItemsCount = cart.reduce((s, it) => s + (it.quantity || 1), 0);
 
                   return (
-                    <section id="checkout-order-summary" className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
-                      {/* Header with Title and Live Order Badge */}
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                          Order Items ({totalItemsCount})
-                        </h3>
-                        <span className="text-xs font-bold text-slate-400">
-                          Live Order
-                        </span>
-                      </div>
+                    <section id="checkout-order-summary" className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3">
+                      {/* Header matching Order summary */}
+                      <h2 className="text-lg font-black text-slate-950 tracking-tight">
+                        Order summary
+                      </h2>
 
-                      {/* Items list with 1x badges, title, portions/variations subtitles, and matching price */}
-                      {cart.length > 0 ? (
-                        <div className="divide-y divide-slate-100">
-                          {cart.map((item, idx) => {
+                      {/* Items list */}
+                      <div className="space-y-2.5 pb-3 border-b border-slate-100">
+                        {cart.length > 0 ? (
+                          cart.map((item, idx) => {
                             const unitPrice = item.unitPrice ?? item.menuItem.price;
-                            const itemSubtotal = unitPrice * item.quantity;
+                            const extrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+                            const pricing = getItemPricing(item.menuItem, cartVendor, extrasPrice);
+                            const itemRegularPrice = pricing.regularPrice;
+                            const regularSubtotal = itemRegularPrice * item.quantity;
+
                             const selectedVarStrings = item.selectedVariations?.map(v => {
                               const g = (v.groupName || '').toLowerCase();
                               const isPortion = g.includes('portion') || g.includes('size') || g.includes('সাইজ') || g.includes('পরিমাণ');
                               if (isPortion) {
-                                return `${v.groupName}: ${v.optionName} (৳${v.price || unitPrice})`;
+                                return `${v.groupName}: ${v.optionName} (Tk ${v.price || itemRegularPrice})`;
                               }
-                              return `${v.groupName}: ${v.optionName}${v.price > 0 ? ` (+৳${v.price})` : ''}`;
+                              return `${v.groupName}: ${v.optionName}${v.price > 0 ? ` (+Tk ${v.price})` : ''}`;
                             });
 
                             return (
-                              <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex items-start space-x-3">
-                                    <span className="px-2.5 py-1 bg-slate-100 text-slate-900 font-black text-xs rounded-lg shrink-0">
+                              <div key={idx} className="space-y-0.5">
+                                <div className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center space-x-2 min-w-0 pr-2">
+                                    <span className="font-black text-slate-950 text-sm font-mono shrink-0">
                                       {item.quantity || 1}x
                                     </span>
-                                    <div>
-                                      <h4 className="text-base font-black text-slate-900 leading-snug">
-                                        {item.menuItem.name}
-                                      </h4>
-                                      {selectedVarStrings && selectedVarStrings.length > 0 && (
-                                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                          {selectedVarStrings.join(' • ')}
-                                        </p>
-                                      )}
-                                      {item.specialInstructions && (
-                                        <p className="text-xs text-amber-700 font-semibold mt-1 flex items-center gap-1">
-                                          <span>•</span> {item.specialInstructions}
-                                        </p>
-                                      )}
-                                    </div>
+                                    <span className="font-bold text-slate-800 truncate">
+                                      {item.menuItem.name}
+                                    </span>
                                   </div>
-
-                                  <span className="text-sm font-black text-slate-900 font-mono shrink-0 ml-2">
-                                    ৳{itemSubtotal}
+                                  <span className="font-black text-slate-950 font-mono shrink-0">
+                                    Tk {regularSubtotal}
                                   </span>
                                 </div>
+                                {selectedVarStrings && selectedVarStrings.length > 0 && (
+                                  <p className="text-xs text-slate-500 font-medium pl-6">
+                                    {selectedVarStrings.join(' • ')}
+                                  </p>
+                                )}
+                                {item.specialInstructions && (
+                                  <p className="text-xs text-amber-700 font-semibold pl-6">
+                                    • {item.specialInstructions}
+                                  </p>
+                                )}
                               </div>
                             );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="py-4 text-center text-xs font-bold text-slate-400">
-                          No items in cart
-                        </div>
-                      )}
+                          })
+                        ) : (
+                          <div className="py-4 text-center text-xs font-bold text-slate-400">
+                            No items in cart
+                          </div>
+                        )}
+                      </div>
 
-                      {/* Order Summary Financial Breakdown */}
-                      <div className="border-t border-slate-100 pt-3.5 space-y-2 text-xs font-bold text-slate-700">
-                        <div className="flex justify-between items-center text-slate-600">
-                          <span>Items Subtotal</span>
-                          <span className="font-mono text-slate-900">৳{foodTotal}</span>
+                      {/* Price Calculation breakdown */}
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between text-slate-800 font-semibold">
+                          <span>Subtotal</span>
+                          <span className="font-mono font-bold">Tk {regularFoodTotal > 0 ? regularFoodTotal : foodTotal}</span>
                         </div>
 
-                        {orderType !== 'pickup' && (
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>Delivery Fee</span>
-                            <span className="font-mono text-slate-900">
-                              {deliveryFee > 0 ? `৳${deliveryFee}` : 'Free'}
+                        {totalDiscountSaved > 0 && (
+                          <div className="flex justify-between text-[#e21b70] font-extrabold">
+                            <span className="flex items-center space-x-1">
+                              <span>Discounts</span>
+                              <Info className="w-3.5 h-3.5 inline text-slate-400" />
                             </span>
+                            <span className="font-mono">- Tk {totalDiscountSaved}</span>
                           </div>
                         )}
 
-                        {deliveryOption === 'priority' && (
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>Priority Delivery</span>
-                            <span className="font-mono text-slate-900">৳28</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between text-slate-800 font-semibold">
+                          <span>Standard delivery</span>
+                          <span className="font-extrabold text-[#e21b70] font-mono">
+                            Tk {orderType === 'pickup' ? 0 : deliveryFee}
+                          </span>
+                        </div>
 
-                        {platformFee > 0 && (
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>Platform Fee</span>
-                            <span className="font-mono text-slate-900">৳{platformFee}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between text-slate-800 font-semibold">
+                          <span>Platform Fee</span>
+                          <span className="font-mono font-bold">Tk {platformFee}</span>
+                        </div>
 
-                        {taxFee > 0 && (
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>Tax</span>
-                            <span className="font-mono text-slate-900">৳{taxFee}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between text-slate-800 font-semibold">
+                          <span>Tax</span>
+                          <span className="font-mono font-bold">Tk {taxFee}</span>
+                        </div>
 
-                        {vatFee > 0 && (
-                          <div className="flex justify-between items-center text-slate-600">
-                            <span>VAT</span>
-                            <span className="font-mono text-slate-900">৳{vatFee}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between text-slate-800 font-semibold">
+                          <span>VAT</span>
+                          <span className="font-mono font-bold">Tk {vatFee}</span>
+                        </div>
 
                         {riderTip > 0 && (
-                          <div className="flex justify-between items-center text-slate-600">
+                          <div className="flex justify-between text-slate-800 font-semibold">
                             <span>Rider Tip</span>
-                            <span className="font-mono text-slate-900">৳{riderTip}</span>
+                            <span className="font-mono font-bold">Tk {riderTip}</span>
                           </div>
                         )}
-
-                        <div className="flex justify-between items-center text-sm font-black text-slate-950 pt-2 border-t border-slate-100">
-                          <span>Total Cash Payable</span>
-                          <span className="font-mono text-[#d70f64]">৳{finalCheckoutPayable}</span>
-                        </div>
                       </div>
 
                       {/* Terms text */}
