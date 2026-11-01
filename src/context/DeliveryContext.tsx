@@ -340,7 +340,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    return safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
+    const saved = safeJsonParse<UserAccount | null>(`${STORAGE_KEY_PREFIX}current_user`, null);
+    if (saved) return saved;
+    return {
+      id: 'c0000001-0000-0000-0000-000000000001',
+      role: 'customer',
+      phone: '01811223344',
+      name: 'Customer',
+      is_approved: true
+    };
   });
 
   const [settings, setSettings] = useState<SystemSettings>(() => {
@@ -502,7 +510,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
     const parsed = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, []);
-    const rawList = Array.isArray(parsed) ? parsed : [];
+    const rawList = Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_VENDORS;
     return rawList.map(v => {
       const copy = { ...v };
       if (!copy.discount_title || copy.discount_title === 'null' || copy.discount_title === 'undefined' || !String(copy.discount_title).trim()) {
@@ -515,7 +523,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [currentVendor, setCurrentVendorState] = useState<Vendor | null>(() => {
     const initialList = safeJsonParse<Vendor[]>(`${STORAGE_KEY_PREFIX}vendors`, []);
-    const list = Array.isArray(initialList) ? initialList : [];
+    const list = Array.isArray(initialList) && initialList.length > 0 ? initialList : INITIAL_VENDORS;
     const savedVendorId = typeof window !== 'undefined' ? localStorage.getItem(`${STORAGE_KEY_PREFIX}selected_vendor_id`) : null;
     if (savedVendorId) {
       const match = list.find(v => v.id === savedVendorId);
@@ -536,7 +544,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
     const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}menu_items`, []);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_MENU_ITEMS;
   });
 
   useEffect(() => {

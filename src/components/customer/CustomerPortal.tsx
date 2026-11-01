@@ -1031,111 +1031,70 @@ export const CustomerPortal: React.FC = () => {
     });
   }, [vendors, getVendorCoords, updateVendor]);
 
-  // Filtered and Sorted Vendors: Show all vendors belonging to the active customer zone
-  const filteredVendors = vendors.filter((v) => {
-    // Check active status
-    if (v.is_active === false) return false;
-    if (v.is_paused) return false;
+  // Filtered and Sorted Vendors directly from database
+  const displayVendors = useMemo(() => {
+    return vendors.filter((v) => {
+      // Check active and non-paused status
+      const isActive = v.is_active !== false && (v as any).is_active !== 'false' && (v as any).is_active !== 0;
+      const isPaused = v.is_paused === true || (v as any).is_paused === 'true' || (v as any).is_paused === 1;
+      if (!isActive || isPaused) return false;
 
-    // Zone-based filtering: Show vendors belonging to the customer's active zone
-    if (activeCustomerZone && zones && zones.length > 0) {
-      const targetZoneName = (activeCustomerZone.name || '').trim().toLowerCase();
-      const targetZoneBn = (activeCustomerZone.bn_name || '').trim().toLowerCase();
-      const targetZoneId = (activeCustomerZone.id || '').trim().toLowerCase();
-      const vZone = (v.zone || '').trim().toLowerCase();
-
-      // If vendor has an assigned zone, check if it matches the customer's zone
-      if (vZone) {
-        const matchesZone = Boolean(
-          vZone === targetZoneName ||
-          vZone === targetZoneId ||
-          (targetZoneBn && vZone === targetZoneBn) ||
-          (targetZoneName && (
-            vZone.includes(targetZoneName.replace(' zone', '')) || 
-            targetZoneName.includes(vZone.replace(' zone', ''))
-          ))
-        );
-
-        if (!matchesZone) {
-          return false;
-        }
+      // Filter by Search Query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const matchesName = v.name && v.name.toLowerCase().includes(query);
+        const matchesCuisine = v.cuisine && v.cuisine.toLowerCase().includes(query);
+        const matchesAddress = v.address && v.address.toLowerCase().includes(query);
+        const matchesZone = v.zone && v.zone.toLowerCase().includes(query);
+        if (!matchesName && !matchesCuisine && !matchesAddress && !matchesZone) return false;
       }
-      // If vendor doesn't have a zone set in database, allow it through so it isn't hidden
-    }
 
-    const matchesSearch = !searchQuery.trim() || 
-      (v.name && v.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (v.cuisine && v.cuisine.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-    const matchesRating = !isRating4PlusOnly || (v.rating || 5.0) >= 4.0;
-    
-    const normalizeCatName = (name: string) => {
-      const norm = (name || '').toLowerCase().trim();
-      if (norm.includes('biryani') || norm.includes('biriyani')) return 'biryani';
-      if (norm.includes('kebab') || norm.includes('kabab')) return 'kebab';
-      return norm;
-    };
+      // Filter by Rating
+      if (isRating4PlusOnly && (v.rating || 5.0) < 4.0) return false;
 
-    const hasMenuItemInSelectedCategory = menuItems.some(
-      m => m.vendor_id === v.id && 
-           m.category && 
-           normalizeCatName(m.category) === normalizeCatName(activeCuisineFilter)
-    );
-    const matchesCuisine = activeCuisineFilter === 'All' || 
-      (v.cuisine && v.cuisine.toLowerCase().includes(activeCuisineFilter.toLowerCase())) ||
-      (v.cuisine && normalizeCatName(v.cuisine).includes(normalizeCatName(activeCuisineFilter))) ||
-      hasMenuItemInSelectedCategory;
-    
-    // Filter by type: Food page shows restaurants, Grocery page shows shops
-    const vType = (v.vendor_type || 'restaurant').toLowerCase();
-    const matchesType = activeBottomNav === 'food' 
-      ? (vType === 'restaurant' || vType === 'food' || !v.vendor_type) 
-      : activeBottomNav === 'grocery' 
-        ? (vType === 'shop' || vType === 'grocery')
-        : true;
+      // Filter by Food vs Grocery tab
+      const vType = (v.vendor_type || 'restaurant').toLowerCase();
+      if (activeBottomNav === 'food') {
+        if (vType === 'shop' || vType === 'grocery') return false;
+      } else if (activeBottomNav === 'grocery') {
+        if (vType !== 'shop' && vType !== 'grocery') return false;
+      }
 
-    // Filter by Restaurant Sub-Type (Restaurant, Cloud Kitchen, Home Kitchen, Sweets & Bakery)
-    const restType = (v.restaurant_type || 'restaurant').toLowerCase();
-    const matchesRestType = (activeBottomNav !== 'food' || activeRestaurantTypeFilter === 'All')
-      ? true
-      : activeRestaurantTypeFilter === 'restaurant'
-        ? (restType === 'restaurant' || !v.restaurant_type || (v.cuisine && v.cuisine.toLowerCase() === 'restaurant'))
-        : activeRestaurantTypeFilter === 'cloud_kitchen'
-          ? (restType === 'cloud_kitchen' || (v.cuisine && v.cuisine.toLowerCase().includes('cloud')) || (v.name && v.name.toLowerCase().includes('cloud')))
-          : activeRestaurantTypeFilter === 'home_kitchen'
-            ? (restType === 'home_kitchen' || (v.cuisine && v.cuisine.toLowerCase().includes('home')) || (v.name && v.name.toLowerCase().includes('home')))
-            : activeRestaurantTypeFilter === 'sweets_bakery'
-              ? (restType === 'sweets_bakery' || (v.cuisine && (v.cuisine.toLowerCase().includes('sweet') || v.cuisine.toLowerCase().includes('bakery') || v.cuisine.toLowerCase().includes('cake') || v.cuisine.toLowerCase().includes('pastry') || v.cuisine.toLowerCase().includes('confectionery'))) || (v.name && (v.name.toLowerCase().includes('sweet') || v.name.toLowerCase().includes('bakery') || v.name.toLowerCase().includes('cake') || v.name.toLowerCase().includes('pastry') || v.name.toLowerCase().includes('confectionery'))))
-              : true;
+      // Filter by Restaurant Sub-Type
+      if (activeBottomNav === 'food' && activeRestaurantTypeFilter !== 'All') {
+        const restType = (v.restaurant_type || 'restaurant').toLowerCase();
+        if (activeRestaurantTypeFilter === 'restaurant' && restType !== 'restaurant' && v.restaurant_type) return false;
+        if (activeRestaurantTypeFilter === 'cloud_kitchen' && restType !== 'cloud_kitchen' && !v.cuisine?.toLowerCase().includes('cloud') && !v.name?.toLowerCase().includes('cloud')) return false;
+        if (activeRestaurantTypeFilter === 'home_kitchen' && restType !== 'home_kitchen' && !v.cuisine?.toLowerCase().includes('home') && !v.name?.toLowerCase().includes('home')) return false;
+        if (activeRestaurantTypeFilter === 'sweets_bakery' && restType !== 'sweets_bakery' && !v.cuisine?.toLowerCase().match(/sweet|bakery|cake|pastry/) && !v.name?.toLowerCase().match(/sweet|bakery|cake|pastry/)) return false;
+      }
 
-    // Filter by New Vendors (within last 30 days)
-    const matchesNew = (!isNewOnly && selectedSort !== 'new') || isVendorNew(v);
+      // Filter by Cuisine Category
+      if (activeCuisineFilter !== 'All') {
+        const catNorm = activeCuisineFilter.toLowerCase().trim();
+        const vCuisineNorm = (v.cuisine || '').toLowerCase().trim();
+        const hasMatchingMenuItem = menuItems.some(
+          m => m.vendor_id === v.id && m.category && m.category.toLowerCase().trim().includes(catNorm)
+        );
+        if (!vCuisineNorm.includes(catNorm) && !hasMatchingMenuItem) return false;
+      }
 
-    return matchesSearch && matchesRating && matchesCuisine && matchesType && matchesRestType && matchesNew;
-  }).sort((a, b) => {
-    if (selectedSort === 'rating') return b.rating - a.rating;
-    if (selectedSort === 'distance') {
-      const coordsA = getVendorCoords(a);
-      const coordsB = getVendorCoords(b);
-      const distA = calculateDistanceKm(coordsA.lat, coordsA.lng, customerLat, customerLng);
-      const distB = calculateDistanceKm(coordsB.lat, coordsB.lng, customerLat, customerLng);
-      return distA - distB;
-    }
-    if (selectedSort === 'new') {
-      const isNewA = isVendorNew(a) ? 1 : 0;
-      const isNewB = isVendorNew(b) ? 1 : 0;
-      if (isNewA !== isNewB) return isNewB - isNewA;
-      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return timeB - timeA;
-    }
-    return 0;
-  });
+      // Filter by New Only
+      if ((isNewOnly || selectedSort === 'new') && !isVendorNew(v)) return false;
 
-  // Fallback: If zone/category filter produces 0 items but vendors exist in database, display all active vendors
-  const displayVendors = (filteredVendors.length === 0 && vendors.length > 0 && !searchQuery.trim())
-    ? vendors.filter(v => v.is_active !== false && !v.is_paused)
-    : filteredVendors;
+      return true;
+    }).sort((a, b) => {
+      if (selectedSort === 'rating') return (b.rating || 0) - (a.rating || 0);
+      if (selectedSort === 'distance') {
+        const coordsA = getVendorCoords(a);
+        const coordsB = getVendorCoords(b);
+        const distA = calculateDistanceKm(coordsA.lat, coordsA.lng, customerLat, customerLng);
+        const distB = calculateDistanceKm(coordsB.lat, coordsB.lng, customerLat, customerLng);
+        return distA - distB;
+      }
+      return 0;
+    });
+  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords]);
 
   // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => sum + (item.unitPrice ?? item.menuItem.price) * item.quantity, 0);
