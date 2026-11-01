@@ -1881,10 +1881,10 @@ export const VendorOrdersTerminal: React.FC = () => {
                   {/* Order Summary Breakdown */}
                   <div className="border-t border-slate-100 pt-3.5 space-y-2 text-xs font-bold text-slate-700">
                     <div className="flex justify-between items-center text-slate-600">
-                      <span>Subtotal</span>
-                      <span className="font-mono text-slate-900">৳{foodSubtotal}</span>
+                      <span>Items Subtotal</span>
+                      <span className="font-mono text-slate-900">৳{calculatedSubtotal || foodSubtotal}</span>
                     </div>
-                    {discountAmount > 0 && (
+                    {discountAmount > 0 && foodSubtotal > calculatedSubtotal && (
                       <div className="flex justify-between items-center text-[#e21b70] font-extrabold">
                         <span>Discounts</span>
                         <span className="font-mono">- ৳{discountAmount}</span>
@@ -1892,7 +1892,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                     )}
                     {selectedAcceptOrder.order_type !== 'pickup' && (
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Standard delivery</span>
+                        <span>Delivery Fee</span>
                         <span className="font-mono text-slate-900">৳{deliveryFee}</span>
                       </div>
                     )}
