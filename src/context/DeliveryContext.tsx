@@ -1163,14 +1163,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               });
               const resolvedOrders = oSupadata.map(o => {
                 const oItems = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id) : [];
+                const supaJsonItems = o.items || o.order_summary || o.order_items;
                 const existing = existingMap.get(o.id) || existingMap.get(o.order_code);
-                const hasSupaItems = oItems.length > 0;
-                const hasExistingItems = existing && Array.isArray(existing.items) && existing.items.length > 0;
-                const hasSelfItems = Array.isArray(o.items) && o.items.length > 0;
                 
-                const finalItems = hasSupaItems 
-                  ? oItems 
-                  : (hasSelfItems ? o.items : (hasExistingItems ? existing!.items : []));
+                const finalItems = (Array.isArray(supaJsonItems) && supaJsonItems.length > 0)
+                  ? supaJsonItems
+                  : (Array.isArray(o.items) && o.items.length > 0
+                    ? o.items
+                    : (oItems.length > 0 
+                      ? oItems 
+                      : (existing && Array.isArray(existing.items) && existing.items.length > 0 
+                        ? existing.items 
+                        : [])));
 
                 return {
                   ...existing,
@@ -5446,6 +5450,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           total_cash_payable: newOrder.total_cash_payable,
           status: newOrder.status,
           special_instructions: newOrder.special_instructions,
+          items: newOrder.items,
+          order_summary: newOrder.items,
           created_at: newOrder.created_at,
           updated_at: newOrder.updated_at
         };
