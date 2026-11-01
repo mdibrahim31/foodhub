@@ -1687,7 +1687,17 @@ export const VendorOrdersTerminal: React.FC = () => {
                   Order #{selectedAcceptOrder.order_code}
                 </h1>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                  <Bike className="w-3.5 h-3.5 text-[#d70f64]" /> Foodpanda delivery
+                  {selectedAcceptOrder.order_type === 'pickup' ? (
+                    <>
+                      <ShoppingBag className="w-3.5 h-3.5 text-[#d70f64]" />
+                      <span>Foodiplace Pickup</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bike className="w-3.5 h-3.5 text-[#d70f64]" />
+                      <span>Foodiplace Delivery</span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -1971,7 +1981,9 @@ export const VendorOrdersTerminal: React.FC = () => {
               {/* Subtotal */}
               <div className="border-t border-slate-200/60 pt-3 flex justify-between items-center font-black text-base text-slate-950">
                 <span>Subtotal</span>
-                <span className="text-slate-400 font-mono">--</span>
+                <span className="font-mono text-slate-900 font-bold">
+                  Tk {selectedReadyOrder.food_total || selectedReadyOrder.items?.reduce((sum, it) => sum + (it.subtotal || 0), 0) || selectedReadyOrder.total_cash_payable || 0}
+                </span>
               </div>
             </div>
           </main>
@@ -1988,7 +2000,7 @@ export const VendorOrdersTerminal: React.FC = () => {
             </button>
           </div>
 
-          {/* Sticky Bottom Action Bar (Blue Button: Ready for delivery) */}
+          {/* Sticky Bottom Action Bar (Blue Button: Ready for pickup / Ready for delivery) */}
           <footer className="sticky bottom-0 z-20 bg-white border-t border-slate-100 p-4 shadow-xl">
             <div className="max-w-xl mx-auto">
               <button
@@ -1997,7 +2009,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                 className="w-full py-4 px-6 bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-black rounded-2xl transition shadow-md flex items-center justify-between cursor-pointer"
               >
                 <span className="text-base sm:text-lg font-black text-white">
-                  Ready for delivery
+                  {selectedReadyOrder.order_type === 'pickup' ? 'Ready for pickup' : 'Ready for delivery'}
                 </span>
                 <span className="text-sm font-bold text-white/95">
                   {selectedReadyOrder.items?.reduce((s, it) => s + (it.quantity || 1), 0) || 1} item
