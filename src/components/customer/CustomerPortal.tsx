@@ -2548,8 +2548,10 @@ export const CustomerPortal: React.FC = () => {
                   {/* Items list */}
                   <div className="space-y-2.5 pb-3 border-b border-slate-100">
                     {cart.map((item, idx) => {
-                      const itemEffectivePrice = item.unitPrice ?? item.menuItem.price;
-                      const itemSubtotal = itemEffectivePrice * item.quantity;
+                      const itemExtrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+                      const itemPricing = getItemPricing(item.menuItem, cartVendor, itemExtrasPrice);
+                      const itemDisplayPrice = itemPricing.regularPrice;
+                      const itemSubtotal = itemDisplayPrice * item.quantity;
                       return (
                         <div key={idx} className="flex items-center justify-between text-sm">
                           <div className="flex items-center space-x-2 min-w-0 pr-2">

@@ -1814,7 +1814,10 @@ export const VendorOrdersTerminal: React.FC = () => {
 
             {/* 3. Items List Card */}
             {(() => {
-              const acceptItems = selectedAcceptOrder.items || [];
+              const liveMatch = allOrdersList.find(o => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
+              const acceptItems = (selectedAcceptOrder.items && selectedAcceptOrder.items.length > 0)
+                ? selectedAcceptOrder.items
+                : (liveMatch?.items || []);
               const totalItemsCount = acceptItems.reduce((s, it) => s + (it.quantity || 1), 0);
               const calculatedSubtotal = acceptItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0);
               const foodSubtotal = selectedAcceptOrder.food_total || calculatedSubtotal;

@@ -1156,18 +1156,27 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!oSupaerror && oSupadata && isSubscribed && Array.isArray(oSupadata) && oSupadata.length > 0) {
             const { data: itemsData } = await supabase.from('order_items').select('*');
             setOrders(prev => {
-              const existingMap = new Map(prev.map(o => [o.id, o]));
+              const existingMap = new Map<string, Order>();
+              prev.forEach(o => {
+                if (o.id) existingMap.set(o.id, o);
+                if (o.order_code) existingMap.set(o.order_code, o);
+              });
               const resolvedOrders = oSupadata.map(o => {
                 const oItems = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id) : [];
-                const existing = existingMap.get(o.id);
+                const existing = existingMap.get(o.id) || existingMap.get(o.order_code);
                 const hasSupaItems = oItems.length > 0;
                 const hasExistingItems = existing && Array.isArray(existing.items) && existing.items.length > 0;
                 const hasSelfItems = Array.isArray(o.items) && o.items.length > 0;
                 
+                const finalItems = hasSupaItems 
+                  ? oItems 
+                  : (hasSelfItems ? o.items : (hasExistingItems ? existing!.items : []));
+
                 return {
+                  ...existing,
                   ...o,
-                  items: hasSupaItems ? oItems : (hasSelfItems ? o.items : (hasExistingItems ? existing.items : [])),
-                  vendor: vendors.find(v => v.id === o.vendor_id) || o.vendor || null
+                  items: finalItems,
+                  vendor: vendors.find(v => v.id === o.vendor_id) || o.vendor || existing?.vendor || null
                 };
               });
               resolvedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -5448,13 +5457,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             order_id: newOrder.id,
             menu_item_id: it.menu_item_id && isUuid(it.menu_item_id) ? it.menu_item_id : null,
             item_name: it.item_name,
-            item_price: it.item_price,
-            quantity: it.quantity,
-            subtotal: it.subtotal,
+            item_price: Number(it.item_price) || 0,
+            quantity: Number(it.quantity) || 1,
+            subtotal: Number(it.subtotal) || 0,
             selected_variations: it.selected_variations || null,
             special_instructions: it.special_instructions || null
           }));
-          await supabase.from('order_items').upsert(itemsPayload);
+          const { error: iErr } = await supabase.from('order_items').upsert(itemsPayload);
+          if (iErr) {
+            console.warn('Primary order_items upsert warning, attempting fallback without menu_item_id:', iErr);
+            const fallbackItemsPayload = itemsPayload.map(it => ({
+              ...it,
+              menu_item_id: null,
+              selected_variations: Array.isArray(it.selected_variations) ? it.selected_variations.join(', ') : it.selected_variations
+            }));
+            await supabase.from('order_items').upsert(fallbackItemsPayload);
+          }
         } else {
           console.error('Supabase order save error:', oError);
           // If foreign key constraint failed on vendor_id/customer_id, retry with null IDs
@@ -5467,10 +5485,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 order_id: newOrder.id,
                 menu_item_id: null,
                 item_name: it.item_name,
-                item_price: it.item_price,
-                quantity: it.quantity,
-                subtotal: it.subtotal,
-                selected_variations: it.selected_variations || null,
+                item_price: Number(it.item_price) || 0,
+                quantity: Number(it.quantity) || 1,
+                subtotal: Number(it.subtotal) || 0,
+                selected_variations: Array.isArray(it.selected_variations) ? it.selected_variations.join(', ') : (it.selected_variations || null),
                 special_instructions: it.special_instructions || null
               }));
               await supabase.from('order_items').upsert(itemsPayload);
