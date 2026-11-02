@@ -163,18 +163,57 @@ export const VendorOrdersTerminal: React.FC = () => {
     return null;
   });
 
-  const [storeStatus, setStoreStatus] = useState<'online' | 'busy' | 'offline'>(() => {
-    try {
-      const saved = localStorage.getItem('foodiplace_vendor_close_info');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.closedUntil > Date.now()) {
-          return parsed.reason === 'too_busy' ? 'busy' : 'offline';
-        }
-      }
-    } catch {}
+  // Active vendor: strictly the authenticated vendor matching phone or ID
+  const authenticatedVendor = (currentUser && currentUser.role === 'vendor')
+    ? (vendors.find(v => {
+        if (!v) return false;
+        if (v.id === currentUser.reference_id) return true;
+        const vDigits = (v.phone || '').replace(/\D/g, '').slice(-10);
+        const uDigits = (currentUser.phone || '').replace(/\D/g, '').slice(-10);
+        return Boolean(vDigits && uDigits && vDigits === uDigits);
+      }) || currentVendor)
+    : null;
+
+  const activeVendor = authenticatedVendor;
+
+  // Derive storeStatus directly from activeVendor database columns: is_active and is_paused
+  // OPEN mode: is_active = true, is_paused = false
+  // BUSY mode: is_active = true, is_paused = true
+  // CLOSED mode: is_active = false, is_paused = false
+  const storeStatus: 'online' | 'busy' | 'offline' = React.useMemo(() => {
+    if (vendorCloseInfo) {
+      return vendorCloseInfo.reason === 'too_busy' ? 'busy' : 'offline';
+    }
+    if (!activeVendor) return 'online';
+    const isPaused = activeVendor.is_paused === true || (activeVendor as any).is_paused === 'true' || (activeVendor as any).is_paused === 1;
+    if (isPaused) return 'busy';
+    const isActive = activeVendor.is_active !== false && (activeVendor as any).is_active !== 'false' && (activeVendor as any).is_active !== 0;
+    if (!isActive) return 'offline';
     return 'online';
-  });
+  }, [activeVendor?.is_active, activeVendor?.is_paused, vendorCloseInfo]);
+
+  // Handler to toggle vendor status and update database columns
+  const handleToggleStoreStatus = async () => {
+    if (!activeVendor) return;
+    if (storeStatus === 'online') {
+      // OPEN -> BUSY: is_active = true, is_paused = true
+      await updateVendor(activeVendor.id, { is_active: true, is_paused: true });
+    } else if (storeStatus === 'busy') {
+      // BUSY -> CLOSED: is_active = false, is_paused = false
+      if (vendorCloseInfo) {
+        setVendorCloseInfo(null);
+        try { localStorage.removeItem('foodiplace_vendor_close_info'); } catch {}
+      }
+      await updateVendor(activeVendor.id, { is_active: false, is_paused: false });
+    } else {
+      // CLOSED -> OPEN: is_active = true, is_paused = false
+      if (vendorCloseInfo) {
+        setVendorCloseInfo(null);
+        try { localStorage.removeItem('foodiplace_vendor_close_info'); } catch {}
+      }
+      await updateVendor(activeVendor.id, { is_active: true, is_paused: false });
+    }
+  };
 
   const [nowTime, setNowTime] = useState<number>(Date.now());
 
@@ -259,19 +298,6 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   // Audio Ref tracking previous pending count
   const prevPendingCountRef = useRef<number>(0);
-
-  // Active vendor: strictly the authenticated vendor matching phone or ID
-  const authenticatedVendor = (currentUser && currentUser.role === 'vendor')
-    ? (vendors.find(v => {
-        if (!v) return false;
-        if (v.id === currentUser.reference_id) return true;
-        const vDigits = (v.phone || '').replace(/\D/g, '').slice(-10);
-        const uDigits = (currentUser.phone || '').replace(/\D/g, '').slice(-10);
-        return Boolean(vDigits && uDigits && vDigits === uDigits);
-      }) || currentVendor)
-    : null;
-
-  const activeVendor = authenticatedVendor;
 
   const isAuthenticated = Boolean(currentUser && currentUser.role === 'vendor' && authenticatedVendor);
 
@@ -562,7 +588,6 @@ export const VendorOrdersTerminal: React.FC = () => {
           try {
             localStorage.removeItem('foodiplace_vendor_close_info');
           } catch {}
-          setStoreStatus('online');
           updateVendor(activeVendor.id, { is_active: true, is_paused: false });
         }
         return;
@@ -570,9 +595,6 @@ export const VendorOrdersTerminal: React.FC = () => {
 
       // Check if permanent close is toggled on ("jotodin na manually open kortece")
       if (activeVendor.is_permanently_closed) {
-        if (storeStatus !== 'offline') {
-          setStoreStatus('offline');
-        }
         return;
       }
 
@@ -582,16 +604,14 @@ export const VendorOrdersTerminal: React.FC = () => {
 
       if (shouldBeOpen) {
         if (storeStatus === 'offline' && !activeVendor.is_permanently_closed) {
-          setStoreStatus('online');
           if (!activeVendor.is_active) {
-            updateVendor(activeVendor.id, { is_active: true });
+            updateVendor(activeVendor.id, { is_active: true, is_paused: false });
           }
         }
       } else {
         if (storeStatus === 'online') {
-          setStoreStatus('offline');
           if (activeVendor.is_active) {
-            updateVendor(activeVendor.id, { is_active: false });
+            updateVendor(activeVendor.id, { is_active: false, is_paused: false });
           }
         }
       }
@@ -624,14 +644,9 @@ export const VendorOrdersTerminal: React.FC = () => {
     await updateVendor(activeVendor.id, {
       opening_schedule: weeklyScheduleDraft,
       is_permanently_closed: isPermanentlyClosed,
-      is_active: shouldBeOpenNow
+      is_active: shouldBeOpenNow,
+      is_paused: false
     });
-
-    if (isPermanentlyClosed) {
-      setStoreStatus('offline');
-    } else {
-      setStoreStatus(shouldBeOpenNow ? 'online' : 'offline');
-    }
 
     setScheduleSaveFeedback('✅ ১ সপ্তাহের শিডিউল সফলভাবে সেভ হয়েছে!');
     setTimeout(() => {
@@ -646,22 +661,22 @@ export const VendorOrdersTerminal: React.FC = () => {
     if (!activeVendor) return;
 
     if (closed) {
-      setStoreStatus('offline');
       setVendorCloseInfo(null);
       try {
         localStorage.removeItem('foodiplace_vendor_close_info');
       } catch {}
       await updateVendor(activeVendor.id, {
         is_permanently_closed: true,
-        is_active: false
+        is_active: false,
+        is_paused: false
       });
     } else {
       // Reopening manually from permanent close
       const shouldBeOpen = isVendorOpenBySchedule(weeklyScheduleDraft);
-      setStoreStatus(shouldBeOpen ? 'online' : 'offline');
       await updateVendor(activeVendor.id, {
         is_permanently_closed: false,
-        is_active: shouldBeOpen
+        is_active: shouldBeOpen,
+        is_paused: false
       });
     }
   };
@@ -685,9 +700,11 @@ export const VendorOrdersTerminal: React.FC = () => {
       localStorage.setItem('foodiplace_vendor_close_info', JSON.stringify(timerData));
     } catch {}
 
-    setStoreStatus(isOneDay ? 'offline' : 'busy');
     if (activeVendor) {
-      updateVendor(activeVendor.id, { is_active: false });
+      updateVendor(activeVendor.id, {
+        is_active: isOneDay ? false : true,
+        is_paused: isOneDay ? false : true
+      });
     }
 
     handleConfirmReject(reason);
@@ -700,7 +717,6 @@ export const VendorOrdersTerminal: React.FC = () => {
     try {
       localStorage.removeItem('foodiplace_vendor_close_info');
     } catch {}
-    setStoreStatus('online');
     if (activeVendor) {
       updateVendor(activeVendor.id, { is_active: true, is_paused: false });
     }
@@ -1227,11 +1243,9 @@ export const VendorOrdersTerminal: React.FC = () => {
               </button>
             ) : (
               <button
-                onClick={() => {
-                  setStoreStatus((prev) => (prev === 'online' ? 'busy' : prev === 'busy' ? 'offline' : 'online'));
-                }}
+                onClick={handleToggleStoreStatus}
                 className="bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs rounded-full px-3.5 py-1.5 flex items-center space-x-2 transition cursor-pointer active:scale-95"
-                title="Click to toggle store status (Open / Busy / Paused)"
+                title="Click to toggle store status (OPEN -> BUSY -> CLOSED)"
               >
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -1243,7 +1257,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                   }`}
                 />
                 <span className="text-xs font-black tracking-wider text-slate-900 uppercase">
-                  {storeStatus === 'online' ? 'OPEN' : storeStatus === 'busy' ? 'BUSY' : 'PAUSED'}
+                  {storeStatus === 'online' ? 'OPEN' : storeStatus === 'busy' ? 'BUSY' : 'CLOSED'}
                 </span>
               </button>
             )}
@@ -3704,7 +3718,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setStoreStatus('busy')}
+                  onClick={() => activeVendor && updateVendor(activeVendor.id, { is_active: true, is_paused: true })}
                   className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
                     storeStatus === 'busy' ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
                   }`}
@@ -3714,7 +3728,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setStoreStatus('offline')}
+                  onClick={() => activeVendor && updateVendor(activeVendor.id, { is_active: false, is_paused: false })}
                   className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
                     storeStatus === 'offline' ? 'bg-rose-50 border-rose-500 text-rose-800 ring-2 ring-rose-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
                   }`}
