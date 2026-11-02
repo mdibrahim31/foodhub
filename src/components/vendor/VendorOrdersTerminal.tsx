@@ -176,30 +176,24 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   const activeVendor = authenticatedVendor;
 
-  // Derive storeStatus directly from activeVendor database columns: is_active and is_paused
+  // Derive storeStatus directly from activeVendor database column: is_active
   // OPEN mode: is_active = true, is_paused = false
-  // BUSY mode: is_active = true, is_paused = true
   // CLOSED mode: is_active = false, is_paused = false
-  const storeStatus: 'online' | 'busy' | 'offline' = React.useMemo(() => {
+  const storeStatus: 'online' | 'offline' = React.useMemo(() => {
     if (vendorCloseInfo) {
-      return vendorCloseInfo.reason === 'too_busy' ? 'busy' : 'offline';
+      return 'offline';
     }
     if (!activeVendor) return 'online';
-    const isPaused = activeVendor.is_paused === true || (activeVendor as any).is_paused === 'true' || (activeVendor as any).is_paused === 1;
-    if (isPaused) return 'busy';
     const isActive = activeVendor.is_active !== false && (activeVendor as any).is_active !== 'false' && (activeVendor as any).is_active !== 0;
     if (!isActive) return 'offline';
     return 'online';
-  }, [activeVendor?.is_active, activeVendor?.is_paused, vendorCloseInfo]);
+  }, [activeVendor?.is_active, vendorCloseInfo]);
 
   // Handler to toggle vendor status and update database columns
   const handleToggleStoreStatus = async () => {
     if (!activeVendor) return;
     if (storeStatus === 'online') {
-      // OPEN -> BUSY: is_active = true, is_paused = true
-      await updateVendor(activeVendor.id, { is_active: true, is_paused: true });
-    } else if (storeStatus === 'busy') {
-      // BUSY -> CLOSED: is_active = false, is_paused = false
+      // OPEN -> CLOSED: is_active = false, is_paused = false
       if (vendorCloseInfo) {
         setVendorCloseInfo(null);
         try { localStorage.removeItem('foodiplace_vendor_close_info'); } catch {}
@@ -1211,20 +1205,12 @@ export const VendorOrdersTerminal: React.FC = () => {
             {vendorCloseInfo ? (
               <button
                 onClick={handleReopenStoreManually}
-                className={`border shadow-2xs rounded-full px-3 py-1.5 flex items-center space-x-1.5 transition cursor-pointer active:scale-95 ${
-                  vendorCloseInfo.reason === 'too_busy'
-                    ? 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
-                    : 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100'
-                }`}
+                className="bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100 border shadow-2xs rounded-full px-3 py-1.5 flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
                 title="Store auto-closing active. Click to reopen store immediately"
               >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                    vendorCloseInfo.reason === 'too_busy' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
-                  }`}
-                />
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-rose-500" />
                 <span className="text-xs font-black tracking-wider uppercase">
-                  {vendorCloseInfo.reason === 'too_busy' ? 'BUSY' : 'CLOSED'}
+                  CLOSED
                 </span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-slate-200 text-slate-800">
                   {formatShortCountdown(Math.max(0, vendorCloseInfo.closedUntil - nowTime))}
@@ -1245,19 +1231,17 @@ export const VendorOrdersTerminal: React.FC = () => {
               <button
                 onClick={handleToggleStoreStatus}
                 className="bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs rounded-full px-3.5 py-1.5 flex items-center space-x-2 transition cursor-pointer active:scale-95"
-                title="Click to toggle store status (OPEN -> BUSY -> CLOSED)"
+                title="Click to toggle store status (OPEN / CLOSED)"
               >
                 <span
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                     storeStatus === 'online'
                       ? 'bg-emerald-500 animate-pulse'
-                      : storeStatus === 'busy'
-                      ? 'bg-amber-500'
                       : 'bg-rose-500'
                   }`}
                 />
                 <span className="text-xs font-black tracking-wider text-slate-900 uppercase">
-                  {storeStatus === 'online' ? 'OPEN' : storeStatus === 'busy' ? 'BUSY' : 'CLOSED'}
+                  {storeStatus === 'online' ? 'OPEN' : 'CLOSED'}
                 </span>
               </button>
             )}
@@ -3706,7 +3690,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 
             <div className="space-y-3 text-xs">
               <p className="font-bold text-slate-600">Select Store Operational Status:</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => handleReopenStoreManually()}
                   className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
@@ -3714,17 +3698,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                   }`}
                 >
                   <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                  <span>ONLINE</span>
-                </button>
-
-                <button
-                  onClick={() => activeVendor && updateVendor(activeVendor.id, { is_active: true, is_paused: true })}
-                  className={`p-3 rounded-2xl border font-bold flex flex-col items-center space-y-1 transition cursor-pointer ${
-                    storeStatus === 'busy' ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-500/20' : 'bg-slate-50 border-slate-200 text-slate-600'
-                  }`}
-                >
-                  <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                  <span>BUSY</span>
+                  <span>OPEN</span>
                 </button>
 
                 <button
@@ -3734,7 +3708,7 @@ export const VendorOrdersTerminal: React.FC = () => {
                   }`}
                 >
                   <span className="w-3 h-3 rounded-full bg-rose-500"></span>
-                  <span>PAUSED</span>
+                  <span>CLOSED</span>
                 </button>
               </div>
 
