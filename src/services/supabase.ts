@@ -24,6 +24,18 @@ export const INITIAL_CITY_AREAS: CityArea[] = [];
 
 const getStoredUrl = () => {
   if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const paramUrl = params.get('sb_url') || params.get('supabase_url') || params.get('url');
+      if (paramUrl && paramUrl.trim() && paramUrl !== 'https://your-project.supabase.co' && !paramUrl.includes('your-project')) {
+        const trimmed = paramUrl.trim();
+        localStorage.setItem('foodiplace_supabase_url', trimmed);
+        localStorage.setItem('foodhub_supabase_url', trimmed);
+        localStorage.setItem('supabase_url', trimmed);
+        return trimmed;
+      }
+    } catch {}
+
     const candidateKeys = [
       'foodhub_supabase_url',
       'supabase_url',
@@ -44,6 +56,18 @@ const getStoredUrl = () => {
 
 const getStoredKey = () => {
   if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const paramKey = params.get('sb_key') || params.get('supabase_key') || params.get('key') || params.get('anon_key');
+      if (paramKey && paramKey.trim() && paramKey !== 'your-anon-key' && !paramKey.includes('your-anon-key')) {
+        const trimmed = paramKey.trim();
+        localStorage.setItem('foodiplace_supabase_anon_key', trimmed);
+        localStorage.setItem('foodhub_supabase_anon_key', trimmed);
+        localStorage.setItem('supabase_anon_key', trimmed);
+        return trimmed;
+      }
+    } catch {}
+
     const candidateKeys = [
       'foodhub_supabase_anon_key',
       'supabase_anon_key',
