@@ -291,6 +291,8 @@ export interface Order {
   customer_phone: string;
   vendor_id: string;
   rider_id?: string;
+  rider_phone?: string;
+  rider_name?: string;
   zone?: string;
   
   delivery_address: string;

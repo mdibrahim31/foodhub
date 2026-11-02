@@ -224,6 +224,7 @@ export const VendorOrdersTerminal: React.FC = () => {
   // Accept Order Page State & Dummy Test Orders
   const [selectedAcceptOrder, setSelectedAcceptOrder] = useState<Order | null>(null);
   const [selectedReadyOrder, setSelectedReadyOrder] = useState<Order | null>(null);
+  const [riderPhoneInput, setRiderPhoneInput] = useState<string>('');
   const [selectedPrepMinutes, setSelectedPrepMinutes] = useState<number>(9);
   const [dummyOrders, setDummyOrders] = useState<Order[]>([]);
 
@@ -526,7 +527,15 @@ export const VendorOrdersTerminal: React.FC = () => {
   const handleMarkFoodReady = (orderId: string) => {
     vendorMarkFoodReady(orderId);
     setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready_for_pickup' } : o));
+    setSelectedReadyOrder(prev => prev && prev.id === orderId ? { ...prev, status: 'ready_for_pickup' } : prev);
+  };
+
+  const handleHandoverToRider = (orderId: string, phone: string) => {
+    const trimmed = phone.trim();
+    updateOrderStatus(orderId, 'food_picked_up', { rider_phone: trimmed });
+    setDummyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'food_picked_up', rider_phone: trimmed } : o));
     setSelectedReadyOrder(null);
+    setRiderPhoneInput('');
   };
 
   const handleConfirmHandover = (orderId: string) => {
@@ -1425,7 +1434,10 @@ export const VendorOrdersTerminal: React.FC = () => {
                   return (
                     <div
                       key={order.id}
-                      onClick={() => setSelectedReadyOrder(order)}
+                      onClick={() => {
+                        setSelectedReadyOrder(order);
+                        setRiderPhoneInput(order.rider_phone || '');
+                      }}
                       className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100/90 hover:shadow-md transition-all cursor-pointer select-none space-y-3"
                     >
                       <div className="flex items-start justify-between">
@@ -2144,21 +2156,61 @@ export const VendorOrdersTerminal: React.FC = () => {
             </button>
           </div>
 
-          {/* Sticky Bottom Action Bar (Blue Button: Ready for pickup / Ready for delivery) */}
+          {/* Sticky Bottom Action Bar (Ready for delivery -> Handover to rider) */}
           <footer className="sticky bottom-0 z-20 bg-white border-t border-slate-100 p-4 shadow-xl">
             <div className="max-w-xl mx-auto">
-              <button
-                type="button"
-                onClick={() => handleMarkFoodReady(selectedReadyOrder.id)}
-                className="w-full py-4 px-6 bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-black rounded-2xl transition shadow-md flex items-center justify-between cursor-pointer"
-              >
-                <span className="text-base sm:text-lg font-black text-white">
-                  {selectedReadyOrder.order_type === 'pickup' ? 'Ready for pickup' : 'Ready for delivery'}
-                </span>
-                <span className="text-sm font-bold text-white/95">
-                  {selectedReadyOrder.items?.reduce((s, it) => s + (it.quantity || 1), 0) || 1} item
-                </span>
-              </button>
+              {selectedReadyOrder.status === 'ready_for_pickup' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-black text-slate-700 block mb-1">
+                      Rider Phone / WhatsApp Number
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={riderPhoneInput}
+                        onChange={(e) => setRiderPhoneInput(e.target.value)}
+                        placeholder="Enter rider phone (e.g. 01882208531)"
+                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 focus:border-[#008a05] focus:bg-white rounded-xl text-sm font-bold text-slate-900 outline-none transition"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleHandoverToRider(selectedReadyOrder.id, riderPhoneInput)}
+                    className="w-full py-4 px-6 bg-[#008a05] hover:bg-[#007404] active:scale-[0.99] text-white font-black rounded-2xl transition shadow-md flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                      <Check className="w-5 h-5 stroke-[2.8]" /> Handover to rider
+                    </span>
+                    <span className="text-sm font-bold text-white/95">
+                      {selectedReadyOrder.items?.reduce((s, it) => s + (it.quantity || 1), 0) || 1} item
+                    </span>
+                  </button>
+                </div>
+              ) : selectedReadyOrder.status === 'food_picked_up' ? (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+                  <p className="text-sm font-black text-emerald-800">Order Handed Over to Rider</p>
+                  {selectedReadyOrder.rider_phone && (
+                    <p className="text-xs font-bold text-emerald-700 mt-0.5">Rider Phone: {selectedReadyOrder.rider_phone}</p>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleMarkFoodReady(selectedReadyOrder.id)}
+                  className="w-full py-4 px-6 bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-black rounded-2xl transition shadow-md flex items-center justify-between cursor-pointer"
+                >
+                  <span className="text-base sm:text-lg font-black text-white">
+                    {selectedReadyOrder.order_type === 'pickup' ? 'Ready for pickup' : 'Ready for delivery'}
+                  </span>
+                  <span className="text-sm font-bold text-white/95">
+                    {selectedReadyOrder.items?.reduce((s, it) => s + (it.quantity || 1), 0) || 1} item
+                  </span>
+                </button>
+              )}
             </div>
           </footer>
         </div>
