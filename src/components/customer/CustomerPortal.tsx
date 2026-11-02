@@ -5367,7 +5367,7 @@ export const CustomerPortal: React.FC = () => {
         ========================================================================
       */}
       {selectedOrderDetail && (() => {
-        const ord = selectedOrderDetail;
+        const ord = orders.find(o => o.id === selectedOrderDetail.id) || selectedOrderDetail;
         const orderVendor = ord.vendor || vendors.find(v => v.id === ord.vendor_id);
         const coverImg = orderVendor?.cover_image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&auto=format&fit=crop&q=80';
         
@@ -5388,6 +5388,85 @@ export const CustomerPortal: React.FC = () => {
           : isCancelled
           ? `Cancelled on ${formattedDate}`
           : `Placed on ${formattedDate}`;
+
+        const getOrderStatusDisplay = (status: string, orderType?: string) => {
+          const isPickup = orderType === 'pickup';
+          switch (status) {
+            case 'pending':
+              return {
+                label: 'Order Placed',
+                classes: 'bg-slate-100 text-slate-700 border-slate-200',
+                dotClass: 'bg-slate-500 animate-pulse',
+                Icon: Clock
+              };
+            case 'vendor_accepted':
+              return {
+                label: 'Order Accepted',
+                classes: 'bg-orange-50 text-orange-700 border-orange-200',
+                dotClass: 'bg-orange-500 animate-pulse',
+                Icon: Check
+              };
+            case 'food_preparing':
+              return {
+                label: 'Food Preparing',
+                classes: 'bg-amber-50 text-amber-800 border-amber-300',
+                dotClass: 'bg-amber-500 animate-pulse',
+                Icon: Flame
+              };
+            case 'ready_for_pickup':
+              return {
+                label: isPickup ? 'Ready for Pickup' : 'Ready for Delivery',
+                classes: 'bg-blue-50 text-blue-700 border-blue-200',
+                dotClass: 'bg-blue-500 animate-pulse',
+                Icon: ShoppingBag
+              };
+            case 'rider_assigned':
+              return {
+                label: 'Rider Assigned',
+                classes: 'bg-sky-50 text-sky-700 border-sky-200',
+                dotClass: 'bg-sky-500 animate-pulse',
+                Icon: Bike
+              };
+            case 'rider_arrived_at_vendor':
+              return {
+                label: 'Rider at Restaurant',
+                classes: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                dotClass: 'bg-indigo-500 animate-pulse',
+                Icon: Bike
+              };
+            case 'food_picked_up':
+            case 'rider_on_way_to_customer':
+              return {
+                label: 'Out for Delivery',
+                classes: 'bg-purple-50 text-purple-700 border-purple-200',
+                dotClass: 'bg-purple-500 animate-pulse',
+                Icon: Bike
+              };
+            case 'delivered':
+              return {
+                label: 'Delivered',
+                classes: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                dotClass: 'bg-emerald-500',
+                Icon: Check
+              };
+            case 'cancelled':
+              return {
+                label: 'Cancelled',
+                classes: 'bg-rose-50 text-rose-700 border-rose-200',
+                dotClass: 'bg-rose-500',
+                Icon: X
+              };
+            default:
+              return {
+                label: String(status).replace(/_/g, ' '),
+                classes: 'bg-slate-50 text-slate-700 border-slate-200',
+                dotClass: 'bg-slate-500',
+                Icon: Info
+              };
+          }
+        };
+
+        const currentOrderStatus = getOrderStatusDisplay(ord.status, ord.order_type);
 
         // Item level calculations matching cart summary (Regular price subtotal before discount)
         const itemsRegularSubtotal = (ord.items || []).reduce((sum, it) => {
@@ -5445,14 +5524,23 @@ export const CustomerPortal: React.FC = () => {
 
               {/* 2. MAIN ORDER DETAILS BODY */}
               <div className="p-5 space-y-6 flex-1">
-                {/* Centered Order Title & Date */}
-                <div className="text-center space-y-1">
+                {/* Centered Order Title, Date & Live Status */}
+                <div className="text-center space-y-1.5">
                   <h1 className="text-2xl font-black text-slate-950 tracking-tight font-sans">
                     Order #{ord.order_code || ord.id.slice(-8)}
                   </h1>
                   <p className="text-xs font-semibold text-slate-600">
                     {statusDateText}
                   </p>
+
+                  {/* Red-marked position: Live Order Status badge */}
+                  <div className="pt-2 flex items-center justify-center">
+                    <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border shadow-2xs font-extrabold text-xs tracking-wide ${currentOrderStatus.classes}`}>
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${currentOrderStatus.dotClass}`} />
+                      <currentOrderStatus.Icon className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
+                      <span>Status: {currentOrderStatus.label}</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Route Journey (Order from -> Delivered to) */}
