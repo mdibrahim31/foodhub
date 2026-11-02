@@ -371,9 +371,9 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
                     />
 
                     {isClosed ? (
-                      <div className="absolute inset-0 bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-3 text-center">
-                        <span className="bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg border border-white/20">
-                          CLOSED / OFFLINE (NO ORDERS)
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4 text-center z-10">
+                        <span className="text-white text-lg sm:text-xl font-bold tracking-tight drop-shadow-md font-sans">
+                          Temporarily unavailable
                         </span>
                       </div>
                     ) : isNew ? (
