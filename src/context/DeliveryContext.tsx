@@ -347,7 +347,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       role: 'customer',
       phone: '01811223344',
       name: 'Customer',
-      is_approved: true
+      is_approved: true,
+      is_password_set: true
     };
   });
 
@@ -1237,26 +1238,27 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const vRes = await fetch('/api/vendors');
         if (vRes.ok) {
           const vData = await vRes.json();
-          if (Array.isArray(vData) && isSubscribed) {
+          if (Array.isArray(vData) && vData.length > 0 && isSubscribed) {
             setVendors(prev => {
-              const prevMap = new Map(prev.map(v => [v.id, v]));
-              const cleanedList = (vData as Vendor[]).map(v => {
+              const map = new Map(prev.map(v => [v.id, v]));
+              (vData as Vendor[]).forEach(v => {
                 const cleaned = { ...v };
                 if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
                   delete cleaned.discount_title;
                   delete cleaned.discount_percentage;
                 }
-                const existing = prevMap.get(cleaned.id);
+                const existing = map.get(cleaned.id);
                 if (!cleaned.password && existing?.password) {
                   cleaned.password = existing.password;
                   cleaned.is_password_set = existing.is_password_set ?? true;
                 }
-                return cleaned;
+                map.set(cleaned.id, { ...existing, ...cleaned });
               });
+              const merged = Array.from(map.values());
               try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(merged));
               } catch {}
-              return cleanedList;
+              return merged;
             });
           }
         }
