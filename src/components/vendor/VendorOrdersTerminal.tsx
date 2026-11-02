@@ -567,6 +567,7 @@ export const VendorOrdersTerminal: React.FC = () => {
     }
   }, [activeVendor?.id, activeVendor?.opening_schedule, activeVendor?.is_permanently_closed]);
 
+  // Background timer for clock and expiration check only (no automatic schedule override of manual close)
   useEffect(() => {
     const timer = setInterval(() => {
       const current = Date.now();
@@ -586,33 +587,10 @@ export const VendorOrdersTerminal: React.FC = () => {
         }
         return;
       }
-
-      // Check if permanent close is toggled on ("jotodin na manually open kortece")
-      if (activeVendor.is_permanently_closed) {
-        return;
-      }
-
-      // Auto open / close according to set weekly schedule data ("then set kora data onujayi auto open and close hobe")
-      const currentSchedule = activeVendor.opening_schedule || weeklyScheduleDraft;
-      const shouldBeOpen = isVendorOpenBySchedule(currentSchedule);
-
-      if (shouldBeOpen) {
-        if (storeStatus === 'offline' && !activeVendor.is_permanently_closed) {
-          if (!activeVendor.is_active) {
-            updateVendor(activeVendor.id, { is_active: true, is_paused: false });
-          }
-        }
-      } else {
-        if (storeStatus === 'online') {
-          if (activeVendor.is_active) {
-            updateVendor(activeVendor.id, { is_active: false, is_paused: false });
-          }
-        }
-      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [vendorCloseInfo, activeVendor, updateVendor, weeklyScheduleDraft, storeStatus]);
+  }, [vendorCloseInfo, activeVendor, updateVendor]);
 
   // Handler to open weekly schedule modal
   const handleOpenScheduleModal = () => {
