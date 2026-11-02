@@ -160,8 +160,11 @@ export const CustomerPortal: React.FC = () => {
 
   const cartRegularTotal = useMemo(() => {
     return cart.reduce((sum, item) => {
-      const itemExtrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
-      const itemPricing = getItemPricing(item.menuItem, cartVendor, itemExtrasPrice);
+      const hasDishVars = (item.selectedVariations || []).length > 0;
+      const variationPrice = hasDishVars
+        ? (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0)
+        : undefined;
+      const itemPricing = getItemPricing(item.menuItem, cartVendor, 0, variationPrice);
       return sum + (itemPricing.regularPrice * item.quantity);
     }, 0);
   }, [cart, cartVendor]);
@@ -357,10 +360,12 @@ export const CustomerPortal: React.FC = () => {
     if (!selectedMenuItemForModal) {
       return { regularPrice: 0, discountedPrice: 0, discountPercent: 0, hasDiscount: false, discountAmount: 0 };
     }
-    const extrasPrice = dishVariations.reduce((sum, opt) => {
-      return sum + (Number(opt.price) || 0);
-    }, 0);
-    return getItemPricing(selectedMenuItemForModal, selectedVendorForMenu, extrasPrice);
+    const hasDishVariations = dishVariations.length > 0;
+    const chosenVariationPrice = hasDishVariations
+      ? dishVariations.reduce((sum, opt) => sum + (Number(opt.price) || 0), 0)
+      : undefined;
+
+    return getItemPricing(selectedMenuItemForModal, selectedVendorForMenu, 0, chosenVariationPrice);
   }, [selectedMenuItemForModal, selectedVendorForMenu, dishVariations]);
 
   const calculatedModalUnitPrice = modalPricing.discountedPrice;
@@ -4793,7 +4798,7 @@ export const CustomerPortal: React.FC = () => {
                                       <h4 className={`font-extrabold text-xs ${isSelected ? 'text-[#d70f64]' : 'text-slate-900'}`}>{opt.name}</h4>
                                       <div className="flex items-center space-x-1.5 font-mono text-xs mt-0.5">
                                         <span className="font-black text-[#d70f64]">
-                                          + Tk {optionPriceNum}
+                                          Tk {optionPriceNum}
                                         </span>
                                       </div>
                                     </div>

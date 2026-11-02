@@ -16,11 +16,40 @@ export interface ItemPricing {
 export function getItemPricing(
   dish: MenuItem,
   vendor?: Vendor | null,
-  extrasPrice: number = 0
+  extrasPrice: number = 0,
+  selectedVariationPrice?: number
 ): ItemPricing {
-  const baseCatalogPrice = Number(dish.price) || 0;
+  let baseCatalogPrice: number;
+
+  if (selectedVariationPrice !== undefined && selectedVariationPrice !== null && Number(selectedVariationPrice) > 0) {
+    baseCatalogPrice = Number(selectedVariationPrice);
+  } else {
+    const rawPrice = Number(dish.price) || 0;
+    if (rawPrice > 0) {
+      baseCatalogPrice = rawPrice;
+    } else {
+      // If dish price was omitted because variations exist, extract lowest/first variation price
+      const varPrices: number[] = [];
+      if (dish.variations && Array.isArray(dish.variations)) {
+        dish.variations.forEach(g => {
+          (g.options || []).forEach(o => {
+            const p = Number(o.price);
+            if (p > 0) varPrices.push(p);
+          });
+        });
+      }
+      if (dish.portion_options && Array.isArray(dish.portion_options)) {
+        dish.portion_options.forEach(po => {
+          const p = Number(po.price);
+          if (p > 0) varPrices.push(p);
+        });
+      }
+
+      baseCatalogPrice = varPrices.length > 0 ? Math.min(...varPrices) : 0;
+    }
+  }
   
-  // If dish explicitly specifies an original_price > price, that's its regular pre-discount base
+  // If dish explicitly specifies an original_price > baseCatalogPrice, that's its regular pre-discount base
   const regularBase = (dish.original_price && Number(dish.original_price) > baseCatalogPrice)
     ? Number(dish.original_price)
     : baseCatalogPrice;

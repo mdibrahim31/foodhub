@@ -5217,8 +5217,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     let finalUnitPrice = customUnitPrice;
     if (finalUnitPrice === undefined) {
-      const extrasPrice = (selectedVariations || []).reduce((sum, opt) => sum + (Number(opt.price) || 0), 0);
-      const pricing = getItemPricing(item, vendor, extrasPrice);
+      const hasDishVars = (selectedVariations || []).length > 0;
+      const variationPrice = hasDishVars
+        ? (selectedVariations || []).reduce((sum, opt) => sum + (Number(opt.price) || 0), 0)
+        : undefined;
+      const pricing = getItemPricing(item, vendor, 0, variationPrice);
       finalUnitPrice = pricing.discountedPrice;
     }
 
@@ -5341,8 +5344,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const foodTotal = cart.reduce((sum, ci) => sum + (ci.unitPrice ?? ci.menuItem.price) * ci.quantity, 0);
     const regularFoodTotal = cart.reduce((sum, ci) => {
-      const extrasPrice = (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
-      const pricing = getItemPricing(ci.menuItem, cartVendor, extrasPrice);
+      const hasDishVars = (ci.selectedVariations || []).length > 0;
+      const variationPrice = hasDishVars
+        ? (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0)
+        : undefined;
+      const pricing = getItemPricing(ci.menuItem, cartVendor, 0, variationPrice);
       return sum + pricing.regularPrice * ci.quantity;
     }, 0);
     const totalDiscountSaved = Math.max(0, regularFoodTotal - foodTotal);
@@ -5410,8 +5416,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : `00000000-0000-4000-9000-${(Date.now() + index).toString(16).padStart(12, '0')}`;
           
         const unitPrice = ci.unitPrice ?? ci.menuItem.price;
-        const extrasPrice = (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
-        const pricing = getItemPricing(ci.menuItem, cartVendor, extrasPrice);
+        const hasDishVars = (ci.selectedVariations || []).length > 0;
+        const variationPrice = hasDishVars
+          ? (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0)
+          : undefined;
+        const pricing = getItemPricing(ci.menuItem, cartVendor, 0, variationPrice);
         const itemRegularPrice = pricing.regularPrice;
         const itemDiscountAmt = Math.max(0, itemRegularPrice - unitPrice);
 

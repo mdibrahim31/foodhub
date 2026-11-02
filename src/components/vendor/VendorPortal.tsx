@@ -270,18 +270,7 @@ export const VendorPortal: React.FC = () => {
     setDishCategory(allCategoryNames[0] || 'Burger');
     setDishDescription('');
     setDishImageUrl('');
-    setDishVariations([
-      {
-        id: `var-${Date.now()}`,
-        name: 'Variation',
-        type: 'single' as const,
-        required: true,
-        options: [
-          { id: `opt-${Date.now()}-1`, name: 'Full', price: 0 },
-          { id: `opt-${Date.now()}-2`, name: 'Half', price: 0 }
-        ]
-      }
-    ]);
+    setDishVariations([]);
     setRecommendationCategory('');
     setIsAddDishOpen(true);
   };
@@ -289,23 +278,14 @@ export const VendorPortal: React.FC = () => {
   const openEditDishModal = (item: MenuItem) => {
     setEditingDish(item);
     setDishName(item.name);
-    setDishPrice(item.price.toString());
+    setDishPrice(item.price ? item.price.toString() : '');
     setDishOriginalPrice(item.original_price ? item.original_price.toString() : '');
     setDishCategory(item.category || 'Main Course');
     setDishDescription(item.description || '');
     setDishImageUrl(item.image_url || '');
     const initialVariations = (item.variations && item.variations.length > 0)
       ? item.variations
-      : [{
-          id: `var-${Date.now()}`,
-          name: 'Variation',
-          type: 'single' as const,
-          required: true,
-          options: [
-            { id: `opt-${Date.now()}-1`, name: 'Full', price: 0 },
-            { id: `opt-${Date.now()}-2`, name: 'Half', price: 0 }
-          ]
-        }];
+      : [];
     setDishVariations(initialVariations);
     setRecommendationCategory(item.recommendation_category || '');
     setIsAddDishOpen(true);
@@ -597,11 +577,39 @@ export const VendorPortal: React.FC = () => {
     return matchesSearch && matchesAvailability;
   });
 
+  const hasVariations = Boolean(
+    dishVariations.length > 0 &&
+    dishVariations.some(g => g.options && g.options.length > 0)
+  );
+
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dishName.trim() || !dishPrice || !currentVendor) return;
+    if (!dishName.trim() || !currentVendor) return;
 
-    const portionGroup = dishVariations.find(v => 
+    // Filter valid variation options with a name or price
+    const cleanedVariations = dishVariations
+      .map(g => ({
+        ...g,
+        options: (g.options || []).filter(o => (o.name && o.name.trim()) || Number(o.price) > 0)
+      }))
+      .filter(g => g.options.length > 0);
+
+    const hasValidVars = cleanedVariations.length > 0;
+
+    // If no variations and no selling price provided, prompt user
+    if (!hasValidVars && !dishPrice.trim()) {
+      alert('অনুগ্রহ করে পণ্যের বিক্রয় মূল্য (Selling Price) অথবা ভ্যারিয়েশন মূল্য দিন।');
+      return;
+    }
+
+    // Determine effective price: if dishPrice is empty, use the first variation price
+    let effectivePrice = dishPrice.trim() ? parseFloat(dishPrice) : NaN;
+    if (isNaN(effectivePrice) || effectivePrice <= 0) {
+      const allPrices = cleanedVariations.flatMap(g => g.options.map(o => Number(o.price) || 0)).filter(p => p > 0);
+      effectivePrice = allPrices.length > 0 ? allPrices[0] : 0;
+    }
+
+    const portionGroup = cleanedVariations.find(v => 
       v.type === 'single' || 
       (v.name || '').toLowerCase().includes('portion') || 
       (v.name || '').toLowerCase().includes('size')
@@ -613,7 +621,7 @@ export const VendorPortal: React.FC = () => {
       : undefined;
 
     const parsedOriginal = dishOriginalPrice.trim() ? parseFloat(dishOriginalPrice) : undefined;
-    const finalOriginalPrice = parsedOriginal && parsedOriginal > parseFloat(dishPrice) ? parsedOriginal : undefined;
+    const finalOriginalPrice = parsedOriginal && parsedOriginal > effectivePrice ? parsedOriginal : undefined;
 
     const targetDishId = editingDish 
       ? editingDish.id 
@@ -622,7 +630,7 @@ export const VendorPortal: React.FC = () => {
 
     // Collect flat list of all portion options across variation groups to sync with dedicated portion table
     const portionItemsToSync: Array<{ groupName: string; name: string; price: number }> = [];
-    dishVariations.forEach(g => {
+    cleanedVariations.forEach(g => {
       if (g.options && g.options.length > 0) {
         g.options.forEach(o => {
           if (o.name && o.name.trim()) {
@@ -640,11 +648,11 @@ export const VendorPortal: React.FC = () => {
       updateMenuItem(editingDish.id, {
         name: dishName.trim(),
         description: dishDescription.trim(),
-        price: parseFloat(dishPrice),
+        price: effectivePrice,
         original_price: finalOriginalPrice,
         category: selectedCategory,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined,
+        variations: cleanedVariations.length > 0 ? cleanedVariations : undefined,
         recommendation_category: recommendationCategory || undefined
       });
     } else {
@@ -653,12 +661,12 @@ export const VendorPortal: React.FC = () => {
         vendor_id: currentVendor.id,
         name: dishName.trim(),
         description: dishDescription.trim(),
-        price: parseFloat(dishPrice),
+        price: effectivePrice,
         original_price: finalOriginalPrice,
         category: selectedCategory,
         is_available: true,
         image_url: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-        variations: dishVariations.length > 0 ? dishVariations : undefined,
+        variations: cleanedVariations.length > 0 ? cleanedVariations : undefined,
         recommendation_category: recommendationCategory || undefined
       });
     }
@@ -1753,13 +1761,16 @@ export const VendorPortal: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Selling Price *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Selling Price {hasVariations ? <span className="text-[10px] text-emerald-600 font-medium">(ঐচ্ছিক)</span> : '*'}
+                  </label>
                   <input
                     type="number"
-                    required
+                    step="any"
+                    required={!hasVariations}
                     value={dishPrice}
                     onChange={(e) => setDishPrice(e.target.value)}
-                    placeholder="40.00"
+                    placeholder={hasVariations ? 'ভ্যারিয়েশন মূল্য' : '40.00'}
                     className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold"
                   />
                 </div>
