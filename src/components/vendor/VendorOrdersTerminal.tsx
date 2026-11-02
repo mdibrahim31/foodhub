@@ -1469,11 +1469,12 @@ export const VendorOrdersTerminal: React.FC = () => {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleConfirmHandover(order.id);
+                              setSelectedReadyOrder(order);
+                              setRiderPhoneInput(order.rider_phone || '');
                             }}
-                            className="py-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition"
+                            className="py-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition"
                           >
-                            Handover to Rider
+                            {order.rider_phone ? `Handover (Rider: ${order.rider_phone})` : 'Handover to Rider'}
                           </button>
                         ) : (
                           <span className="text-xs text-slate-500 font-semibold">

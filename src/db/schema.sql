@@ -317,6 +317,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     vendor_prep_minutes INT DEFAULT 15,
     prep_ends_at TIMESTAMP WITH TIME ZONE,
     customer_confirmed_prep BOOLEAN DEFAULT false,
+    rider_phone VARCHAR(20),
     cancellation_reason TEXT,
     
     dispatched_rider_id UUID REFERENCES public.riders(id),
@@ -328,8 +329,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure order_type column exists on orders table
+-- Ensure order_type and rider_phone columns exist on orders table
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_type VARCHAR(50) DEFAULT 'delivery';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS rider_phone VARCHAR(20);
+
 
 -- ====================================================================
 -- 14. ORDER ITEMS TABLE (Items, Variations & Special Instructions)
