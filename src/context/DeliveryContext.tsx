@@ -5632,7 +5632,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const prepEndsAt = new Date(Date.now() + prepMinutes * 60 * 1000).toISOString();
         const nextOrder = {
           ...o,
-          status: 'vendor_accepted' as OrderStatus,
+          status: 'food_preparing' as OrderStatus,
           vendor_prep_minutes: prepMinutes,
           customer_confirmed_prep: true,
           prep_ends_at: prepEndsAt,
@@ -5651,7 +5651,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           supabase
             .from('orders')
             .update({
-              status: 'vendor_accepted',
+              status: 'food_preparing',
               vendor_prep_minutes: prepMinutes,
               customer_confirmed_prep: true,
               prep_ends_at: prepEndsAt,

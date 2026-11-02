@@ -222,6 +222,14 @@ export const CustomerPortal: React.FC = () => {
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [nowTime, setNowTime] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -1583,11 +1591,27 @@ export const CustomerPortal: React.FC = () => {
 
                   const isDelivered = ord.status === 'delivered';
                   const isCancelled = ord.status === 'cancelled';
+                  const isPreparingOrd = ord.status === 'food_preparing' || (ord.status === 'vendor_accepted' && !!(ord.vendor_prep_minutes || ord.prep_ends_at));
+
+                  const prepMins = ord.vendor_prep_minutes || 15;
+                  let prepEndsMs = 0;
+                  if (ord.prep_ends_at) {
+                    prepEndsMs = new Date(ord.prep_ends_at).getTime();
+                  } else if (ord.updated_at) {
+                    prepEndsMs = new Date(ord.updated_at).getTime() + prepMins * 60 * 1000;
+                  } else if (ord.created_at) {
+                    prepEndsMs = new Date(ord.created_at).getTime() + prepMins * 60 * 1000;
+                  }
+                  const remMs = prepEndsMs ? Math.max(0, prepEndsMs - nowTime) : 0;
+                  const remSec = Math.floor(remMs / 1000);
+                  const listCountdown = `${Math.floor(remSec / 60)}:${(remSec % 60).toString().padStart(2, '0')}`;
                   
                   const statusText = isDelivered 
                     ? `Delivered on ${formattedDate}` 
                     : isCancelled
                     ? `Cancelled on ${formattedDate}`
+                    : isPreparingOrd
+                    ? `Status: FOOD PREPARING (${remSec > 0 ? listCountdown : 'Almost ready'})`
                     : `Status: ${ord.status.replace(/_/g, ' ').toUpperCase()}`;
 
                   const itemsSummary = (ord.items || []).map(it => `${it.quantity}x ${it.item_name}`).join(', ');
@@ -1667,7 +1691,9 @@ export const CustomerPortal: React.FC = () => {
                       {!isDelivered && !isCancelled && (
                         <div className="pt-2 flex items-center justify-between border-t border-slate-100 text-[11px] text-slate-400 font-medium">
                           <span>Review available after delivery</span>
-                          <span className="capitalize text-orange-600 font-bold">{ord.status.replace(/_/g, ' ')}</span>
+                          <span className="capitalize text-orange-600 font-bold">
+                            {isPreparingOrd ? `Preparing (${remSec > 0 ? listCountdown : 'Almost ready'})` : ord.status.replace(/_/g, ' ')}
+                          </span>
                         </div>
                       )}
 
@@ -5382,6 +5408,7 @@ export const CustomerPortal: React.FC = () => {
 
         const isDelivered = ord.status === 'delivered';
         const isCancelled = ord.status === 'cancelled';
+        const isPreparing = ord.status === 'food_preparing' || (ord.status === 'vendor_accepted' && !!(ord.vendor_prep_minutes || ord.prep_ends_at));
         
         const statusDateText = isDelivered 
           ? `Delivered on ${formattedDate}` 
@@ -5389,8 +5416,33 @@ export const CustomerPortal: React.FC = () => {
           ? `Cancelled on ${formattedDate}`
           : `Placed on ${formattedDate}`;
 
+        // Live Countdown calculation for vendor preparation time
+        const prepMinutes = ord.vendor_prep_minutes || 15;
+        let prepEndsAtMs = 0;
+        if (ord.prep_ends_at) {
+          prepEndsAtMs = new Date(ord.prep_ends_at).getTime();
+        } else if (ord.updated_at) {
+          prepEndsAtMs = new Date(ord.updated_at).getTime() + prepMinutes * 60 * 1000;
+        } else if (ord.created_at) {
+          prepEndsAtMs = new Date(ord.created_at).getTime() + prepMinutes * 60 * 1000;
+        }
+
+        const remainingMs = prepEndsAtMs ? Math.max(0, prepEndsAtMs - nowTime) : 0;
+        const totalRemainingSecs = Math.floor(remainingMs / 1000);
+        const remMins = Math.floor(totalRemainingSecs / 60);
+        const remSecs = totalRemainingSecs % 60;
+        const prepCountdownFormatted = `${remMins}:${remSecs < 10 ? '0' : ''}${remSecs}`;
+
         const getOrderStatusDisplay = (status: string, orderType?: string) => {
           const isPickup = orderType === 'pickup';
+          if (isPreparing) {
+            return {
+              label: 'Food Preparing',
+              classes: 'bg-amber-50 text-amber-800 border-amber-300',
+              dotClass: 'bg-amber-500 animate-pulse',
+              Icon: Flame
+            };
+          }
           switch (status) {
             case 'pending':
               return {
@@ -5533,13 +5585,34 @@ export const CustomerPortal: React.FC = () => {
                     {statusDateText}
                   </p>
 
-                  {/* Red-marked position: Live Order Status badge */}
-                  <div className="pt-2 flex items-center justify-center">
+                  {/* Red-marked position: Live Order Status badge + Countdown Timer */}
+                  <div className="pt-2 flex flex-col items-center justify-center gap-2">
                     <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border shadow-2xs font-extrabold text-xs tracking-wide ${currentOrderStatus.classes}`}>
                       <span className={`w-2 h-2 rounded-full shrink-0 ${currentOrderStatus.dotClass}`} />
                       <currentOrderStatus.Icon className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
                       <span>Status: {currentOrderStatus.label}</span>
+                      {isPreparing && (
+                        <span className="flex items-center gap-1 ml-1 pl-2.5 border-l border-amber-400/80 font-mono font-black text-amber-950">
+                          <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
+                          <span>{totalRemainingSecs > 0 ? prepCountdownFormatted : '00:00'}</span>
+                        </span>
+                      )}
                     </div>
+
+                    {isPreparing && (
+                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-full text-amber-900 text-xs font-bold shadow-2xs animate-in fade-in">
+                        <Flame className="w-3.5 h-3.5 text-orange-600 shrink-0 animate-pulse" />
+                        <span>
+                          {totalRemainingSecs > 0 ? (
+                            <>
+                              Estimated cooking time: <span className="font-mono font-black text-amber-950">{prepCountdownFormatted}</span> min remaining ({prepMinutes}m)
+                            </>
+                          ) : (
+                            <span className="text-emerald-700 font-extrabold">Finishing up, ready any moment!</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
