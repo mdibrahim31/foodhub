@@ -24,16 +24,40 @@ export const INITIAL_CITY_AREAS: CityArea[] = [];
 
 const getStoredUrl = () => {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('foodhub_supabase_url');
-    if (saved && saved.trim() && saved !== 'https://your-project.supabase.co') return saved.trim();
+    const candidateKeys = [
+      'foodhub_supabase_url',
+      'supabase_url',
+      'foodvibe_v3_supabase_url',
+      'foodiplace_supabase_url',
+      'VITE_SUPABASE_URL',
+      'sb_url'
+    ];
+    for (const k of candidateKeys) {
+      const saved = localStorage.getItem(k);
+      if (saved && saved.trim() && saved !== 'https://your-project.supabase.co' && !saved.includes('your-project')) {
+        return saved.trim();
+      }
+    }
   }
   return import.meta.env.VITE_SUPABASE_URL || '';
 };
 
 const getStoredKey = () => {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('foodhub_supabase_anon_key');
-    if (saved && saved.trim() && saved !== 'your-anon-key') return saved.trim();
+    const candidateKeys = [
+      'foodhub_supabase_anon_key',
+      'supabase_anon_key',
+      'foodvibe_v3_supabase_anon_key',
+      'foodiplace_supabase_anon_key',
+      'VITE_SUPABASE_ANON_KEY',
+      'sb_anon_key'
+    ];
+    for (const k of candidateKeys) {
+      const saved = localStorage.getItem(k);
+      if (saved && saved.trim() && saved !== 'your-anon-key' && !saved.includes('your-anon-key')) {
+        return saved.trim();
+      }
+    }
   }
   return import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 };
@@ -57,16 +81,19 @@ export const updateSupabaseCredentials = (url: string, anonKey: string) => {
   activeKey = (anonKey || '').trim();
   
   if (typeof window !== 'undefined') {
+    const urlKeys = ['foodhub_supabase_url', 'supabase_url', 'foodvibe_v3_supabase_url', 'foodiplace_supabase_url'];
+    const keyKeys = ['foodhub_supabase_anon_key', 'supabase_anon_key', 'foodvibe_v3_supabase_anon_key', 'foodiplace_supabase_anon_key'];
+
     if (activeUrl) {
-      localStorage.setItem('foodhub_supabase_url', activeUrl);
+      urlKeys.forEach(k => localStorage.setItem(k, activeUrl));
     } else {
-      localStorage.removeItem('foodhub_supabase_url');
+      urlKeys.forEach(k => localStorage.removeItem(k));
     }
     
     if (activeKey) {
-      localStorage.setItem('foodhub_supabase_anon_key', activeKey);
+      keyKeys.forEach(k => localStorage.setItem(k, activeKey));
     } else {
-      localStorage.removeItem('foodhub_supabase_anon_key');
+      keyKeys.forEach(k => localStorage.removeItem(k));
     }
   }
 

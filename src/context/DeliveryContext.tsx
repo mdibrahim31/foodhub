@@ -1081,25 +1081,72 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setCityAreas(areaData as CityArea[]);
           }
 
-          const { data: vData, error: vError } = await supabase
+          let { data: vData, error: vError } = await supabase
             .from('vendors')
             .select('*');
-          if (!vError && vData && isSubscribed) {
+          if (vError || !vData || !Array.isArray(vData) || vData.length === 0) {
+            const { data: vSingularData, error: vSingularError } = await supabase
+              .from('vendor')
+              .select('*');
+            if (!vSingularError && vSingularData && Array.isArray(vSingularData) && vSingularData.length > 0) {
+              vData = vSingularData;
+              vError = null;
+            }
+          }
+
+          if (!vError && vData && Array.isArray(vData) && isSubscribed) {
             setVendors(prev => {
               const prevMap = new Map(prev.map(v => [v.id, v]));
-              const cleanedList = (vData as Vendor[]).map(v => {
-                const cleaned = { ...v };
-                if (!cleaned.discount_title || cleaned.discount_title === 'null' || !String(cleaned.discount_title).trim()) {
-                  delete cleaned.discount_title;
-                  delete cleaned.discount_percentage;
-                }
-                const existing = prevMap.get(cleaned.id);
-                if (!cleaned.password && existing?.password) {
-                  cleaned.password = existing.password;
-                  cleaned.is_password_set = existing.is_password_set ?? true;
-                }
+              const cleanedList = (vData as any[]).map(raw => {
+                const existing = prevMap.get(raw.id || raw.vendor_id);
+                const isActive = raw.is_active !== false && raw.is_active !== 'false' && raw.is_active !== 0 && raw.is_active !== '0';
+                const isPaused = raw.is_paused === true || raw.is_paused === 'true' || raw.is_paused === 1;
+
+                const discountTitle = raw.discount_title && raw.discount_title !== 'null' && String(raw.discount_title).trim()
+                  ? raw.discount_title
+                  : undefined;
+                const discountPercentage = discountTitle && raw.discount_percentage ? Number(raw.discount_percentage) : undefined;
+
+                const rawVType = String(raw.vendor_type || raw.type || existing?.vendor_type || 'restaurant').toLowerCase();
+                const vendorType: 'restaurant' | 'shop' = (rawVType === 'shop' || rawVType === 'grocery') ? 'shop' : 'restaurant';
+
+                const rawRType = String(raw.restaurant_type || raw.sub_type || existing?.restaurant_type || 'restaurant').toLowerCase();
+                const restaurantType: 'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery' = 
+                  (rawRType === 'cloud_kitchen' || rawRType === 'home_kitchen' || rawRType === 'sweets_bakery')
+                    ? (rawRType as any)
+                    : 'restaurant';
+
+                const cleaned: Vendor = {
+                  id: String(raw.id || raw.vendor_id || existing?.id || generateUUID()),
+                  name: raw.name || raw.vendor_name || raw.restaurant_name || raw.title || existing?.name || 'Restaurant',
+                  phone: raw.phone || raw.phone_number || raw.mobile || existing?.phone || '',
+                  address: raw.address || raw.location || existing?.address || 'Chittagong',
+                  cuisine: raw.cuisine || raw.category || existing?.cuisine || 'Fast Food',
+                  zone: raw.zone || raw.area || raw.city_area || existing?.zone || 'Chawkbazar Zone',
+                  city_area: raw.city_area || raw.area || raw.zone || existing?.city_area || 'Chawkbazar',
+                  latitude: Number(raw.latitude || raw.lat) || existing?.latitude || 22.3590,
+                  longitude: Number(raw.longitude || raw.lng || raw.long) || existing?.longitude || 91.8380,
+                  is_active: isActive,
+                  is_paused: isPaused,
+                  vendor_type: vendorType,
+                  restaurant_type: restaurantType,
+                  cover_image: raw.cover_image || raw.image_url || raw.logo_url || raw.cover || existing?.cover_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
+                  logo_url: raw.logo_url || raw.cover_image || raw.image_url || existing?.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150',
+                  rating: Number(raw.rating) || existing?.rating || 4.8,
+                  estimated_prep_time_minutes: Number(raw.estimated_prep_time_minutes || raw.prep_time) || existing?.estimated_prep_time_minutes || 20,
+                  discount_percentage: discountPercentage,
+                  discount_title: discountTitle,
+                  is_free_delivery: Boolean(raw.is_free_delivery),
+                  is_boosted: Boolean(raw.is_boosted),
+                  google_maps_link: raw.google_maps_link || raw.maps_link || existing?.google_maps_link || undefined,
+                  password: raw.password || existing?.password,
+                  is_password_set: raw.is_password_set ?? existing?.is_password_set ?? true,
+                  created_at: raw.created_at || existing?.created_at || new Date().toISOString()
+                };
+
                 return cleaned;
               });
+
               try {
                 localStorage.setItem(`${STORAGE_KEY_PREFIX}vendors`, JSON.stringify(cleanedList));
               } catch {}
@@ -1498,7 +1545,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         supabase.removeChannel(realtimeChannelInstance);
       }
     };
-  }, []);
+  }, [isSupabaseConfigured]);
 
   const [riderMessages, setRiderMessages] = useState<RiderMessage[]>(() => {
     const defaultMsgs: RiderMessage[] = [
