@@ -386,6 +386,12 @@ export const CustomerPortal: React.FC = () => {
   const handleConfirmAddToCartFromModal = () => {
     if (!selectedMenuItemForModal || !selectedVendorForMenu) return;
 
+    const isClosed = selectedVendorForMenu.is_active === false || (selectedVendorForMenu as any).is_active === 'false' || (selectedVendorForMenu as any).is_active === 0 || selectedVendorForMenu.is_paused === true || (selectedVendorForMenu as any).is_paused === 'true' || (selectedVendorForMenu as any).is_paused === 1;
+    if (isClosed) {
+      alert(`" ${selectedVendorForMenu.name}" is currently offline or closed. Menu items can be viewed, but order placement is disabled.`);
+      return;
+    }
+
     // 1. Add main dish with only its portion/size variations
     addToCart(
       selectedMenuItemForModal,
@@ -1032,12 +1038,17 @@ export const CustomerPortal: React.FC = () => {
   }, [vendors, getVendorCoords, updateVendor]);
 
   // Filtered and Sorted Vendors directly from database
+  // Filtered and Sorted Vendors directly from database (5 KM radius from pin point, sorted closest first)
   const displayVendors = useMemo(() => {
     return vendors.filter((v) => {
-      // Check active and non-paused status
-      const isActive = v.is_active !== false && (v as any).is_active !== 'false' && (v as any).is_active !== 0;
-      const isPaused = v.is_paused === true || (v as any).is_paused === 'true' || (v as any).is_paused === 1;
-      if (!isActive || isPaused) return false;
+      // 1. Proximity check: Calculate distance from customer map pin point
+      const { lat: vLat, lng: vLng } = getVendorCoords(v);
+      const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+
+      // Filter: Show all vendors within 5 km of customer map pin
+      if (distKm > 5.0) return false;
+
+      // Note: Vendors are shown regardless of open/closed/busy/paused status so customers can browse menus!
 
       // Filter by Search Query
       if (searchQuery.trim()) {
@@ -1084,15 +1095,20 @@ export const CustomerPortal: React.FC = () => {
 
       return true;
     }).sort((a, b) => {
+      const coordsA = getVendorCoords(a);
+      const coordsB = getVendorCoords(b);
+      const distA = calculateDistanceKm(coordsA.lat, coordsA.lng, customerLat, customerLng);
+      const distB = calculateDistanceKm(coordsB.lat, coordsB.lng, customerLat, customerLng);
+
       if (selectedSort === 'rating') return (b.rating || 0) - (a.rating || 0);
-      if (selectedSort === 'distance') {
-        const coordsA = getVendorCoords(a);
-        const coordsB = getVendorCoords(b);
-        const distA = calculateDistanceKm(coordsA.lat, coordsA.lng, customerLat, customerLng);
-        const distB = calculateDistanceKm(coordsB.lat, coordsB.lng, customerLat, customerLng);
-        return distA - distB;
+      if (selectedSort === 'new') {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
       }
-      return 0;
+
+      // Default & 'distance' & 'popular': Closest distance first! (kacher vendor upore, dure vendor niche)
+      return distA - distB;
     });
   }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords]);
 
@@ -3849,6 +3865,21 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Closed/Offline Warning Banner */}
+              {(() => {
+                const isClosed = selectedVendorForMenu.is_active === false || (selectedVendorForMenu as any).is_active === 'false' || (selectedVendorForMenu as any).is_active === 0 || selectedVendorForMenu.is_paused === true || (selectedVendorForMenu as any).is_paused === 'true' || (selectedVendorForMenu as any).is_paused === 1;
+                if (!isClosed) return null;
+                return (
+                  <div className="mx-5 mb-3 p-3.5 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-start space-x-2.5 text-xs font-black text-rose-800 shadow-2xs">
+                    <Clock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5 text-left">
+                      <p className="font-extrabold uppercase tracking-wider text-[11px] text-rose-700">RESTAURANT CURRENTLY CLOSED / OFFLINE</p>
+                      <p className="font-semibold text-slate-700 text-[11px]">Menu items can be browsed, but order placement and add-to-cart are disabled.</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 3. Sticky Search & Category Bar */}
@@ -4882,23 +4913,44 @@ export const CustomerPortal: React.FC = () => {
               </div>
 
               {/* Add to Cart Submit Button */}
-              <button
-                type="button"
-                onClick={handleConfirmAddToCartFromModal}
-                className="flex-1 py-3 px-4 bg-[#e21b70] hover:bg-[#c2135d] text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-between transition shadow-md shadow-pink-500/20 cursor-pointer active:scale-[0.98]"
-              >
-                <span>Add to cart</span>
-                <div className="flex items-center gap-1.5 font-mono">
-                  <span className="font-extrabold text-sm">
-                    Tk {calculatedModalTotal}
-                  </span>
-                  {calculatedModalRegularTotal > calculatedModalTotal && (
-                    <span className="text-xs line-through opacity-75 font-normal">
-                      Tk {calculatedModalRegularTotal}
-                    </span>
-                  )}
-                </div>
-              </button>
+              {(() => {
+                const isSelectedVendorClosed = Boolean(
+                  selectedVendorForMenu &&
+                  (selectedVendorForMenu.is_active === false || (selectedVendorForMenu as any).is_active === 'false' || (selectedVendorForMenu as any).is_active === 0 || selectedVendorForMenu.is_paused === true || (selectedVendorForMenu as any).is_paused === 'true' || (selectedVendorForMenu as any).is_paused === 1)
+                );
+
+                if (isSelectedVendorClosed) {
+                  return (
+                    <button
+                      type="button"
+                      disabled
+                      className="flex-1 py-3 px-4 bg-slate-300 text-slate-500 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center cursor-not-allowed opacity-80"
+                    >
+                      <span>RESTAURANT CLOSED (ORDERING DISABLED)</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    type="button"
+                    onClick={handleConfirmAddToCartFromModal}
+                    className="flex-1 py-3 px-4 bg-[#e21b70] hover:bg-[#c2135d] text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-between transition shadow-md shadow-pink-500/20 cursor-pointer active:scale-[0.98]"
+                  >
+                    <span>Add to cart</span>
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <span className="font-extrabold text-sm">
+                        Tk {calculatedModalTotal}
+                      </span>
+                      {calculatedModalRegularTotal > calculatedModalTotal && (
+                        <span className="text-xs line-through opacity-75 font-normal">
+                          Tk {calculatedModalRegularTotal}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

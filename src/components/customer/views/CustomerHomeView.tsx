@@ -329,10 +329,10 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
             </div>
             <div className="space-y-1">
               <h3 className="font-extrabold text-slate-900 text-sm">
-                No {activeBottomNav === 'food' ? 'restaurants' : 'shops'} available in {activeCustomerZone?.name || 'this zone'}
+                No {activeBottomNav === 'food' ? 'restaurants' : 'shops'} found within 5 km
               </h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                Only vendors within your active delivery zone boundary are displayed. Please change your delivery address or map pin to browse vendors in other zones.
+                Vendors are searched based on your address map pin point within a 5 km radius. Please change your address or map pin to discover vendors in other areas.
               </p>
             </div>
             <button 
@@ -340,7 +340,7 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
               className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-orange-600/20 cursor-pointer transition flex items-center justify-center gap-2"
             >
               <MapPin className="w-4 h-4" />
-              <span>CHANGE DELIVERY ADDRESS / ZONE</span>
+              <span>CHANGE MAP PIN / ADDRESS</span>
             </button>
           </div>
         ) : (
@@ -352,12 +352,13 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
               const fee = isFreeDelivery ? 0 : calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
               const isNew = isVendorNew(vendor);
+              const isClosed = vendor.is_active === false || (vendor as any).is_active === 'false' || (vendor as any).is_active === 0 || vendor.is_paused === true || (vendor as any).is_paused === 'true' || (vendor as any).is_paused === 1;
 
               return (
                 <div
                   key={vendor.id}
                   onClick={() => setSelectedVendorForMenu(vendor)}
-                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group"
+                  className={`bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group ${isClosed ? 'opacity-90' : ''}`}
                 >
                   <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
                     <img 
@@ -369,12 +370,24 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
                       }}
                     />
 
-                    {isNew && (
+                    {isClosed ? (
+                      <div className="absolute inset-0 bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-3 text-center">
+                        <span className="bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg border border-white/20">
+                          CLOSED / OFFLINE (NO ORDERS)
+                        </span>
+                      </div>
+                    ) : isNew ? (
                       <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center space-x-1">
                         <Sparkles className="w-3 h-3 fill-white" />
                         <span>New</span>
                       </div>
-                    )}
+                    ) : null}
+
+                    {/* Distance Badge */}
+                    <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-md flex items-center space-x-1 border border-white/20">
+                      <MapPin className="w-3 h-3 text-orange-400 fill-orange-400" />
+                      <span>{distanceKm < 0.1 ? 'Under 100m' : `${distanceKm.toFixed(1)} km`}</span>
+                    </div>
 
                     <button 
                       onClick={(e) => toggleFavorite(vendor.id, e)}
@@ -387,9 +400,22 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
 
                   <div className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-black text-slate-900 text-base leading-snug truncate">
-                        {vendor.name}
-                      </h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-900 text-base leading-snug truncate">
+                            {vendor.name}
+                          </h3>
+                          {isClosed ? (
+                            <span className="text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md shrink-0 border border-rose-200">
+                              CLOSED
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md shrink-0 border border-emerald-200">
+                              OPEN
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex items-center space-x-1 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full shrink-0">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span className="text-xs font-black">{vendor.rating || 4.8}</span>
@@ -405,7 +431,11 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
                         <Bike className="w-3.5 h-3.5 text-slate-400" />
                         <span>{isFreeDelivery ? 'Free Delivery' : `Tk ${fee}`}</span>
                       </div>
-                      <span>{vendor.estimated_prep_time_minutes || 20} mins</span>
+                      <div className="flex items-center space-x-2 text-slate-500">
+                        <span>📍 {distanceKm < 0.1 ? 'Under 100m' : `${distanceKm.toFixed(1)} km`}</span>
+                        <span>•</span>
+                        <span>{vendor.estimated_prep_time_minutes || 20} mins</span>
+                      </div>
                     </div>
                   </div>
                 </div>

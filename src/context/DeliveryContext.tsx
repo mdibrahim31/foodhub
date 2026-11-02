@@ -5209,6 +5209,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     specialInstructions?: string,
     customUnitPrice?: number
   ) => {
+    const isVendorClosed = vendor.is_active === false || (vendor as any).is_active === 'false' || (vendor as any).is_active === 0 || vendor.is_paused === true || (vendor as any).is_paused === 'true' || (vendor as any).is_paused === 1;
+    if (isVendorClosed) {
+      alert(`"${vendor.name}" is currently closed or offline. Order placement is disabled at this time.`);
+      return;
+    }
+
     let finalUnitPrice = customUnitPrice;
     if (finalUnitPrice === undefined) {
       const extrasPrice = (selectedVariations || []).reduce((sum, opt) => sum + (Number(opt.price) || 0), 0);
@@ -5321,6 +5327,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     if (!cartVendor) {
       alert('No restaurant is selected for this cart. Please select items from a restaurant.');
+      return null;
+    }
+    const isVendorClosed = cartVendor.is_active === false || (cartVendor as any).is_active === 'false' || (cartVendor as any).is_active === 0 || cartVendor.is_paused === true || (cartVendor as any).is_paused === 'true' || (cartVendor as any).is_paused === 1;
+    if (isVendorClosed) {
+      alert(`"${cartVendor.name}" is currently closed or offline. Order placement is disabled at this time.`);
       return null;
     }
     if (!selectedAddress) {
