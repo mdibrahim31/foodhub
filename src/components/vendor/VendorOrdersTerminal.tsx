@@ -595,7 +595,7 @@ export const VendorOrdersTerminal: React.FC = () => {
     setSelectedAcceptOrder(null);
   };
 
-  // WhatsApp order share message generator with Google Map pinpoint links
+  // Compact WhatsApp order share message with Google Map pinpoint links
   const generateOrderWhatsAppMessage = (order: Order, vendor: Vendor | null) => {
     const vLat = vendor?.latitude || 22.3569;
     const vLng = vendor?.longitude || 91.7832;
@@ -609,59 +609,31 @@ export const VendorOrdersTerminal: React.FC = () => {
       ? `https://www.google.com/maps?q=${cLat},${cLng}`
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address || 'Delivery Address')}`;
 
-    const orderTime = new Date(order.created_at || Date.now()).toLocaleString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-
     const itemsList = (order.items && order.items.length > 0)
-      ? order.items.map((it, idx) => {
-          const itemLine = `${idx + 1}. *${it.quantity}x ${it.item_name}*`;
-          const portion = it.selected_portion ? ` [${it.selected_portion}]` : '';
-          const variations = it.selected_variations && it.selected_variations.length > 0 ? ` (${it.selected_variations.join(', ')})` : '';
-          const price = ` = ৳${it.subtotal || (it.item_price * it.quantity)}`;
-          const note = it.special_instructions ? `\n   ↳ ⚠️ Note: ${it.special_instructions}` : '';
-          return `${itemLine}${portion}${variations}${price}${note}`;
+      ? order.items.map((it) => {
+          const portion = it.selected_portion ? ` (${it.selected_portion})` : '';
+          const variations = it.selected_variations && it.selected_variations.length > 0 ? ` [${it.selected_variations.join(', ')}]` : '';
+          const price = `৳${it.subtotal || (it.item_price * it.quantity)}`;
+          const note = it.special_instructions ? ` (নোট: ${it.special_instructions})` : '';
+          return `• ${it.quantity}x ${it.item_name}${portion}${variations} - ${price}${note}`;
         }).join('\n')
-      : '• No item details';
-
-    const orderTypeText = order.order_type === 'pickup' ? '🛍️ Pickup (পিকআপ)' : '🛵 Home Delivery (হোম ডেলিভারি)';
+      : '• No items';
 
     const text = 
-`🛍️ *অর্ডার বিবরণী (ORDER #${order.order_code})*
-━━━━━━━━━━━━━━━━━━━━
-🕒 সময়: ${orderTime}
-📦 ডেলিভারি টাইপ: ${orderTypeText}
-⚡ স্ট্যাটাস: ${order.status.toUpperCase()}
+`*অর্ডার #${order.order_code}* | *মোট: ৳${order.total_cash_payable || 0}*
+━━━━━━━━━━━━━━━━━━
+🏪 *${vendor?.name || 'Restaurant'}* (${vendor?.phone || 'N/A'})
+📍 ভেন্ডর ম্যাপ: ${vendorMapUrl}
 
-🏪 *রেস্টুরেন্ট তথ্য (VENDOR):*
-• নাম: *${vendor?.name || 'Restaurant'}*
-• ফোন: ${vendor?.phone || 'N/A'}
-• ঠিকানা: ${vendor?.address || 'N/A'}
-📍 *রেস্টুরেন্ট গুগল ম্যাপ লোকেশন (Vendor Map Pin):*
-${vendorMapUrl}
-
-👤 *কাস্টমার তথ্য (CUSTOMER):*
-• নাম: *${order.customer_name || 'Customer'}*
-• ফোন: ${order.customer_phone || 'N/A'}
-• ডেলিভারি ঠিকানা: ${order.delivery_address || 'N/A'}
-📍 *কাস্টমার ড্রপ-অফ ম্যাপ লোকেশন (Customer Map Pin):*
-${customerMapUrl}
-${order.special_instructions ? `📝 কাস্টমার নির্দেশনা: "${order.special_instructions}"\n` : ''}
-🍔 *অর্ডারকৃত আইটেম (ITEMS):*
+👤 *${order.customer_name || 'Customer'}* (${order.customer_phone || 'N/A'})
+🏠 ${order.delivery_address || 'N/A'}
+📍 কাস্টমার ম্যাপ: ${customerMapUrl}
+${order.special_instructions ? `📝 কাস্টমার নোট: ${order.special_instructions}\n` : ''}━━━━━━━━━━━━━━━━━━
+🛒 *আইটেম:*
 ${itemsList}
-
-💰 *মূল্য ও বিলের বিবরণী (BILL SUMMARY):*
-• খাবারের মূল্য (Subtotal): ৳${order.food_total || 0}
-• ডেলিভারি চার্জ (Delivery Fee): ৳${order.delivery_fee || 0}
-${order.discount_amount ? `• ডিসকাউন্ট (Discount): -৳${order.discount_amount}\n` : ''}${order.platform_fee ? `• প্ল্যাটফর্ম ফি: ৳${order.platform_fee}\n` : ''}━━━━━━━━━━━━━━━━━━━━
-💵 *সর্বমোট ক্যাশ কালেকশন (TOTAL COD): ৳${order.total_cash_payable || 0}*
-━━━━━━━━━━━━━━━━━━━━
-${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'} (${order.rider_phone})\n` : ''}🔗 এই অর্ডারটি foodiplace টার্মিনাল থেকে জেনারেট করা হয়েছে।`.trim();
+━━━━━━━━━━━━━━━━━━
+💰 খাবার: ৳${order.food_total || 0} | ডেলিভারি: ৳${order.delivery_fee || 0}${order.discount_amount ? ` | ছাড়: -৳${order.discount_amount}` : ''}
+💵 *সর্বমোট ক্যাশ কালেকশন (COD): ৳${order.total_cash_payable || 0}*${order.rider_phone ? `\n🚴 রাইডার: ${order.rider_phone}` : ''}`.trim();
 
     return text;
   };
@@ -1274,8 +1246,8 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] flex flex-col items-center justify-start font-sans antialiased selection:bg-[#d70f64] selection:text-white">
-      <div className="w-full max-w-lg min-h-screen bg-white sm:shadow-md sm:border-x sm:border-slate-100 flex flex-col overflow-hidden relative">
+    <div className="min-h-screen bg-white flex flex-col font-sans antialiased selection:bg-[#d70f64] selection:text-white w-full">
+      <div className="w-full min-h-screen bg-white flex flex-col overflow-hidden relative">
         
         {/* 
           ========================================================================
@@ -1283,7 +1255,7 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
           Hamburger Menu ≡ (left) | Storefront with Clock + ● OPEN Pill (right)
           ========================================================================
         */}
-        <header className="px-5 pt-6 pb-4 flex items-center justify-between bg-white shrink-0">
+        <header className="px-4 sm:px-6 lg:px-8 pt-5 pb-4 flex items-center justify-between bg-white shrink-0 border-b border-slate-100 w-full">
           {/* Left: Hamburger menu & 3-dot trigger icons */}
           <div className="flex items-center space-x-1.5">
             <button
@@ -1448,7 +1420,7 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
           Row 2: [ Accepted 0 ]
           ========================================================================
         */}
-        <main className="flex-1 px-5 pt-4 pb-12 overflow-y-auto">
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 pt-4 pb-12 overflow-y-auto">
           {/* Row 1: Two Column Grid (New & Upcoming) */}
           <div className="grid grid-cols-2 gap-4">
             
@@ -1927,7 +1899,7 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
           </header>
 
           {/* Body Content */}
-          <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-5 space-y-4 pb-28">
+          <main className="flex-1 w-full max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-5 pb-28">
             {/* 1. Preparation Time Section (Matching signature foodpanda design) */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3.5">
               <div className="flex items-center justify-between">
@@ -2157,7 +2129,7 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
 
           {/* Sticky Bottom Acceptance Bar (Full width Green button) */}
           <footer className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl">
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <button
                 type="button"
                 onClick={() => handleAcceptOrder(selectedAcceptOrder.id, selectedPrepMinutes)}
@@ -2213,7 +2185,7 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
           </header>
 
           {/* Body Content */}
-          <main className="flex-1 max-w-xl w-full mx-auto px-5 pt-4 pb-28 space-y-5">
+          <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-28 space-y-5">
             {/* Restaurant Badge & Order Title */}
             <div>
               <div className="flex items-center space-x-1.5 mb-1.5">
@@ -2324,7 +2296,7 @@ ${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'
 
           {/* Sticky Bottom Action Bar (Ready for delivery -> Handover to rider) */}
           <footer className="sticky bottom-0 z-20 bg-white border-t border-slate-100 p-4 shadow-xl">
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               {selectedReadyOrder.status === 'ready_for_pickup' ? (
                 <div className="space-y-3">
                   <div>
