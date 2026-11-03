@@ -3270,7 +3270,7 @@ export const CustomerPortal: React.FC = () => {
             Header wrapping Location and Search bar
             ========================================================================
           */}
-          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-[max(env(safe-area-inset-top),0.75rem)] pb-6 px-4 rounded-b-[2.5rem] shadow-sm">
+          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-[max(env(safe-area-inset-top),0.75rem)] pb-3 px-4 rounded-b-2xl shadow-sm">
             <div className="max-w-md mx-auto space-y-3">
               {/* Top Row: Location Pin + Choose Area + Fullscreen + Heart */}
               <div className="flex items-center justify-between">
@@ -3395,16 +3395,16 @@ export const CustomerPortal: React.FC = () => {
 
                   {/* Dots Carousel Indicator in translucent pill matching Screenshot */}
                   {heroSlides.length > 1 && (
-                    <div className="flex justify-center pt-1.5">
-                      <div className="bg-black/25 backdrop-blur-xs px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-2xs">
+                    <div className="flex justify-center pt-1">
+                      <div className="bg-black/25 backdrop-blur-xs px-2 py-0.5 rounded-full flex items-center space-x-1 shadow-2xs">
                         {heroSlides.map((_, idx) => (
                           <button
                             key={idx}
                             onClick={() => setActiveSlide(idx)}
-                            className={`transition-all duration-300 h-1.5 rounded-full cursor-pointer ${
+                            className={`transition-all duration-300 h-1 rounded-full cursor-pointer ${
                               activeSlide === idx 
-                                ? 'w-5 bg-white' 
-                                : 'w-1.5 bg-white/50 hover:bg-white/80'
+                                ? 'w-4 bg-white' 
+                                : 'w-1 bg-white/50 hover:bg-white/80'
                             }`}
                             aria-label={`Go to slide ${idx + 1}`}
                           />
