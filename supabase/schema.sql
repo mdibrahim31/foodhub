@@ -324,6 +324,11 @@ CREATE TABLE IF NOT EXISTS public.orders (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Ensure items and order_summary columns exist on public.orders
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::JSONB;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_summary JSONB;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS unavailable_action VARCHAR(50) DEFAULT 'remove';
+
 -- ====================================================================
 -- 14. ORDER ITEMS TABLE (Items, Variations & Special Instructions)
 -- ====================================================================

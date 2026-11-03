@@ -334,10 +334,12 @@ CREATE TABLE IF NOT EXISTS public.orders (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure order_type, rider_phone and unavailable_action columns exist on orders table
+-- Ensure order_type, rider_phone, unavailable_action, items and order_summary columns exist on orders table
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_type VARCHAR(50) DEFAULT 'delivery';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS rider_phone VARCHAR(20);
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS unavailable_action VARCHAR(50) DEFAULT 'remove';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::JSONB;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_summary JSONB;
 
 
 -- ====================================================================

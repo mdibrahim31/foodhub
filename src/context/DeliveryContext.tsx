@@ -1211,8 +1211,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // Fetch orders from Supabase with relational items
           const { data: oSupadata, error: oSupaerror } = await supabase
             .from('orders')
-            .select('*');
-          if (!oSupaerror && oSupadata && isSubscribed && Array.isArray(oSupadata) && oSupadata.length > 0) {
+            .select('*, order_items(*)');
+          
+          let ordersQueryData = (!oSupaerror && oSupadata) ? oSupadata : null;
+          if (!ordersQueryData) {
+            const { data: altData } = await supabase.from('orders').select('*');
+            ordersQueryData = altData;
+          }
+
+          if (isSubscribed && Array.isArray(ordersQueryData) && ordersQueryData.length > 0) {
             const { data: itemsData } = await supabase.from('order_items').select('*');
             setOrders(prev => {
               const existingMap = new Map<string, Order>();
@@ -1220,33 +1227,77 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 if (o.id) existingMap.set(o.id, o);
                 if (o.order_code) existingMap.set(o.order_code, o);
               });
-              const resolvedOrders = oSupadata.map(o => {
-                const oItems = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id) : [];
-                const supaJsonItems = o.items || o.order_summary || o.order_items;
+              const resolvedOrders = (ordersQueryData as any[]).map(o => {
                 const existing = existingMap.get(o.id) || existingMap.get(o.order_code);
                 
-                let finalItems = (Array.isArray(supaJsonItems) && supaJsonItems.length > 0)
-                  ? supaJsonItems
-                  : (Array.isArray(o.items) && o.items.length > 0
-                    ? o.items
-                    : (oItems.length > 0 
-                      ? oItems 
-                      : (existing && Array.isArray(existing.items) && existing.items.length > 0 
-                        ? existing.items 
-                        : [])));
+                const extractItems = (val: any): any[] | null => {
+                  if (!val) return null;
+                  if (Array.isArray(val) && val.length > 0) return val;
+                  if (typeof val === 'string') {
+                    try {
+                      const parsed = JSON.parse(val);
+                      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                      if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) return parsed.items;
+                    } catch {}
+                  }
+                  if (typeof val === 'object' && Array.isArray(val.items) && val.items.length > 0) {
+                    return val.items;
+                  }
+                  return null;
+                };
 
-                if (!finalItems || finalItems.length === 0) {
-                  try {
-                    const localRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}orders`);
-                    if (localRaw) {
-                      const parsed = JSON.parse(localRaw);
-                      const m = parsed.find((ord: any) => ord.id === o.id || ord.order_code === o.order_code);
-                      if (m && Array.isArray(m.items) && m.items.length > 0) {
-                        finalItems = m.items;
+                const oItemsFromTable = Array.isArray(itemsData) ? itemsData.filter(it => it.order_id === o.id || it.order_id === o.order_code) : [];
+                const oItemsFromRel = Array.isArray(o.order_items) ? o.order_items : [];
+
+                let rawItems = extractItems(o.items)
+                  || extractItems(o.order_summary)
+                  || (oItemsFromRel.length > 0 ? oItemsFromRel : null)
+                  || (oItemsFromTable.length > 0 ? oItemsFromTable : null)
+                  || (existing && extractItems(existing.items));
+
+                if (!rawItems || rawItems.length === 0) {
+                  const storageKeys = [`${STORAGE_KEY_PREFIX}orders`, 'foodvibe_v3_orders', 'foodiplace_orders', 'foodhub_orders'];
+                  for (const k of storageKeys) {
+                    try {
+                      const localRaw = localStorage.getItem(k);
+                      if (localRaw) {
+                        const parsed = JSON.parse(localRaw);
+                        const m = parsed.find((ord: any) => ord.id === o.id || ord.order_code === o.order_code);
+                        const mItems = extractItems(m?.items) || extractItems(m?.order_summary);
+                        if (mItems && mItems.length > 0) {
+                          rawItems = mItems;
+                          break;
+                        }
                       }
-                    }
-                  } catch {}
+                    } catch {}
+                  }
                 }
+
+                const foodTotalVal = Number(o.food_total || o.total_cash_payable || 0);
+                if ((!rawItems || rawItems.length === 0) && foodTotalVal > 0) {
+                  rawItems = [{
+                    id: `gen-item-${o.id || o.order_code}`,
+                    item_name: 'Food Order Item',
+                    item_price: foodTotalVal,
+                    quantity: 1,
+                    subtotal: foodTotalVal,
+                    selected_variations: []
+                  }];
+                }
+
+                const finalItems = (rawItems || []).map((it: any) => ({
+                  ...it,
+                  id: it.id || String(Math.random()),
+                  item_name: it.item_name || it.name || 'Food Item',
+                  item_price: Number(it.item_price || it.price || 0),
+                  quantity: Number(it.quantity || 1),
+                  subtotal: Number(it.subtotal || ((it.item_price || it.price || 0) * (it.quantity || 1))),
+                  selected_variations: Array.isArray(it.selected_variations)
+                    ? it.selected_variations
+                    : (typeof it.selected_variations === 'string' && it.selected_variations.trim()
+                      ? it.selected_variations.split(',').map((s: string) => s.trim())
+                      : [])
+                }));
 
                 return {
                   ...existing,
@@ -5554,7 +5605,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         }
 
-        const supabaseOrderPayload = {
+        const supabaseOrderPayload: any = {
           id: newOrder.id,
           order_code: newOrder.order_code,
           order_type: newOrder.order_type || 'delivery',
@@ -5573,60 +5624,65 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           status: newOrder.status,
           special_instructions: newOrder.special_instructions,
           unavailable_action: newOrder.unavailable_action || 'remove',
+          items: newOrder.items || [],
+          order_summary: { items: newOrder.items || [] },
           created_at: newOrder.created_at,
           updated_at: newOrder.updated_at
         };
 
         let { error: oError } = await supabase.from('orders').upsert([supabaseOrderPayload]);
-        if (oError && (oError.message?.includes('unavailable_action') || oError.code === '42703')) {
-          // Backward compatibility fallback if column does not exist on remote yet
-          const { unavailable_action, ...withoutCol } = supabaseOrderPayload;
-          const retryRes = await supabase.from('orders').upsert([withoutCol]);
+        if (oError) {
+          // If items or unavailable_action columns are missing on remote Supabase table, retry without them
+          const { items, order_summary, unavailable_action, ...minimalPayload } = supabaseOrderPayload;
+          const retryRes = await supabase.from('orders').upsert([minimalPayload]);
           oError = retryRes.error;
         }
 
-        if (!oError) {
-          const itemsPayload = (newOrder.items || []).map(it => ({
-            id: it.id,
+        if (!oError && newOrder.items && newOrder.items.length > 0) {
+          const itemsPayload = newOrder.items.map(it => ({
+            ...(isUuid(it.id) ? { id: it.id } : {}),
             order_id: newOrder.id,
             menu_item_id: it.menu_item_id && isUuid(it.menu_item_id) ? it.menu_item_id : null,
-            item_name: it.item_name,
-            item_price: Number(it.item_price) || 0,
+            item_name: it.item_name || (it as any).name || 'Food Item',
+            item_price: Number(it.item_price || (it as any).price) || 0,
             quantity: Number(it.quantity) || 1,
-            subtotal: Number(it.subtotal) || 0,
-            selected_variations: it.selected_variations || null,
-            special_instructions: it.special_instructions || null,
-            unavailable_action: it.unavailable_action || 'remove'
+            subtotal: Number(it.subtotal || ((it.item_price || 0) * (it.quantity || 1))) || 0,
+            selected_variations: Array.isArray(it.selected_variations)
+              ? it.selected_variations
+              : (it.selected_variations ? [String(it.selected_variations)] : []),
+            special_instructions: it.special_instructions || null
           }));
+
           const { error: iErr } = await supabase.from('order_items').upsert(itemsPayload);
           if (iErr) {
-            console.warn('Primary order_items upsert warning, attempting fallback without menu_item_id:', iErr);
-            const fallbackItemsPayload = itemsPayload.map(it => {
-              const { unavailable_action, ...rest } = it;
-              return {
-                ...rest,
-                menu_item_id: null,
-                selected_variations: Array.isArray(it.selected_variations) ? it.selected_variations.join(', ') : it.selected_variations
-              };
-            });
-            await supabase.from('order_items').upsert(fallbackItemsPayload);
+            console.warn('Primary order_items upsert warning, retrying with menu_item_id: null', iErr);
+            const fallbackItems = itemsPayload.map(it => ({ ...it, menu_item_id: null }));
+            await supabase.from('order_items').upsert(fallbackItems);
           }
-        } else {
+        } else if (oError) {
           console.error('Supabase order save error:', oError);
-          // If foreign key constraint failed on vendor_id/customer_id, retry with null IDs
           if (oError.message?.includes('foreign key') || oError.code === '23503') {
-            const fallbackPayload = { ...supabaseOrderPayload, vendor_id: null, customer_id: null };
+            const fallbackPayload = {
+              ...supabaseOrderPayload,
+              vendor_id: null,
+              customer_id: null
+            };
+            delete fallbackPayload.items;
+            delete fallbackPayload.order_summary;
+            delete fallbackPayload.unavailable_action;
             const { error: fbErr } = await supabase.from('orders').upsert([fallbackPayload]);
             if (!fbErr && newOrder.items && newOrder.items.length > 0) {
               const itemsPayload = newOrder.items.map(it => ({
-                id: it.id,
+                ...(isUuid(it.id) ? { id: it.id } : {}),
                 order_id: newOrder.id,
                 menu_item_id: null,
-                item_name: it.item_name,
+                item_name: it.item_name || (it as any).name || 'Food Item',
                 item_price: Number(it.item_price) || 0,
                 quantity: Number(it.quantity) || 1,
                 subtotal: Number(it.subtotal) || 0,
-                selected_variations: Array.isArray(it.selected_variations) ? it.selected_variations.join(', ') : (it.selected_variations || null),
+                selected_variations: Array.isArray(it.selected_variations)
+                  ? it.selected_variations
+                  : (it.selected_variations ? [String(it.selected_variations)] : []),
                 special_instructions: it.special_instructions || null
               }));
               await supabase.from('order_items').upsert(itemsPayload);

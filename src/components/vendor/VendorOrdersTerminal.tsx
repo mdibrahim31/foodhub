@@ -2016,31 +2016,72 @@ ${itemsList}
             {/* 3. ORDER SUMMARY WINDOW (100% Exact match to Checkout Order summary window) */}
             {(() => {
               const liveMatch = allOrdersList.find(o => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
-              let acceptItems = (selectedAcceptOrder.items && selectedAcceptOrder.items.length > 0)
-                ? selectedAcceptOrder.items
-                : (liveMatch?.items && liveMatch.items.length > 0 ? liveMatch.items : []);
+              
+              const extractItems = (val: any): any[] | null => {
+                if (!val) return null;
+                if (Array.isArray(val) && val.length > 0) return val;
+                if (typeof val === 'string') {
+                  try {
+                    const parsed = JSON.parse(val);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                    if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) return parsed.items;
+                  } catch {}
+                }
+                if (typeof val === 'object' && Array.isArray(val.items) && val.items.length > 0) {
+                  return val.items;
+                }
+                return null;
+              };
 
-              // Fallback 1: check order_summary.items
+              let acceptItems = extractItems(selectedAcceptOrder.items)
+                || extractItems(liveMatch?.items)
+                || extractItems((selectedAcceptOrder as any).order_items)
+                || extractItems((liveMatch as any)?.order_items)
+                || extractItems((selectedAcceptOrder as any).order_summary)
+                || extractItems((liveMatch as any)?.order_summary);
+
               if (!acceptItems || acceptItems.length === 0) {
-                const summaryItems = (selectedAcceptOrder as any).order_summary?.items || (liveMatch as any)?.order_summary?.items;
-                if (Array.isArray(summaryItems) && summaryItems.length > 0) {
-                  acceptItems = summaryItems;
+                const keys = ['foodiplace_v3_orders', 'foodvibe_v3_orders', 'foodiplace_orders', 'foodhub_orders'];
+                for (const k of keys) {
+                  try {
+                    const rawOrders = localStorage.getItem(k);
+                    if (rawOrders) {
+                      const parsedOrders = JSON.parse(rawOrders);
+                      const found = parsedOrders.find((o: any) => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
+                      const foundItems = extractItems(found?.items) || extractItems(found?.order_summary);
+                      if (foundItems && foundItems.length > 0) {
+                        acceptItems = foundItems;
+                        break;
+                      }
+                    }
+                  } catch {}
                 }
               }
 
-              // Fallback 2: check localStorage orders (foodvibe_v3_orders and foodiplace_orders)
-              if (!acceptItems || acceptItems.length === 0) {
-                try {
-                  const rawOrders = localStorage.getItem('foodvibe_v3_orders') || localStorage.getItem('foodiplace_orders');
-                  if (rawOrders) {
-                    const parsedOrders = JSON.parse(rawOrders);
-                    const found = parsedOrders.find((o: any) => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
-                    if (found && Array.isArray(found.items) && found.items.length > 0) {
-                      acceptItems = found.items;
-                    }
-                  }
-                } catch {}
+              const initialFoodTotal = selectedAcceptOrder.food_total || 0;
+              if ((!acceptItems || acceptItems.length === 0) && initialFoodTotal > 0) {
+                acceptItems = [{
+                  id: `synth-${selectedAcceptOrder.id || selectedAcceptOrder.order_code}`,
+                  item_name: 'Food Order Item',
+                  item_price: initialFoodTotal,
+                  quantity: 1,
+                  subtotal: initialFoodTotal,
+                  selected_variations: []
+                }];
               }
+
+              acceptItems = (acceptItems || []).map((it: any) => ({
+                ...it,
+                item_name: it.item_name || it.name || 'Food Item',
+                item_price: Number(it.item_price || it.price || 0),
+                quantity: Number(it.quantity || 1),
+                subtotal: Number(it.subtotal || ((it.item_price || it.price || 0) * (it.quantity || 1))),
+                selected_variations: Array.isArray(it.selected_variations)
+                  ? it.selected_variations
+                  : (typeof it.selected_variations === 'string' && it.selected_variations.trim()
+                    ? it.selected_variations.split(',').map((s: string) => s.trim())
+                    : [])
+              }));
 
               const itemsSubtotalSum = acceptItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0);
               const subtotalVal = selectedAcceptOrder.food_total || itemsSubtotalSum;
@@ -2322,39 +2363,121 @@ ${itemsList}
             })()}
 
             {/* Gray Items Card Container */}
-            <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4">
-              {selectedReadyOrder.items?.map((item, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start">
-                      <span className="text-base font-black text-[#d70f64] mr-2">
-                        {item.quantity} x
-                      </span>
-                      <span className="text-base font-black text-slate-950">
-                        {item.item_name}
-                      </span>
+            {(() => {
+              const liveMatch = allOrdersList.find(o => o.id === selectedReadyOrder.id || o.order_code === selectedReadyOrder.order_code);
+
+              const extractItems = (val: any): any[] | null => {
+                if (!val) return null;
+                if (Array.isArray(val) && val.length > 0) return val;
+                if (typeof val === 'string') {
+                  try {
+                    const parsed = JSON.parse(val);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                    if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) return parsed.items;
+                  } catch {}
+                }
+                if (typeof val === 'object' && Array.isArray(val.items) && val.items.length > 0) {
+                  return val.items;
+                }
+                return null;
+              };
+
+              let readyItems = extractItems(selectedReadyOrder.items)
+                || extractItems(liveMatch?.items)
+                || extractItems((selectedReadyOrder as any).order_items)
+                || extractItems((liveMatch as any)?.order_items)
+                || extractItems((selectedReadyOrder as any).order_summary)
+                || extractItems((liveMatch as any)?.order_summary);
+
+              if (!readyItems || readyItems.length === 0) {
+                const keys = ['foodiplace_v3_orders', 'foodvibe_v3_orders', 'foodiplace_orders', 'foodhub_orders'];
+                for (const k of keys) {
+                  try {
+                    const rawOrders = localStorage.getItem(k);
+                    if (rawOrders) {
+                      const parsedOrders = JSON.parse(rawOrders);
+                      const found = parsedOrders.find((o: any) => o.id === selectedReadyOrder.id || o.order_code === selectedReadyOrder.order_code);
+                      const foundItems = extractItems(found?.items) || extractItems(found?.order_summary);
+                      if (foundItems && foundItems.length > 0) {
+                        readyItems = foundItems;
+                        break;
+                      }
+                    }
+                  } catch {}
+                }
+              }
+
+              const subtotalVal = selectedReadyOrder.food_total || 0;
+              if ((!readyItems || readyItems.length === 0) && subtotalVal > 0) {
+                readyItems = [{
+                  id: `synth-${selectedReadyOrder.id || selectedReadyOrder.order_code}`,
+                  item_name: 'Food Order Item',
+                  item_price: subtotalVal,
+                  quantity: 1,
+                  subtotal: subtotalVal,
+                  selected_variations: []
+                }];
+              }
+
+              readyItems = (readyItems || []).map((it: any) => ({
+                ...it,
+                item_name: it.item_name || it.name || 'Food Item',
+                item_price: Number(it.item_price || it.price || 0),
+                quantity: Number(it.quantity || 1),
+                subtotal: Number(it.subtotal || ((it.item_price || it.price || 0) * (it.quantity || 1))),
+                selected_variations: Array.isArray(it.selected_variations)
+                  ? it.selected_variations
+                  : (typeof it.selected_variations === 'string' && it.selected_variations.trim()
+                    ? it.selected_variations.split(',').map((s: string) => s.trim())
+                    : [])
+              }));
+
+              return (
+                <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4">
+                  {readyItems && readyItems.length > 0 ? (
+                    readyItems.map((item: any, idx: number) => {
+                      const itemSubtotal = item.subtotal || ((item.item_price || 0) * (item.quantity || 1));
+                      return (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start">
+                              <span className="text-base font-black text-[#d70f64] mr-2">
+                                {item.quantity || 1} x
+                              </span>
+                              <span className="text-base font-black text-slate-950">
+                                {item.item_name}
+                              </span>
+                            </div>
+                            <span className="text-base font-bold text-slate-700 font-mono">
+                              {itemSubtotal > 0 ? `Tk ${itemSubtotal}` : '--'}
+                            </span>
+                          </div>
+
+                          {item.selected_variations && item.selected_variations.length > 0 && item.selected_variations.map((v: string, vIdx: number) => (
+                            <div key={vIdx} className="flex justify-between items-center text-xs font-bold text-slate-800 pl-6">
+                              <span>{v}</span>
+                              <span className="text-slate-400 font-mono">--</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-4 text-center text-xs font-bold text-slate-400">
+                      No item details provided
                     </div>
-                    <span className="text-base font-bold text-slate-400 font-mono">--</span>
+                  )}
+
+                  {/* Subtotal */}
+                  <div className="border-t border-slate-200/60 pt-3 flex justify-between items-center font-black text-base text-slate-950">
+                    <span>Subtotal</span>
+                    <span className="font-mono text-slate-900 font-bold">
+                      Tk {subtotalVal || readyItems.reduce((sum: number, it: any) => sum + (it.subtotal || 0), 0) || selectedReadyOrder.total_cash_payable || 0}
+                    </span>
                   </div>
-
-                  {/* Variations */}
-                  {item.selected_variations && item.selected_variations.map((v, vIdx) => (
-                    <div key={vIdx} className="flex justify-between items-center text-xs font-bold text-slate-800 pl-6">
-                      <span>{v}</span>
-                      <span className="text-slate-400 font-mono">--</span>
-                    </div>
-                  ))}
                 </div>
-              ))}
-
-              {/* Subtotal */}
-              <div className="border-t border-slate-200/60 pt-3 flex justify-between items-center font-black text-base text-slate-950">
-                <span>Subtotal</span>
-                <span className="font-mono text-slate-900 font-bold">
-                  Tk {selectedReadyOrder.food_total || selectedReadyOrder.items?.reduce((sum, it) => sum + (it.subtotal || 0), 0) || selectedReadyOrder.total_cash_payable || 0}
-                </span>
-              </div>
-            </div>
+              );
+            })()}
           </main>
 
           {/* Floating Pink Help (?) Button */}
