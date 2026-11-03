@@ -2203,17 +2203,20 @@ ${itemsList}
               Order Code: {formatOrderDisplayCode(selectedReadyOrder.order_code)} - {selectedReadyOrder.customer_phone || 'XXXX-1234'}
             </span>
 
-            <div className="flex items-center space-x-1.5">
-              <button
-                type="button"
-                onClick={() => handleShareOrderToWhatsApp(selectedReadyOrder)}
-                className="w-10 h-10 rounded-full bg-[#00a859] hover:bg-[#00924d] active:scale-95 text-white shadow-md flex items-center justify-center transition cursor-pointer"
-                title="WhatsApp এ অর্ডার শেয়ার করুন (Share to WhatsApp)"
-              >
-                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/>
-                </svg>
-              </button>
+            <div className="flex items-center space-x-1.5 min-w-[40px] justify-end">
+              {(selectedReadyOrder.status === 'ready_for_pickup' || selectedReadyOrder.status === 'food_picked_up') && (
+                <button
+                  type="button"
+                  onClick={() => handleShareOrderToWhatsApp(selectedReadyOrder)}
+                  className="w-10 h-10 rounded-full bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white shadow-md shadow-emerald-600/30 flex items-center justify-center transition-all cursor-pointer ring-2 ring-emerald-500/20 hover:ring-emerald-500/40 animate-in fade-in zoom-in-95 duration-200"
+                  title="WhatsApp এ অর্ডার শেয়ার করুন (Share to WhatsApp)"
+                  aria-label="WhatsApp Share Order"
+                >
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.533 5.337L2 22l4.821-1.503a9.987 9.987 0 0 0 5.191 1.455h.005c5.505 0 9.99-4.478 9.991-9.984A9.972 9.972 0 0 0 12.012 2zm5.727 14.137c-.24.673-1.391 1.29-1.924 1.365-.494.07-1.139.1-3.308-.797-2.766-1.144-4.545-3.94-4.683-4.123-.137-.183-1.116-1.485-1.116-2.832 0-1.347.705-2.01.956-2.284.25-.274.548-.342.731-.342.183 0 .366.002.525.01.17.008.397-.065.621.474.23.553.784 1.91.853 2.048.069.138.115.3.023.483-.092.183-.138.297-.275.457-.137.16-.289.358-.413.481-.137.137-.28.286-.12.561.16.275.713 1.176 1.532 1.905 1.053.937 1.94 1.228 2.215 1.365.275.137.435.114.595-.069.16-.183.687-.799.87-1.074.183-.274.366-.228.617-.137.251.092 1.59.75 1.865.888.275.137.457.206.526.32.069.115.069.663-.171 1.336z"/>
+                  </svg>
+                </button>
+              )}
             </div>
           </header>
 
