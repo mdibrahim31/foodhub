@@ -5004,20 +5004,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
               )}
 
-              {/* Special Instructions Input - Compact */}
-              <div className="space-y-1">
-                <label className="font-extrabold text-xs text-slate-900 block">
-                  Special instructions (optional)
-                </label>
-                <textarea
-                  maxLength={200}
-                  value={modalSpecialInstructions}
-                  onChange={(e) => setModalSpecialInstructions(e.target.value)}
-                  placeholder="e.g. no mayo, less spicy"
-                  className="w-full text-xs p-2 border border-slate-200 bg-slate-50 rounded-xl focus:outline-hidden focus:border-[#d70f64] focus:bg-white font-medium resize-none"
-                  rows={2}
-                />
-              </div>
+
 
               {/* Unavailable Preference Row */}
               <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs">
