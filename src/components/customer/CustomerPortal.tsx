@@ -2656,11 +2656,6 @@ export const CustomerPortal: React.FC = () => {
                                     {selectedVarStrings.join(' • ')}
                                   </p>
                                 )}
-                                {item.specialInstructions && (
-                                  <p className="text-xs text-amber-700 font-semibold pl-6">
-                                    • {item.specialInstructions}
-                                  </p>
-                                )}
                               </div>
                             );
                           })
@@ -3220,12 +3215,12 @@ export const CustomerPortal: React.FC = () => {
                       <FileText className="w-3.5 h-3.5 text-slate-500" />
                       <span>Special instructions for restaurant</span>
                     </div>
-                    <input
-                      type="text"
+                    <textarea
+                      rows={2}
                       value={orderInstructions}
                       onChange={(e) => setOrderInstructions(e.target.value)}
                       placeholder="e.g. Less spicy, well cooked, extra cutlery"
-                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#e21b70] focus:ring-1 focus:ring-[#e21b70] outline-hidden text-slate-800 placeholder-slate-400"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#e21b70] focus:ring-1 focus:ring-[#e21b70] outline-hidden text-slate-800 placeholder-slate-400 font-medium resize-none leading-relaxed"
                     />
                   </div>
 

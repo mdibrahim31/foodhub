@@ -2095,11 +2095,6 @@ ${itemsList}
                                 {variations}
                               </p>
                             )}
-                            {item.special_instructions && (
-                              <p className="text-xs text-amber-700 font-semibold pl-6">
-                                • {item.special_instructions}
-                              </p>
-                            )}
                           </div>
                         );
                       })
@@ -2340,13 +2335,6 @@ ${itemsList}
                     </div>
                     <span className="text-base font-bold text-slate-400 font-mono">--</span>
                   </div>
-
-                  {/* Special instruction in pink */}
-                  {(item.special_instructions || selectedReadyOrder.special_instructions) && (
-                    <p className="text-xs font-bold text-[#d70f64] pl-6 leading-tight">
-                      {item.special_instructions || selectedReadyOrder.special_instructions}
-                    </p>
-                  )}
 
                   {/* Variations */}
                   {item.selected_variations && item.selected_variations.map((v, vIdx) => (
