@@ -1991,11 +1991,11 @@ ${itemsList}
                   <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
                     <AlertTriangle className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
                       Customer Note / Special Request
                     </h4>
-                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug">
+                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug break-words break-all whitespace-pre-wrap">
                       {displayNote}
                     </p>
                   </div>
@@ -2308,11 +2308,11 @@ ${itemsList}
                   <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
                     <AlertTriangle className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
                       Customer Note / Restaurant Request
                     </h4>
-                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug">
+                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug break-words break-all whitespace-pre-wrap">
                       {displayNote}
                     </p>
                   </div>
