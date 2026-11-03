@@ -22,6 +22,15 @@ const PORT = getPort();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Enable ETag & Conditional HTTP Caching for API endpoints (HTTP 304 Not Modified)
+app.enable('etag');
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  }
+  next();
+});
+
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'data', 'uploads')));
 
