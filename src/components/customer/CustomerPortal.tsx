@@ -3270,8 +3270,8 @@ export const CustomerPortal: React.FC = () => {
             Header wrapping Location and Search bar
             ========================================================================
           */}
-          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-[max(env(safe-area-inset-top),0.75rem)] pb-3 px-4 rounded-b-2xl shadow-sm">
-            <div className="max-w-md mx-auto space-y-3">
+          <header className="bg-gradient-to-b from-orange-600 via-orange-500 to-orange-500 text-white pt-[max(env(safe-area-inset-top),0.5rem)] pb-1.5 px-3.5 rounded-b-xl shadow-2xs">
+            <div className="max-w-md mx-auto space-y-2">
               {/* Top Row: Location Pin + Choose Area + Fullscreen + Heart */}
               <div className="flex items-center justify-between">
                 <div 
@@ -3294,7 +3294,7 @@ export const CustomerPortal: React.FC = () => {
                 {/* Address Book Pin Point Button */}
                 <button
                   onClick={() => setIsAddressModalOpen(true)}
-                  className="mr-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-xs font-black flex items-center space-x-1 border border-white/30 transition shadow-2xs active:scale-95 shrink-0 cursor-pointer"
+                  className="mr-2 px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-full text-xs font-black flex items-center space-x-1 border border-white/30 transition shadow-2xs active:scale-95 shrink-0 cursor-pointer"
                   title="Open Address Book to change map pin point"
                 >
                   <MapPin className="w-3.5 h-3.5" />
@@ -3304,17 +3304,17 @@ export const CustomerPortal: React.FC = () => {
                 </button>
 
                 {/* Right: Fullscreen Toggle + Heart Icon (Favorites) */}
-                <div className="flex items-center space-x-1.5 shrink-0">
+                <div className="flex items-center space-x-1 shrink-0">
                   <button 
                     onClick={toggleFullscreen}
-                    className="p-1.5 text-white/90 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer active:scale-95"
+                    className="p-1 text-white/90 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer active:scale-95"
                     title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View (ফুলস্ক্রিন ভিউ)"}
                     aria-label="Toggle Fullscreen"
                   >
                     {isFullscreen ? (
-                      <Minimize2 className="w-5 h-5 stroke-[2.2]" />
+                      <Minimize2 className="w-4.5 h-4.5 stroke-[2.2]" />
                     ) : (
-                      <Maximize2 className="w-5 h-5 stroke-[2.2]" />
+                      <Maximize2 className="w-4.5 h-4.5 stroke-[2.2]" />
                     )}
                   </button>
                   <button 
@@ -3322,89 +3322,87 @@ export const CustomerPortal: React.FC = () => {
                     className="p-1 text-white hover:text-orange-200 transition cursor-pointer active:scale-95"
                     aria-label="Favorites"
                   >
-                    <Heart className={`w-6 h-6 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
+                    <Heart className={`w-5.5 h-5.5 stroke-[2.2] ${favorites.length > 0 ? 'fill-white' : ''}`} />
                   </button>
                 </div>
               </div>
 
               {/* Search Bar (Inside the Orange Header directly below Location) */}
               <div className="relative">
-                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
                 <input
                   type="text"
                   placeholder="Search for restaurants and groceries"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
+                  className="w-full pl-9 pr-3 py-2 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-xs font-medium shadow-2xs focus:outline-hidden"
                 />
               </div>
 
               {/* 
                 ======================================================================
-                TOP 16:9 HERO BANNER AD CAROUSEL (INSIDE THE ORANGE WINDOW - ATTACHED & SEAMLESS)
+                COMPACT HERO BANNER AD CAROUSEL
                 ======================================================================
               */}
               {heroSlides.length > 0 && (
-                <div className="space-y-1.5 -mx-2 sm:-mx-3 pt-0">
-                  <div className="relative overflow-hidden w-full aspect-[16/9] rounded-2xl sm:rounded-3xl border-0 shadow-xs bg-transparent">
-                    <div 
-                      className="w-full h-full relative bg-transparent"
-                      onTouchStart={handleTouchStart}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                    >
-                      {heroSlides.map((slide, i) => {
-                        return (
-                          <div 
-                            key={slide.id}
-                            style={getSlideStyle(i)}
-                            className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-2xl sm:rounded-3xl bg-transparent cursor-pointer"
-                            onClick={() => {
-                              if (slide.vendor) {
-                                setSelectedVendorForMenu(slide.vendor);
-                              }
+                <div className="relative overflow-hidden w-full aspect-[2.2/1] rounded-xl border-0 shadow-xs bg-transparent">
+                  <div 
+                    className="w-full h-full relative bg-transparent"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    {heroSlides.map((slide, i) => {
+                      return (
+                        <div 
+                          key={slide.id}
+                          style={getSlideStyle(i)}
+                          className="absolute inset-0 w-full h-full select-none overflow-hidden rounded-xl bg-transparent cursor-pointer"
+                          onClick={() => {
+                            if (slide.vendor) {
+                              setSelectedVendorForMenu(slide.vendor);
+                            }
+                          }}
+                        >
+                          <img 
+                            src={slide.image} 
+                            alt={slide.title || 'Banner'} 
+                            className="w-full h-full object-cover block transition-transform duration-500 hover:scale-102"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
                             }}
-                          >
-                            <img 
-                              src={slide.image} 
-                              alt={slide.title || 'Banner'} 
-                              className="w-full h-full object-cover block transition-transform duration-500 hover:scale-102"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=1280&h=720&auto=format&fit=crop&q=80';
-                              }}
-                            />
+                          />
 
-                            {/* Target Restaurant info pill if assigned */}
-                            {slide.vendor && (
-                              <div 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedVendorForMenu(slide.vendor!);
-                                }}
-                                className="absolute bottom-3 left-3 z-30 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black text-white flex items-center space-x-1.5 shadow-lg cursor-pointer hover:bg-black/90 transition select-none"
-                              >
-                                <span>🎯 {slide.vendor.name}</span>
-                                <span className="text-[10px] text-orange-400 font-bold ml-1">View Menu &rarr;</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          {/* Target Restaurant info pill if assigned */}
+                          {slide.vendor && (
+                            <div 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedVendorForMenu(slide.vendor!);
+                              }}
+                              className="absolute bottom-2 left-2 z-30 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[11px] font-black text-white flex items-center space-x-1 shadow-md cursor-pointer hover:bg-black/90 transition select-none"
+                            >
+                              <span>🎯 {slide.vendor.name}</span>
+                              <span className="text-[9px] text-orange-400 font-bold ml-0.5">View Menu &rarr;</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* Dots Carousel Indicator in translucent pill matching Screenshot */}
+                  {/* Overlay Dots Carousel Indicator in bottom center inside banner */}
                   {heroSlides.length > 1 && (
-                    <div className="flex justify-center pt-1">
-                      <div className="bg-black/25 backdrop-blur-xs px-2 py-0.5 rounded-full flex items-center space-x-1 shadow-2xs">
+                    <div className="absolute bottom-1.5 inset-x-0 flex justify-center z-30 pointer-events-none">
+                      <div className="bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-full flex items-center space-x-1 shadow-2xs pointer-events-auto">
                         {heroSlides.map((_, idx) => (
                           <button
                             key={idx}
                             onClick={() => setActiveSlide(idx)}
                             className={`transition-all duration-300 h-1 rounded-full cursor-pointer ${
                               activeSlide === idx 
-                                ? 'w-4 bg-white' 
-                                : 'w-1 bg-white/50 hover:bg-white/80'
+                                ? 'w-3.5 bg-white' 
+                                : 'w-1 bg-white/60 hover:bg-white/90'
                             }`}
                             aria-label={`Go to slide ${idx + 1}`}
                           />
