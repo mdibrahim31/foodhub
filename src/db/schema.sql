@@ -329,13 +329,15 @@ CREATE TABLE IF NOT EXISTS public.orders (
     rejected_rider_ids UUID[] DEFAULT ARRAY[]::UUID[],
     
     special_instructions TEXT,
+    unavailable_action VARCHAR(50) DEFAULT 'remove',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure order_type and rider_phone columns exist on orders table
+-- Ensure order_type, rider_phone and unavailable_action columns exist on orders table
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_type VARCHAR(50) DEFAULT 'delivery';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS rider_phone VARCHAR(20);
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS unavailable_action VARCHAR(50) DEFAULT 'remove';
 
 
 -- ====================================================================
@@ -353,13 +355,15 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     quantity INT NOT NULL DEFAULT 1,
     subtotal NUMERIC(10, 2) NOT NULL,
     selected_variations TEXT[],
-    special_instructions TEXT
+    special_instructions TEXT,
+    unavailable_action VARCHAR(50) DEFAULT 'remove'
 );
 
 -- Ensure discount & portion columns exist on existing order_items table
 ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
 ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10, 2) DEFAULT 0.00;
 ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS selected_portion VARCHAR(100);
+ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS unavailable_action VARCHAR(50) DEFAULT 'remove';
 
 -- ====================================================================
 -- 15. CUSTOMER CARTS TABLE (Persistent Multi-Device Shopping Carts)

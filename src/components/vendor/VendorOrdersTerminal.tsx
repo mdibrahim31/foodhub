@@ -634,7 +634,7 @@ export const VendorOrdersTerminal: React.FC = () => {
 👤 *${order.customer_name || 'Customer'}* (${order.customer_phone || 'N/A'})
 🏠 ${order.delivery_address || 'N/A'}
 📍 কাস্টমার ম্যাপ: ${customerMapUrl}
-${order.special_instructions ? `📝 কাস্টমার নোট: ${order.special_instructions}\n` : ''}━━━━━━━━━━━━━━━━━━
+${order.special_instructions ? `📝 কাস্টমার নোট: ${order.special_instructions}\n` : ''}${order.unavailable_action ? `⚠️ আইটেম না থাকলে: ${order.unavailable_action === 'call' ? '📞 কাস্টমারকে কল করুন' : '❌ অর্ডার থেকে বাদ দিন'}\n` : ''}━━━━━━━━━━━━━━━━━━
 🛒 *আইটেম:*
 ${itemsList}
 ━━━━━━━━━━━━━━━━━━
@@ -1990,6 +1990,20 @@ ${itemsList}
               </div>
             )}
 
+            {/* If product unavailable preference */}
+            {selectedAcceptOrder.unavailable_action && (
+              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex items-center justify-between text-xs font-bold text-slate-800 shadow-2xs">
+                <span className="text-slate-600">If item is unavailable:</span>
+                <span className={`px-2.5 py-1 rounded-lg font-extrabold uppercase text-[11px] ${
+                  selectedAcceptOrder.unavailable_action === 'call'
+                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                    : 'bg-rose-100 text-[#d70f64] border border-rose-200'
+                }`}>
+                  {selectedAcceptOrder.unavailable_action === 'call' ? '📞 Call customer' : 'Remove from order'}
+                </span>
+              </div>
+            )}
+
             {/* 3. ORDER SUMMARY WINDOW (100% Exact match to Checkout Order summary window) */}
             {(() => {
               const liveMatch = allOrdersList.find(o => o.id === selectedAcceptOrder.id || o.order_code === selectedAcceptOrder.order_code);
@@ -2253,6 +2267,20 @@ ${itemsList}
                 </span>
               </div>
             </div>
+
+            {/* If product unavailable preference */}
+            {selectedReadyOrder.unavailable_action && (
+              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 rounded-2xl border border-slate-200/90 text-xs font-bold text-slate-800 shadow-2xs">
+                <span className="text-slate-600">If item unavailable:</span>
+                <span className={`px-2.5 py-1 rounded-lg font-extrabold uppercase text-[11px] ${
+                  selectedReadyOrder.unavailable_action === 'call'
+                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                    : 'bg-rose-100 text-[#d70f64] border border-rose-200'
+                }`}>
+                  {selectedReadyOrder.unavailable_action === 'call' ? '📞 Call customer' : 'Remove from order'}
+                </span>
+              </div>
+            )}
 
             {/* Gray Items Card Container */}
             <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4">

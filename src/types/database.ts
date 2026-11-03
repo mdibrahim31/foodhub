@@ -282,6 +282,7 @@ export interface OrderItem {
   subtotal: number;
   selected_variations?: string[];
   special_instructions?: string;
+  unavailable_action?: 'remove' | 'call' | string;
 }
 
 export interface Order {
@@ -325,6 +326,7 @@ export interface Order {
   rejected_rider_ids?: string[];
   
   special_instructions?: string;
+  unavailable_action?: 'remove' | 'call' | string;
   created_at: string;
   updated_at: string;
   

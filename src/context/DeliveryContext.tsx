@@ -53,6 +53,7 @@ export interface CartItem {
   selectedVariations?: CartItemOption[];
   specialInstructions?: string;
   unitPrice?: number;
+  unavailable_action?: 'remove' | 'call' | string;
 }
 
 interface DeliveryContextType {
@@ -205,7 +206,8 @@ interface DeliveryContextType {
     quantityToAdd?: number, 
     selectedVariations?: CartItemOption[], 
     specialInstructions?: string,
-    customUnitPrice?: number
+    customUnitPrice?: number,
+    unavailableAction?: 'remove' | 'call' | string
   ) => void;
   removeFromCart: (menuItemId: string, varKey?: string) => void;
   updateCartQuantity: (menuItemId: string, qty: number, varKey?: string) => void;
@@ -5208,7 +5210,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     quantityToAdd: number = 1, 
     selectedVariations?: CartItemOption[], 
     specialInstructions?: string,
-    customUnitPrice?: number
+    customUnitPrice?: number,
+    unavailableAction: 'remove' | 'call' | string = 'remove'
   ) => {
     const isVendorClosed = vendor.is_active === false || (vendor as any).is_active === 'false' || (vendor as any).is_active === 0 || vendor.is_paused === true || (vendor as any).is_paused === 'true' || (vendor as any).is_paused === 1;
     if (isVendorClosed) {
@@ -5236,7 +5239,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         quantity: quantityToAdd, 
         selectedVariations, 
         specialInstructions, 
-        unitPrice: finalUnitPrice 
+        unitPrice: finalUnitPrice,
+        unavailable_action: unavailableAction
       }];
       setCart(newItems);
       setCartVendor(vendor);
@@ -5254,7 +5258,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let updated: CartItem[];
       if (existingIndex >= 0) {
         updated = prev.map((ci, idx) => 
-          idx === existingIndex ? { ...ci, quantity: ci.quantity + quantityToAdd } : ci
+          idx === existingIndex ? { ...ci, quantity: ci.quantity + quantityToAdd, unavailable_action: unavailableAction } : ci
         );
       } else {
         updated = [...prev, { 
@@ -5262,7 +5266,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           quantity: quantityToAdd, 
           selectedVariations, 
           specialInstructions, 
-          unitPrice: finalUnitPrice 
+          unitPrice: finalUnitPrice,
+          unavailable_action: unavailableAction
         }];
       }
       persistCustomerCart(updated, vendor);
@@ -5410,6 +5415,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       food_and_delivery_cash_collected_from_customer: false,
       status: 'pending',
       special_instructions: instructions || '',
+      unavailable_action: cart.find(ci => ci.unavailable_action === 'call') ? 'call' : (cart[0]?.unavailable_action || 'remove'),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       items: cart.map((ci, index) => {
@@ -5453,7 +5459,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           subtotal: itemRegularPrice * ci.quantity,
           selected_portion: selectedPortionName,
           selected_variations: selectedVarStrings,
-          special_instructions: ci.specialInstructions || ''
+          special_instructions: ci.specialInstructions || '',
+          unavailable_action: ci.unavailable_action || 'remove'
         };
       }),
       vendor: cartVendor
@@ -5565,11 +5572,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           total_cash_payable: newOrder.total_cash_payable,
           status: newOrder.status,
           special_instructions: newOrder.special_instructions,
+          unavailable_action: newOrder.unavailable_action || 'remove',
           created_at: newOrder.created_at,
           updated_at: newOrder.updated_at
         };
 
-        const { error: oError } = await supabase.from('orders').upsert([supabaseOrderPayload]);
+        let { error: oError } = await supabase.from('orders').upsert([supabaseOrderPayload]);
+        if (oError && (oError.message?.includes('unavailable_action') || oError.code === '42703')) {
+          // Backward compatibility fallback if column does not exist on remote yet
+          const { unavailable_action, ...withoutCol } = supabaseOrderPayload;
+          const retryRes = await supabase.from('orders').upsert([withoutCol]);
+          oError = retryRes.error;
+        }
+
         if (!oError) {
           const itemsPayload = (newOrder.items || []).map(it => ({
             id: it.id,
@@ -5580,16 +5595,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             quantity: Number(it.quantity) || 1,
             subtotal: Number(it.subtotal) || 0,
             selected_variations: it.selected_variations || null,
-            special_instructions: it.special_instructions || null
+            special_instructions: it.special_instructions || null,
+            unavailable_action: it.unavailable_action || 'remove'
           }));
           const { error: iErr } = await supabase.from('order_items').upsert(itemsPayload);
           if (iErr) {
             console.warn('Primary order_items upsert warning, attempting fallback without menu_item_id:', iErr);
-            const fallbackItemsPayload = itemsPayload.map(it => ({
-              ...it,
-              menu_item_id: null,
-              selected_variations: Array.isArray(it.selected_variations) ? it.selected_variations.join(', ') : it.selected_variations
-            }));
+            const fallbackItemsPayload = itemsPayload.map(it => {
+              const { unavailable_action, ...rest } = it;
+              return {
+                ...rest,
+                menu_item_id: null,
+                selected_variations: Array.isArray(it.selected_variations) ? it.selected_variations.join(', ') : it.selected_variations
+              };
+            });
             await supabase.from('order_items').upsert(fallbackItemsPayload);
           }
         } else {

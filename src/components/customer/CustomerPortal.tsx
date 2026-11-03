@@ -434,7 +434,8 @@ export const CustomerPortal: React.FC = () => {
       modalQuantity,
       dishVariations,
       modalSpecialInstructions,
-      calculatedModalUnitPrice
+      calculatedModalUnitPrice,
+      unavailPreference
     );
 
     // 2. Add each selected recommendation item as its own MenuItem with image into the cart!
