@@ -177,6 +177,7 @@ export const VendorPortal: React.FC = () => {
   const [discountPercentInput, setDiscountPercentInput] = useState<string>('15');
   const [discountTitleInput, setDiscountTitleInput] = useState<string>('15% OFF');
   const [isFreeDeliveryOffer, setIsFreeDeliveryOffer] = useState<boolean>(false);
+  const [freeDeliveryMinOrderInput, setFreeDeliveryMinOrderInput] = useState<string>('500');
   const [isEditCampaignModalOpen, setIsEditCampaignModalOpen] = useState(false);
 
   const openEditCampaignModal = () => {
@@ -184,6 +185,7 @@ export const VendorPortal: React.FC = () => {
       setDiscountPercentInput(currentVendor.discount_percentage ? String(currentVendor.discount_percentage) : '15');
       setDiscountTitleInput(currentVendor.discount_title || '15% OFF');
       setIsFreeDeliveryOffer(Boolean(currentVendor.is_free_delivery));
+      setFreeDeliveryMinOrderInput(currentVendor.free_delivery_min_order ? String(currentVendor.free_delivery_min_order) : '');
     }
     setIsEditCampaignModalOpen(true);
   };
@@ -2862,11 +2864,13 @@ export const VendorPortal: React.FC = () => {
                 e.preventDefault();
                 const pct = discountPercentInput.trim() ? parseFloat(discountPercentInput) : null;
                 const title = discountTitleInput.trim() ? discountTitleInput.trim() : (pct ? `${pct}% OFF` : null);
+                const minOrder = freeDeliveryMinOrderInput.trim() ? parseFloat(freeDeliveryMinOrderInput) : 0;
                 
                 await updateVendor(currentVendor.id, {
                   discount_percentage: pct as any,
                   discount_title: title as any,
-                  is_free_delivery: isFreeDeliveryOffer
+                  is_free_delivery: isFreeDeliveryOffer,
+                  free_delivery_min_order: isFreeDeliveryOffer ? (isNaN(minOrder) ? 0 : minOrder) : 0
                 });
 
                 setIsEditCampaignModalOpen(false);
@@ -2939,30 +2943,55 @@ export const VendorPortal: React.FC = () => {
               </div>
 
               {/* Free Delivery Toggle Box */}
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Bike className="w-5 h-5" />
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3 pr-2">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Bike className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h5 className="font-extrabold text-xs text-emerald-950">Free Delivery Offer</h5>
+                      <p className="text-[10px] text-emerald-800 font-medium">Provide 100% Free Delivery to customers</p>
+                    </div>
                   </div>
-                  <div>
-                    <h5 className="font-extrabold text-xs text-emerald-950">Free Delivery Offer</h5>
-                    <p className="text-[10px] text-emerald-800 font-medium">Provide 100% Free Delivery to customers</p>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsFreeDeliveryOffer(prev => !prev)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                      isFreeDeliveryOffer ? 'bg-emerald-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        isFreeDeliveryOffer ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsFreeDeliveryOffer(prev => !prev)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                    isFreeDeliveryOffer ? 'bg-emerald-600' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      isFreeDeliveryOffer ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                {/* Minimum Order Threshold Input for Free Delivery */}
+                {isFreeDeliveryOffer && (
+                  <div className="pt-2 border-t border-emerald-200 animate-in fade-in space-y-1">
+                    <label className="text-[10px] uppercase font-black text-emerald-950 block">
+                      Minimum Food Order Amount for Free Delivery (Tk)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">৳</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={freeDeliveryMinOrderInput}
+                        onChange={(e) => setFreeDeliveryMinOrderInput(e.target.value)}
+                        placeholder="e.g. 500"
+                        className="w-full pl-7 pr-3 py-2 bg-white border border-emerald-300 rounded-xl text-slate-900 font-mono font-black text-xs focus:outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                    <p className="text-[10px] text-emerald-800 font-normal leading-tight pt-0.5">
+                      * কাস্টমার সর্বনিম্ন কত টাকার খাবার অর্ডার করলে ফ্রি ডেলিভারি পাবে তা লিখুন (যেমন: 500)। খালি রাখলে সব অর্ডারে ফ্রি পাবে।
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Submit Buttons */}
