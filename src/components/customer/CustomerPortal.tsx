@@ -1209,9 +1209,6 @@ export const CustomerPortal: React.FC = () => {
       setIsAddressModalOpen(true);
       return;
     }
-    if (orderInstructions && !checkoutInstructions) {
-      setCheckoutInstructions(orderInstructions);
-    }
     setIsCheckoutScreen(true);
   };
 
@@ -1226,11 +1223,14 @@ export const CustomerPortal: React.FC = () => {
     }
     setIsPlacingOrder(true);
     try {
+      const restaurantNote = (orderInstructions || '').trim();
+      const deliveryNote = (checkoutInstructions || '').trim();
+
       const combinedInstructions = [
-        checkoutInstructions || orderInstructions,
+        restaurantNote,
+        deliveryNote ? `[Delivery: ${deliveryNote}]` : '',
         deliveryOption === 'priority' ? '[Priority Delivery (+Tk 28)]' : '',
-        riderTip > 0 ? `[Rider Tip: Tk ${riderTip}]` : '',
-        `[Payment: ${selectedPaymentMethod.toUpperCase()}]`
+        riderTip > 0 ? `[Rider Tip: Tk ${riderTip}]` : ''
       ].filter(Boolean).join(' | ');
 
       const placed = await placeOrder(combinedInstructions, orderType);
@@ -2471,20 +2471,17 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </section>
 
-                {/* 2. Restaurant instructions */}
+                {/* 2. Delivery instructions */}
                 <section className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-                    Restaurant instructions
+                    Delivery instructions
                   </label>
                   <div className="relative">
                     <input
                       type="text"
                       value={checkoutInstructions}
-                      onChange={(e) => {
-                        setCheckoutInstructions(e.target.value);
-                        setOrderInstructions(e.target.value);
-                      }}
-                      placeholder="(Optional) Note for restaurant (e.g. less spicy, sauce...)"
+                      onChange={(e) => setCheckoutInstructions(e.target.value)}
+                      placeholder="(Optional) Floor or Apt No or tell us ho..."
                       className="w-full bg-white border-2 border-slate-900 rounded-2xl px-4 py-3.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden"
                     />
                   </div>

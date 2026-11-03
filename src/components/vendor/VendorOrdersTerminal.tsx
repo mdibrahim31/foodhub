@@ -1974,21 +1974,34 @@ ${itemsList}
             </div>
 
             {/* 2. Customer Special Instructions Banner */}
-            {selectedAcceptOrder.special_instructions && (
-              <div className="bg-amber-50 border border-amber-200/90 rounded-3xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
-                <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                  <AlertTriangle className="w-5 h-5" />
+            {(() => {
+              const rawNote = selectedAcceptOrder.special_instructions || '';
+              const cleanNote = rawNote
+                .replace(/\[Payment:[^\]]+\]/gi, '')
+                .replace(/\[Delivery:[^\]]+\]/gi, '')
+                .replace(/\[Rider Tip:[^\]]+\]/gi, '')
+                .replace(/\[Priority Delivery[^\]]+\]/gi, '')
+                .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                .trim();
+              const displayNote = cleanNote || rawNote;
+              if (!displayNote) return null;
+
+              return (
+                <div className="bg-amber-50 border border-amber-200/90 rounded-3xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
+                  <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
+                      Customer Note / Special Request
+                    </h4>
+                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug">
+                      {displayNote}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
-                    Customer Note / Special Request
-                  </h4>
-                  <p className="text-sm sm:text-base font-bold text-amber-950 mt-0.5 leading-snug">
-                    {selectedAcceptOrder.special_instructions}
-                  </p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* If product unavailable preference */}
             {selectedAcceptOrder.unavailable_action && (
@@ -2283,21 +2296,34 @@ ${itemsList}
             )}
 
             {/* Customer Special Instructions Banner */}
-            {selectedReadyOrder.special_instructions && (
-              <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 shadow-2xs">
-                <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                  <AlertTriangle className="w-5 h-5" />
+            {(() => {
+              const rawNote = selectedReadyOrder.special_instructions || '';
+              const cleanNote = rawNote
+                .replace(/\[Payment:[^\]]+\]/gi, '')
+                .replace(/\[Delivery:[^\]]+\]/gi, '')
+                .replace(/\[Rider Tip:[^\]]+\]/gi, '')
+                .replace(/\[Priority Delivery[^\]]+\]/gi, '')
+                .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                .trim();
+              const displayNote = cleanNote || rawNote;
+              if (!displayNote) return null;
+
+              return (
+                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 shadow-2xs">
+                  <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
+                      Customer Note / Restaurant Request
+                    </h4>
+                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug">
+                      {displayNote}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
-                    Customer Note / Restaurant Request
-                  </h4>
-                  <p className="text-sm sm:text-base font-bold text-amber-950 mt-0.5 leading-snug">
-                    {selectedReadyOrder.special_instructions}
-                  </p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Gray Items Card Container */}
             <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4">
