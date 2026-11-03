@@ -2970,28 +2970,32 @@ export const VendorPortal: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Minimum Order Threshold Input for Free Delivery */}
-                {isFreeDeliveryOffer && (
-                  <div className="pt-2 border-t border-emerald-200 animate-in fade-in space-y-1">
-                    <label className="text-[10px] uppercase font-black text-emerald-950 block">
-                      Minimum Food Order Amount for Free Delivery (Tk)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">৳</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={freeDeliveryMinOrderInput}
-                        onChange={(e) => setFreeDeliveryMinOrderInput(e.target.value)}
-                        placeholder="e.g. 500"
-                        className="w-full pl-7 pr-3 py-2 bg-white border border-emerald-300 rounded-xl text-slate-900 font-mono font-black text-xs focus:outline-none focus:border-emerald-600"
-                      />
-                    </div>
-                    <p className="text-[10px] text-emerald-800 font-normal leading-tight pt-0.5">
-                      * কাস্টমার সর্বনিম্ন কত টাকার খাবার অর্ডার করলে ফ্রি ডেলিভারি পাবে তা লিখুন (যেমন: 500)। খালি রাখলে সব অর্ডারে ফ্রি পাবে।
-                    </p>
+                {/* Minimum Order Threshold Input for Free Delivery (Always Visible) */}
+                <div className="pt-2.5 border-t border-emerald-200/90 space-y-1">
+                  <label className="text-[10px] uppercase font-black text-emerald-950 block">
+                    Minimum Food Order Amount for Free Delivery (Tk)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">৳</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={freeDeliveryMinOrderInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFreeDeliveryMinOrderInput(val);
+                        if (parseFloat(val) > 0) {
+                          setIsFreeDeliveryOffer(true);
+                        }
+                      }}
+                      placeholder="e.g. 500"
+                      className="w-full pl-7 pr-3 py-2 bg-white border border-emerald-300 rounded-xl text-slate-900 font-mono font-black text-xs focus:outline-none focus:border-emerald-600 shadow-2xs"
+                    />
                   </div>
-                )}
+                  <p className="text-[10px] text-emerald-800 font-medium leading-tight pt-0.5">
+                    * কাস্টমার সর্বনিম্ন কত টাকার খাবার অর্ডার করলে ফ্রি ডেলিভারি পাবে তা লিখুন (যেমন: 500)।
+                  </p>
+                </div>
               </div>
 
               {/* Submit Buttons */}

@@ -4283,31 +4283,33 @@ export const VendorOrdersTerminal: React.FC = () => {
                 </button>
               </div>
 
-              {/* Minimum order threshold setting when Free Delivery is enabled */}
-              {campaignIsFreeDelivery && (
-                <div className="pt-2 border-t border-[#b2edd6] animate-in fade-in space-y-1 text-xs">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-emerald-950 block">
-                    MIN. ORDER AMOUNT FOR FREE DELIVERY (TK)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-emerald-900 text-sm">৳</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={campaignFreeDeliveryMinOrder || ''}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        setCampaignFreeDeliveryMinOrder(isNaN(val) ? 0 : Math.max(0, val));
-                      }}
-                      placeholder="e.g. 500"
-                      className="w-full pl-8 pr-3.5 py-2.5 bg-white border border-[#a8e6cf] rounded-2xl font-mono text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-[#00a86b]/20 transition"
-                    />
-                  </div>
-                  <p className="text-[10px] text-emerald-800 font-medium leading-tight pt-0.5">
-                    * কাস্টমার সর্বনিম্ন কত টাকার ফুড অর্ডার করলে ডেলিভারি চার্জ ফ্রি পাবে তা সেট করুন। (যেমন: ৫০০ টাকা অর্ডার করলে ফ্রি, কম হলে চার্জ প্রযোজ্য)
-                  </p>
+              {/* Minimum order threshold setting (Always Visible) */}
+              <div className="pt-2.5 border-t border-[#b2edd6] space-y-1 text-xs">
+                <label className="text-[11px] font-black uppercase tracking-wider text-emerald-950 block">
+                  MIN. ORDER AMOUNT FOR FREE DELIVERY (TK)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-emerald-900 text-sm">৳</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={campaignFreeDeliveryMinOrder || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const norm = isNaN(val) ? 0 : Math.max(0, val);
+                      setCampaignFreeDeliveryMinOrder(norm);
+                      if (norm > 0) {
+                        setCampaignIsFreeDelivery(true);
+                      }
+                    }}
+                    placeholder="e.g. 500"
+                    className="w-full pl-8 pr-3.5 py-2.5 bg-white border border-[#a8e6cf] rounded-2xl font-mono text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-[#00a86b]/20 transition shadow-2xs"
+                  />
                 </div>
-              )}
+                <p className="text-[10px] text-emerald-800 font-medium leading-tight pt-0.5">
+                  * কাস্টমার সর্বনিম্ন কত টাকার ফুড অর্ডার করলে ডেলিভারি চার্জ ফ্রি পাবে তা সেট করুন (যেমন: ৫০০ Tk)।
+                </p>
+              </div>
             </div>
 
             {/* Save Feedback */}
