@@ -264,6 +264,44 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [isUrlInputMode, setIsUrlInputMode] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Discount & Free Delivery Campaign Modal States
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
+  const [campaignDiscountPct, setCampaignDiscountPct] = useState<number>(0);
+  const [campaignDiscountTag, setCampaignDiscountTag] = useState<string>('');
+  const [campaignIsFreeDelivery, setCampaignIsFreeDelivery] = useState<boolean>(false);
+  const [campaignFreeDeliveryMinOrder, setCampaignFreeDeliveryMinOrder] = useState<number>(0);
+  const [campaignSaveFeedback, setCampaignSaveFeedback] = useState<string | null>(null);
+
+  const openCampaignModal = () => {
+    if (!activeVendor) return;
+    setCampaignDiscountPct(activeVendor.discount_percentage || 0);
+    setCampaignDiscountTag(activeVendor.discount_title || (activeVendor.discount_percentage ? `${activeVendor.discount_percentage}% OFF` : ''));
+    setCampaignIsFreeDelivery(Boolean(activeVendor.is_free_delivery));
+    setCampaignFreeDeliveryMinOrder(activeVendor.free_delivery_min_order || 0);
+    setCampaignSaveFeedback(null);
+    setIsCampaignModalOpen(true);
+  };
+
+  const handleSaveDiscountCampaign = async () => {
+    if (!activeVendor) return;
+    const finalPct = campaignDiscountPct > 0 ? campaignDiscountPct : 0;
+    const finalTag = finalPct > 0 ? (campaignDiscountTag || `${finalPct}% OFF`) : '';
+    const finalMinOrder = campaignIsFreeDelivery ? (campaignFreeDeliveryMinOrder || 0) : 0;
+
+    await updateVendor(activeVendor.id, {
+      discount_percentage: finalPct,
+      discount_title: finalTag,
+      is_free_delivery: campaignIsFreeDelivery,
+      free_delivery_min_order: finalMinOrder
+    });
+
+    setCampaignSaveFeedback('✅ Promo Campaign successfully saved to database!');
+    setTimeout(() => {
+      setCampaignSaveFeedback(null);
+      setIsCampaignModalOpen(false);
+    }, 1000);
+  };
+
   const openVendorProfileModal = () => {
     if (!activeVendor) return;
     setProfileLogoUrlInput(activeVendor.logo_url || '');
@@ -1615,6 +1653,17 @@ export const VendorOrdersTerminal: React.FC = () => {
 
               {/* Group 3 */}
               <div className="space-y-6 text-[16px] sm:text-[17px] font-semibold text-slate-900">
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    openCampaignModal();
+                  }}
+                  className="w-full text-left hover:text-black transition cursor-pointer flex items-center justify-between"
+                >
+                  <span>Ads & Restaurant Booster</span>
+                  <span className="text-[10px] font-black bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">OFFERS</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setIsDrawerOpen(false);
@@ -4070,6 +4119,221 @@ export const VendorOrdersTerminal: React.FC = () => {
                   <span>Save Schedule</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        MODAL: DISCOUNT & FREE DELIVERY CAMPAIGN (ADS & RESTAURANT BOOSTER)
+        (100% Matching Screenshot_20261103_173444_Chrome_0143ba66.jpg)
+        Includes feature: Vendor can set Minimum Order Amount (e.g. 500 Tk)
+        for Free Delivery eligibility.
+        ========================================================================
+      */}
+      {isCampaignModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in select-none"
+          onClick={() => setIsCampaignModalOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col overflow-y-auto"
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Tag className="w-6 h-6 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg leading-tight">
+                    Discount & Free Delivery Campaign
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Configure promotional offers for 7days
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCampaignModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
+
+            {/* Discount Percentage Section */}
+            <div className="space-y-2.5 pt-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block">
+                SELECT DISCOUNT PERCENTAGE (%)
+              </label>
+
+              {/* 4x2 Grid Buttons matching screenshot */}
+              <div className="grid grid-cols-4 gap-2 text-xs font-bold">
+                {[10, 15, 20, 25, 30, 40, 50].map((pct) => {
+                  const isSelected = campaignDiscountPct === pct;
+                  return (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => {
+                        setCampaignDiscountPct(pct);
+                        setCampaignDiscountTag(`${pct}% OFF`);
+                      }}
+                      className={`py-3 px-1 rounded-2xl border transition cursor-pointer text-center font-extrabold ${
+                        isSelected
+                          ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                          : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {pct}% OFF
+                    </button>
+                  );
+                })}
+
+                {/* No Discount Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCampaignDiscountPct(0);
+                    setCampaignDiscountTag('');
+                  }}
+                  className={`py-3 px-1 rounded-2xl border transition cursor-pointer text-center font-extrabold ${
+                    campaignDiscountPct === 0
+                      ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                      : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  No Discount
+                </button>
+              </div>
+
+              {/* Inputs row */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-700 block mb-1">
+                    DISCOUNT %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={campaignDiscountPct || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const norm = isNaN(val) ? 0 : Math.max(0, Math.min(100, val));
+                      setCampaignDiscountPct(norm);
+                      if (norm > 0) setCampaignDiscountTag(`${norm}% OFF`);
+                      else setCampaignDiscountTag('');
+                    }}
+                    placeholder="e.g. 15"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 outline-none focus:border-[#d70f64] focus:bg-white transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-700 block mb-1">
+                    BADGE TAG TEXT
+                  </label>
+                  <input
+                    type="text"
+                    value={campaignDiscountTag}
+                    onChange={(e) => setCampaignDiscountTag(e.target.value)}
+                    placeholder="e.g. 15% OFF"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 outline-none focus:border-[#d70f64] focus:bg-white transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Free Delivery Card (Mint container matching screenshot) */}
+            <div className="p-4 bg-[#e8f8f2] border border-[#a8e6cf] rounded-3xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 pr-2">
+                  <div className="w-10 h-10 rounded-2xl bg-[#00a86b] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Bike className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <span className="font-black text-slate-900 text-sm block leading-tight">
+                      Free Delivery Offer
+                    </span>
+                    <span className="text-[11px] text-emerald-900 font-semibold block leading-tight mt-0.5">
+                      Provide 100% Free Delivery to customers
+                    </span>
+                  </div>
+                </div>
+
+                {/* Toggle Switch */}
+                <button
+                  type="button"
+                  onClick={() => setCampaignIsFreeDelivery(!campaignIsFreeDelivery)}
+                  className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    campaignIsFreeDelivery ? 'bg-[#00a86b]' : 'bg-slate-300'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm absolute top-0.75 ${
+                      campaignIsFreeDelivery ? 'translate-x-6 left-0.5' : 'translate-x-0.5 left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Minimum order threshold setting when Free Delivery is enabled */}
+              {campaignIsFreeDelivery && (
+                <div className="pt-2 border-t border-[#b2edd6] animate-in fade-in space-y-1 text-xs">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-emerald-950 block">
+                    MIN. ORDER AMOUNT FOR FREE DELIVERY (TK)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-emerald-900 text-sm">৳</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={campaignFreeDeliveryMinOrder || ''}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setCampaignFreeDeliveryMinOrder(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      placeholder="e.g. 500"
+                      className="w-full pl-8 pr-3.5 py-2.5 bg-white border border-[#a8e6cf] rounded-2xl font-mono text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-[#00a86b]/20 transition"
+                    />
+                  </div>
+                  <p className="text-[10px] text-emerald-800 font-medium leading-tight pt-0.5">
+                    * কাস্টমার সর্বনিম্ন কত টাকার ফুড অর্ডার করলে ডেলিভারি চার্জ ফ্রি পাবে তা সেট করুন। (যেমন: ৫০০ টাকা অর্ডার করলে ফ্রি, কম হলে চার্জ প্রযোজ্য)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Save Feedback */}
+            {campaignSaveFeedback && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-center text-xs font-bold animate-in fade-in">
+                {campaignSaveFeedback}
+              </div>
+            )}
+
+            {/* Bottom Actions matching screenshot */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsCampaignModalOpen(false)}
+                className="py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider rounded-2xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveDiscountCampaign}
+                className="py-3.5 bg-[#ff5200] hover:bg-[#e04800] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-orange-500/30 transition cursor-pointer active:scale-95"
+              >
+                SAVE CAMPAIGN
+              </button>
             </div>
           </div>
         </div>

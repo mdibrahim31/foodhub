@@ -153,12 +153,16 @@ CREATE TABLE IF NOT EXISTS public.vendors (
     discount_percentage NUMERIC(5, 2),
     discount_title VARCHAR(100),
     is_free_delivery BOOLEAN DEFAULT false,
+    free_delivery_min_order NUMERIC(10, 2) DEFAULT 0.00,
     delivery_fee NUMERIC(10, 2),
     opening_schedule JSONB,
     is_permanently_closed BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS free_delivery_min_order NUMERIC(10, 2) DEFAULT 0.00;
+
 
 -- ====================================================================
 -- 8. PROMOTIONAL ADS & HERO BANNERS TABLE

@@ -102,6 +102,7 @@ export interface Vendor {
   discount_percentage?: number; // e.g. 15 for 15% OFF
   discount_title?: string; // e.g. "15% OFF"
   is_free_delivery?: boolean; // Free delivery offer active
+  free_delivery_min_order?: number; // Minimum order amount for free delivery (e.g. 500 BDT)
   delivery_fee?: number; // Specific vendor delivery fee if set
   created_at?: string;
 }
