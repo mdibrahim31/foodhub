@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Phone,
   Printer,
+  Share2,
   ShoppingBag,
   Store,
   ChevronDown,
@@ -274,10 +275,12 @@ export const VendorOrdersTerminal: React.FC = () => {
 
   const openCampaignModal = () => {
     if (!activeVendor) return;
+    const minVal = Number(activeVendor.free_delivery_min_order) || 0;
+    const isFree = Boolean(activeVendor.is_free_delivery) || minVal > 0;
     setCampaignDiscountPct(activeVendor.discount_percentage || 0);
     setCampaignDiscountTag(activeVendor.discount_title || (activeVendor.discount_percentage ? `${activeVendor.discount_percentage}% OFF` : ''));
-    setCampaignIsFreeDelivery(Boolean(activeVendor.is_free_delivery));
-    setCampaignFreeDeliveryMinOrder(activeVendor.free_delivery_min_order || 0);
+    setCampaignIsFreeDelivery(isFree);
+    setCampaignFreeDeliveryMinOrder(minVal);
     setCampaignSaveFeedback(null);
     setIsCampaignModalOpen(true);
   };
@@ -286,12 +289,14 @@ export const VendorOrdersTerminal: React.FC = () => {
     if (!activeVendor) return;
     const finalPct = campaignDiscountPct > 0 ? campaignDiscountPct : 0;
     const finalTag = finalPct > 0 ? (campaignDiscountTag || `${finalPct}% OFF`) : '';
-    const finalMinOrder = campaignIsFreeDelivery ? (campaignFreeDeliveryMinOrder || 0) : 0;
+    const minOrderVal = Number(campaignFreeDeliveryMinOrder) || 0;
+    const isFree = campaignIsFreeDelivery || minOrderVal > 0;
+    const finalMinOrder = isFree ? minOrderVal : 0;
 
     await updateVendor(activeVendor.id, {
       discount_percentage: finalPct,
       discount_title: finalTag,
-      is_free_delivery: campaignIsFreeDelivery,
+      is_free_delivery: isFree,
       free_delivery_min_order: finalMinOrder
     });
 
@@ -588,6 +593,91 @@ export const VendorOrdersTerminal: React.FC = () => {
     setDummyOrders(prev => prev.filter(o => o.id !== rejectModalOrder.id));
     setRejectModalOrder(null);
     setSelectedAcceptOrder(null);
+  };
+
+  // WhatsApp order share message generator with Google Map pinpoint links
+  const generateOrderWhatsAppMessage = (order: Order, vendor: Vendor | null) => {
+    const vLat = vendor?.latitude || 22.3569;
+    const vLng = vendor?.longitude || 91.7832;
+    const vendorMapUrl = (vendor?.latitude && vendor?.longitude)
+      ? `https://www.google.com/maps?q=${vendor.latitude},${vendor.longitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(vendor?.address || vendor?.name || 'Restaurant')}`;
+
+    const cLat = order.delivery_latitude;
+    const cLng = order.delivery_longitude;
+    const customerMapUrl = (cLat && cLng)
+      ? `https://www.google.com/maps?q=${cLat},${cLng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address || 'Delivery Address')}`;
+
+    const orderTime = new Date(order.created_at || Date.now()).toLocaleString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const itemsList = (order.items && order.items.length > 0)
+      ? order.items.map((it, idx) => {
+          const itemLine = `${idx + 1}. *${it.quantity}x ${it.item_name}*`;
+          const portion = it.selected_portion ? ` [${it.selected_portion}]` : '';
+          const variations = it.selected_variations && it.selected_variations.length > 0 ? ` (${it.selected_variations.join(', ')})` : '';
+          const price = ` = ৳${it.subtotal || (it.item_price * it.quantity)}`;
+          const note = it.special_instructions ? `\n   ↳ ⚠️ Note: ${it.special_instructions}` : '';
+          return `${itemLine}${portion}${variations}${price}${note}`;
+        }).join('\n')
+      : '• No item details';
+
+    const orderTypeText = order.order_type === 'pickup' ? '🛍️ Pickup (পিকআপ)' : '🛵 Home Delivery (হোম ডেলিভারি)';
+
+    const text = 
+`🛍️ *অর্ডার বিবরণী (ORDER #${order.order_code})*
+━━━━━━━━━━━━━━━━━━━━
+🕒 সময়: ${orderTime}
+📦 ডেলিভারি টাইপ: ${orderTypeText}
+⚡ স্ট্যাটাস: ${order.status.toUpperCase()}
+
+🏪 *রেস্টুরেন্ট তথ্য (VENDOR):*
+• নাম: *${vendor?.name || 'Restaurant'}*
+• ফোন: ${vendor?.phone || 'N/A'}
+• ঠিকানা: ${vendor?.address || 'N/A'}
+📍 *রেস্টুরেন্ট গুগল ম্যাপ লোকেশন (Vendor Map Pin):*
+${vendorMapUrl}
+
+👤 *কাস্টমার তথ্য (CUSTOMER):*
+• নাম: *${order.customer_name || 'Customer'}*
+• ফোন: ${order.customer_phone || 'N/A'}
+• ডেলিভারি ঠিকানা: ${order.delivery_address || 'N/A'}
+📍 *কাস্টমার ড্রপ-অফ ম্যাপ লোকেশন (Customer Map Pin):*
+${customerMapUrl}
+${order.special_instructions ? `📝 কাস্টমার নির্দেশনা: "${order.special_instructions}"\n` : ''}
+🍔 *অর্ডারকৃত আইটেম (ITEMS):*
+${itemsList}
+
+💰 *মূল্য ও বিলের বিবরণী (BILL SUMMARY):*
+• খাবারের মূল্য (Subtotal): ৳${order.food_total || 0}
+• ডেলিভারি চার্জ (Delivery Fee): ৳${order.delivery_fee || 0}
+${order.discount_amount ? `• ডিসকাউন্ট (Discount): -৳${order.discount_amount}\n` : ''}${order.platform_fee ? `• প্ল্যাটফর্ম ফি: ৳${order.platform_fee}\n` : ''}━━━━━━━━━━━━━━━━━━━━
+💵 *সর্বমোট ক্যাশ কালেকশন (TOTAL COD): ৳${order.total_cash_payable || 0}*
+━━━━━━━━━━━━━━━━━━━━
+${order.rider_phone ? `🚴 রাইডার: ${order.rider_name || 'Assigned'} (${order.rider_phone})\n` : ''}🔗 এই অর্ডারটি foodiplace টার্মিনাল থেকে জেনারেট করা হয়েছে।`.trim();
+
+    return text;
+  };
+
+  const handleShareOrderToWhatsApp = (order: Order) => {
+    const text = generateOrderWhatsAppMessage(order, activeVendor);
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    
+    // On mobile devices, window.location.href opens the WhatsApp app directly.
+    // On desktop, window.open opens WhatsApp Web.
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = whatsappUrl;
+    } else {
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   // Auto-open timer & weekly schedule evaluation:
@@ -1500,25 +1590,39 @@ export const VendorOrdersTerminal: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Bottom Right: Prep Time or Handover button */}
+                      {/* Bottom Right: Prep Time or Handover button + WhatsApp Share */}
                       <div className="flex justify-between items-center pt-1 border-t border-slate-100">
-                        {isReady ? (
+                        <div className="flex items-center space-x-2">
+                          {isReady ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedReadyOrder(order);
+                                setRiderPhoneInput(order.rider_phone || '');
+                              }}
+                              className="py-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition"
+                            >
+                              {order.rider_phone ? `Handover (Rider: ${order.rider_phone})` : 'Handover to Rider'}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-500 font-semibold">
+                              Preparing food
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedReadyOrder(order);
-                              setRiderPhoneInput(order.rider_phone || '');
+                              handleShareOrderToWhatsApp(order);
                             }}
-                            className="py-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition"
+                            className="p-1 px-2.5 text-white bg-[#25D366] hover:bg-[#20ba59] active:scale-95 rounded-lg transition cursor-pointer shadow-2xs flex items-center space-x-1 text-xs font-bold"
+                            title="WhatsApp এ শেয়ার করুন"
                           >
-                            {order.rider_phone ? `Handover (Rider: ${order.rider_phone})` : 'Handover to Rider'}
+                            <Share2 className="w-3.5 h-3.5 stroke-[2.4]" />
+                            <span className="text-[11px] font-bold">Share</span>
                           </button>
-                        ) : (
-                          <span className="text-xs text-slate-500 font-semibold">
-                            Preparing food
-                          </span>
-                        )}
+                        </div>
                         <span className="text-base font-bold text-slate-900">
                           {order.vendor_prep_minutes || 9} mins
                         </span>
@@ -1803,13 +1907,23 @@ export const VendorOrdersTerminal: React.FC = () => {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleDeclineOrder(selectedAcceptOrder)}
-              className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-            >
-              Decline
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => handleShareOrderToWhatsApp(selectedAcceptOrder)}
+                className="p-2 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white rounded-full transition cursor-pointer shadow-sm flex items-center justify-center"
+                title="WhatsApp এ শেয়ার করুন (Share to WhatsApp)"
+              >
+                <Share2 className="w-4.5 h-4.5 stroke-[2.3]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeclineOrder(selectedAcceptOrder)}
+                className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+              >
+                Decline
+              </button>
+            </div>
           </header>
 
           {/* Body Content */}
@@ -2086,14 +2200,16 @@ export const VendorOrdersTerminal: React.FC = () => {
               #{selectedReadyOrder.order_code} - {selectedReadyOrder.customer_phone || 'XXXX-1234'}
             </span>
 
-            <button
-              type="button"
-              onClick={() => setPrintModalOrder(selectedReadyOrder)}
-              className="p-1.5 text-slate-400 hover:text-slate-800 transition cursor-pointer"
-              title="Print Kitchen Docket"
-            >
-              <Printer className="w-5 h-5 stroke-[2]" />
-            </button>
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => handleShareOrderToWhatsApp(selectedReadyOrder)}
+                className="p-2 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white rounded-full transition cursor-pointer shadow-sm flex items-center justify-center"
+                title="WhatsApp এ অর্ডার শেয়ার করুন (Share to WhatsApp)"
+              >
+                <Share2 className="w-5 h-5 stroke-[2.3]" />
+              </button>
+            </div>
           </header>
 
           {/* Body Content */}
@@ -3107,18 +3223,25 @@ export const VendorOrdersTerminal: React.FC = () => {
             <div className="pt-3 flex space-x-2">
               <button
                 onClick={() => setPrintModalOrder(null)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold rounded-xl transition"
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold rounded-xl transition"
               >
                 Close
+              </button>
+              <button
+                onClick={() => handleShareOrderToWhatsApp(printModalOrder)}
+                className="flex-1 py-2.5 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white font-sans font-bold rounded-xl transition flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/30 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4 stroke-[2.3]" />
+                <span>WhatsApp শেয়ার</span>
               </button>
               <button
                 onClick={() => {
                   window.print();
                 }}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-sans font-black rounded-xl transition flex items-center justify-center space-x-1.5 shadow-md shadow-rose-600/30"
+                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-900 text-white font-sans font-bold rounded-xl transition flex items-center justify-center cursor-pointer"
+                title="Print Ticket"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print Ticket</span>
               </button>
             </div>
           </div>

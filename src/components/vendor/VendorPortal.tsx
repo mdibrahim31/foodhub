@@ -184,8 +184,10 @@ export const VendorPortal: React.FC = () => {
     if (currentVendor) {
       setDiscountPercentInput(currentVendor.discount_percentage ? String(currentVendor.discount_percentage) : '15');
       setDiscountTitleInput(currentVendor.discount_title || '15% OFF');
-      setIsFreeDeliveryOffer(Boolean(currentVendor.is_free_delivery));
-      setFreeDeliveryMinOrderInput(currentVendor.free_delivery_min_order ? String(currentVendor.free_delivery_min_order) : '');
+      const minVal = Number(currentVendor.free_delivery_min_order) || 0;
+      const isFree = Boolean(currentVendor.is_free_delivery) || minVal > 0;
+      setIsFreeDeliveryOffer(isFree);
+      setFreeDeliveryMinOrderInput(minVal > 0 ? String(minVal) : '');
     }
     setIsEditCampaignModalOpen(true);
   };
@@ -2865,12 +2867,14 @@ export const VendorPortal: React.FC = () => {
                 const pct = discountPercentInput.trim() ? parseFloat(discountPercentInput) : null;
                 const title = discountTitleInput.trim() ? discountTitleInput.trim() : (pct ? `${pct}% OFF` : null);
                 const minOrder = freeDeliveryMinOrderInput.trim() ? parseFloat(freeDeliveryMinOrderInput) : 0;
+                const validMinOrder = isNaN(minOrder) ? 0 : Math.max(0, minOrder);
+                const isFree = isFreeDeliveryOffer || validMinOrder > 0;
                 
                 await updateVendor(currentVendor.id, {
                   discount_percentage: pct as any,
                   discount_title: title as any,
-                  is_free_delivery: isFreeDeliveryOffer,
-                  free_delivery_min_order: isFreeDeliveryOffer ? (isNaN(minOrder) ? 0 : minOrder) : 0
+                  is_free_delivery: isFree,
+                  free_delivery_min_order: isFree ? validMinOrder : 0
                 });
 
                 setIsEditCampaignModalOpen(false);
