@@ -1597,18 +1597,20 @@ ${itemsList}
                               Preparing food
                             </span>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleShareOrderToWhatsApp(order);
-                            }}
-                            className="p-1 px-2.5 text-white bg-[#25D366] hover:bg-[#20ba59] active:scale-95 rounded-lg transition cursor-pointer shadow-2xs flex items-center space-x-1 text-xs font-bold"
-                            title="WhatsApp এ শেয়ার করুন"
-                          >
-                            <Share2 className="w-3.5 h-3.5 stroke-[2.4]" />
-                            <span className="text-[11px] font-bold">Share</span>
-                          </button>
+                          {isReady && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareOrderToWhatsApp(order);
+                              }}
+                              className="p-1 px-2.5 text-white bg-[#25D366] hover:bg-[#20ba59] active:scale-95 rounded-lg transition cursor-pointer shadow-2xs flex items-center space-x-1 text-xs font-bold"
+                              title="WhatsApp এ শেয়ার করুন"
+                            >
+                              <Share2 className="w-3.5 h-3.5 stroke-[2.4]" />
+                              <span className="text-[11px] font-bold">Share</span>
+                            </button>
+                          )}
                         </div>
                         <span className="text-base font-bold text-slate-900">
                           {order.vendor_prep_minutes || 9} mins
@@ -1895,14 +1897,6 @@ ${itemsList}
             </div>
 
             <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => handleShareOrderToWhatsApp(selectedAcceptOrder)}
-                className="p-2 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white rounded-full transition cursor-pointer shadow-sm flex items-center justify-center"
-                title="WhatsApp এ শেয়ার করুন (Share to WhatsApp)"
-              >
-                <Share2 className="w-4.5 h-4.5 stroke-[2.3]" />
-              </button>
               <button
                 type="button"
                 onClick={() => handleDeclineOrder(selectedAcceptOrder)}
@@ -2213,10 +2207,12 @@ ${itemsList}
               <button
                 type="button"
                 onClick={() => handleShareOrderToWhatsApp(selectedReadyOrder)}
-                className="p-2 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white rounded-full transition cursor-pointer shadow-sm flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-[#00a859] hover:bg-[#00924d] active:scale-95 text-white shadow-md flex items-center justify-center transition cursor-pointer"
                 title="WhatsApp এ অর্ডার শেয়ার করুন (Share to WhatsApp)"
               >
-                <Share2 className="w-5 h-5 stroke-[2.3]" />
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/>
+                </svg>
               </button>
             </div>
           </header>
