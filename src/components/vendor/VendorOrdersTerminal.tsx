@@ -79,6 +79,12 @@ const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
 
 const DAYS_ORDER: Array<DaySchedule['day']> = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
+// Helper to format order code cleanly by converting #FV- or FV- to clean order code digits
+export const formatOrderDisplayCode = (code?: string): string => {
+  if (!code) return '';
+  return code.replace(/^#?FV-?/i, '');
+};
+
 // Helper to check if vendor is within scheduled open hours at given date
 export const isVendorOpenBySchedule = (schedule?: WeeklySchedule): boolean => {
   if (!schedule) return true;
@@ -620,7 +626,7 @@ export const VendorOrdersTerminal: React.FC = () => {
       : '• No items';
 
     const text = 
-`*অর্ডার #${order.order_code}* | *মোট: ৳${order.total_cash_payable || 0}*
+`*অর্ডার কোড: #${formatOrderDisplayCode(order.order_code)}* | *মোট: ৳${order.total_cash_payable || 0}*
 ━━━━━━━━━━━━━━━━━━
 🏪 *${vendor?.name || 'Restaurant'}* (${vendor?.phone || 'N/A'})
 📍 ভেন্ডর ম্যাপ: ${vendorMapUrl}
@@ -1439,7 +1445,7 @@ ${itemsList}
                 <div className="space-y-3">
                   {newOrders.map((order, idx) => {
                     const serialNumber = (order.order_code && order.order_code !== '00')
-                      ? order.order_code
+                      ? formatOrderDisplayCode(order.order_code)
                       : String(idx + 1).padStart(2, '0');
                     const itemCount = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 1;
                     const itemLabel = `${itemCount} item${itemCount > 1 ? 's' : ''}`;
@@ -1453,6 +1459,9 @@ ${itemsList}
                         }}
                         className="bg-[#b8004f] hover:bg-[#a30046] active:scale-[0.98] transition-all rounded-2xl p-4 sm:p-5 shadow-xs min-h-[140px] flex flex-col justify-start cursor-pointer select-none text-white border-0"
                       >
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-white/80 block mb-1">
+                          Order Code
+                        </span>
                         <span className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
                           #{serialNumber}
                         </span>
@@ -1483,7 +1492,7 @@ ${itemsList}
                 <div className="space-y-3">
                   {upcomingOrders.map((order, idx) => {
                     const serialNumber = (order.order_code && order.order_code !== '00')
-                      ? order.order_code
+                      ? formatOrderDisplayCode(order.order_code)
                       : String(idx + 2).padStart(2, '0');
                     const itemCount = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 1;
                     const itemLabel = `${itemCount} item${itemCount > 1 ? 's' : ''}`;
@@ -1497,6 +1506,9 @@ ${itemsList}
                         }}
                         className="bg-[#b8004f] hover:bg-[#a30046] active:scale-[0.98] transition-all rounded-2xl p-4 sm:p-5 shadow-xs min-h-[140px] flex flex-col justify-start cursor-pointer select-none text-white border-0"
                       >
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-white/80 block mb-1">
+                          Order Code
+                        </span>
                         <span className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
                           #{serialNumber}
                         </span>
@@ -1545,8 +1557,11 @@ ${itemsList}
                           {/* Vertical pink/blue bar */}
                           <div className={`w-1.5 h-10 ${isReady ? 'bg-blue-600' : 'bg-[#d70f64]'} rounded-full shrink-0`} />
                           <div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-0.5">
+                              Order Code
+                            </span>
                             <h3 className="text-2xl font-black text-slate-950 tracking-tight font-sans leading-none">
-                              #{order.order_code}
+                              #{formatOrderDisplayCode(order.order_code)}
                             </h3>
                             <p className="text-sm font-bold text-slate-800 mt-1.5">
                               {order.customer_phone || 'XXXX-1234'} • {itemLabel}
@@ -1861,7 +1876,7 @@ ${itemsList}
               </button>
               <div>
                 <h1 className="text-lg sm:text-xl font-black text-slate-950 tracking-tight leading-tight">
-                  Order #{selectedAcceptOrder.order_code}
+                  Order Code: #{formatOrderDisplayCode(selectedAcceptOrder.order_code)}
                 </h1>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                   {selectedAcceptOrder.order_type === 'pickup' ? (
@@ -2169,7 +2184,7 @@ ${itemsList}
             </button>
 
             <span className="text-base sm:text-lg font-black text-slate-950 font-sans tracking-tight">
-              #{selectedReadyOrder.order_code} - {selectedReadyOrder.customer_phone || 'XXXX-1234'}
+              Order Code: {formatOrderDisplayCode(selectedReadyOrder.order_code)} - {selectedReadyOrder.customer_phone || 'XXXX-1234'}
             </span>
 
             <div className="flex items-center space-x-1.5">
@@ -2200,7 +2215,7 @@ ${itemsList}
               <div className="flex items-start justify-between">
                 <div>
                   <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight font-sans leading-none">
-                    Order #{selectedReadyOrder.order_code}
+                    Order Code: {formatOrderDisplayCode(selectedReadyOrder.order_code)}
                   </h1>
                   <p className="text-base font-bold text-slate-800 mt-1">
                     {selectedReadyOrder.customer_phone || 'XXXX-1234'}
@@ -3148,7 +3163,7 @@ ${itemsList}
               <p className="text-[10px] text-slate-500">{activeVendor?.address}</p>
               <p className="text-[10px] text-slate-500">Tel: {activeVendor?.phone}</p>
               <div className="font-bold text-sm text-slate-900 pt-1">
-                KITCHEN DOCKET #{printModalOrder.order_code}
+                KITCHEN DOCKET • ORDER CODE: #{formatOrderDisplayCode(printModalOrder.order_code)}
               </div>
               <p className="text-[10px] text-slate-500">
                 Time: {new Date(printModalOrder.created_at).toLocaleString()}
@@ -3812,7 +3827,7 @@ ${itemsList}
                 completedOrders.map((ord) => (
                   <div key={ord.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono font-black text-rose-600">#{ord.order_code}</span>
+                      <span className="font-mono font-black text-rose-600">Order Code: #{formatOrderDisplayCode(ord.order_code)}</span>
                       <span className="font-mono font-black text-slate-900">৳{ord.total_cash_payable}</span>
                     </div>
                     <p className="text-slate-600 font-medium truncate">

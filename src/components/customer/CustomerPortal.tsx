@@ -1237,7 +1237,7 @@ export const CustomerPortal: React.FC = () => {
         setActiveBottomNav('account');
         setAccountSubView('orders');
         setPlacedOrderSuccessInfo({
-          orderCode: placed.order_code || 'FV-00000',
+          orderCode: placed.order_code ? placed.order_code.replace(/^#?FV-?/i, '') : '00000',
           totalPayable: placed.total_cash_payable || finalCheckoutPayable
         });
       }

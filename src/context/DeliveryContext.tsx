@@ -5383,7 +5383,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ? crypto.randomUUID() 
       : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0')}`;
       
-    const orderCode = `FV-${Math.floor(10000 + Math.random() * 90000)}`;
+    // Generate clean numeric order code
+    const orderCode = `${Math.floor(10000 + Math.random() * 90000)}`;
 
     const newOrder: Order = {
       id: orderId,
