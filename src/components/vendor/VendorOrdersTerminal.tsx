@@ -1607,7 +1607,9 @@ ${itemsList}
                               className="p-1 px-2.5 text-white bg-[#25D366] hover:bg-[#20ba59] active:scale-95 rounded-lg transition cursor-pointer shadow-2xs flex items-center space-x-1 text-xs font-bold"
                               title="WhatsApp এ শেয়ার করুন"
                             >
-                              <Share2 className="w-3.5 h-3.5 stroke-[2.4]" />
+                              <svg className="w-3.5 h-3.5 fill-white shrink-0" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M265 158V64l207 156-207 156v-96c-100 0-173 64-219 166 10-190 94-282 219-282z" fill="white" />
+                              </svg>
                               <span className="text-[11px] font-bold">Share</span>
                             </button>
                           )}
@@ -2212,8 +2214,8 @@ ${itemsList}
                   title="WhatsApp এ অর্ডার শেয়ার করুন (Share to WhatsApp)"
                   aria-label="WhatsApp Share Order"
                 >
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                    <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.533 5.337L2 22l4.821-1.503a9.987 9.987 0 0 0 5.191 1.455h.005c5.505 0 9.99-4.478 9.991-9.984A9.972 9.972 0 0 0 12.012 2zm5.727 14.137c-.24.673-1.391 1.29-1.924 1.365-.494.07-1.139.1-3.308-.797-2.766-1.144-4.545-3.94-4.683-4.123-.137-.183-1.116-1.485-1.116-2.832 0-1.347.705-2.01.956-2.284.25-.274.548-.342.731-.342.183 0 .366.002.525.01.17.008.397-.065.621.474.23.553.784 1.91.853 2.048.069.138.115.3.023.483-.092.183-.138.297-.275.457-.137.16-.289.358-.413.481-.137.137-.28.286-.12.561.16.275.713 1.176 1.532 1.905 1.053.937 1.94 1.228 2.215 1.365.275.137.435.114.595-.069.16-.183.687-.799.87-1.074.183-.274.366-.228.617-.137.251.092 1.59.75 1.865.888.275.137.457.206.526.32.069.115.069.663-.171 1.336z"/>
+                  <svg className="w-5 h-5 fill-white" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M265 158V64l207 156-207 156v-96c-100 0-173 64-219 166 10-190 94-282 219-282z" fill="white" />
                   </svg>
                 </button>
               )}
@@ -3276,7 +3278,9 @@ ${itemsList}
                 onClick={() => handleShareOrderToWhatsApp(printModalOrder)}
                 className="flex-1 py-2.5 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white font-sans font-bold rounded-xl transition flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/30 cursor-pointer"
               >
-                <Share2 className="w-4 h-4 stroke-[2.3]" />
+                <svg className="w-4 h-4 fill-white shrink-0" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M265 158V64l207 156-207 156v-96c-100 0-173 64-219 166 10-190 94-282 219-282z" fill="white" />
+                </svg>
                 <span>WhatsApp শেয়ার</span>
               </button>
               <button
