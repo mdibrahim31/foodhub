@@ -2282,6 +2282,23 @@ ${itemsList}
               </div>
             )}
 
+            {/* Customer Special Instructions Banner */}
+            {selectedReadyOrder.special_instructions && (
+              <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 shadow-2xs">
+                <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
+                    Customer Note / Restaurant Request
+                  </h4>
+                  <p className="text-sm sm:text-base font-bold text-amber-950 mt-0.5 leading-snug">
+                    {selectedReadyOrder.special_instructions}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Gray Items Card Container */}
             <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4">
               {selectedReadyOrder.items?.map((item, idx) => (

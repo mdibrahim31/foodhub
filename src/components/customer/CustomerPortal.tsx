@@ -1209,6 +1209,9 @@ export const CustomerPortal: React.FC = () => {
       setIsAddressModalOpen(true);
       return;
     }
+    if (orderInstructions && !checkoutInstructions) {
+      setCheckoutInstructions(orderInstructions);
+    }
     setIsCheckoutScreen(true);
   };
 
@@ -2468,17 +2471,20 @@ export const CustomerPortal: React.FC = () => {
                   </div>
                 </section>
 
-                {/* 2. Delivery instructions */}
+                {/* 2. Restaurant instructions */}
                 <section className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-                    Delivery instructions
+                    Restaurant instructions
                   </label>
                   <div className="relative">
                     <input
                       type="text"
                       value={checkoutInstructions}
-                      onChange={(e) => setCheckoutInstructions(e.target.value)}
-                      placeholder="(Optional) Floor or Apt No or tell us ho..."
+                      onChange={(e) => {
+                        setCheckoutInstructions(e.target.value);
+                        setOrderInstructions(e.target.value);
+                      }}
+                      placeholder="(Optional) Note for restaurant (e.g. less spicy, sauce...)"
                       className="w-full bg-white border-2 border-slate-900 rounded-2xl px-4 py-3.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden"
                     />
                   </div>
