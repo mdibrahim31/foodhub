@@ -2448,8 +2448,7 @@ ${itemsList}
             </span>
 
             <div className="flex items-center space-x-2 min-w-[40px] justify-end">
-              {(selectedReadyOrder.status === 'pending' ||
-                selectedReadyOrder.status === 'vendor_accepted' ||
+              {(selectedReadyOrder.status === 'vendor_accepted' ||
                 selectedReadyOrder.status === 'food_preparing') && (
                 <button
                   type="button"
