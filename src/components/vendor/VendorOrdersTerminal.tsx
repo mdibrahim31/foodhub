@@ -2448,15 +2448,19 @@ ${itemsList}
             </span>
 
             <div className="flex items-center space-x-2 min-w-[40px] justify-end">
-              <button
-                type="button"
-                onClick={() => handleOpenModifyModal(selectedReadyOrder)}
-                className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition flex items-center space-x-1 cursor-pointer shadow-xs active:scale-95"
-                title="Modify Order Items"
-              >
-                <Edit3 className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Modify</span>
-              </button>
+              {(selectedReadyOrder.status === 'pending' ||
+                selectedReadyOrder.status === 'vendor_accepted' ||
+                selectedReadyOrder.status === 'food_preparing') && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenModifyModal(selectedReadyOrder)}
+                  className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition flex items-center space-x-1 cursor-pointer shadow-xs active:scale-95"
+                  title="Modify Order Items"
+                >
+                  <Edit3 className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Modify</span>
+                </button>
+              )}
 
               {(selectedReadyOrder.status === 'ready_for_pickup' || selectedReadyOrder.status === 'food_picked_up') && (
                 <button
