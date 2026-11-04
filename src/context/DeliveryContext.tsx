@@ -229,6 +229,7 @@ interface DeliveryContextType {
   riderConfirmCashCollectedFromCustomer: (orderId: string) => void;
   
   updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<Order>) => void;
+  modifyOrderItems: (orderId: string, updatedItems: any[]) => Promise<{ foodTotal: number }>;
   playNotificationSound: () => void;
 
   // Reviews & Ratings
@@ -5835,6 +5836,102 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     triggerRiderDispatch(orderId);
   };
 
+  const modifyOrderItems = async (orderId: string, updatedItems: any[]): Promise<{ foodTotal: number }> => {
+    const foodTotal = updatedItems.reduce((sum, item) => {
+      const price = Number(item.item_price || item.price || 0);
+      const qty = Number(item.quantity || 1);
+      const sub = Number(item.subtotal || (price * qty));
+      return sum + sub;
+    }, 0);
+
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId || o.order_code === orderId) {
+        const deliveryFee = o.order_type === 'pickup' ? 0 : (o.delivery_fee || 0);
+        const discountAmount = o.discount_amount || 0;
+        const platformFee = o.platform_fee || 0;
+        const taxFee = o.tax_fee || 0;
+        const vatFee = o.vat_fee || 0;
+        const newTotalCashPayable = Math.max(0, foodTotal - discountAmount + deliveryFee + platformFee + taxFee + vatFee);
+
+        const updatedOrder: Order = {
+          ...o,
+          food_total: foodTotal,
+          total_cash_payable: newTotalCashPayable,
+          items: updatedItems,
+          order_summary: { items: updatedItems },
+          updated_at: new Date().toISOString()
+        };
+
+        fetch(`/api/orders/${encodeURIComponent(o.id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedOrder)
+        }).catch(() => {});
+
+        const supaClient = supabase;
+        if (isSupabaseConfigured && supaClient) {
+          const supabasePayload: any = {
+            food_total: foodTotal,
+            total_cash_payable: newTotalCashPayable,
+            items: updatedItems,
+            order_summary: { items: updatedItems },
+            updated_at: updatedOrder.updated_at
+          };
+
+          supaClient
+            .from('orders')
+            .update(supabasePayload)
+            .eq('id', o.id)
+            .then(async (res) => {
+              if (res.error) {
+                const { items, order_summary, ...minimal } = supabasePayload;
+                await supaClient.from('orders').update(minimal).eq('id', o.id);
+              }
+
+              try {
+                await supaClient.from('order_items').delete().eq('order_id', o.id);
+                const itemsPayload = updatedItems.map((it: any) => ({
+                  order_id: o.id,
+                  item_name: it.item_name || it.name || 'Food Item',
+                  item_price: Number(it.item_price || it.price || 0),
+                  quantity: Number(it.quantity || 1),
+                  subtotal: Number(it.subtotal || ((it.item_price || 0) * (it.quantity || 1))),
+                  selected_variations: Array.isArray(it.selected_variations)
+                    ? it.selected_variations
+                    : (it.selected_variations ? [String(it.selected_variations)] : [])
+                }));
+                if (itemsPayload.length > 0) {
+                  await supaClient.from('order_items').insert(itemsPayload);
+                }
+              } catch (e) {
+                console.warn('order_items sync error:', e);
+              }
+            });
+        }
+
+        const storageKeys = ['foodiplace_v3_orders', 'foodvibe_v3_orders', 'foodiplace_orders', 'foodhub_orders'];
+        for (const k of storageKeys) {
+          try {
+            const localRaw = localStorage.getItem(k);
+            if (localRaw) {
+              const parsed = JSON.parse(localRaw);
+              const idx = parsed.findIndex((ord: any) => ord.id === o.id || ord.order_code === o.order_code);
+              if (idx !== -1) {
+                parsed[idx] = updatedOrder;
+                localStorage.setItem(k, JSON.stringify(parsed));
+              }
+            }
+          } catch {}
+        }
+
+        return updatedOrder;
+      }
+      return o;
+    }));
+
+    return { foodTotal };
+  };
+
   // -------------------------------------------------------------
   // STEP 4: INTELLIGENT SINGLE-RIDER PROXIMITY & ZONE DISPATCH ENGINE
   // Strict User Rule:
@@ -6140,6 +6237,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         riderConfirmCashPaidToVendor,
         riderConfirmCashCollectedFromCustomer,
         updateOrderStatus,
+        modifyOrderItems,
         playNotificationSound,
         reviews,
         addOrderReview,

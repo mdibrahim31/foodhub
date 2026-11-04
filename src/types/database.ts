@@ -331,6 +331,7 @@ export interface Order {
   updated_at: string;
   
   items?: OrderItem[];
+  order_summary?: any;
   vendor?: Vendor;
   rider?: Rider;
 }

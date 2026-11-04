@@ -64,7 +64,8 @@ import {
   Power,
   CheckCircle,
   Save,
-  Info
+  Info,
+  Edit3
 } from 'lucide-react';
 
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
@@ -129,7 +130,8 @@ export const VendorOrdersTerminal: React.FC = () => {
     setPasswordForUser,
     logoutUser,
     menuItems,
-    updateMenuItem
+    updateMenuItem,
+    modifyOrderItems
   } = useDelivery();
 
   // 1. Auth Form States
@@ -234,6 +236,195 @@ export const VendorOrdersTerminal: React.FC = () => {
   const [riderPhoneInput, setRiderPhoneInput] = useState<string>('');
   const [selectedPrepMinutes, setSelectedPrepMinutes] = useState<number>(9);
   const [dummyOrders, setDummyOrders] = useState<Order[]>([]);
+
+  // Modify Order Items Modal State & Handlers
+  const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+  const [modifyingOrder, setModifyingOrder] = useState<Order | null>(null);
+  const [modifiedItems, setModifiedItems] = useState<any[]>([]);
+  const [modifySearchQuery, setModifySearchQuery] = useState('');
+  const [isSavingModify, setIsSavingModify] = useState(false);
+  const [modifyToast, setModifyToast] = useState<string | null>(null);
+
+  const handleOpenModifyModal = (ord: Order) => {
+    const extractItems = (val: any): any[] | null => {
+      if (!val) return null;
+      if (Array.isArray(val) && val.length > 0) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) return parsed.items;
+        } catch {}
+      }
+      if (typeof val === 'object' && Array.isArray(val.items) && val.items.length > 0) {
+        return val.items;
+      }
+      return null;
+    };
+
+    let items = extractItems(ord.items)
+      || extractItems((ord as any).order_items)
+      || extractItems((ord as any).order_summary);
+
+    if (!items || items.length === 0) {
+      const keys = ['foodiplace_v3_orders', 'foodvibe_v3_orders', 'foodiplace_orders', 'foodhub_orders'];
+      for (const k of keys) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const found = parsed.find((o: any) => o.id === ord.id || o.order_code === ord.order_code);
+            const foundItems = extractItems(found?.items) || extractItems(found?.order_summary);
+            if (foundItems && foundItems.length > 0) {
+              items = foundItems;
+              break;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    if (!items || items.length === 0) {
+      const foodTotal = ord.food_total || 0;
+      if (foodTotal > 0) {
+        items = [{
+          id: `synth-${ord.id || ord.order_code}`,
+          item_name: 'Food Order Item',
+          item_price: foodTotal,
+          quantity: 1,
+          subtotal: foodTotal,
+          selected_variations: []
+        }];
+      } else {
+        items = [];
+      }
+    }
+
+    const clonedItems = (items || []).map((it: any) => ({
+      ...it,
+      id: it.id || `mod-item-${Math.random().toString(36).substr(2, 9)}`,
+      item_name: it.item_name || it.name || 'Food Item',
+      item_price: Number(it.item_price || it.price || 0),
+      quantity: Number(it.quantity || 1),
+      subtotal: Number(it.subtotal || ((it.item_price || it.price || 0) * (it.quantity || 1))),
+      selected_variations: Array.isArray(it.selected_variations)
+        ? [...it.selected_variations]
+        : (typeof it.selected_variations === 'string' && it.selected_variations.trim()
+          ? it.selected_variations.split(',').map((s: string) => s.trim())
+          : [])
+    }));
+
+    setModifyingOrder(ord);
+    setModifiedItems(clonedItems);
+    setModifySearchQuery('');
+    setIsModifyModalOpen(true);
+  };
+
+  const handleIncrementModifiedItem = (idx: number) => {
+    setModifiedItems(prev => {
+      const next = [...prev];
+      const item = { ...next[idx] };
+      item.quantity = (item.quantity || 1) + 1;
+      item.subtotal = item.quantity * item.item_price;
+      next[idx] = item;
+      return next;
+    });
+  };
+
+  const handleDecrementModifiedItem = (idx: number) => {
+    setModifiedItems(prev => {
+      const next = [...prev];
+      const item = { ...next[idx] };
+      if ((item.quantity || 1) > 1) {
+        item.quantity = (item.quantity || 1) - 1;
+        item.subtotal = item.quantity * item.item_price;
+        next[idx] = item;
+      }
+      return next;
+    });
+  };
+
+  const handleRemoveModifiedItem = (idx: number) => {
+    setModifiedItems(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleAddItemFromMenu = (mItem: MenuItem) => {
+    setModifiedItems(prev => {
+      const existingIdx = prev.findIndex(it => (it.menu_item_id === mItem.id) || (it.item_name?.toLowerCase() === mItem.name.toLowerCase()));
+      if (existingIdx !== -1) {
+        const next = [...prev];
+        const existing = { ...next[existingIdx] };
+        existing.quantity = (existing.quantity || 1) + 1;
+        existing.subtotal = existing.quantity * existing.item_price;
+        next[existingIdx] = existing;
+        return next;
+      }
+
+      const price = Number(mItem.price || 0);
+      const newItem = {
+        id: `added-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        menu_item_id: mItem.id,
+        item_name: mItem.name,
+        item_price: price,
+        quantity: 1,
+        subtotal: price,
+        selected_variations: []
+      };
+      return [...prev, newItem];
+    });
+  };
+
+  const handleSaveOrderModification = async () => {
+    if (!modifyingOrder) return;
+    setIsSavingModify(true);
+    try {
+      await modifyOrderItems(modifyingOrder.id, modifiedItems);
+      
+      const newFoodTotal = modifiedItems.reduce((s, it) => s + (it.subtotal || (it.item_price * it.quantity)), 0);
+
+      if (selectedReadyOrder && (selectedReadyOrder.id === modifyingOrder.id || selectedReadyOrder.order_code === modifyingOrder.order_code)) {
+        const deliveryFee = selectedReadyOrder.order_type === 'pickup' ? 0 : (selectedReadyOrder.delivery_fee || 0);
+        const discountAmount = selectedReadyOrder.discount_amount || 0;
+        const platformFee = selectedReadyOrder.platform_fee || 0;
+        const taxFee = selectedReadyOrder.tax_fee || 0;
+        const vatFee = selectedReadyOrder.vat_fee || 0;
+        const newTotalCashPayable = Math.max(0, newFoodTotal - discountAmount + deliveryFee + platformFee + taxFee + vatFee);
+
+        setSelectedReadyOrder(prev => prev ? {
+          ...prev,
+          food_total: newFoodTotal,
+          total_cash_payable: newTotalCashPayable,
+          items: modifiedItems,
+          order_summary: { items: modifiedItems }
+        } : null);
+      }
+
+      if (selectedAcceptOrder && (selectedAcceptOrder.id === modifyingOrder.id || selectedAcceptOrder.order_code === modifyingOrder.order_code)) {
+        const deliveryFee = selectedAcceptOrder.order_type === 'pickup' ? 0 : (selectedAcceptOrder.delivery_fee || 0);
+        const discountAmount = selectedAcceptOrder.discount_amount || 0;
+        const platformFee = selectedAcceptOrder.platform_fee || 0;
+        const taxFee = selectedAcceptOrder.tax_fee || 0;
+        const vatFee = selectedAcceptOrder.vat_fee || 0;
+        const newTotalCashPayable = Math.max(0, newFoodTotal - discountAmount + deliveryFee + platformFee + taxFee + vatFee);
+
+        setSelectedAcceptOrder(prev => prev ? {
+          ...prev,
+          food_total: newFoodTotal,
+          total_cash_payable: newTotalCashPayable,
+          items: modifiedItems,
+          order_summary: { items: modifiedItems }
+        } : null);
+      }
+
+      setModifyToast('অর্ডার পরিবর্তন সফলভাবে সেভ করা হয়েছে!');
+      setTimeout(() => setModifyToast(null), 3000);
+      setIsModifyModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save order modifications:', err);
+    } finally {
+      setIsSavingModify(false);
+    }
+  };
 
   // Menu Category & Item Availability States (Matching Foodpanda Partner App)
   const [isMenuViewOpen, setIsMenuViewOpen] = useState(false);
@@ -1901,6 +2092,16 @@ ${itemsList}
             <div className="flex items-center space-x-2">
               <button
                 type="button"
+                onClick={() => handleOpenModifyModal(selectedAcceptOrder)}
+                className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition flex items-center space-x-1 cursor-pointer shadow-xs active:scale-95"
+                title="Modify Order Items"
+              >
+                <Edit3 className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Modify</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleDeclineOrder(selectedAcceptOrder)}
                 className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
               >
@@ -2246,7 +2447,17 @@ ${itemsList}
               Order Code: {formatOrderDisplayCode(selectedReadyOrder.order_code)} - {selectedReadyOrder.customer_phone || 'XXXX-1234'}
             </span>
 
-            <div className="flex items-center space-x-1.5 min-w-[40px] justify-end">
+            <div className="flex items-center space-x-2 min-w-[40px] justify-end">
+              <button
+                type="button"
+                onClick={() => handleOpenModifyModal(selectedReadyOrder)}
+                className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition flex items-center space-x-1 cursor-pointer shadow-xs active:scale-95"
+                title="Modify Order Items"
+              >
+                <Edit3 className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Modify</span>
+              </button>
+
               {(selectedReadyOrder.status === 'ready_for_pickup' || selectedReadyOrder.status === 'food_picked_up') && (
                 <button
                   type="button"
@@ -4633,6 +4844,251 @@ ${itemsList}
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* 
+        ========================================================================
+        MODIFY ORDER ITEMS MODAL (Vendor Order Editing Engine)
+        - Allows vendor to remove items, change item quantities (+/-)
+        - Allows vendor to add new items from restaurant menu
+        - Automatically updates subtotal, total cash payable, and persists to database
+        ========================================================================
+      */}
+      {isModifyModalOpen && modifyingOrder && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+            {/* Modal Header */}
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight">
+                    Modify Order #{formatOrderDisplayCode(modifyingOrder.order_code)}
+                  </h3>
+                  <p className="text-xs text-slate-300 font-medium">
+                    Add or remove items for {modifyingOrder.customer_name || 'Customer'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModifyModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
+              {/* Current Items List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+                    Current Order Items ({modifiedItems.length})
+                  </h4>
+                  <span className="text-xs font-bold text-slate-400">
+                    Subtotal: Tk {modifiedItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0)}
+                  </span>
+                </div>
+
+                {modifiedItems.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <ShoppingBag className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-500">No items in order.</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Add items from the menu below.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {modifiedItems.map((item, idx) => {
+                      const itemSub = item.subtotal || ((item.item_price || 0) * (item.quantity || 1));
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl gap-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h5 className="text-sm font-black text-slate-900 truncate">
+                              {item.item_name}
+                            </h5>
+                            <div className="flex items-center space-x-2 text-xs font-bold text-slate-500 mt-0.5">
+                              <span>Tk {item.item_price}</span>
+                              {item.selected_variations && item.selected_variations.length > 0 && (
+                                <span className="text-slate-400">
+                                  • {Array.isArray(item.selected_variations) ? item.selected_variations.join(', ') : item.selected_variations}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-3 shrink-0">
+                            {/* Quantity Controls */}
+                            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => handleDecrementModifiedItem(idx)}
+                                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                              <span className="w-8 text-center text-xs font-black font-mono text-slate-900">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleIncrementModifiedItem(idx)}
+                                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center transition cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                            </div>
+
+                            <span className="text-sm font-black text-slate-950 font-mono w-16 text-right">
+                              Tk {itemSub}
+                            </span>
+
+                            {/* Remove Item Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveModifiedItem(idx)}
+                              className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition cursor-pointer"
+                              title="Remove Item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Items From Menu Section */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+                    Add Items From Menu
+                  </h4>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={modifySearchQuery}
+                    onChange={e => setModifySearchQuery(e.target.value)}
+                    placeholder="Search restaurant menu to add items..."
+                    className="w-full pl-10 pr-4 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+                  />
+                </div>
+
+                {/* Menu List */}
+                {(() => {
+                  const vendorItems = menuItems.filter(m => {
+                    if (modifyingOrder.vendor_id && m.vendor_id !== modifyingOrder.vendor_id) {
+                      return false;
+                    }
+                    if (modifySearchQuery.trim()) {
+                      return m.name.toLowerCase().includes(modifySearchQuery.toLowerCase());
+                    }
+                    return true;
+                  });
+
+                  if (vendorItems.length === 0) {
+                    return (
+                      <div className="py-4 text-center text-xs font-bold text-slate-400">
+                        No menu items found.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
+                      {vendorItems.map(m => {
+                        const inOrder = modifiedItems.find(it => it.menu_item_id === m.id || it.item_name?.toLowerCase() === m.name.toLowerCase());
+                        return (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition"
+                          >
+                            <div className="min-w-0 flex-1 pr-2">
+                              <h6 className="text-xs font-black text-slate-900 truncate">
+                                {m.name}
+                              </h6>
+                              <p className="text-[11px] font-bold text-[#d70f64] font-mono">
+                                Tk {m.price}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddItemFromMenu(m)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center space-x-1 transition cursor-pointer ${
+                                inOrder
+                                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-white shadow-2xs'
+                              }`}
+                            >
+                              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>{inOrder ? `Add (+${inOrder.quantity})` : 'Add Item'}</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs text-slate-500 font-bold block">New Food Total</span>
+                <span className="text-lg font-black text-slate-950 font-mono">
+                  Tk {modifiedItems.reduce((s, it) => s + (it.subtotal || ((it.item_price || 0) * (it.quantity || 1))), 0)}
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModifyModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200/70 rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveOrderModification}
+                  disabled={isSavingModify}
+                  className="px-5 py-2.5 bg-[#008a05] hover:bg-[#007404] active:scale-95 text-white font-black text-xs sm:text-sm rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingModify ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modify Toast Banner */}
+      {modifyToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[110] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-sm flex items-center space-x-2 animate-in fade-in slide-in-from-top-4 duration-200">
+          <CheckCircle className="w-5 h-5" />
+          <span>{modifyToast}</span>
         </div>
       )}
 
