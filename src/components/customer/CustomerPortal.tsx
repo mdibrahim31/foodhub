@@ -1127,13 +1127,12 @@ export const CustomerPortal: React.FC = () => {
         const matchMap: Record<string, RegExp> = {
           grocery: /grocery|মুদি|store|ration|rice|oil/,
           accessories: /accessor|অ্যাক্সেসরিজ|gadget|mobile|electronics|cover|headphone|earphone|cable/,
-          parts: /parts|পার্টস|auto|bike|hardware|spare|motor|mechanic/,
-          equipments: /equipment|tools|ইকুইপমেন্ট|যন্ত্রপাতি|hardware|machine|tool/,
+          parts_equipment: /parts|equipment|tools|পার্টস|ইকুইপমেন্ট|যন্ত্রপাতি|hardware|spare|machine|motor|mechanic/,
           cosmetics: /cosmetic|কসমেটিকস|beauty|makeup|skincare|parfumerie|perfume|lotion/,
           supershop: /super|সুপারশপ|mart|hypermarket|bazar|department/,
           pharmacy: /pharmacy|ফার্মেসি|medicine|drug|healthcare|pharma|chemist/,
           fruits: /fruit|ফলমূল|fresh|apple|mango|banana|vegetable|শাকসবজি/,
-          bakery_sweets: /bakery|sweet|বেকারি|মিষ্টি|cake|pastry|sweets/,
+          meat: /meat|মাংস|mutton|beef|chicken|poultry|butcher|fish|মাছ/,
           daily_needs: /daily|দৈনন্দিন|need|household|cleaning|tissue|soap/
         };
 
@@ -3540,12 +3539,12 @@ export const CustomerPortal: React.FC = () => {
               </section>
             )}
 
-            {/* SHOP CATEGORIES (Like RESTAURANT TYPES) */}
+            {/* SHOP CATEGORIES (Identical Size & Shape to RESTAURANT TYPES) */}
             {activeBottomNav === 'grocery' && (
-              <section className="space-y-2 pt-1">
+              <section className="space-y-2.5 pt-3">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
-                    <span>🍕 SHOP CATEGORIES</span>
+                    <span>🛍️ Shop Categories</span>
                   </h3>
                   {activeShopTypeFilter !== 'All' && (
                     <button 
@@ -3557,19 +3556,18 @@ export const CustomerPortal: React.FC = () => {
                   )}
                 </div>
 
-                {/* Shop Category Filter Cards - Horizontal scrollable row */}
-                <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none select-none">
+                {/* Shop Category Filter Cards - Horizontal scrollable row with -mx-4 px-4 py-2 so active ring/shadow never clips */}
+                <div className="-mx-4 px-4 py-2 flex items-center space-x-2 overflow-x-auto scrollbar-none select-none">
                   {[
                     { id: 'All', name: 'All', icon: '🛍️' },
                     { id: 'grocery', name: 'Grocery', icon: '🛒' },
                     { id: 'accessories', name: 'Accessories', icon: '🎧' },
-                    { id: 'parts', name: 'Parts', icon: '⚙️' },
-                    { id: 'equipments', name: 'Equipments', icon: '🛠️' },
+                    { id: 'parts_equipment', name: 'Parts & Equipment', icon: '⚙️' },
                     { id: 'cosmetics', name: 'Cosmetics', icon: '💄' },
                     { id: 'supershop', name: 'Supershop', icon: '🏬' },
                     { id: 'pharmacy', name: 'Pharmacy', icon: '💊' },
                     { id: 'fruits', name: 'Fruits', icon: '🍎' },
-                    { id: 'bakery_sweets', name: 'Bakery & Sweets', icon: '🧁' },
+                    { id: 'meat', name: 'Meat & Fish', icon: '🥩' },
                     { id: 'daily_needs', name: 'Daily Needs', icon: '🧴' },
                   ].map((type) => {
                     const isSelected = activeShopTypeFilter === type.id;
@@ -3577,14 +3575,16 @@ export const CustomerPortal: React.FC = () => {
                       <button
                         key={type.id}
                         onClick={() => setActiveShopTypeFilter(isSelected ? 'All' : type.id)}
-                        className={`flex flex-col items-center justify-center py-2 px-3.5 rounded-2xl border transition-all cursor-pointer select-none shrink-0 ${
+                        className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl border transition-all cursor-pointer select-none shrink-0 w-18 sm:w-20 h-16 sm:h-18 ${
                           isSelected
                             ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 font-black'
                             : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
                         }`}
                       >
-                        <span className="text-xl mb-0.5">{type.icon}</span>
-                        <span className="text-[11px] whitespace-nowrap">{type.name}</span>
+                        <span className="text-base sm:text-lg mb-0.5">{type.icon}</span>
+                        <span className="text-[9px] sm:text-[10px] leading-tight text-center font-bold px-0.5 break-words max-w-full">
+                          {type.name}
+                        </span>
                       </button>
                     );
                   })}
@@ -3647,56 +3647,57 @@ export const CustomerPortal: React.FC = () => {
 
         {/* 
           ======================================================================
-          SECOND ROW: FOOD CATEGORIES HORIZONTAL SLIDER
-          (Pizza, Burgers, Chicken & Grill, Shawarma, Biryani, Kabab, Fast Food, etc. - dynamically managed by Admin)
+          SECOND ROW: FOOD CATEGORIES HORIZONTAL SLIDER (Visible on Food Tab)
           ======================================================================
         */}
-        <section className="space-y-2 pt-1">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
-              <span>🍕 {activeBottomNav === 'food' ? 'Food Categories' : 'Shop Categories'}</span>
-            </h3>
-            {activeCuisineFilter !== 'All' && (
-              <button 
-                onClick={() => setActiveCuisineFilter('All')} 
-                className="text-[11px] font-bold text-orange-600 hover:underline"
-              >
-                Clear filter ({activeCuisineFilter})
-              </button>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none select-none">
-            {foodCategories.filter(cat => 
-              cat.is_active !== false && 
-              (activeBottomNav === 'food' ? (cat.category_type === 'food' || !cat.category_type) : cat.category_type === 'grocery')
-            ).map((cat) => {
-              const isSelected = activeCuisineFilter.toLowerCase() === cat.name.toLowerCase();
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCuisineFilter(isSelected ? 'All' : cat.name)}
-                  className={`flex flex-col items-center shrink-0 group cursor-pointer focus:outline-hidden transition-all ${
-                    isSelected ? 'scale-105' : 'hover:scale-102'
-                  }`}
+        {activeBottomNav === 'food' && (
+          <section className="space-y-2 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+                <span>🍕 Food Categories</span>
+              </h3>
+              {activeCuisineFilter !== 'All' && (
+                <button 
+                  onClick={() => setActiveCuisineFilter('All')} 
+                  className="text-[11px] font-bold text-orange-600 hover:underline"
                 >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border ${
-                    isSelected 
-                      ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
-                      : 'bg-white border-slate-200/80 hover:border-slate-300'
-                  }`}>
-                    <span>{cat.icon || '🍽️'}</span>
-                  </div>
-                  <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
-                    isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
-                  }`}>
-                    {cat.name}
-                  </span>
+                  Clear filter ({activeCuisineFilter})
                 </button>
-              );
-            })}
-          </div>
-        </section>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none select-none">
+              {foodCategories.filter(cat => 
+                cat.is_active !== false && 
+                (cat.category_type === 'food' || !cat.category_type)
+              ).map((cat) => {
+                const isSelected = activeCuisineFilter.toLowerCase() === cat.name.toLowerCase();
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCuisineFilter(isSelected ? 'All' : cat.name)}
+                    className={`flex flex-col items-center shrink-0 group cursor-pointer focus:outline-hidden transition-all ${
+                      isSelected ? 'scale-105' : 'hover:scale-102'
+                    }`}
+                  >
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-all border ${
+                      isSelected 
+                        ? 'ring-2 ring-orange-500 bg-orange-50 border-orange-300 shadow-orange-100' 
+                        : 'bg-white border-slate-200/80 hover:border-slate-300'
+                    }`}>
+                      <span>{cat.icon || '🍽️'}</span>
+                    </div>
+                    <span className={`text-[11px] mt-1.5 font-bold whitespace-nowrap max-w-[76px] truncate text-center ${
+                      isSelected ? 'text-orange-600 font-black' : 'text-slate-700'
+                    }`}>
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* 4. VERTICAL PROMOTIONAL DEAL POSTER CARDS - REMOVED AS REQUESTED */}
         

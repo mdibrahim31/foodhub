@@ -676,13 +676,12 @@ export const VendorPortal: React.FC = () => {
                     >
                       <option value="Grocery (মুদি)">Grocery (মুদি)</option>
                       <option value="Accessories (অ্যাক্সেসরিজ)">Accessories (অ্যাক্সেসরিজ)</option>
-                      <option value="Parts (পার্টস)">Parts (পার্টস)</option>
-                      <option value="Equipments (ইকুইপমেন্টস)">Equipments (ইকুইপমেন্টস)</option>
+                      <option value="Parts & Equipment (পার্টস ও ইকুইপমেন্টস)">Parts & Equipment (পার্টস ও ইকুইপমেন্টস)</option>
                       <option value="Cosmetics (কসমেটিকস)">Cosmetics (কসমেটিকস)</option>
                       <option value="Supershop (সুপারশপ)">Supershop (সুপারশপ)</option>
                       <option value="Pharmacy (ফার্মেসি)">Pharmacy (ফার্মেসি)</option>
                       <option value="Fruits (ফলমূল)">Fruits (ফলমূল)</option>
-                      <option value="Bakery & Sweets (বেকারি ও মিষ্টি)">Bakery & Sweets (বেকারি ও মিষ্টি)</option>
+                      <option value="Meat & Fish (মাংস ও মাছ)">Meat & Fish (মাংস ও মাছ)</option>
                       <option value="Daily Needs (দৈনন্দিন পণ্য)">Daily Needs (দৈনন্দিন পণ্য)</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
