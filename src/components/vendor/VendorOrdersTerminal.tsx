@@ -65,8 +65,12 @@ import {
   CheckCircle,
   Save,
   Info,
-  Edit3
+  Edit3,
+  Play,
+  Music
 } from 'lucide-react';
+
+type AlarmToneId = 'urgent_alarm' | 'classic_bell' | 'melody_chime' | 'digital_ring' | 'custom';
 
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
   saturday: { day: 'saturday', day_label: 'Saturday', day_label_bn: 'শনিবার', is_open: true, open_time: '10:00', close_time: '23:30' },
@@ -146,7 +150,39 @@ export const VendorOrdersTerminal: React.FC = () => {
   // 2. Terminal UI States (All hooks at top of component)
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'completed'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_sound_enabled');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [alarmTone, setAlarmTone] = useState<AlarmToneId>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_alarm_tone') as AlarmToneId | null;
+      return saved || 'urgent_alarm';
+    } catch {
+      return 'urgent_alarm';
+    }
+  });
+  const [alarmRepeat, setAlarmRepeat] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_alarm_repeat');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [customAlarmAudio, setCustomAlarmAudio] = useState<{ name: string; dataUrl: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('foodiplace_vendor_custom_alarm');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [alarmUploadError, setAlarmUploadError] = useState<string | null>(null);
   const [autoAccept, setAutoAccept] = useState(false);
 
   // Vendor Auto-Close & Auto-Reopen Timer State
@@ -683,38 +719,183 @@ export const VendorOrdersTerminal: React.FC = () => {
     }
   };
 
-  // Sound Synthesizer via Web Audio API
-  const playNewOrderSound = () => {
-    if (!soundEnabled) return;
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const customAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Unlock Web Audio API on first user gesture
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioCtx();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume().catch(() => {});
+        }
+      } catch {
+        // Ignore audio unlock errors
+      }
+    };
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    return () => window.removeEventListener('pointerdown', unlockAudio);
+  }, []);
+
+  // Persist alarm settings
+  useEffect(() => {
+    try {
+      localStorage.setItem('foodiplace_vendor_sound_enabled', String(soundEnabled));
+    } catch {}
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('foodiplace_vendor_alarm_tone', alarmTone);
+    } catch {}
+  }, [alarmTone]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('foodiplace_vendor_alarm_repeat', String(alarmRepeat));
+    } catch {}
+  }, [alarmRepeat]);
+
+  const handleCustomAlarmUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAlarmUploadError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setAlarmUploadError('অডিও ফাইল ২ MB এর কম হতে হবে (File must be under 2MB).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        const payload = { name: file.name, dataUrl: reader.result };
+        try {
+          localStorage.setItem('foodiplace_vendor_custom_alarm', JSON.stringify(payload));
+          setCustomAlarmAudio(payload);
+          setAlarmTone('custom');
+        } catch {
+          setAlarmUploadError('ফাইল সেভ করা যায়নি, ছোট অডিও ফাইল দিন।');
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Sound Synthesizer & Custom Audio Player
+  const playNewOrderSound = (overrideTone?: AlarmToneId, forcePlay: boolean = false) => {
+    if (!soundEnabled && !forcePlay) return;
+    const toneToPlay = overrideTone || alarmTone;
+
+    if (toneToPlay === 'custom' && customAlarmAudio?.dataUrl) {
+      try {
+        if (customAudioRef.current) {
+          customAudioRef.current.pause();
+          customAudioRef.current.currentTime = 0;
+        }
+        const audio = new Audio(customAlarmAudio.dataUrl);
+        customAudioRef.current = audio;
+        audio.play().catch(() => {});
+        return;
+      } catch {
+        // Fallback to synthesized tone if custom audio fails
+      }
+    }
+
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
 
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const now = ctx.currentTime;
 
-      osc1.type = 'triangle';
-      osc2.type = 'sine';
+      if (toneToPlay === 'urgent_alarm') {
+        // 3-pulse loud kitchen alarm
+        [0, 0.24, 0.48].forEach((offset) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(1046.5, now + offset);
+          osc.frequency.setValueAtTime(1396.9, now + offset + 0.09);
+          gain.gain.setValueAtTime(0.28, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.21);
+        });
+      } else if (toneToPlay === 'melody_chime') {
+        // 4-note ascending pleasant chime
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const start = now + idx * 0.11;
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.32, start);
+          gain.gain.exponentialRampToValueAtTime(0.01, start + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.36);
+        });
+      } else if (toneToPlay === 'digital_ring') {
+        // Rapid dual-tone POS ring
+        [0, 0.16, 0.32, 0.48].forEach((offset) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc1.type = 'square';
+          osc2.type = 'triangle';
+          osc1.frequency.setValueAtTime(940, now + offset);
+          osc2.frequency.setValueAtTime(1200, now + offset);
+          gain.gain.setValueAtTime(0.2, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.12);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          osc1.start(now + offset);
+          osc2.start(now + offset);
+          osc1.stop(now + offset + 0.13);
+          osc2.stop(now + offset + 0.13);
+        });
+      } else {
+        // classic_bell (default)
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-      osc1.frequency.setValueAtTime(880, ctx.currentTime);
-      osc1.frequency.setValueAtTime(1320, ctx.currentTime + 0.15);
+        osc1.type = 'triangle';
+        osc2.type = 'sine';
 
-      osc2.frequency.setValueAtTime(440, ctx.currentTime);
-      osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
+        osc1.frequency.setValueAtTime(880, now);
+        osc1.frequency.setValueAtTime(1320, now + 0.15);
 
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+        osc2.frequency.setValueAtTime(440, now);
+        osc2.frequency.setValueAtTime(660, now + 0.15);
 
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
 
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 0.65);
-      osc2.stop(ctx.currentTime + 0.65);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.68);
+        osc2.stop(now + 0.68);
+      }
     } catch {
       // Audio context restricted
     }
@@ -727,6 +908,15 @@ export const VendorOrdersTerminal: React.FC = () => {
     }
     prevPendingCountRef.current = pendingOrders.length;
   }, [pendingOrders.length]);
+
+  // Continuous repeat alarm while pending orders exist
+  useEffect(() => {
+    if (!soundEnabled || !alarmRepeat || pendingOrders.length === 0) return;
+    const interval = setInterval(() => {
+      playNewOrderSound();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [soundEnabled, alarmRepeat, pendingOrders.length, alarmTone, customAlarmAudio]);
 
   // Auto-accept if enabled
   useEffect(() => {
@@ -4262,12 +4452,12 @@ ${itemsList}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200"
+            className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between border-b pb-3 border-slate-100">
               <div className="flex items-center space-x-2 text-slate-900">
-                <Clock className="w-5 h-5 text-rose-600" />
-                <h3 className="font-black text-slate-900 text-base">Store Status & Hours</h3>
+                <Settings className="w-5 h-5 text-rose-600" />
+                <h3 className="font-black text-slate-900 text-base">Settings & Store Status</h3>
               </div>
               <button
                 onClick={() => setIsOpeningTimesModalOpen(false)}
@@ -4277,7 +4467,155 @@ ${itemsList}
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
+              {/* ORDER ALARM SOUND SETTINGS */}
+              <div className="p-3.5 bg-rose-50/60 rounded-2xl border border-rose-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-xl bg-[#d70f64] text-white flex items-center justify-center shadow-2xs">
+                      {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <p className="font-black text-slate-900 text-xs">Order Alarm Sound</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">নতুন অর্ডার আসলে অ্যালার্ম বাজবে</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    className={`px-3 py-1.5 rounded-full font-black text-[11px] transition cursor-pointer ${
+                      soundEnabled
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {soundEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                {soundEnabled && (
+                  <>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-700 text-[11px]">Select Alarm Tone (সাউন্ড বাছাই করুন):</span>
+                        <button
+                          type="button"
+                          onClick={() => playNewOrderSound(alarmTone, true)}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] transition cursor-pointer active:scale-95"
+                        >
+                          <Play className="w-3 h-3 fill-white" />
+                          <span>Test Alarm</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: 'urgent_alarm' as AlarmToneId, label: 'Urgent Kitchen' },
+                          { id: 'classic_bell' as AlarmToneId, label: 'Classic Bell' },
+                          { id: 'melody_chime' as AlarmToneId, label: 'Pleasant Chime' },
+                          { id: 'digital_ring' as AlarmToneId, label: 'Digital POS Ring' }
+                        ].map((tone) => (
+                          <button
+                            key={tone.id}
+                            type="button"
+                            onClick={() => {
+                              setAlarmTone(tone.id);
+                              playNewOrderSound(tone.id, true);
+                            }}
+                            className={`p-2.5 rounded-xl border text-left font-bold flex items-center justify-between transition cursor-pointer ${
+                              alarmTone === tone.id
+                                ? 'bg-white border-[#d70f64] text-[#d70f64] ring-2 ring-[#d70f64]/15 shadow-2xs'
+                                : 'bg-white/70 border-slate-200 text-slate-700 hover:bg-white'
+                            }`}
+                          >
+                            <span className="truncate">{tone.label}</span>
+                            {alarmTone === tone.id && <Check className="w-3.5 h-3.5 shrink-0 text-[#d70f64]" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Custom Audio Upload */}
+                    <div className="pt-1 border-t border-rose-200/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-700 text-[11px] flex items-center space-x-1">
+                          <Music className="w-3.5 h-3.5 text-[#d70f64]" />
+                          <span>Custom Alarm Audio (নিজস্ব অডিও):</span>
+                        </span>
+                        <label className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-[#d70f64] text-slate-700 font-bold text-[10px] cursor-pointer transition flex items-center space-x-1">
+                          <Upload className="w-3 h-3" />
+                          <span>Upload MP3/WAV</span>
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            onChange={handleCustomAlarmUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {customAlarmAudio && (
+                        <div
+                          onClick={() => {
+                            setAlarmTone('custom');
+                            playNewOrderSound('custom', true);
+                          }}
+                          className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                            alarmTone === 'custom'
+                              ? 'bg-white border-[#d70f64] text-[#d70f64] ring-2 ring-[#d70f64]/15'
+                              : 'bg-white/70 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <Volume2 className="w-3.5 h-3.5 shrink-0 text-[#d70f64]" />
+                            <span className="font-bold truncate text-[11px]">{customAlarmAudio.name}</span>
+                          </div>
+                          <div className="flex items-center space-x-1.5 shrink-0">
+                            {alarmTone === 'custom' && <Check className="w-3.5 h-3.5 text-[#d70f64]" />}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                localStorage.removeItem('foodiplace_vendor_custom_alarm');
+                                setCustomAlarmAudio(null);
+                                if (alarmTone === 'custom') setAlarmTone('urgent_alarm');
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-600 transition"
+                              title="Remove custom audio"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {alarmUploadError && (
+                        <p className="text-[10px] text-rose-600 font-bold">{alarmUploadError}</p>
+                      )}
+                    </div>
+
+                    {/* Repeat until accepted toggle */}
+                    <div className="flex items-center justify-between pt-1 border-t border-rose-200/60">
+                      <div>
+                        <p className="font-bold text-slate-800 text-[11px]">Repeat until order accepted</p>
+                        <p className="text-[10px] text-slate-500">অর্ডার একসেপ্ট না করা পর্যন্ত অ্যালার্ম বাজতে থাকবে</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAlarmRepeat(!alarmRepeat)}
+                        className={`px-2.5 py-1 rounded-full font-black text-[10px] transition cursor-pointer ${
+                          alarmRepeat
+                            ? 'bg-[#d70f64] text-white'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}
+                      >
+                        {alarmRepeat ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <p className="font-bold text-slate-600">Select Store Operational Status:</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -4357,7 +4695,7 @@ ${itemsList}
                 onClick={() => setIsOpeningTimesModalOpen(false)}
                 className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
               >
-                Apply Status
+                Save & Close
               </button>
             </div>
           </div>
