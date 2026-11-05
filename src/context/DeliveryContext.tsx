@@ -542,6 +542,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (typeof window !== 'undefined' && next?.id) {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}selected_vendor_id`, next.id);
       }
+      if (next) {
+        setCurrentUser(curr => {
+          if (!curr || curr.role === 'vendor') {
+            const updated: UserAccount = {
+              id: next.id,
+              role: 'vendor',
+              name: next.name,
+              phone: next.phone || curr?.phone || '',
+              is_password_set: true,
+              reference_id: next.id,
+              zone: next.zone
+            };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updated));
+            }
+            return updated;
+          }
+          return curr;
+        });
+      }
       return next;
     });
   };
