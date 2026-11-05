@@ -853,14 +853,14 @@ export const VendorOrdersTerminal: React.FC = () => {
     const vLat = vendor?.latitude || 22.3569;
     const vLng = vendor?.longitude || 91.7832;
     const vendorMapUrl = (vendor?.latitude && vendor?.longitude)
-      ? `https://www.google.com/maps?q=${vendor.latitude},${vendor.longitude}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(vendor?.address || vendor?.name || 'Restaurant')}`;
+      ? `www.google.com/maps?q=${vendor.latitude},${vendor.longitude}`
+      : `www.google.com/maps/search/?api=1&query=${encodeURIComponent(vendor?.address || vendor?.name || 'Restaurant')}`;
 
     const cLat = order.delivery_latitude;
     const cLng = order.delivery_longitude;
     const customerMapUrl = (cLat && cLng)
-      ? `https://www.google.com/maps?q=${cLat},${cLng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address || 'Delivery Address')}`;
+      ? `www.google.com/maps?q=${cLat},${cLng}`
+      : `www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address || 'Delivery Address')}`;
 
     const itemsList = (order.items && order.items.length > 0)
       ? order.items.map((it) => {
@@ -883,12 +883,13 @@ export const VendorOrdersTerminal: React.FC = () => {
       .replace(/\[Delivery:[^\]]+\]/gi, '')
       .replace(/\[Rider Tip:[^\]]+\]/gi, '')
       .replace(/\[Priority Delivery[^\]]+\]/gi, '')
-      .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+      .replace(/(\s*\|\s*)+$/g, '')
+      .replace(/^(\s*\|\s*)+/g, '')
       .trim();
 
     const text = 
 `*অর্ডার কোড: #${formatOrderDisplayCode(order.order_code)}* | *Total Cash Pay: ৳${cashPayWithoutDelivery}*
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 🏪 *${vendor?.name || 'Restaurant'}* (${vendor?.phone || 'N/A'})
 🏠 ${vendor?.address || 'N/A'}
 📍 ভেন্ডর ম্যাপ: ${vendorMapUrl}
@@ -896,10 +897,10 @@ export const VendorOrdersTerminal: React.FC = () => {
 👤 *${order.customer_name || 'Customer'}* (${order.customer_phone || 'N/A'})
 🏠 ${order.delivery_address || 'N/A'}
 📍 কাস্টমার ম্যাপ: ${customerMapUrl}
-${cleanCustomerNote ? `📝 কাস্টমার নোট: ${cleanCustomerNote}\n` : ''}${order.unavailable_action ? `⚠️ আইটেম না থাকলে: ${order.unavailable_action === 'call' ? '📞 কাস্টমারকে কল করুন' : '❌ অর্ডার থেকে বাদ দিন'}\n` : ''}━━━━━━━━━━━━━━━━━━
+${cleanCustomerNote ? `📝 কাস্টমার নোট: ${cleanCustomerNote}\n` : ''}━━━━━━━━━━━━━━━━━━━━
 🛒 *আইটেম:*
 ${itemsList}
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 💰 ডেলিভারি চার্জ: ৳${deliveryFee}${discount ? ` | ছাড়: -৳${discount}` : ''}
 💵 *সর্বমোট ক্যাশ কালেকশন (COD): ৳${totalCollection}*`.trim();
 
