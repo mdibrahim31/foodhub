@@ -875,8 +875,11 @@ export const VendorOrdersTerminal: React.FC = () => {
     const foodTotal = Number(order.food_total || 0);
     const deliveryFee = Number(order.delivery_fee || 0);
     const discount = Number(order.discount_amount || 0);
-    const totalCollection = Number(order.total_cash_payable ?? Math.max(0, foodTotal + deliveryFee - discount));
-    const cashPayWithoutDelivery = Math.max(0, totalCollection - deliveryFee);
+    const tipMatch = (order.special_instructions || '').match(/\[Rider Tip:\s*(?:Tk|৳)?\s*(\d+(?:\.\d+)?)\]/i);
+    const riderTip = tipMatch ? Number(tipMatch[1]) : 0;
+    const totalDeliveryWithTip = deliveryFee + riderTip;
+    const totalCollection = Number(order.total_cash_payable ?? Math.max(0, foodTotal + deliveryFee + riderTip - discount));
+    const cashPayWithoutDelivery = Math.max(0, totalCollection - deliveryFee - riderTip);
 
     const cleanCustomerNote = (order.special_instructions || '')
       .replace(/\[Payment:[^\]]+\]/gi, '')
@@ -886,6 +889,10 @@ export const VendorOrdersTerminal: React.FC = () => {
       .replace(/(\s*\|\s*)+$/g, '')
       .replace(/^(\s*\|\s*)+/g, '')
       .trim();
+
+    const deliveryLine = riderTip > 0
+      ? `💰 ডেলিভারি চার্জ: ৳${deliveryFee} + টিপ ৳${riderTip} = ৳${totalDeliveryWithTip}`
+      : `💰 ডেলিভারি চার্জ: ৳${deliveryFee}`;
 
     const text = 
 `*অর্ডার কোড: #${formatOrderDisplayCode(order.order_code)}* | *Total Cash Pay: ৳${cashPayWithoutDelivery}*
@@ -901,7 +908,7 @@ ${cleanCustomerNote ? `📝 কাস্টমার নোট: ${cleanCustomerN
 🛒 *আইটেম:*
 ${itemsList}
 ━━━━━━━━━━━━━━━━━━━━
-💰 ডেলিভারি চার্জ: ৳${deliveryFee}${discount ? ` | ছাড়: -৳${discount}` : ''}
+${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
 💵 *সর্বমোট ক্যাশ কালেকশন (COD): ৳${totalCollection}*`.trim();
 
     return text;

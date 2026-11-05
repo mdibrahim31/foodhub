@@ -5433,7 +5433,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const vatMin = Number(settings.vat_min_order) || 0;
     const effectiveVat = (vatMin > 0 && foodTotal < vatMin) ? 0 : (Number(settings.vat_amount) || 0);
 
-    const totalCashPayable = foodTotal + effectiveDeliveryFee + effectivePlatformFee + effectiveTax + effectiveVat;
+    const tipMatch = (instructions || '').match(/\[Rider Tip:\s*(?:Tk|৳)?\s*(\d+(?:\.\d+)?)\]/i);
+    const parsedRiderTip = tipMatch ? Number(tipMatch[1]) : 0;
+    const priorityMatch = (instructions || '').match(/\[Priority Delivery\s*\(\+(?:Tk|৳)?\s*(\d+(?:\.\d+)?)\)\]/i);
+    const parsedPriorityFee = priorityMatch ? Number(priorityMatch[1]) : 0;
+
+    const totalCashPayable = foodTotal + effectiveDeliveryFee + parsedPriorityFee + parsedRiderTip + effectivePlatformFee + effectiveTax + effectiveVat;
 
     // Use a clean valid UUID for orderId so it never fails Supabase UUID constraints
     const orderId = typeof crypto !== 'undefined' && crypto.randomUUID 
