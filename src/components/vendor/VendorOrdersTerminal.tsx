@@ -2171,16 +2171,6 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
             <div className="flex items-center space-x-2">
               <button
                 type="button"
-                onClick={() => handleOpenModifyModal(selectedAcceptOrder)}
-                className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition flex items-center space-x-1 cursor-pointer shadow-xs active:scale-95"
-                title="Modify Order Items"
-              >
-                <Edit3 className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Modify</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => handleDeclineOrder(selectedAcceptOrder)}
                 className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
               >
@@ -2263,15 +2253,12 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
               if (!displayNote) return null;
 
               return (
-                <div className="bg-amber-50 border border-amber-200/90 rounded-3xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
-                  <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
+                <div className="bg-white border border-slate-200/80 rounded-3xl p-4 sm:p-5 shadow-2xs">
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
-                      Customer Note / Special Request
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                      Customer Note
                     </h4>
-                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug break-words break-all whitespace-pre-wrap">
+                    <p className="text-sm sm:text-base font-extrabold text-slate-900 mt-1 leading-snug break-words break-all whitespace-pre-wrap">
                       {displayNote}
                     </p>
                   </div>
@@ -2639,15 +2626,12 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
               if (!displayNote) return null;
 
               return (
-                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 shadow-2xs">
-                  <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
-                      Customer Note / Restaurant Request
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                      Customer Note
                     </h4>
-                    <p className="text-sm sm:text-base font-extrabold text-amber-950 mt-0.5 leading-snug break-words break-all whitespace-pre-wrap">
+                    <p className="text-sm sm:text-base font-extrabold text-slate-900 mt-1 leading-snug break-words break-all whitespace-pre-wrap">
                       {displayNote}
                     </p>
                   </div>
