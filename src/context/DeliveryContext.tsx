@@ -114,7 +114,7 @@ interface DeliveryContextType {
     longitude: number;
     description?: string;
     vendor_type?: 'restaurant' | 'shop';
-    restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen';
+    restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery';
     google_maps_link?: string;
     password?: string;
   }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
@@ -3530,7 +3530,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     longitude: number;
     description?: string;
     vendor_type?: 'restaurant' | 'shop';
-    restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen';
+    restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery';
     google_maps_link?: string;
     password?: string;
   }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {

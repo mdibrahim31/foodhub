@@ -99,10 +99,9 @@ export const VendorPortal: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regVendorType, setRegVendorType] = useState<'restaurant' | 'shop'>('restaurant');
-  const [regRestaurantCategory, setRegRestaurantCategory] = useState<'restaurant' | 'cloud_kitchen' | 'home_kitchen'>('restaurant');
+  const [regRestaurantCategory, setRegRestaurantCategory] = useState<'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery'>('restaurant');
   const [regShopCategory, setRegShopCategory] = useState<string>('Grocery (মুদি)');
   const [regAddress, setRegAddress] = useState('');
-  const [regZone, setRegZone] = useState('');
   const [regGoogleMapsLink, setRegGoogleMapsLink] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
 
@@ -416,7 +415,7 @@ export const VendorPortal: React.FC = () => {
     }
 
     const availableZones = zones && zones.length > 0 ? zones : [];
-    const selectedZoneName = regZone || (availableZones.length > 0 ? availableZones[0].name : 'ctg');
+    const selectedZoneName = (availableZones.length > 0 ? availableZones[0].name : 'ctg');
     const matchedZone = availableZones.find(z => z.name === selectedZoneName || z.id === selectedZoneName);
 
     let finalLat = 22.3569;
@@ -441,6 +440,8 @@ export const VendorPortal: React.FC = () => {
           ? 'Restaurant (রেস্টুরেন্ট)'
           : regRestaurantCategory === 'cloud_kitchen'
           ? 'Cloud Kitchen (ক্লাউড কিচেন)'
+          : regRestaurantCategory === 'sweets_bakery'
+          ? 'Sweets & Bakery (মিষ্টি ও বেকারি)'
           : 'Home Kitchen (হোম কিচেন)')
       : regShopCategory;
 
@@ -659,6 +660,7 @@ export const VendorPortal: React.FC = () => {
                       <option value="restaurant">Restaurant (রেস্টুরেন্ট)</option>
                       <option value="cloud_kitchen">Cloud Kitchen (ক্লাউড কিচেন)</option>
                       <option value="home_kitchen">Home Kitchen (হোম কিচেন)</option>
+                      <option value="sweets_bakery">Sweets & Bakery (মিষ্টি ও বেকারি)</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
                   </div>
@@ -694,36 +696,6 @@ export const VendorPortal: React.FC = () => {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
-              </div>
-
-              {/* DELIVERY ZONE */}
-              <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Delivery Zone (ডেলিভারি জোন) *</label>
-                <div className="relative">
-                  <select
-                    value={regZone || (zones && zones[0]?.name) || 'ctg'}
-                    onChange={(e) => setRegZone(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm appearance-none cursor-pointer font-bold"
-                  >
-                    {zones && zones.length > 0 ? (
-                      zones.map((z) => (
-                        <option key={z.id} value={z.name}>
-                          {z.name}
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="ctg">ctg</option>
-                        <option value="Chawkbazar">Chawkbazar</option>
-                        <option value="GEC">GEC</option>
-                      </>
-                    )}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
-                </div>
-                <p className="text-[10px] text-slate-500 font-normal leading-relaxed pt-1">
-                  কাস্টমার অ্যাড্রেস বুকের পিন লোকেশন যে জোনের ভেতরে থাকবে, সেই জোনের সব ভেন্ডর কাস্টমার দেখতে পাবে।
-                </p>
               </div>
 
               {/* GOOGLE MAPS LOCATION URL / COORDINATES */}
