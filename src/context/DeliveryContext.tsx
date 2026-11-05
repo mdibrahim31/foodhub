@@ -5400,7 +5400,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return null;
     }
 
-    const foodTotal = cart.reduce((sum, ci) => sum + (ci.unitPrice ?? ci.menuItem.price) * ci.quantity, 0);
+    const foodTotal = cart.reduce((sum, ci) => {
+      const hasDishVars = (ci.selectedVariations || []).length > 0;
+      const variationPrice = hasDishVars
+        ? (ci.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0)
+        : undefined;
+      const pricing = getItemPricing(ci.menuItem, cartVendor, 0, variationPrice);
+      return sum + pricing.discountedPrice * ci.quantity;
+    }, 0);
     const regularFoodTotal = cart.reduce((sum, ci) => {
       const hasDishVars = (ci.selectedVariations || []).length > 0;
       const variationPrice = hasDishVars

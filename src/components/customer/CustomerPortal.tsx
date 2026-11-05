@@ -1149,7 +1149,11 @@ export const CustomerPortal: React.FC = () => {
   }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords]);
 
   // Cart Calculations
-  const foodTotal = cart.reduce((sum, item) => sum + (item.unitPrice ?? item.menuItem.price) * item.quantity, 0);
+  const foodTotal = cart.reduce((sum, item) => {
+    const extrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
+    const pricing = getItemPricing(item.menuItem, cartVendor, extrasPrice);
+    return sum + pricing.discountedPrice * item.quantity;
+  }, 0);
   const regularFoodTotal = cart.reduce((sum, item) => {
     const extrasPrice = (item.selectedVariations || []).reduce((s, opt) => s + (Number(opt.price) || 0), 0);
     const pricing = getItemPricing(item.menuItem, cartVendor, extrasPrice);

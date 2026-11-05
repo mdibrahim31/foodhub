@@ -19,57 +19,40 @@ export function getItemPricing(
   extrasPrice: number = 0,
   selectedVariationPrice?: number
 ): ItemPricing {
+  const rawPrice = Number(dish.price) || 0;
   let baseCatalogPrice: number;
 
   if (selectedVariationPrice !== undefined && selectedVariationPrice !== null && Number(selectedVariationPrice) > 0) {
-    baseCatalogPrice = Number(selectedVariationPrice);
+    baseCatalogPrice = rawPrice > 0 ? rawPrice + Number(selectedVariationPrice) : Number(selectedVariationPrice);
+  } else if (rawPrice > 0) {
+    baseCatalogPrice = rawPrice;
   } else {
-    const rawPrice = Number(dish.price) || 0;
-    if (rawPrice > 0) {
-      baseCatalogPrice = rawPrice;
-    } else {
-      // If dish price was omitted because variations exist, extract lowest/first variation price
-      const varPrices: number[] = [];
-      if (dish.variations && Array.isArray(dish.variations)) {
-        dish.variations.forEach(g => {
-          (g.options || []).forEach(o => {
-            const p = Number(o.price);
-            if (p > 0) varPrices.push(p);
-          });
-        });
-      }
-      if (dish.portion_options && Array.isArray(dish.portion_options)) {
-        dish.portion_options.forEach(po => {
-          const p = Number(po.price);
+    // If dish price was omitted because variations exist, extract lowest/first variation price
+    const varPrices: number[] = [];
+    if (dish.variations && Array.isArray(dish.variations)) {
+      dish.variations.forEach(g => {
+        (g.options || []).forEach(o => {
+          const p = Number(o.price);
           if (p > 0) varPrices.push(p);
         });
-      }
-
-      baseCatalogPrice = varPrices.length > 0 ? Math.min(...varPrices) : 0;
+      });
     }
-  }
-  
-  // If dish explicitly specifies an original_price > baseCatalogPrice, that's its regular pre-discount base
-  const regularBase = (dish.original_price && Number(dish.original_price) > baseCatalogPrice)
-    ? Number(dish.original_price)
-    : baseCatalogPrice;
-  
-  const totalRegular = regularBase + extrasPrice;
+    if (dish.portion_options && Array.isArray(dish.portion_options)) {
+      dish.portion_options.forEach(po => {
+        const p = Number(po.price);
+        if (p > 0) varPrices.push(p);
+      });
+    }
 
-  // Check vendor discount percentage (e.g. 15%)
-  const vendorDiscountPct = (vendor && vendor.discount_percentage && Number(vendor.discount_percentage) > 0)
+    baseCatalogPrice = varPrices.length > 0 ? Math.min(...varPrices) : 0;
+  }
+
+  const totalRegular = baseCatalogPrice + extrasPrice;
+
+  // Discount is loaded strictly from the vendors table discount_percentage column
+  const effectiveDiscountPct = (vendor && vendor.discount_percentage && Number(vendor.discount_percentage) > 0)
     ? Number(vendor.discount_percentage)
     : 0;
-
-  // Check dish-level discount
-  let itemDiscountPct = 0;
-  if (dish.discount_percent && Number(dish.discount_percent) > 0) {
-    itemDiscountPct = Number(dish.discount_percent);
-  } else if (dish.original_price && Number(dish.original_price) > baseCatalogPrice) {
-    itemDiscountPct = Math.round(((Number(dish.original_price) - baseCatalogPrice) / Number(dish.original_price)) * 100);
-  }
-
-  const effectiveDiscountPct = Math.max(vendorDiscountPct, itemDiscountPct);
 
   if (effectiveDiscountPct > 0) {
     const discountAmount = Math.round((totalRegular * effectiveDiscountPct) / 100);
