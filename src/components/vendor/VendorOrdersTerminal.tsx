@@ -872,21 +872,36 @@ export const VendorOrdersTerminal: React.FC = () => {
         }).join('\n')
       : '• No items';
 
+    const foodTotal = Number(order.food_total || 0);
+    const deliveryFee = Number(order.delivery_fee || 0);
+    const discount = Number(order.discount_amount || 0);
+    const totalCollection = Number(order.total_cash_payable ?? Math.max(0, foodTotal + deliveryFee - discount));
+    const cashPayWithoutDelivery = Math.max(0, totalCollection - deliveryFee);
+
+    const cleanCustomerNote = (order.special_instructions || '')
+      .replace(/\[Payment:[^\]]+\]/gi, '')
+      .replace(/\[Delivery:[^\]]+\]/gi, '')
+      .replace(/\[Rider Tip:[^\]]+\]/gi, '')
+      .replace(/\[Priority Delivery[^\]]+\]/gi, '')
+      .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+      .trim();
+
     const text = 
-`*অর্ডার কোড: #${formatOrderDisplayCode(order.order_code)}* | *মোট: ৳${order.total_cash_payable || 0}*
+`*অর্ডার কোড: #${formatOrderDisplayCode(order.order_code)}* | *Total Cash Pay: ৳${cashPayWithoutDelivery}*
 ━━━━━━━━━━━━━━━━━━
 🏪 *${vendor?.name || 'Restaurant'}* (${vendor?.phone || 'N/A'})
+🏠 ${vendor?.address || 'N/A'}
 📍 ভেন্ডর ম্যাপ: ${vendorMapUrl}
 
 👤 *${order.customer_name || 'Customer'}* (${order.customer_phone || 'N/A'})
 🏠 ${order.delivery_address || 'N/A'}
 📍 কাস্টমার ম্যাপ: ${customerMapUrl}
-${order.special_instructions ? `📝 কাস্টমার নোট: ${order.special_instructions}\n` : ''}${order.unavailable_action ? `⚠️ আইটেম না থাকলে: ${order.unavailable_action === 'call' ? '📞 কাস্টমারকে কল করুন' : '❌ অর্ডার থেকে বাদ দিন'}\n` : ''}━━━━━━━━━━━━━━━━━━
+${cleanCustomerNote ? `📝 কাস্টমার নোট: ${cleanCustomerNote}\n` : ''}${order.unavailable_action ? `⚠️ আইটেম না থাকলে: ${order.unavailable_action === 'call' ? '📞 কাস্টমারকে কল করুন' : '❌ অর্ডার থেকে বাদ দিন'}\n` : ''}━━━━━━━━━━━━━━━━━━
 🛒 *আইটেম:*
 ${itemsList}
 ━━━━━━━━━━━━━━━━━━
-💰 খাবার: ৳${order.food_total || 0} | ডেলিভারি: ৳${order.delivery_fee || 0}${order.discount_amount ? ` | ছাড়: -৳${order.discount_amount}` : ''}
-💵 *সর্বমোট ক্যাশ কালেকশন (COD): ৳${order.total_cash_payable || 0}*${order.rider_phone ? `\n🚴 রাইডার: ${order.rider_phone}` : ''}`.trim();
+💰 ডেলিভারি চার্জ: ৳${deliveryFee}${discount ? ` | ছাড়: -৳${discount}` : ''}
+💵 *সর্বমোট ক্যাশ কালেকশন (COD): ৳${totalCollection}*`.trim();
 
     return text;
   };
