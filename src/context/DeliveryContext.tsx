@@ -116,6 +116,7 @@ interface DeliveryContextType {
     vendor_type?: 'restaurant' | 'shop';
     restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen';
     google_maps_link?: string;
+    password?: string;
   }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
   uploadVendorImage: (
@@ -3531,7 +3532,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     vendor_type?: 'restaurant' | 'shop';
     restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen';
     google_maps_link?: string;
+    password?: string;
   }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {
+    const isPassSet = Boolean(data.password && data.password.trim());
+    const passValue = isPassSet ? data.password!.trim() : null;
+
     const newVendor: Vendor = {
       id: crypto.randomUUID(),
       unique_id: `VND-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -3550,7 +3555,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       is_paused: false,
       rating: 5.0,
       estimated_prep_time_minutes: 20,
-      is_password_set: false,
+      is_password_set: isPassSet,
+      password: passValue || undefined,
       vendor_type: data.vendor_type || 'restaurant',
       restaurant_type: data.restaurant_type || 'restaurant',
       cover_image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
@@ -3580,7 +3586,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           rating: newVendor.rating,
           estimated_prep_time_minutes: newVendor.estimated_prep_time_minutes,
           is_password_set: newVendor.is_password_set,
-          password: null,
+          password: passValue,
           vendor_type: newVendor.vendor_type,
           logo_url: newVendor.logo_url,
           cover_image: newVendor.cover_image,

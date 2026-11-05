@@ -3,6 +3,7 @@ import { useDelivery } from '../../context/DeliveryContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { MenuItem, Order, OrderStatus, Vendor } from '../../types/database';
 import { VendorReviewsView } from './VendorReviewsView';
+import { parseGoogleMapsLinkOrCoords } from '../../utils/geo';
 import { 
   Store, 
   Clock, 
@@ -81,15 +82,29 @@ export const VendorPortal: React.FC = () => {
     loginUser,
     setPasswordForUser,
     logoutUser,
-    setRole
+    setRole,
+    zones,
+    adminRegisterVendor
   } = useDelivery();
 
   // Vendor Auth State
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [authPhone, setAuthPhone] = useState('');
   const [authPassword, setAuthPassword] = useState('');
-  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
+
+  // Partner Registration Form State (Direct self-registration from vendor portal)
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regVendorType, setRegVendorType] = useState<'restaurant' | 'shop'>('restaurant');
+  const [regRestaurantCategory, setRegRestaurantCategory] = useState<'restaurant' | 'cloud_kitchen' | 'home_kitchen'>('restaurant');
+  const [regShopCategory, setRegShopCategory] = useState<string>('Grocery (মুদি)');
+  const [regAddress, setRegAddress] = useState('');
+  const [regZone, setRegZone] = useState('');
+  const [regGoogleMapsLink, setRegGoogleMapsLink] = useState('');
+  const [regSubmitting, setRegSubmitting] = useState(false);
 
   // Navigation & View States
   const [activeBottomNav, setActiveBottomNavState] = useState<'overview' | 'menu' | 'ads' | 'more'>(() => {
@@ -371,28 +386,100 @@ export const VendorPortal: React.FC = () => {
     }
   };
 
-  const handleVendorRegisterSubmit = (e: React.FormEvent) => {
+  const handleVendorRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    if (!authPhone.trim() || !authPassword.trim()) {
-      setAuthError('Please enter phone number and password.');
+
+    if (!regName.trim()) {
+      setAuthError('Please enter Restaurant / Merchant Name.');
       return;
     }
-    if (authPassword.trim() !== authConfirmPassword.trim()) {
+    if (!regPhone.trim()) {
+      setAuthError('Please enter Login Phone Number.');
+      return;
+    }
+    if (!regPassword.trim()) {
+      setAuthError('Please enter a password.');
+      return;
+    }
+    if (regPassword.trim().length < 4) {
+      setAuthError('Password must be at least 4 characters.');
+      return;
+    }
+    if (regPassword.trim() !== regConfirmPassword.trim()) {
       setAuthError('Passwords do not match. Please re-enter.');
       return;
     }
+    if (!regAddress.trim()) {
+      setAuthError('Please enter Physical Street Address.');
+      return;
+    }
 
-    const ok = setPasswordForUser('vendor', authPhone.trim(), authPassword.trim());
-    if (!ok) {
-      setAuthError('This phone number is not registered as a Vendor by Admin. Please contact Admin.');
+    const availableZones = zones && zones.length > 0 ? zones : [];
+    const selectedZoneName = regZone || (availableZones.length > 0 ? availableZones[0].name : 'ctg');
+    const matchedZone = availableZones.find(z => z.name === selectedZoneName || z.id === selectedZoneName);
+
+    let finalLat = 22.3569;
+    let finalLng = 91.7832;
+
+    if (regGoogleMapsLink.trim()) {
+      const parsed = parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim());
+      if (parsed) {
+        finalLat = parsed.lat;
+        finalLng = parsed.lng;
+      } else if (matchedZone) {
+        finalLat = matchedZone.center_latitude || 22.3569;
+        finalLng = matchedZone.center_longitude || 91.7832;
+      }
+    } else if (matchedZone) {
+      finalLat = matchedZone.center_latitude || 22.3569;
+      finalLng = matchedZone.center_longitude || 91.7832;
+    }
+
+    const cuisineName = regVendorType === 'restaurant'
+      ? (regRestaurantCategory === 'restaurant'
+          ? 'Restaurant (রেস্টুরেন্ট)'
+          : regRestaurantCategory === 'cloud_kitchen'
+          ? 'Cloud Kitchen (ক্লাউড কিচেন)'
+          : 'Home Kitchen (হোম কিচেন)')
+      : regShopCategory;
+
+    setRegSubmitting(true);
+    try {
+      const result = await adminRegisterVendor({
+        name: regName.trim(),
+        phone: regPhone.trim(),
+        password: regPassword.trim(),
+        address: regAddress.trim(),
+        cuisine: cuisineName,
+        zone: selectedZoneName,
+        city_area: selectedZoneName,
+        division: 'Chittagong',
+        vendor_type: regVendorType,
+        restaurant_type: regRestaurantCategory,
+        google_maps_link: regGoogleMapsLink.trim(),
+        latitude: finalLat,
+        longitude: finalLng,
+        description: `${regName.trim()} - Partner Store`
+      });
+
+      if (result && result.vendor) {
+        setCurrentVendor(result.vendor);
+        loginUser('vendor', regPhone.trim(), regPassword.trim());
+        setRole('vendor');
+      }
+    } catch (err: any) {
+      console.error('Registration failed:', err);
+      setAuthError(err?.message || 'Registration failed. Please try again.');
+    } finally {
+      setRegSubmitting(false);
     }
   };
 
   if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
     return (
       <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white relative">
-        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80">
+        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200/80 max-h-[92vh] overflow-y-auto">
           
           <div className="text-center space-y-2">
             <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-md">
@@ -422,7 +509,7 @@ export const VendorPortal: React.FC = () => {
                 authTab === 'register' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Set New Password
+              Registration
             </button>
           </div>
 
@@ -467,51 +554,220 @@ export const VendorPortal: React.FC = () => {
             </form>
           ) : (
             <form onSubmit={handleVendorRegisterSubmit} className="space-y-4 text-xs font-bold">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <span className="p-1.5 bg-rose-100 text-rose-600 rounded-xl">
+                  <Store className="w-4 h-4 stroke-[2.5]" />
+                </span>
+                <span className="text-sm font-black text-slate-800">
+                  Register New Vendor Partner
+                </span>
+              </div>
+
+              {/* RESTAURANT / MERCHANT NAME */}
               <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Admin Registered Phone Number *</label>
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Restaurant / Merchant Name *</label>
+                <input
+                  type="text"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="e.g. Sultan's Dine / Krunch"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              {/* LOGIN PHONE NUMBER */}
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Login Phone Number *</label>
                 <input
                   type="tel"
-                  value={authPhone}
-                  onChange={(e) => setAuthPhone(e.target.value)}
-                  placeholder="e.g. 01711122233"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  placeholder="017XXXXXXXX"
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
                   required
                 />
-                <p className="text-[10px] text-slate-400 font-normal">
-                  Enter the phone number provided during registration by Admin.
+              </div>
+
+              {/* PASSWORD & CONFIRM PASSWORD */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-600 uppercase tracking-wider text-[10px]">Set Password *</label>
+                  <input
+                    type="password"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="Create password"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-600 uppercase tracking-wider text-[10px]">Confirm Password *</label>
+                  <input
+                    type="password"
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* VENDOR PARTNER TYPE */}
+              <div className="space-y-1.5">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Vendor Partner Type *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRegVendorType('restaurant')}
+                    className={`py-3 px-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                      regVendorType === 'restaurant'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-base">🍔</span>
+                    <span>RESTAURANT</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegVendorType('shop')}
+                    className={`py-3 px-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                      regVendorType === 'shop'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-base">🛒</span>
+                    <span>SHOP / GROCERY</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* CATEGORY DROPDOWN */}
+              {regVendorType === 'restaurant' ? (
+                <div className="space-y-1">
+                  <label className="text-slate-600 uppercase tracking-wider text-[10px]">Restaurant Category *</label>
+                  <div className="relative">
+                    <select
+                      value={regRestaurantCategory}
+                      onChange={(e) => setRegRestaurantCategory(e.target.value as any)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm appearance-none cursor-pointer"
+                    >
+                      <option value="restaurant">Restaurant (রেস্টুরেন্ট)</option>
+                      <option value="cloud_kitchen">Cloud Kitchen (ক্লাউড কিচেন)</option>
+                      <option value="home_kitchen">Home Kitchen (হোম কিচেন)</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-slate-600 uppercase tracking-wider text-[10px]">Shop Category *</label>
+                  <div className="relative">
+                    <select
+                      value={regShopCategory}
+                      onChange={(e) => setRegShopCategory(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm appearance-none cursor-pointer"
+                    >
+                      <option value="Grocery (মুদি)">Grocery (মুদি)</option>
+                      <option value="Bakery & Sweets (বেকারি)">Bakery & Sweets (বেকারি)</option>
+                      <option value="Pharmacy (ফার্মেসি)">Pharmacy (ফার্মেসি)</option>
+                      <option value="Organic & Fresh (অর্গানিক)">Organic & Fresh (অর্গানিক)</option>
+                      <option value="Daily Needs (দৈনন্দিন পণ্য)">Daily Needs (দৈনন্দিন পণ্য)</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
+              {/* PHYSICAL STREET ADDRESS */}
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Physical Street Address *</label>
+                <input
+                  type="text"
+                  value={regAddress}
+                  onChange={(e) => setRegAddress(e.target.value)}
+                  placeholder="Street / Market / Area"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
+                  required
+                />
+              </div>
+
+              {/* DELIVERY ZONE */}
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Delivery Zone (ডেলিভারি জোন) *</label>
+                <div className="relative">
+                  <select
+                    value={regZone || (zones && zones[0]?.name) || 'ctg'}
+                    onChange={(e) => setRegZone(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm appearance-none cursor-pointer font-bold"
+                  >
+                    {zones && zones.length > 0 ? (
+                      zones.map((z) => (
+                        <option key={z.id} value={z.name}>
+                          {z.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="ctg">ctg</option>
+                        <option value="Chawkbazar">Chawkbazar</option>
+                        <option value="GEC">GEC</option>
+                      </>
+                    )}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                </div>
+                <p className="text-[10px] text-slate-500 font-normal leading-relaxed pt-1">
+                  কাস্টমার অ্যাড্রেস বুকের পিন লোকেশন যে জোনের ভেতরে থাকবে, সেই জোনের সব ভেন্ডর কাস্টমার দেখতে পাবে।
                 </p>
               </div>
 
+              {/* GOOGLE MAPS LOCATION URL / COORDINATES */}
               <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Set New Password *</label>
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Google Maps Location URL / Coordinates</label>
                 <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Create password"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
+                  type="text"
+                  value={regGoogleMapsLink}
+                  onChange={(e) => setRegGoogleMapsLink(e.target.value)}
+                  placeholder="e.g. https://maps.app.goo.gl/... or 22.3571, 91"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-rose-500 text-xs"
                 />
+                {regGoogleMapsLink.trim() && (
+                  <div className="text-[10px] pt-1">
+                    {parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim()) ? (
+                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 inline" /> Coordinates detected: {parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim())?.lat.toFixed(4)}, {parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim())?.lng.toFixed(4)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 font-normal">
+                        Zone center coordinates will be used as default fallback.
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Confirm Password *</label>
-                <input
-                  type="password"
-                  value={authConfirmPassword}
-                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm"
-                  required
-                />
+              {/* SUBMIT BUTTONS */}
+              <div className="grid grid-cols-2 gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => { setAuthTab('login'); setAuthError(''); }}
+                  className="py-3.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-xs uppercase tracking-wider transition cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={regSubmitting}
+                  className="py-3.5 px-4 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md shadow-rose-600/30 transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {regSubmitting ? 'Registering...' : 'REGISTER VENDOR'}
+                </button>
               </div>
-
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-rose-600/30 transition cursor-pointer"
-              >
-                Complete Registration & Login
-              </button>
             </form>
           )}
 
