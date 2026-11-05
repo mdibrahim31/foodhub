@@ -230,6 +230,7 @@ export const CustomerPortal: React.FC = () => {
     return (Date.now() - createdTime) <= thirtyDaysMs;
   };
   const [activeRestaurantTypeFilter, setActiveRestaurantTypeFilter] = useState('All');
+  const [activeShopTypeFilter, setActiveShopTypeFilter] = useState('All');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [activeMenuCategory, setActiveMenuCategory] = useState('All');
 
@@ -1116,6 +1117,35 @@ export const CustomerPortal: React.FC = () => {
         if (activeRestaurantTypeFilter === 'sweets_bakery' && restType !== 'sweets_bakery' && !v.cuisine?.toLowerCase().match(/sweet|bakery|cake|pastry/) && !v.name?.toLowerCase().match(/sweet|bakery|cake|pastry/)) return false;
       }
 
+      // Filter by Shop Category / Sub-Type
+      if (activeBottomNav === 'grocery' && activeShopTypeFilter !== 'All') {
+        const filterId = activeShopTypeFilter.toLowerCase();
+        const vCuisine = (v.cuisine || '').toLowerCase();
+        const vName = (v.name || '').toLowerCase();
+        const vDesc = (v.description || '').toLowerCase();
+
+        const matchMap: Record<string, RegExp> = {
+          grocery: /grocery|মুদি|store|ration|rice|oil/,
+          accessories: /accessor|অ্যাক্সেসরিজ|gadget|mobile|electronics|cover|headphone|earphone|cable/,
+          parts: /parts|পার্টস|auto|bike|hardware|spare|motor|mechanic/,
+          equipments: /equipment|tools|ইকুইপমেন্ট|যন্ত্রপাতি|hardware|machine|tool/,
+          cosmetics: /cosmetic|কসমেটিকস|beauty|makeup|skincare|parfumerie|perfume|lotion/,
+          supershop: /super|সুপারশপ|mart|hypermarket|bazar|department/,
+          pharmacy: /pharmacy|ফার্মেসি|medicine|drug|healthcare|pharma|chemist/,
+          fruits: /fruit|ফলমূল|fresh|apple|mango|banana|vegetable|শাকসবজি/,
+          bakery_sweets: /bakery|sweet|বেকারি|মিষ্টি|cake|pastry|sweets/,
+          daily_needs: /daily|দৈনন্দিন|need|household|cleaning|tissue|soap/
+        };
+
+        const pattern = matchMap[filterId];
+        if (pattern) {
+          const matched = pattern.test(vCuisine) || pattern.test(vName) || pattern.test(vDesc);
+          if (!matched) return false;
+        } else {
+          if (!vCuisine.includes(filterId) && !vName.includes(filterId)) return false;
+        }
+      }
+
       // Filter by Cuisine Category
       if (activeCuisineFilter !== 'All') {
         const catNorm = activeCuisineFilter.toLowerCase().trim();
@@ -1146,7 +1176,7 @@ export const CustomerPortal: React.FC = () => {
       // Default & 'distance' & 'popular': Closest distance first! (kacher vendor upore, dure vendor niche)
       return distA - distB;
     });
-  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords]);
+  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeShopTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords]);
 
   // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => {
@@ -3366,7 +3396,7 @@ export const CustomerPortal: React.FC = () => {
                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3" />
                 <input
                   type="text"
-                  placeholder="Search for restaurants and groceries"
+                  placeholder={activeBottomNav === 'grocery' ? "Search for shops, accessories & items..." : "Search for restaurants and shops..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-11 pr-4 py-2.5 bg-white text-slate-800 placeholder:text-slate-400 rounded-full text-sm font-medium shadow-sm focus:outline-hidden"
@@ -3503,6 +3533,58 @@ export const CustomerPortal: React.FC = () => {
                         <span className="text-[9px] sm:text-[10px] leading-tight text-center font-bold px-0.5 break-words">
                           {type.name}
                         </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* SHOP CATEGORIES (Like RESTAURANT TYPES) */}
+            {activeBottomNav === 'grocery' && (
+              <section className="space-y-2 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-1.5">
+                    <span>🍕 SHOP CATEGORIES</span>
+                  </h3>
+                  {activeShopTypeFilter !== 'All' && (
+                    <button 
+                      onClick={() => setActiveShopTypeFilter('All')} 
+                      className="text-[11px] font-bold text-orange-600 hover:underline cursor-pointer"
+                    >
+                      Clear filter
+                    </button>
+                  )}
+                </div>
+
+                {/* Shop Category Filter Cards - Horizontal scrollable row */}
+                <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none select-none">
+                  {[
+                    { id: 'All', name: 'All', icon: '🛍️' },
+                    { id: 'grocery', name: 'Grocery', icon: '🛒' },
+                    { id: 'accessories', name: 'Accessories', icon: '🎧' },
+                    { id: 'parts', name: 'Parts', icon: '⚙️' },
+                    { id: 'equipments', name: 'Equipments', icon: '🛠️' },
+                    { id: 'cosmetics', name: 'Cosmetics', icon: '💄' },
+                    { id: 'supershop', name: 'Supershop', icon: '🏬' },
+                    { id: 'pharmacy', name: 'Pharmacy', icon: '💊' },
+                    { id: 'fruits', name: 'Fruits', icon: '🍎' },
+                    { id: 'bakery_sweets', name: 'Bakery & Sweets', icon: '🧁' },
+                    { id: 'daily_needs', name: 'Daily Needs', icon: '🧴' },
+                  ].map((type) => {
+                    const isSelected = activeShopTypeFilter === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => setActiveShopTypeFilter(isSelected ? 'All' : type.id)}
+                        className={`flex flex-col items-center justify-center py-2 px-3.5 rounded-2xl border transition-all cursor-pointer select-none shrink-0 ${
+                          isSelected
+                            ? 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 ring-2 ring-orange-400 font-black'
+                            : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-2xs font-bold'
+                        }`}
+                      >
+                        <span className="text-xl mb-0.5">{type.icon}</span>
+                        <span className="text-[11px] whitespace-nowrap">{type.name}</span>
                       </button>
                     );
                   })}
@@ -5386,11 +5468,11 @@ export const CustomerPortal: React.FC = () => {
               <span className="text-[10px] mt-0.5">Food</span>
             </button>
 
-            {/* 2. Grocery */}
+            {/* 2. Shop */}
             <button
               onClick={() => {
                 setActiveBottomNav('grocery');
-                setSearchQuery('Grocery');
+                if (searchQuery === 'Grocery') setSearchQuery('');
               }}
               className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
                 activeBottomNav === 'grocery' ? 'text-orange-600 font-black' : 'text-slate-500 font-medium'
@@ -5399,7 +5481,7 @@ export const CustomerPortal: React.FC = () => {
               <div className={`p-1 rounded-xl ${activeBottomNav === 'grocery' ? 'bg-orange-50 text-orange-600' : ''}`}>
                 <Store className="w-5 h-5" />
               </div>
-              <span className="text-[10px] mt-0.5">Grocery</span>
+              <span className="text-[10px] mt-0.5">Shop</span>
             </button>
 
             {/* 3. Carts (Middle Tab) */}
