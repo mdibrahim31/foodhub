@@ -38,10 +38,6 @@
         window.location.replace(repoBase + '/admin.html' + window.location.search + window.location.hash);
         return;
       }
-      if (cleanPath === 'subadmin') {
-        window.location.replace(repoBase + '/subadmin.html' + window.location.search + window.location.hash);
-        return;
-      }
       // Default fallback
       window.location.replace(repoBase + '/orders.html');
     })();

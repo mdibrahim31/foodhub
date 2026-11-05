@@ -9,7 +9,6 @@ const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal')
 const VendorPortal = lazy(() => import('./components/vendor/VendorPortal').then(m => ({ default: m.VendorPortal })));
 const RiderPortal = lazy(() => import('./components/rider/RiderPortal').then(m => ({ default: m.RiderPortal })));
 const AdminPortal = lazy(() => import('./components/admin/AdminPortal').then(m => ({ default: m.AdminPortal })));
-const SubAdminPortal = lazy(() => import('./components/admin/SubAdminPortal').then(m => ({ default: m.SubAdminPortal })));
 
 function CustomerSiteLayout() {
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
@@ -50,18 +49,18 @@ function CustomerSiteLayout() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const portalQuery = params.get('portal') as PortalRole;
-    if (['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(portalQuery)) {
+    if (['customer', 'vendor', 'rider', 'admin'].includes(portalQuery)) {
       setRole(portalQuery);
       return;
     }
 
-    if (currentUser && ['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(currentUser.role)) {
+    if (currentUser && ['customer', 'vendor', 'rider', 'admin'].includes(currentUser.role)) {
       setRole(currentUser.role);
       return;
     }
 
     const hash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
-    if (['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(hash)) {
+    if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) {
       setRole(hash);
     }
   }, [setRole, currentUser]);
@@ -69,7 +68,7 @@ function CustomerSiteLayout() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '').split('?')[0] as PortalRole;
-      if (['customer', 'vendor', 'rider', 'admin', 'subadmin'].includes(hash)) {
+      if (['customer', 'vendor', 'rider', 'admin'].includes(hash)) {
         setRole(hash);
       }
     };
@@ -181,7 +180,6 @@ function CustomerSiteLayout() {
           {role === 'vendor' && <VendorPortal />}
           {role === 'rider' && <RiderPortal />}
           {role === 'admin' && <AdminPortal />}
-          {role === 'subadmin' && <SubAdminPortal />}
         </Suspense>
       </main>
     </div>

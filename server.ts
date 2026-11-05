@@ -1384,8 +1384,6 @@ async function startServer() {
     '/rider.html': 'rider.html',
     '/admin': 'admin.html',
     '/admin.html': 'admin.html',
-    '/subadmin': 'subadmin.html',
-    '/subadmin.html': 'subadmin.html',
     '/customer': 'customer.html',
     '/customer.html': 'customer.html',
   };

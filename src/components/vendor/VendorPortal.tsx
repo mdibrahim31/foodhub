@@ -2325,98 +2325,47 @@ export const VendorPortal: React.FC = () => {
       */}
       {isVendorSwitcherOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col border border-slate-100">
+          <div className="bg-white w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl overflow-hidden relative max-h-[85vh] flex flex-col border border-slate-100">
             {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 shrink-0">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 shadow-2xs">
-                  <Store className="w-5 h-5 stroke-[2.2]" />
+            <div className="px-5 pt-4 pb-2 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <Store className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-slate-900 text-base leading-tight">
-                      All Registered Vendors
-                    </h3>
-                    <span className="text-[10px] font-black bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-                      {vendors.length} Total
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Click any vendor to switch active store profile
+                  <h3 className="font-black text-slate-900 text-sm leading-tight">
+                    All Registered Vendors
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    {vendors.length} total vendors
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsVendorSwitcherOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition cursor-pointer shadow-2xs"
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Currently Active Banner */}
-            {currentVendor && (
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50/60 border-b border-orange-100 px-5 py-3 flex items-center justify-between shrink-0">
-                <div className="flex items-center space-x-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-orange-200 shrink-0 flex items-center justify-center shadow-2xs">
-                    {currentVendor.logo_url ? (
-                      <img
-                        src={currentVendor.logo_url}
-                        alt={currentVendor.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <Store className="w-5 h-5 text-orange-600" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-orange-700 bg-orange-200/60 px-1.5 py-0.5 rounded">
-                        Active Profile
-                      </span>
-                      <span className="text-xs font-black text-slate-900 truncate">
-                        {currentVendor.name}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate font-mono">
-                      {currentVendor.phone || 'No phone'} • {currentVendor.zone || currentVendor.address || 'All zones'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsVendorSwitcherOpen(false);
-                    openVendorProfileModal();
-                  }}
-                  className="shrink-0 px-2.5 py-1.5 bg-white border border-orange-200 hover:bg-orange-100 text-orange-700 text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs flex items-center space-x-1"
-                  title="Edit logo, cover image & info"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span>Edit Profile</span>
-                </button>
-              </div>
-            )}
-
-            {/* Search Input Bar */}
-            <div className="p-4 border-b border-slate-100 bg-white shrink-0">
+            {/* Search Bar at Top */}
+            <div className="px-5 pb-3 pt-1 border-b border-slate-100 shrink-0">
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={vendorSearchQuery}
                   onChange={(e) => setVendorSearchQuery(e.target.value)}
-                  placeholder="Search by vendor name, cuisine, phone, or zone..."
-                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 focus:bg-white transition"
+                  placeholder="Search restaurant..."
+                  className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 focus:bg-white transition"
+                  autoFocus
                 />
                 {vendorSearchQuery && (
                   <button
                     onClick={() => setVendorSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -2424,36 +2373,32 @@ export const VendorPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* Scrollable Vendor List */}
-            <div className="p-4 space-y-2.5 overflow-y-auto flex-1">
+            {/* Slim Vendor List: ONLY vendor name and profile pic */}
+            <div className="p-3 space-y-1.5 overflow-y-auto flex-1">
               {filteredVendors.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 space-y-2">
-                  <Store className="w-10 h-10 mx-auto text-slate-300 stroke-[1.5]" />
-                  <p className="text-xs font-bold text-slate-600">
-                    {vendors.length === 0 ? 'No registered vendors found in database' : 'No matching vendors found'}
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    {vendors.length === 0 
-                      ? 'Register vendors from the Admin portal or database seed.' 
-                      : 'Try clearing your search query.'}
+                <div className="py-10 text-center text-slate-400 space-y-1.5">
+                  <Store className="w-8 h-8 mx-auto text-slate-300 stroke-[1.5]" />
+                  <p className="text-xs font-bold text-slate-500">
+                    {vendors.length === 0 ? 'No registered vendors found' : 'No matching restaurant'}
                   </p>
                 </div>
               ) : (
                 filteredVendors.map((v) => {
                   const isActive = currentVendor?.id === v.id;
                   return (
-                    <div
+                    <button
                       key={v.id}
+                      type="button"
                       onClick={() => handleSwitchVendor(v)}
-                      className={`group relative p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                      className={`w-full py-2 px-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-3 ${
                         isActive
-                          ? 'bg-orange-50/70 border-orange-400 shadow-xs ring-1 ring-orange-400'
-                          : 'bg-white border-slate-200 hover:border-orange-300 hover:bg-orange-50/20 shadow-2xs'
+                          ? 'bg-orange-50/80 border-orange-400 text-slate-900 shadow-2xs ring-1 ring-orange-300'
+                          : 'bg-white border-slate-200/70 hover:border-orange-300 hover:bg-orange-50/30 text-slate-700'
                       }`}
                     >
-                      <div className="flex items-center space-x-3 min-w-0">
-                        {/* Logo / Thumbnail */}
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
+                      {/* Left: Profile Pic & Vendor Name ONLY */}
+                      <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
                           {v.logo_url ? (
                             <img
                               src={v.logo_url}
@@ -2464,111 +2409,39 @@ export const VendorPortal: React.FC = () => {
                               }}
                             />
                           ) : (
-                            <Store className="w-6 h-6 text-slate-400" />
+                            <Store className="w-4 h-4 text-slate-400" />
                           )}
-                          {/* Live/Paused indicator dot */}
-                          <span
-                            className={`absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                              v.is_paused ? 'bg-rose-500' : 'bg-emerald-500'
-                            }`}
-                            title={v.is_paused ? 'Vendor is paused' : 'Vendor is online'}
-                          />
                         </div>
 
-                        {/* Details */}
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="font-bold text-sm text-slate-900 group-hover:text-orange-600 transition truncate">
-                              {v.name}
-                            </h4>
-                            {v.cuisine && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 shrink-0">
-                                {v.cuisine}
-                              </span>
-                            )}
-                            {v.rating ? (
-                              <span className="text-[10px] font-bold text-amber-600 flex items-center gap-0.5 shrink-0">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                {Number(v.rating).toFixed(1)}
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono truncate">
-                            {v.phone && <span>{v.phone}</span>}
-                            {v.zone && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-600 font-sans truncate">{v.zone}</span>
-                              </>
-                            )}
-                            {v.address && !v.zone && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-600 font-sans truncate">{v.address}</span>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Status badges */}
-                          <div className="flex items-center gap-1.5 pt-0.5">
-                            {v.is_paused ? (
-                              <span className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                                Paused
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                                Open & Online
-                              </span>
-                            )}
-                            {v.vendor_type && (
-                              <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded capitalize">
-                                {v.vendor_type}
-                              </span>
-                            )}
-                            {v.discount_percentage ? (
-                              <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
-                                {v.discount_title || `${v.discount_percentage}% OFF`}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
+                        <span className={`text-xs truncate ${isActive ? 'text-orange-600 font-black' : 'text-slate-800 font-bold'}`}>
+                          {v.name}
+                        </span>
                       </div>
 
-                      {/* Right Action Button */}
+                      {/* Right Indicator: Active badge or subtle chevron */}
                       <div className="shrink-0 flex items-center">
                         {isActive ? (
-                          <div className="flex items-center space-x-1 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-black shadow-2xs">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span className="flex items-center space-x-1 text-[11px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             <span>Active</span>
-                          </div>
+                          </span>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSwitchVendor(v);
-                            }}
-                            className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center space-x-1 cursor-pointer"
-                          >
-                            <span>Switch</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
+                          <ChevronRight className="w-4 h-4 text-slate-300" />
                         )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })
               )}
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-xs text-slate-500 shrink-0">
-              <span>Showing {filteredVendors.length} of {vendors.length} vendors</span>
+            <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
+              <span>{filteredVendors.length} of {vendors.length} vendors</span>
               <button
                 type="button"
                 onClick={() => setIsVendorSwitcherOpen(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl transition cursor-pointer"
+                className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition cursor-pointer text-xs"
               >
                 Close
               </button>

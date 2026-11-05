@@ -790,9 +790,6 @@ export const AdminPortal: React.FC = () => {
 
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
             <span>Role: Super Admin</span>
-            <a href="./subadmin.html" className="text-rose-600 hover:underline">
-              Operations Sub-Admin &rarr;
-            </a>
           </div>
         </div>
       </div>

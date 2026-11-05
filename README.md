@@ -27,4 +27,3 @@ This repository contains the complete source code for **Foodiplace / FoodHub**, 
 - **Kitchen Orders Terminal**: `orders.html` / `src/orders-main.tsx` - Live order management, prep time confirmation & cooking status.
 - **Delivery Rider App**: `rider.html` / `src/rider-main.tsx` - Interactive map, single-rider proximity dispatch, turn-by-turn GPS & floating cash tracking.
 - **Admin Control Panel**: `admin.html` / `src/admin-main.tsx` - Per-KM delivery charges, delivery zones, ads banners, rider fleet approval & system settings.
-- **Sub-Admin Operations**: `subadmin.html` / `src/subadmin-main.tsx` - Zone dispatching, rider pause/resume & active order monitoring.
