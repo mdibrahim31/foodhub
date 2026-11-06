@@ -221,6 +221,7 @@ export interface CustomerUser {
   phone: string;
   password?: string;
   email?: string;
+  division?: string;
   avatar_url?: string;
   addresses: CustomerAddress[];
   created_at: string;
@@ -251,6 +252,7 @@ export interface UserAccount {
   role: PortalRole;
   name: string;
   phone: string;
+  division?: string;
   is_password_set: boolean;
   reference_id?: string; // vendor_id or rider_id or customer_id
   zone?: string;

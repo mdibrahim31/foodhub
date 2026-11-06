@@ -441,7 +441,15 @@ export const AdminPortal: React.FC = () => {
   const [vCuisine, setVCuisine] = useState('Fast Food, Biryani, Burgers');
   const [vPhone, setVPhone] = useState('');
   const [vAddress, setVAddress] = useState('');
-  const [vDivision, setVDivision] = useState<string>('Chittagong');
+  const [vDivision, setVDivision] = useState<string>(() => divisions?.[0]?.name || '');
+
+  useEffect(() => {
+    if (divisions && divisions.length > 0) {
+      if (!vDivision || !divisions.some(d => d.name === vDivision)) {
+        setVDivision(divisions[0].name);
+      }
+    }
+  }, [divisions]);
   const [vCityArea, setVCityArea] = useState<string>('Chawkbazar');
   const [vZone, setVZone] = useState<string>('Chawkbazar Zone');
   const [vLat, setVLat] = useState(22.3585);
@@ -3887,6 +3895,31 @@ export const AdminPortal: React.FC = () => {
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   required
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Division Table (বিভাগীয় ডাটাবেজ টেবিল) *</label>
+                <select
+                  value={vDivision}
+                  onChange={(e) => setVDivision(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer text-xs"
+                  required
+                >
+                  {divisions && divisions.length > 0 ? (
+                    divisions.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name} {d.bn_name ? `(${d.bn_name})` : ''} — Table: vendors_{d.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>
+                      No division tables in database
+                    </option>
+                  )}
+                </select>
+                <p className="text-[10px] text-slate-500">
+                  Vendor data will be inserted into database table <span className="font-mono text-rose-600 font-bold">vendors_{vDivision.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span>
+                </p>
               </div>
 
               <div className="space-y-1">

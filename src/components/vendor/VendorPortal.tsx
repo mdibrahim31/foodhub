@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { MenuItem, Order, OrderStatus, Vendor } from '../../types/database';
@@ -84,6 +84,7 @@ export const VendorPortal: React.FC = () => {
     logoutUser,
     setRole,
     zones,
+    divisions,
     adminRegisterVendor
   } = useDelivery();
 
@@ -101,9 +102,19 @@ export const VendorPortal: React.FC = () => {
   const [regVendorType, setRegVendorType] = useState<'restaurant' | 'shop'>('restaurant');
   const [regRestaurantCategory, setRegRestaurantCategory] = useState<'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery'>('restaurant');
   const [regShopCategory, setRegShopCategory] = useState<string>('Grocery (মুদি)');
+  const [regDivision, setRegDivision] = useState<string>(() => divisions?.[0]?.name || '');
   const [regAddress, setRegAddress] = useState('');
   const [regGoogleMapsLink, setRegGoogleMapsLink] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
+
+  // Sync default regDivision with database divisions table dynamically
+  useEffect(() => {
+    if (divisions && divisions.length > 0) {
+      if (!regDivision || !divisions.some(d => d.name === regDivision)) {
+        setRegDivision(divisions[0].name);
+      }
+    }
+  }, [divisions]);
 
   // Navigation & View States
   const [activeBottomNav, setActiveBottomNavState] = useState<'overview' | 'menu' | 'ads' | 'more'>(() => {
@@ -455,7 +466,7 @@ export const VendorPortal: React.FC = () => {
         cuisine: cuisineName,
         zone: selectedZoneName,
         city_area: selectedZoneName,
-        division: 'Chittagong',
+        division: regDivision || 'Chittagong',
         vendor_type: regVendorType,
         restaurant_type: regRestaurantCategory,
         google_maps_link: regGoogleMapsLink.trim(),
@@ -688,6 +699,35 @@ export const VendorPortal: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* DIVISION / DIVISION TABLE SELECTION */}
+              <div className="space-y-1">
+                <label className="text-slate-600 uppercase tracking-wider text-[10px]">Division Table (বিভাগীয় ডাটাবেজ টেবিল) *</label>
+                <div className="relative">
+                  <select
+                    value={regDivision}
+                    onChange={(e) => setRegDivision(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500 text-sm font-bold appearance-none cursor-pointer"
+                    required
+                  >
+                    {divisions && divisions.length > 0 ? (
+                      divisions.map((d) => (
+                        <option key={d.id} value={d.name}>
+                          {d.name} {d.bn_name ? `(${d.bn_name})` : ''} — Table: vendors_{d.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>
+                        No division tables in database
+                      </option>
+                    )}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                </div>
+                <p className="text-[10px] text-slate-400 font-normal pt-0.5">
+                  Vendor will be registered into table <span className="font-mono text-rose-600 font-bold">vendors_{regDivision.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span>
+                </p>
+              </div>
 
               {/* PHYSICAL STREET ADDRESS */}
               <div className="space-y-1">

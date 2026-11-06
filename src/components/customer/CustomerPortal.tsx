@@ -1082,6 +1082,14 @@ export const CustomerPortal: React.FC = () => {
       const { lat: vLat, lng: vLng } = getVendorCoords(v);
       const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
 
+      // Filter: Match customer division partition table (only vendors from vendors_<customer_division>)
+      const activeCustomerDivision = currentCustomer?.division || currentUser?.division || (selectedArea ? cityAreas.find(a => a.name === selectedArea)?.division_name : undefined) || 'Chittagong';
+      if (v.division && activeCustomerDivision) {
+        const vendorDivClean = v.division.trim().toLowerCase();
+        const custDivClean = activeCustomerDivision.trim().toLowerCase();
+        if (vendorDivClean !== custDivClean) return false;
+      }
+
       // Filter: Show all vendors within 5 km of customer map pin
       if (distKm > 5.0) return false;
 
@@ -1175,7 +1183,7 @@ export const CustomerPortal: React.FC = () => {
       // Default & 'distance' & 'popular': Closest distance first! (kacher vendor upore, dure vendor niche)
       return distA - distB;
     });
-  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeShopTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords]);
+  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeShopTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords, currentCustomer?.division, currentUser?.division, selectedArea, cityAreas]);
 
   // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => {

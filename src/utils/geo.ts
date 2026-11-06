@@ -184,3 +184,13 @@ export function parseGoogleMapsLinkOrCoords(input: string): { lat: number; lng: 
 
   return null;
 }
+
+/**
+ * Dynamic vendor table routing helper based on division name
+ * e.g. "Chittagong" -> "vendors_chittagong", "Dhaka" -> "vendors_dhaka"
+ */
+export function getVendorTableNameForDivision(divisionName?: string): string {
+  if (!divisionName || !divisionName.trim()) return 'vendors_chittagong';
+  const clean = divisionName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+  return `vendors_${clean}`;
+}

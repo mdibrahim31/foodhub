@@ -37,7 +37,7 @@ import {
   updateSupabaseCredentials,
   getSupabaseConfig
 } from '../services/supabase';
-import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone } from '../utils/geo';
+import { calculateDistanceKm, calculateDeliveryFee, findZoneForPoint, isPointInZone, getVendorTableNameForDivision } from '../utils/geo';
 import { FoodCategory } from '../types/database';
 import { MASTER_FOOD_CATEGORIES } from '../utils/categories';
 
@@ -66,9 +66,9 @@ interface DeliveryContextType {
   customers: CustomerUser[];
   loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; message?: string };
   setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
-  registerCustomer: (data: { name: string; phone: string; password: string; email?: string }) => { success: boolean; message?: string };
-  requestCustomerSignupOtp: (data: { name: string; phone: string; password: string; email?: string }) => Promise<{ success: boolean; customerId?: string; message?: string }>;
-  verifyCustomerSignupOtp: (customerId: string, enteredOtp: string, data: { name: string; phone: string; password: string; email?: string }) => Promise<{ success: boolean; message?: string }>;
+  registerCustomer: (data: { name: string; phone: string; password: string; email?: string; division?: string }) => { success: boolean; message?: string };
+  requestCustomerSignupOtp: (data: { name: string; phone: string; password: string; email?: string; division?: string }) => Promise<{ success: boolean; customerId?: string; message?: string }>;
+  verifyCustomerSignupOtp: (customerId: string, enteredOtp: string, data: { name: string; phone: string; password: string; email?: string; division?: string }) => Promise<{ success: boolean; message?: string }>;
   updateCustomerProfile: (data: { name: string; phone: string; email?: string; password?: string; avatar_url?: string }) => Promise<{ success: boolean; message: string }>;
   requestCustomerProfileOtp: (phone: string) => Promise<{ success: boolean; otpId?: string; message?: string }>;
   verifyCustomerProfileOtp: (otpId: string, enteredOtp: string, phone: string) => Promise<{ success: boolean; message?: string }>;
@@ -2581,7 +2581,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const verifyCustomerSignupOtp = async (
     customerId: string,
     enteredOtp: string,
-    data: { name: string; phone: string; password: string; email?: string }
+    data: { name: string; phone: string; password: string; email?: string; division?: string }
   ): Promise<{ success: boolean; message?: string }> => {
     const cleanInput = (enteredOtp || '').trim();
     if (!cleanInput) {
@@ -2673,6 +2673,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       phone: cleanPhone,
       password: data.password,
       email: data.email?.trim(),
+      division: data.division?.trim() || 'Chittagong',
       avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`,
       addresses: [],
       created_at: new Date().toISOString()
@@ -2688,6 +2689,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       role: 'customer',
       name: newCustomer.name,
       phone: newCustomer.phone,
+      division: newCustomer.division,
       is_password_set: true,
       reference_id: newCustomer.id
     };
@@ -3613,7 +3615,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         } else {
           savedToDatabase = true;
-          dbMessage = 'Saved to Supabase vendors table successfully.';
+          dbMessage = `Saved to Supabase vendors table & division table successfully.`;
+        }
+
+        // Insert into division-partitioned table e.g. vendors_chittagong, vendors_dhaka, vendors_sylhet
+        const divisionTableName = getVendorTableNameForDivision(newVendor.division);
+        try {
+          await supabase.from(divisionTableName).insert([{ ...fullPayload, division: newVendor.division }]);
+          console.log(`Successfully inserted vendor into dynamic division table: ${divisionTableName}`);
+        } catch (divErr) {
+          console.warn(`Division table ${divisionTableName} insert log:`, divErr);
         }
 
         // Create a dedicated folder for this vendor in the 'images' bucket using vendor name

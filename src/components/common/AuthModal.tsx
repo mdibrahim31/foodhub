@@ -41,7 +41,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     verifyCustomerSignupOtp,
     logoutUser,
     vendors,
-    riders
+    riders,
+    divisions
   } = useDelivery();
 
   const [mode, setMode] = useState<'login' | 'register' | 'otp_verify' | 'set_password'>('login');
@@ -49,6 +50,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [division, setDivision] = useState<string>(() => divisions?.[0]?.name || '');
+
+  useEffect(() => {
+    if (divisions && divisions.length > 0) {
+      if (!division || !divisions.some(d => d.name === division)) {
+        setDivision(divisions[0].name);
+      }
+    }
+  }, [divisions]);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otpInput, setOtpInput] = useState('');
@@ -143,7 +153,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         name: name.trim(),
         phone: phone.trim(),
         password: password.trim(),
-        email: email.trim()
+        email: email.trim(),
+        division: division || 'Chittagong'
       });
 
       if (!res.success) {
@@ -179,7 +190,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         name: name.trim(),
         phone: phone.trim(),
         password: password.trim(),
-        email: email.trim()
+        email: email.trim(),
+        division: division || 'Chittagong'
       });
 
       if (!res.success) {
@@ -549,6 +561,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="e.g. rahim@example.com"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-rose-500"
               />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                Division / Region (বিভাগ) *
+              </label>
+              <select
+                value={division}
+                onChange={(e) => setDivision(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer"
+                required
+              >
+                {divisions && divisions.length > 0 ? (
+                  divisions.map((d) => (
+                    <option key={d.id} value={d.name}>
+                      {d.name} {d.bn_name ? `(${d.bn_name})` : ''} — Table: vendors_{d.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>
+                    No division tables in database
+                  </option>
+                )}
+              </select>
+              <p className="text-[10px] text-slate-400 font-normal pt-0.5">
+                Will load and query vendors only from table <span className="font-mono text-rose-600 font-bold">vendors_{division.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span>
+              </p>
             </div>
 
             <div className="space-y-1">
