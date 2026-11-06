@@ -35,6 +35,8 @@ export const DEFAULT_DELIVERY_ZONE_NAMES = [
 export interface DeliveryZone {
   id: string;
   name: string;
+  division?: string;
+  zone?: string;
   bn_name?: string;
   description?: string;
   center_latitude: number;

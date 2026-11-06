@@ -243,6 +243,7 @@ export const AdminPortal: React.FC = () => {
   // Division & City/Area Management Form State
   const [newDivName, setNewDivName] = useState('');
   const [newDivBnName, setNewDivBnName] = useState('');
+  const [newZoneName, setNewZoneName] = useState('');
   const [selectedDivForArea, setSelectedDivForArea] = useState('');
   const [newAreaName, setNewAreaName] = useState('');
   const [newAreaBnName, setNewAreaBnName] = useState('');
@@ -1282,16 +1283,32 @@ export const AdminPortal: React.FC = () => {
                     alert('Please enter a division name.');
                     return;
                   }
+                  const divStr = newDivName.trim();
+                  const zoneStr = newZoneName.trim() || `${divStr} Zone`;
+
                   await addDivision({
-                    name: newDivName.trim(),
+                    name: divStr,
                     bn_name: newDivBnName.trim() || undefined,
                     is_active: true
                   });
-                  alert(`✅ Division "${newDivName.trim()}" and Zone added successfully!`);
+
+                  await addZone({
+                    name: zoneStr,
+                    division: divStr,
+                    zone: zoneStr,
+                    bn_name: newDivBnName.trim() || undefined,
+                    center_latitude: 22.3590,
+                    center_longitude: 91.8380,
+                    radius_km: 3.0,
+                    is_active: true
+                  });
+
+                  alert(`✅ Division "${divStr}" and Zone "${zoneStr}" saved to zones database!`);
                   setNewDivName('');
                   setNewDivBnName('');
+                  setNewZoneName('');
                 }}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold"
+                className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-bold"
               >
                 <div className="space-y-1">
                   <label className="text-slate-600 block">DIVISION NAME (ENGLISH)</label>
@@ -1299,7 +1316,7 @@ export const AdminPortal: React.FC = () => {
                     type="text"
                     value={newDivName}
                     onChange={(e) => setNewDivName(e.target.value)}
-                    placeholder="e.g. Chattogram, Dhaka, Sylhet..."
+                    placeholder="e.g. Chattogram, Dhaka..."
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
                     required
                   />
@@ -1311,8 +1328,20 @@ export const AdminPortal: React.FC = () => {
                     type="text"
                     value={newDivBnName}
                     onChange={(e) => setNewDivBnName(e.target.value)}
-                    placeholder="যেমন: চট্টগ্রাম, ঢাকা, সিলেট..."
+                    placeholder="যেমন: চট্টগ্রাম, ঢাকা..."
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-600 block">ZONE NAME (জোন এর নাম)</label>
+                  <input
+                    type="text"
+                    value={newZoneName}
+                    onChange={(e) => setNewZoneName(e.target.value)}
+                    placeholder="e.g. Chawkbazar Zone..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
+                    required
                   />
                 </div>
 
@@ -1340,6 +1369,7 @@ export const AdminPortal: React.FC = () => {
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-extrabold uppercase tracking-wider text-[10px]">
                       <th className="py-3 px-4">Division / Region</th>
+                      <th className="py-3 px-4">Zone Name</th>
                       <th className="py-3 px-4">Bengali Name</th>
                       <th className="py-3 px-4">Assigned Vendors</th>
                       <th className="py-3 px-4">Status</th>
@@ -1348,11 +1378,15 @@ export const AdminPortal: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold text-slate-800">
                     {divisions.map((div) => {
+                      const matchedZone = zones.find(z => z.division?.trim().toLowerCase() === div.name.trim().toLowerCase() || z.name.toLowerCase().includes(div.name.toLowerCase()));
                       const count = vendors.filter(v => v.division?.trim().toLowerCase() === div.name.trim().toLowerCase()).length;
                       return (
                         <tr key={div.id} className="hover:bg-slate-50/80 transition">
                           <td className="py-3.5 px-4 font-black text-slate-900">
                             {div.name}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-rose-600 font-mono">
+                            {matchedZone?.zone || matchedZone?.name || `${div.name} Zone`}
                           </td>
                           <td className="py-3.5 px-4 font-bold text-slate-700">
                             {div.bn_name || '-'}
