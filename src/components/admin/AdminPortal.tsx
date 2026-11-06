@@ -171,17 +171,17 @@ export const AdminPortal: React.FC = () => {
     }
   };
 
-  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads'>(() => {
+  const [activeTab, setActiveTabState] = useState<'settings' | 'categories' | 'zones' | 'divisions' | 'vendors' | 'riders' | 'orders' | 'ads'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('foodiplace_admin_active_tab') as any;
-      if (['settings', 'categories', 'zones', 'vendors', 'riders', 'orders', 'ads'].includes(saved)) {
+      if (['settings', 'categories', 'zones', 'divisions', 'vendors', 'riders', 'orders', 'ads'].includes(saved)) {
         return saved;
       }
     }
-    return 'vendors';
+    return 'divisions';
   });
 
-  const setActiveTab = (tab: 'settings' | 'categories' | 'zones' | 'vendors' | 'riders' | 'orders' | 'ads') => {
+  const setActiveTab = (tab: 'settings' | 'categories' | 'zones' | 'divisions' | 'vendors' | 'riders' | 'orders' | 'ads') => {
     setActiveTabState(tab);
     if (typeof window !== 'undefined') {
       localStorage.setItem('foodiplace_admin_active_tab', tab);
@@ -441,15 +441,7 @@ export const AdminPortal: React.FC = () => {
   const [vCuisine, setVCuisine] = useState('Fast Food, Biryani, Burgers');
   const [vPhone, setVPhone] = useState('');
   const [vAddress, setVAddress] = useState('');
-  const [vDivision, setVDivision] = useState<string>(() => divisions?.[0]?.name || '');
-
-  useEffect(() => {
-    if (divisions && divisions.length > 0) {
-      if (!vDivision || !divisions.some(d => d.name === vDivision)) {
-        setVDivision(divisions[0].name);
-      }
-    }
-  }, [divisions]);
+  const [vDivision, setVDivision] = useState<string>('Chittagong');
   const [vCityArea, setVCityArea] = useState<string>('Chawkbazar');
   const [vZone, setVZone] = useState<string>('Chawkbazar Zone');
   const [vLat, setVLat] = useState(22.3585);
@@ -891,6 +883,18 @@ export const AdminPortal: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('divisions')}
+            className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'divisions' 
+                ? 'bg-rose-600 text-white shadow-xs' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Divisions & Tables ({divisions.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('vendors')}
             className={`px-3 py-2 rounded-xl font-bold transition flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeTab === 'vendors' 
@@ -1241,6 +1245,151 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* 
+          ======================================================================
+          TAB: DIVISIONS & DATABASE TABLES PARTITIONING MANAGER
+          ======================================================================
+        */}
+        {activeTab === 'divisions' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-slate-200/90 p-5 rounded-3xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                  <Layers className="w-5 h-5 text-rose-600" />
+                  <span>Divisions & Database Partition Tables (`vendors_&lt;division_name&gt;`)</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Create new regional division tables. Vendor registration and Customer queries automatically isolate into these partitioned tables.
+                </p>
+              </div>
+            </div>
+
+            {/* Add New Division / Database Table Form */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
+              <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-rose-600 stroke-[3]" />
+                <span>Create New Division Table</span>
+              </h4>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newDivName.trim()) {
+                    alert('Please enter a division name.');
+                    return;
+                  }
+                  await addDivision({
+                    name: newDivName.trim(),
+                    bn_name: newDivBnName.trim() || undefined,
+                    is_active: true
+                  });
+                  const cleanTableName = `vendors_${newDivName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+                  alert(`✅ Division "${newDivName.trim()}" added!\nDatabase Partition Table "${cleanTableName}" is now created and active.`);
+                  setNewDivName('');
+                  setNewDivBnName('');
+                }}
+                className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold"
+              >
+                <div className="space-y-1">
+                  <label className="text-slate-600 block">DIVISION NAME (ENGLISH)</label>
+                  <input
+                    type="text"
+                    value={newDivName}
+                    onChange={(e) => setNewDivName(e.target.value)}
+                    placeholder="e.g. Comilla, Mymensingh..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-600 block">BENGALI NAME (বাংলা নাম)</label>
+                  <input
+                    type="text"
+                    value={newDivBnName}
+                    onChange={(e) => setNewDivBnName(e.target.value)}
+                    placeholder="যেমন: কুমিল্লা, ময়মনসিংহ..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase rounded-xl shadow-md transition cursor-pointer flex items-center justify-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Create Database Table</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* List of Division Partition Tables */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 font-black text-xs text-slate-900 flex items-center justify-between">
+                <span>Active Division Database Partition Tables ({divisions.length})</span>
+                <span className="text-slate-400 font-normal text-[11px]">Strict isolated data queries enabled</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-extrabold uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-4">Division Name</th>
+                      <th className="py-3 px-4">Database Table Name</th>
+                      <th className="py-3 px-4">Assigned Vendors</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-bold text-slate-800">
+                    {divisions.map((div) => {
+                      const cleanTableName = `vendors_${div.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+                      const count = vendors.filter(v => v.division?.trim().toLowerCase() === div.name.trim().toLowerCase()).length;
+                      return (
+                        <tr key={div.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-3.5 px-4 font-black text-slate-900">
+                            {div.name} {div.bn_name ? `(${div.bn_name})` : ''}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-mono font-bold text-[11px] rounded-lg border border-slate-300">
+                              {cleanTableName}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2 py-0.5 bg-rose-50 text-rose-700 font-black text-xs rounded-full border border-rose-200">
+                              {count} Vendors
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full uppercase">
+                              Active Partition
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm(`Are you sure you want to delete division table "${cleanTableName}" (${div.name})?`)) {
+                                  await deleteDivision(div.id);
+                                }
+                              }}
+                              className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 transition cursor-pointer"
+                            >
+                              Delete Table
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -3895,31 +4044,6 @@ export const AdminPortal: React.FC = () => {
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   required
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Division Table (বিভাগীয় ডাটাবেজ টেবিল) *</label>
-                <select
-                  value={vDivision}
-                  onChange={(e) => setVDivision(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer text-xs"
-                  required
-                >
-                  {divisions && divisions.length > 0 ? (
-                    divisions.map((d) => (
-                      <option key={d.id} value={d.name}>
-                        {d.name} {d.bn_name ? `(${d.bn_name})` : ''} — Table: vendors_{d.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" disabled>
-                      No division tables in database
-                    </option>
-                  )}
-                </select>
-                <p className="text-[10px] text-slate-500">
-                  Vendor data will be inserted into database table <span className="font-mono text-rose-600 font-bold">vendors_{vDivision.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span>
-                </p>
               </div>
 
               <div className="space-y-1">
