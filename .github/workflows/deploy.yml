@@ -38,6 +38,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_PARTNER_ACCESS_PIN: ${{ secrets.VITE_PARTNER_ACCESS_PIN || secrets.PARTNER_ACCESS_PIN || vars.VITE_PARTNER_ACCESS_PIN || vars.PARTNER_ACCESS_PIN }}
 
       - name: Ensure GitHub Pages fallback files
         run: |

@@ -5,6 +5,8 @@ import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
 import { PortalRole } from './types/database';
 import { LayoutGrid, X } from 'lucide-react';
 
+import { PartnerAccessPinGate } from './components/vendor/PartnerAccessPinGate';
+
 const CustomerPortal = lazy(() => import('./components/customer/CustomerPortal').then(m => ({ default: m.CustomerPortal })));
 const VendorPortal = lazy(() => import('./components/vendor/VendorPortal').then(m => ({ default: m.VendorPortal })));
 const RiderPortal = lazy(() => import('./components/rider/RiderPortal').then(m => ({ default: m.RiderPortal })));
@@ -177,7 +179,11 @@ function CustomerSiteLayout() {
           </div>
         }>
           {role === 'customer' && <CustomerPortal />}
-          {role === 'vendor' && <VendorPortal />}
+          {role === 'vendor' && (
+            <PartnerAccessPinGate>
+              <VendorPortal />
+            </PartnerAccessPinGate>
+          )}
           {role === 'rider' && <RiderPortal />}
           {role === 'admin' && <AdminPortal />}
         </Suspense>
