@@ -1,12 +1,32 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 import {defineConfig} from 'vite';
+
+function githubPagesPlugin() {
+  return {
+    name: 'github-pages-plugin',
+    closeBundle() {
+      const distDir = path.resolve(import.meta.dirname, 'dist');
+      if (fs.existsSync(distDir)) {
+        const indexPath = path.join(distDir, 'index.html');
+        const fallbackPath = path.join(distDir, '404.html');
+        const noJekyllPath = path.join(distDir, '.nojekyll');
+        
+        if (fs.existsSync(indexPath)) {
+          fs.copyFileSync(indexPath, fallbackPath);
+        }
+        fs.writeFileSync(noJekyllPath, '');
+      }
+    }
+  };
+}
 
 export default defineConfig(() => {
   return {
     base: './',
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), githubPagesPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
