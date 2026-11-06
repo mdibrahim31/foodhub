@@ -891,7 +891,7 @@ export const AdminPortal: React.FC = () => {
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Divisions & Tables ({divisions.length})</span>
+            <span>Divisions & Zones ({divisions.length})</span>
           </button>
 
           <button
@@ -1251,7 +1251,7 @@ export const AdminPortal: React.FC = () => {
 
         {/* 
           ======================================================================
-          TAB: DIVISIONS & DATABASE TABLES PARTITIONING MANAGER
+          TAB: DIVISIONS & ZONES MANAGER
           ======================================================================
         */}
         {activeTab === 'divisions' && (
@@ -1260,19 +1260,19 @@ export const AdminPortal: React.FC = () => {
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
                   <Layers className="w-5 h-5 text-rose-600" />
-                  <span>Divisions & Database Partition Tables (`vendors_&lt;division_name&gt;`)</span>
+                  <span>Divisions & Zones Manager (বিভাগ ও জোন ব্যবস্থাপনা)</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Create new regional division tables. Vendor registration and Customer queries automatically isolate into these partitioned tables.
+                  Add regional divisions and delivery zones. Vendors and Customers match according to their selected Division and Zone.
                 </p>
               </div>
             </div>
 
-            {/* Add New Division / Database Table Form */}
+            {/* Add New Division & Zone Form */}
             <div className="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xs space-y-4">
               <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                 <Plus className="w-4 h-4 text-rose-600 stroke-[3]" />
-                <span>Create New Division Table</span>
+                <span>Add New Division & Zone</span>
               </h4>
 
               <form
@@ -1287,8 +1287,7 @@ export const AdminPortal: React.FC = () => {
                     bn_name: newDivBnName.trim() || undefined,
                     is_active: true
                   });
-                  const cleanTableName = `vendors_${newDivName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-                  alert(`✅ Division "${newDivName.trim()}" added!\nDatabase Partition Table "${cleanTableName}" is now created and active.`);
+                  alert(`✅ Division "${newDivName.trim()}" and Zone added successfully!`);
                   setNewDivName('');
                   setNewDivBnName('');
                 }}
@@ -1300,7 +1299,7 @@ export const AdminPortal: React.FC = () => {
                     type="text"
                     value={newDivName}
                     onChange={(e) => setNewDivName(e.target.value)}
-                    placeholder="e.g. Comilla, Mymensingh..."
+                    placeholder="e.g. Chattogram, Dhaka, Sylhet..."
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
                     required
                   />
@@ -1312,7 +1311,7 @@ export const AdminPortal: React.FC = () => {
                     type="text"
                     value={newDivBnName}
                     onChange={(e) => setNewDivBnName(e.target.value)}
-                    placeholder="যেমন: কুমিল্লা, ময়মনসিংহ..."
+                    placeholder="যেমন: চট্টগ্রাম, ঢাকা, সিলেট..."
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-rose-500"
                   />
                 </div>
@@ -1323,25 +1322,25 @@ export const AdminPortal: React.FC = () => {
                     className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase rounded-xl shadow-md transition cursor-pointer flex items-center justify-center space-x-1"
                   >
                     <Plus className="w-4 h-4 stroke-[3]" />
-                    <span>Create Database Table</span>
+                    <span>Add Division & Zone</span>
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* List of Division Partition Tables */}
+            {/* List of Divisions & Zones */}
             <div className="bg-white border border-slate-200/90 rounded-3xl shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 font-black text-xs text-slate-900 flex items-center justify-between">
-                <span>Active Division Database Partition Tables ({divisions.length})</span>
-                <span className="text-slate-400 font-normal text-[11px]">Strict isolated data queries enabled</span>
+                <span>Active Divisions & Zones ({divisions.length})</span>
+                <span className="text-slate-400 font-normal text-[11px]">Region matching active</span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-extrabold uppercase tracking-wider text-[10px]">
-                      <th className="py-3 px-4">Division Name</th>
-                      <th className="py-3 px-4">Database Table Name</th>
+                      <th className="py-3 px-4">Division / Region</th>
+                      <th className="py-3 px-4">Bengali Name</th>
                       <th className="py-3 px-4">Assigned Vendors</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
@@ -1349,17 +1348,14 @@ export const AdminPortal: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold text-slate-800">
                     {divisions.map((div) => {
-                      const cleanTableName = `vendors_${div.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
                       const count = vendors.filter(v => v.division?.trim().toLowerCase() === div.name.trim().toLowerCase()).length;
                       return (
                         <tr key={div.id} className="hover:bg-slate-50/80 transition">
                           <td className="py-3.5 px-4 font-black text-slate-900">
-                            {div.name} {div.bn_name ? `(${div.bn_name})` : ''}
+                            {div.name}
                           </td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-mono font-bold text-[11px] rounded-lg border border-slate-300">
-                              {cleanTableName}
-                            </span>
+                          <td className="py-3.5 px-4 font-bold text-slate-700">
+                            {div.bn_name || '-'}
                           </td>
                           <td className="py-3.5 px-4">
                             <span className="px-2 py-0.5 bg-rose-50 text-rose-700 font-black text-xs rounded-full border border-rose-200">
@@ -1368,20 +1364,20 @@ export const AdminPortal: React.FC = () => {
                           </td>
                           <td className="py-3.5 px-4">
                             <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full uppercase">
-                              Active Partition
+                              Active
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <button
                               type="button"
                               onClick={async () => {
-                                if (confirm(`Are you sure you want to delete division table "${cleanTableName}" (${div.name})?`)) {
+                                if (confirm(`Are you sure you want to delete division "${div.name}"?`)) {
                                   await deleteDivision(div.id);
                                 }
                               }}
                               className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 transition cursor-pointer"
                             >
-                              Delete Table
+                              Delete
                             </button>
                           </td>
                         </tr>
