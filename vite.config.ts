@@ -18,6 +18,7 @@ export default defineConfig(() => {
           main: path.resolve(import.meta.dirname, 'index.html'),
           customer: path.resolve(import.meta.dirname, 'customer.html'),
           vendor: path.resolve(import.meta.dirname, 'vendor.html'),
+          merchant: path.resolve(import.meta.dirname, 'merchant.html'),
           orders: path.resolve(import.meta.dirname, 'orders.html'),
           order: path.resolve(import.meta.dirname, 'order.html'),
           rider: path.resolve(import.meta.dirname, 'rider.html'),

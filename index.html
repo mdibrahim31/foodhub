@@ -25,6 +25,8 @@
           // If opened via shortcut with portal hash/query
           if (portal === 'vendor') {
             window.location.replace('./vendor.html' + window.location.search);
+          } else if (portal === 'merchant') {
+            window.location.replace('./merchant.html' + window.location.search);
           } else if (portal === 'orders' || portal === 'order' || portal === 'kitchen') {
             window.location.replace('./orders.html' + window.location.search);
           } else if (portal === 'rider') {
