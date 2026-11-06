@@ -75,7 +75,7 @@ export const PartnerAccessPinGate: React.FC<PartnerAccessPinGateProps> = ({ chil
           <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-start space-x-3 text-xs text-emerald-900 font-bold">
             <Lock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Website access is restricted. Enter the authorized Security PIN to enter <span className="underline font-mono">partner_access_panel.html</span>.
+              Website access is restricted. Enter the authorized Security PIN to enter <span className="underline font-mono">vendor_access_panel.html</span>.
             </p>
           </div>
 

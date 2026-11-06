@@ -23,10 +23,10 @@
           const portal = (params.get('portal') || hash).split('?')[0];
 
           // If opened via shortcut with portal hash/query
-          if (portal === 'vendor' || portal === 'partner_access_panel') {
-            window.location.replace('./partner_access_panel.html' + window.location.search);
+          if (portal === 'vendor' || portal === 'vendor_access_panel' || portal === 'partner_access_panel') {
+            window.location.replace('./vendor_access_panel.html' + window.location.search);
           } else if (portal === 'merchant' || portal === 'partner') {
-            window.location.replace('./partner.html' + window.location.search);
+            window.location.replace('./vendor.html' + window.location.search);
           } else if (portal === 'orders' || portal === 'order' || portal === 'kitchen') {
             window.location.replace('./orders.html' + window.location.search);
           } else if (portal === 'rider') {

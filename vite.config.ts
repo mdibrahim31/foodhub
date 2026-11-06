@@ -37,8 +37,8 @@ export default defineConfig(() => {
         input: {
           main: path.resolve(import.meta.dirname, 'index.html'),
           customer: path.resolve(import.meta.dirname, 'customer.html'),
-          partner_access_panel: path.resolve(import.meta.dirname, 'partner_access_panel.html'),
-          partner: path.resolve(import.meta.dirname, 'partner.html'),
+          vendor_access_panel: path.resolve(import.meta.dirname, 'vendor_access_panel.html'),
+          vendor: path.resolve(import.meta.dirname, 'vendor.html'),
           orders: path.resolve(import.meta.dirname, 'orders.html'),
           order: path.resolve(import.meta.dirname, 'order.html'),
           rider: path.resolve(import.meta.dirname, 'rider.html'),
