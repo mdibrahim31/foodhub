@@ -59,7 +59,18 @@ import {
   ArrowLeftRight
 } from 'lucide-react';
 
-export const VendorPortal: React.FC = () => {
+export interface VendorPortalProps {
+  isAccessPanel?: boolean;
+}
+
+export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => {
+  const isAccessPanelMode = typeof isAccessPanel === 'boolean'
+    ? isAccessPanel
+    : (typeof window !== 'undefined' && (
+        window.location.pathname.includes('vendor_access_panel') ||
+        window.location.href.includes('vendor_access_panel')
+      ));
+
   const { 
     vendors, 
     currentVendor, 
@@ -212,9 +223,9 @@ export const VendorPortal: React.FC = () => {
     setTimeout(() => setSwitchToastMessage(null), 3500);
   };
 
-  // Auto-login & default vendor selection when entering partner access panel
+  // Auto-login & default vendor selection ONLY when entering vendor access panel
   useEffect(() => {
-    if (vendors && vendors.length > 0) {
+    if (isAccessPanelMode && vendors && vendors.length > 0) {
       if (!currentVendor) {
         const defaultVendor = vendors[0];
         setCurrentVendor(defaultVendor);
@@ -223,7 +234,7 @@ export const VendorPortal: React.FC = () => {
         loginUser('vendor', currentVendor.phone, currentVendor.password || '123');
       }
     }
-  }, [vendors, currentVendor, currentUser, setCurrentVendor, loginUser]);
+  }, [isAccessPanelMode, vendors, currentVendor, currentUser, setCurrentVendor, loginUser]);
 
   const filteredVendors = vendors.filter(v => {
     if (!vendorSearchQuery.trim()) return true;
@@ -407,6 +418,11 @@ export const VendorPortal: React.FC = () => {
       } else {
         setAuthError(res.message || 'Login failed. Please check phone and password.');
       }
+    } else {
+      const matched = vendors.find(v => v.phone === authPhone.trim());
+      if (matched) {
+        setCurrentVendor(matched);
+      }
     }
   };
 
@@ -502,18 +518,377 @@ export const VendorPortal: React.FC = () => {
     }
   };
 
-  if (!currentVendor) {
-    const defaultV = vendors && vendors.length > 0 ? vendors[0] : null;
-    if (defaultV) {
-      setCurrentVendor(defaultV);
-      loginUser('vendor', defaultV.phone, defaultV.password || '123');
+  if (isAccessPanelMode) {
+    if (!currentVendor) {
+      const defaultV = vendors && vendors.length > 0 ? vendors[0] : null;
+      if (defaultV) {
+        setCurrentVendor(defaultV);
+        loginUser('vendor', defaultV.phone, defaultV.password || '123');
+      }
+      return (
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 space-y-3">
+          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Loading Vendor Access Dashboard...</p>
+        </div>
+      );
     }
-    return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 space-y-3">
-        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Loading Vendor Dashboard...</p>
-      </div>
-    );
+  } else {
+    // Standard Vendor Portal (vendor.html)
+    // If not authenticated as vendor or no currentVendor selected, show Login and Registration page!
+    if (!currentUser || currentUser.role !== 'vendor' || !currentVendor) {
+      return (
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
+          <div className="sm:mx-auto sm:w-full sm:max-w-md">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-600/30 text-white">
+                <Store className="w-7 h-7" />
+              </div>
+              <h2 className="text-2xl font-black text-white tracking-tight">FoodiPlace Vendor Portal</h2>
+              <p className="text-xs text-slate-400 font-medium">ভেন্ডর মার্চেন্ট লগইন ও সেলফ রেজিস্ট্রেশন পোর্টাল</p>
+            </div>
+
+            <div className="mt-6 bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-900 border border-slate-100">
+              {/* Tab Selector: Login vs Register */}
+              <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
+                <button
+                  type="button"
+                  onClick={() => { setAuthTab('login'); setAuthError(''); }}
+                  className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+                    authTab === 'login'
+                      ? 'bg-white text-orange-600 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Login (লগইন)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthTab('register'); setAuthError(''); }}
+                  className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+                    authTab === 'register'
+                      ? 'bg-white text-orange-600 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Register (নতুন নিবন্ধন)
+                </button>
+              </div>
+
+              {authError && (
+                <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              {authTab === 'login' ? (
+                /* LOGIN FORM */
+                <form onSubmit={handleVendorLoginSubmit} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Registered Phone Number *</label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <input
+                        type="tel"
+                        value={authPhone}
+                        onChange={(e) => setAuthPhone(e.target.value)}
+                        placeholder="01XXXXXXXXX"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-hidden focus:border-orange-500 text-sm"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Password *</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <input
+                        type="password"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 px-4 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md shadow-orange-600/30 transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Store className="w-4 h-4" />
+                    <span>LOGIN TO MY STORE (লগইন করুন)</span>
+                  </button>
+
+                  {/* Quick Select for local testing */}
+                  {vendors && vendors.length > 0 && (
+                    <div className="pt-4 border-t border-slate-100 text-center space-y-2">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                        Quick Test Accounts:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 justify-center">
+                        {vendors.slice(0, 6).map((v) => (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => {
+                              setAuthPhone(v.phone);
+                              setAuthPassword(v.password || '123');
+                              loginUser('vendor', v.phone, v.password || '123');
+                              setCurrentVendor(v);
+                            }}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                          >
+                            {v.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => { setAuthTab('register'); setAuthError(''); }}
+                      className="text-xs font-bold text-orange-600 hover:underline cursor-pointer"
+                    >
+                      নতুন স্টোর বা রেস্টুরেন্ট নিবন্ধন করতে চান? এখানে চাপুন →
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* REGISTRATION FORM */
+                <form onSubmit={handleVendorRegisterSubmit} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Store / Restaurant Name *</label>
+                    <div className="relative">
+                      <Store className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <input
+                        type="text"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        placeholder="e.g. Sultan's Dine, Meena Bazar"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-hidden focus:border-orange-500 text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Login Phone Number *</label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <input
+                        type="tel"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="01XXXXXXXXX"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-hidden focus:border-orange-500 text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Password *</label>
+                      <input
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Confirm Password *</label>
+                      <input
+                        type="password"
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* VENDOR PARTNER TYPE */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Vendor Partner Type *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRegVendorType('restaurant')}
+                        className={`py-3 px-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                          regVendorType === 'restaurant'
+                            ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-base">🍔</span>
+                        <span>RESTAURANT</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRegVendorType('shop')}
+                        className={`py-3 px-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                          regVendorType === 'shop'
+                            ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-base">🛒</span>
+                        <span>SHOP / GROCERY</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CATEGORY DROPDOWN */}
+                  {regVendorType === 'restaurant' ? (
+                    <div className="space-y-1">
+                      <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Restaurant Category *</label>
+                      <div className="relative">
+                        <select
+                          value={regRestaurantCategory}
+                          onChange={(e) => setRegRestaurantCategory(e.target.value as any)}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm appearance-none cursor-pointer"
+                        >
+                          <option value="restaurant">Restaurant (রেস্টুরেন্ট)</option>
+                          <option value="cloud_kitchen">Cloud Kitchen (ক্লাউড কিচেন)</option>
+                          <option value="home_kitchen">Home Kitchen (হোম কিচেন)</option>
+                          <option value="sweets_bakery">Sweets & Bakery (মিষ্টি ও বেকারি)</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Shop Category *</label>
+                      <div className="relative">
+                        <select
+                          value={regShopCategory}
+                          onChange={(e) => setRegShopCategory(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm appearance-none cursor-pointer"
+                        >
+                          <option value="Grocery (মুদি)">Grocery (মুদি)</option>
+                          <option value="Accessories (অ্যাক্সেসরিজ)">Accessories (অ্যাক্সেসরিজ)</option>
+                          <option value="Parts & Equipment (পার্টস ও ইকুইপমেন্টস)">Parts & Equipment (পার্টস ও ইকুইপমেন্টস)</option>
+                          <option value="Cosmetics (কসমেটিকস)">Cosmetics (কসমেটিকস)</option>
+                          <option value="Supershop (সুপারশপ)">Supershop (সুপারশপ)</option>
+                          <option value="Pharmacy (ফার্মেসি)">Pharmacy (ফার্মেসি)</option>
+                          <option value="Fruits (ফলমূল)">Fruits (ফলমূল)</option>
+                          <option value="Meat & Fish (মাংস ও মাছ)">Meat & Fish (মাংস ও মাছ)</option>
+                          <option value="Daily Needs (দৈনন্দিন পণ্য)">Daily Needs (দৈনন্দিন পণ্য)</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DIVISION SELECTION */}
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Division / Region (বিভাগ) *</label>
+                    <div className="relative">
+                      <select
+                        value={regDivision}
+                        onChange={(e) => setRegDivision(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm font-bold appearance-none cursor-pointer"
+                        required
+                      >
+                        {divisions && divisions.length > 0 ? (
+                          divisions.map((d) => (
+                            <option key={d.id} value={d.name}>
+                              {d.name} {d.bn_name ? `(${d.bn_name})` : ''}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>
+                            No divisions configured
+                          </option>
+                        )}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* PHYSICAL STREET ADDRESS */}
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Physical Street Address *</label>
+                    <input
+                      type="text"
+                      value={regAddress}
+                      onChange={(e) => setRegAddress(e.target.value)}
+                      placeholder="Street / Market / Area"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm"
+                      required
+                    />
+                  </div>
+
+                  {/* GOOGLE MAPS LOCATION URL / COORDINATES */}
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Google Maps Location URL / Coordinates</label>
+                    <input
+                      type="text"
+                      value={regGoogleMapsLink}
+                      onChange={(e) => setRegGoogleMapsLink(e.target.value)}
+                      placeholder="e.g. https://maps.app.goo.gl/... or 22.3571, 91.7832"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:border-orange-500 text-xs"
+                    />
+                    {regGoogleMapsLink.trim() && (
+                      <div className="text-[10px] pt-1">
+                        {parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim()) ? (
+                          <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 inline" /> Coordinates detected: {parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim())?.lat.toFixed(4)}, {parseGoogleMapsLinkOrCoords(regGoogleMapsLink.trim())?.lng.toFixed(4)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 font-normal">
+                            Zone center coordinates will be used as default fallback.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SUBMIT BUTTONS */}
+                  <div className="grid grid-cols-2 gap-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => { setAuthTab('login'); setAuthError(''); }}
+                      className="py-3.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-xs uppercase tracking-wider transition cursor-pointer text-center"
+                    >
+                      বাতিল (Cancel)
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={regSubmitting}
+                      className="py-3.5 px-4 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md shadow-orange-600/30 transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {regSubmitting ? 'Registering...' : 'REGISTER STORE'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Switch to Customer Site */}
+              <div className="pt-4 border-t border-slate-100 mt-5 text-center">
+                <button
+                  type="button"
+                  onClick={() => setRole('customer')}
+                  className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                >
+                  <span>← Back to Customer Site (কাস্টমার সাইটে যান)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
          
 
@@ -1360,19 +1735,21 @@ export const VendorPortal: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>
 
-                <button
-                  onClick={() => setIsVendorSwitcherOpen(true)}
-                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <ArrowLeftRight className="w-5 h-5 text-orange-600 stroke-[2]" />
-                    <div>
-                      <span className="text-[15px] font-bold text-slate-900 block">Switch Restaurant</span>
-                      <span className="text-[11px] text-slate-500 font-medium">Switch to another registered vendor profile</span>
+                {isAccessPanelMode && (
+                  <button
+                    onClick={() => setIsVendorSwitcherOpen(true)}
+                    className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                  >
+                    <div className="flex items-center space-x-3.5">
+                      <ArrowLeftRight className="w-5 h-5 text-orange-600 stroke-[2]" />
+                      <div>
+                        <span className="text-[15px] font-bold text-slate-900 block">Switch Restaurant</span>
+                        <span className="text-[11px] text-slate-500 font-medium">Switch to another registered vendor profile</span>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                </button>
+                    <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                )}
 
                 <button
                   onClick={() => openVendorProfileModal()}
@@ -1488,9 +1865,15 @@ export const VendorPortal: React.FC = () => {
               <div className="flex items-center justify-between gap-3">
                 <div className="relative flex-1">
                   <button
-                    onClick={() => setIsVendorSwitcherOpen(true)}
+                    onClick={() => {
+                      if (isAccessPanelMode) {
+                        setIsVendorSwitcherOpen(true);
+                      } else {
+                        openVendorProfileModal();
+                      }
+                    }}
                     className="w-full flex items-center justify-between px-3.5 py-2 rounded-full border border-white/40 bg-white/15 backdrop-blur-md text-white text-left hover:bg-white/25 transition cursor-pointer"
-                    title="Click to switch vendor or view profile"
+                    title={isAccessPanelMode ? "Click to switch vendor account" : "Click to view vendor profile"}
                   >
                     <div className="flex items-center space-x-2 truncate">
                       <Store className="w-4 h-4 shrink-0 text-white" />
@@ -1499,7 +1882,9 @@ export const VendorPortal: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center space-x-1 shrink-0">
-                      <span className="text-[10px] text-white/90 font-medium">Profile</span>
+                      <span className="text-[10px] text-white/90 font-medium">
+                        {isAccessPanelMode ? 'Switch / Profile' : 'Profile'}
+                      </span>
                       <ChevronRight className="w-3.5 h-3.5 text-white/80" />
                     </div>
                   </button>
@@ -2289,7 +2674,7 @@ export const VendorPortal: React.FC = () => {
         Triggered when clicking the store pill / Profile option at top of vendor.html
         ========================================================================
       */}
-      {isVendorSwitcherOpen && (
+      {isVendorSwitcherOpen && isAccessPanelMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl overflow-hidden relative max-h-[85vh] flex flex-col border border-slate-100">
             {/* Modal Header */}
@@ -2976,6 +3361,9 @@ export const VendorPortal: React.FC = () => {
                 onClick={() => {
                   setIsLogoutConfirmOpen(false);
                   logoutUser();
+                  if (!isAccessPanelMode) {
+                    setCurrentVendor(null as any);
+                  }
                 }}
                 className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-md shadow-rose-600/30 cursor-pointer"
               >

@@ -181,7 +181,7 @@ function CustomerSiteLayout() {
           {role === 'customer' && <CustomerPortal />}
           {role === 'vendor' && (
             <PartnerAccessPinGate>
-              <VendorPortal />
+              <VendorPortal isAccessPanel={true} />
             </PartnerAccessPinGate>
           )}
           {role === 'rider' && <RiderPortal />}

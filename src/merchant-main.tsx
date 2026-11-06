@@ -11,7 +11,7 @@ const StandaloneMerchantApp: React.FC = () => {
       <DeliveryProvider>
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans relative">
           <main className="flex-1">
-            <VendorPortal />
+            <VendorPortal isAccessPanel={false} />
           </main>
         </div>
       </DeliveryProvider>
