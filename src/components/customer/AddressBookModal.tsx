@@ -120,6 +120,7 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     updateAddress, 
     deleteAddress,
     zones,
+    divisions,
     currentUser,
     isSupabaseConfigured
   } = useDelivery();
@@ -150,8 +151,34 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
   const [label, setLabel] = useState<string>('At door');
   const [addressLine, setAddressLine] = useState('');
   const [cityField, setCityField] = useState('Chittagong');
+  const [selectedDivision, setSelectedDivision] = useState<string>(() => divisions?.[0]?.name || 'chottogram');
+  const [selectedZone, setSelectedZone] = useState<string>(() => zones?.[0]?.name || 'ctg');
   const [noteToRider, setNoteToRider] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+
+  // Filter available zones by chosen division
+  const filteredAvailableZones = React.useMemo(() => {
+    if (!selectedDivision) return zones;
+    const divClean = selectedDivision.trim().toLowerCase();
+    const matches = zones.filter(z => (z.division || '').trim().toLowerCase() === divClean);
+    return matches.length > 0 ? matches : zones;
+  }, [zones, selectedDivision]);
+
+  // Sync selectedDivision default if empty
+  useEffect(() => {
+    if (!selectedDivision && divisions && divisions.length > 0) {
+      setSelectedDivision(divisions[0].name);
+    }
+  }, [divisions, selectedDivision]);
+
+  // Sync selectedZone when filtered zones change
+  useEffect(() => {
+    if (filteredAvailableZones && filteredAvailableZones.length > 0) {
+      if (!selectedZone || !filteredAvailableZones.some(z => z.name.toLowerCase() === selectedZone.toLowerCase())) {
+        setSelectedZone(filteredAvailableZones[0].name);
+      }
+    }
+  }, [filteredAvailableZones, selectedZone]);
 
   // Leaflet references
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -306,6 +333,10 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     setPinnedTitle('305 Chasma Hill R/A Rd');
     setPinnedCity('Chittagong');
     setSearchQuery('305 Chasma Hill R/A Rd Chittagong');
+    const defaultDiv = divisions?.[0]?.name || 'chottogram';
+    setSelectedDivision(defaultDiv);
+    const matchingZone = zones.find(z => (z.division || '').toLowerCase() === defaultDiv.toLowerCase()) || zones[0];
+    setSelectedZone(matchingZone?.name || 'ctg');
     setView('map');
   };
 
@@ -319,6 +350,9 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     setLabel(addr.label || 'At door');
     setNoteToRider(addr.details || '');
     setCustomerPhone(addr.customer_phone || '');
+    const div = addr.division || divisions?.[0]?.name || 'chottogram';
+    setSelectedDivision(div);
+    setSelectedZone(addr.zone || 'ctg');
     setView('map');
   };
 
@@ -339,9 +373,13 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
   const handleProceedToDetails = () => {
     setAddressLine(pinnedTitle);
     setCityField(pinnedCity);
-    if (!noteToRider && editingAddressId) {
+    if (editingAddressId) {
       const existing = addresses.find(a => a.id === editingAddressId);
-      if (existing) setNoteToRider(existing.details || '');
+      if (existing) {
+        if (existing.division) setSelectedDivision(existing.division);
+        if (existing.zone) setSelectedZone(existing.zone);
+        setNoteToRider(existing.details || '');
+      }
     }
     setView('details');
   };
@@ -351,8 +389,8 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     e.preventDefault();
     if (!addressLine.trim()) return;
 
-    const detectedZone = findZoneForPoint(pinnedLat, pinnedLng, zones);
-    const zoneName = detectedZone?.name || 'Chawkbazar Zone';
+    const chosenDivision = selectedDivision.trim() || divisions?.[0]?.name || 'chottogram';
+    const chosenZone = selectedZone.trim() || (filteredAvailableZones[0]?.name || 'ctg');
 
     if (editingAddressId) {
       updateAddress(editingAddressId, {
@@ -361,8 +399,12 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
         label,
         latitude: pinnedLat,
         longitude: pinnedLng,
-        zone: zoneName,
+        division: chosenDivision,
+        zone: chosenZone,
+        status: 'active',
+        is_default: true
       });
+      activateAddress(editingAddressId);
     } else {
       addAddress({
         customer_name: currentUser?.name || 'Customer',
@@ -372,7 +414,8 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
         details: noteToRider.trim(),
         latitude: pinnedLat,
         longitude: pinnedLng,
-        zone: zoneName,
+        division: chosenDivision,
+        zone: chosenZone,
         is_default: true,
         status: 'active'
       });
@@ -482,14 +525,18 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 font-medium">
-                            {addr.details?.includes('Chittagong') || addr.details?.includes('Dhaka') 
-                              ? addr.details 
-                              : 'Chittagong'}
-                          </p>
-                          <p className="text-xs text-slate-500 font-medium">
-                            Note to rider: {addr.details || addr.customer_phone || '01609470766'}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            {addr.division && (
+                              <span className="text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                                বিভাগ: {addr.division}
+                              </span>
+                            )}
+                            {addr.zone && (
+                              <span className="text-[10px] font-bold bg-blue-50 text-blue-900 border border-blue-200/80 px-2 py-0.5 rounded-md">
+                                জোন: {addr.zone}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -799,18 +846,79 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                 />
               </div>
 
-              {/* Note to Rider */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Note to rider (Landmarks / Apartment / Suite)
-                </label>
-                <input
-                  type="text"
-                  value={noteToRider}
-                  onChange={(e) => setNoteToRider(e.target.value)}
-                  placeholder="e.g. Near the big mosque or 3rd floor"
-                  className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500"
-                />
+              {/* Division & Zone Selection (Converted from Note to rider) */}
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Division Selector */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Division (বিভাগ) <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={selectedDivision}
+                      onChange={(e) => {
+                        const newDiv = e.target.value;
+                        setSelectedDivision(newDiv);
+                        const matchZ = zones.find(z => (z.division || '').toLowerCase() === newDiv.toLowerCase());
+                        if (matchZ) {
+                          setSelectedZone(matchZ.name);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-white"
+                      required
+                    >
+                      {divisions && divisions.length > 0 ? (
+                        divisions.map((d) => (
+                          <option key={d.id} value={d.name}>
+                            {d.name} {d.bn_name ? `(${d.bn_name})` : ''}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="chottogram">chottogram (চট্টগ্রাম)</option>
+                          <option value="Dhaka">Dhaka (ঢাকা)</option>
+                          <option value="Sylhet">Sylhet (সিলেট)</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Zone Selector */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Zone (জোন) <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={selectedZone}
+                      onChange={(e) => setSelectedZone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-white"
+                      required
+                    >
+                      {filteredAvailableZones.length > 0 ? (
+                        filteredAvailableZones.map((z) => (
+                          <option key={z.id} value={z.name}>
+                            {z.name} {z.bn_name ? `(${z.bn_name})` : ''}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="ctg">ctg</option>
+                          <option value="Chawkbazar Zone">Chawkbazar Zone</option>
+                          <option value="Agrabad Zone">Agrabad Zone</option>
+                          <option value="GEC Zone">GEC Zone</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Division & Zone active notice */}
+                <div className="p-3 bg-orange-50/80 border border-orange-200 rounded-xl flex items-start gap-2.5 text-xs text-orange-950 font-semibold">
+                  <Info className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+                  <p className="leading-snug">
+                    এই ঠিকানা সেভ করলে সাইটে শুধুমাত্র <b>{selectedDivision || 'বিভাগ'}</b> ও <b>{selectedZone || 'জোন'}</b> এর ভেন্ডররাই লোড ও প্রদর্শিত হবে।
+                  </p>
+                </div>
               </div>
 
               {/* Save Button */}

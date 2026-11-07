@@ -519,9 +519,19 @@ app.put('/api/orders/:id', (req, res) => {
 });
 
 // 6. Vendors API
-app.get('/api/vendors', (_req, res) => {
+app.get('/api/vendors', (req, res) => {
   if (!serverState.vendors) serverState.vendors = [];
-  res.json(serverState.vendors);
+  const { division, zone } = req.query;
+  let list = serverState.vendors;
+  if (division && typeof division === 'string' && division.trim()) {
+    const divClean = division.trim().toLowerCase();
+    list = list.filter((v: any) => (v.division || '').trim().toLowerCase() === divClean);
+  }
+  if (zone && typeof zone === 'string' && zone.trim()) {
+    const zoneClean = zone.trim().toLowerCase();
+    list = list.filter((v: any) => (v.zone || v.city_area || '').trim().toLowerCase() === zoneClean);
+  }
+  res.json(list);
 });
 
 app.post('/api/vendors', (req, res) => {

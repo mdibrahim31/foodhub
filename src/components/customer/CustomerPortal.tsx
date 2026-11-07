@@ -1075,23 +1075,31 @@ export const CustomerPortal: React.FC = () => {
   }, [vendors, getVendorCoords, updateVendor]);
 
   // Filtered and Sorted Vendors directly from database
-  // Filtered and Sorted Vendors directly from database (5 KM radius from pin point, sorted closest first)
+  // Filtered and Sorted Vendors directly from database (Filtered by active address Division & Zone)
   const displayVendors = useMemo(() => {
     return vendors.filter((v) => {
-      // 1. Proximity check: Calculate distance from customer map pin point
-      const { lat: vLat, lng: vLng } = getVendorCoords(v);
-      const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+      // 1. Division & Zone Filter strictly based on active address in Address Book
+      // active address book a j division and zone set kora thakbe only she division and zone er vendors rai load hobe site a database theke
+      const activeAddr = selectedAddress || addresses?.find(a => a.status === 'active') || addresses?.find(a => a.is_default) || addresses?.[0] || null;
+      const activeDiv = (activeAddr?.division || currentCustomer?.division || currentUser?.division || 'chottogram').trim().toLowerCase();
+      const activeZone = (activeAddr?.zone || activeAddr?.city_area || '').trim().toLowerCase();
 
-      // Filter: Match customer division partition table (only vendors from vendors_<customer_division>)
-      const activeCustomerDivision = currentCustomer?.division || currentUser?.division || (selectedArea ? cityAreas.find(a => a.name === selectedArea)?.division_name : undefined) || 'Chittagong';
-      if (v.division && activeCustomerDivision) {
-        const vendorDivClean = v.division.trim().toLowerCase();
-        const custDivClean = activeCustomerDivision.trim().toLowerCase();
-        if (vendorDivClean !== custDivClean) return false;
+      // Filter by Division:
+      if (activeDiv) {
+        const vendorDiv = (v.division || 'chottogram').trim().toLowerCase();
+        if (vendorDiv !== activeDiv) return false;
       }
 
-      // Filter: Show all vendors within 5 km of customer map pin
-      if (distKm > 5.0) return false;
+      // Filter by Zone:
+      if (activeZone) {
+        const vendorZone = (v.zone || v.city_area || '').trim().toLowerCase();
+        if (vendorZone && vendorZone !== activeZone) return false;
+      }
+
+      // Proximity check fallback when no zone is matched
+      const { lat: vLat, lng: vLng } = getVendorCoords(v);
+      const distKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
+      if (!activeZone && !activeDiv && distKm > 5.0) return false;
 
       // Note: Vendors are shown regardless of open/closed/busy/paused status so customers can browse menus!
 
@@ -1183,7 +1191,7 @@ export const CustomerPortal: React.FC = () => {
       // Default & 'distance' & 'popular': Closest distance first! (kacher vendor upore, dure vendor niche)
       return distA - distB;
     });
-  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeShopTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords, currentCustomer?.division, currentUser?.division, selectedArea, cityAreas]);
+  }, [vendors, searchQuery, isRating4PlusOnly, activeBottomNav, activeRestaurantTypeFilter, activeShopTypeFilter, activeCuisineFilter, isNewOnly, selectedSort, menuItems, customerLat, customerLng, getVendorCoords, selectedAddress, addresses, currentCustomer?.division, currentUser?.division, selectedArea, cityAreas]);
 
   // Cart Calculations
   const foodTotal = cart.reduce((sum, item) => {
