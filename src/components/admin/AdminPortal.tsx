@@ -1360,7 +1360,7 @@ export const AdminPortal: React.FC = () => {
             {/* List of Divisions & Zones */}
             <div className="bg-white border border-slate-200/90 rounded-3xl shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 font-black text-xs text-slate-900 flex items-center justify-between">
-                <span>Active Divisions & Zones ({divisions.length})</span>
+                <span>Active Divisions & Zones ({zones.length})</span>
                 <span className="text-slate-400 font-normal text-[11px]">Region matching active</span>
               </div>
 
@@ -1377,46 +1377,60 @@ export const AdminPortal: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold text-slate-800">
-                    {divisions.map((div) => {
-                      const matchedZone = zones.find(z => z.division?.trim().toLowerCase() === div.name.trim().toLowerCase() || z.name.toLowerCase().includes(div.name.toLowerCase()));
-                      const count = vendors.filter(v => v.division?.trim().toLowerCase() === div.name.trim().toLowerCase()).length;
-                      return (
-                        <tr key={div.id} className="hover:bg-slate-50/80 transition">
-                          <td className="py-3.5 px-4 font-black text-slate-900">
-                            {div.name}
-                          </td>
-                          <td className="py-3.5 px-4 font-bold text-rose-600 font-mono">
-                            {matchedZone?.zone || matchedZone?.name || `${div.name} Zone`}
-                          </td>
-                          <td className="py-3.5 px-4 font-bold text-slate-700">
-                            {div.bn_name || '-'}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 bg-rose-50 text-rose-700 font-black text-xs rounded-full border border-rose-200">
-                              {count} Vendors
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full uppercase">
-                              Active
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (confirm(`Are you sure you want to delete division "${div.name}"?`)) {
-                                  await deleteDivision(div.id);
-                                }
-                              }}
-                              className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 transition cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {zones.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                          কোনো Division বা Zone ডাটাবেজে নেই। উপরের ফর্ম থেকে নতুন যোগ করুন।
+                        </td>
+                      </tr>
+                    ) : (
+                      zones.map((z) => {
+                        const count = vendors.filter(v => 
+                          (v.division && z.division && v.division.trim().toLowerCase() === z.division.trim().toLowerCase()) ||
+                          (v.zone && z.zone && v.zone.trim().toLowerCase() === z.zone.trim().toLowerCase())
+                        ).length;
+                        return (
+                          <tr key={z.id} className="hover:bg-slate-50/80 transition">
+                            <td className="py-3.5 px-4 font-black text-slate-900">
+                              {z.division || '-'}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-rose-600 font-mono">
+                              {z.zone || z.name}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-slate-700">
+                              {z.bn_name || '-'}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="px-2 py-0.5 bg-rose-50 text-rose-700 font-black text-xs rounded-full border border-rose-200">
+                                {count} Vendors
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full uppercase">
+                                Active
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (confirm(`Are you sure you want to delete zone "${z.zone || z.name}"?`)) {
+                                    await deleteZone(z.id);
+                                    const matchingDiv = divisions.find(d => d.name.toLowerCase() === (z.division || '').toLowerCase());
+                                    if (matchingDiv) {
+                                      await deleteDivision(matchingDiv.id);
+                                    }
+                                  }
+                                }}
+                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 transition cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

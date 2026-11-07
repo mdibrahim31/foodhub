@@ -508,8 +508,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const [zones, setZones] = useState<DeliveryZone[]>(() => {
-    const parsed = safeJsonParse(`${STORAGE_KEY_PREFIX}zones`, INITIAL_ZONES);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_ZONES;
+    const parsed = safeJsonParse<DeliveryZone[]>(`${STORAGE_KEY_PREFIX}zones`, []);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(z => (z.division && z.division.trim()) || (z.zone && z.zone.trim()));
+    }
+    return [];
   });
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
@@ -1082,10 +1085,34 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
           const { data: zData, error: zError } = await supabase
             .from('zones')
-            .select('*')
-            .order('name', { ascending: true });
-          if (!zError && zData && Array.isArray(zData) && zData.length > 0 && isSubscribed) {
-            setZones(zData as DeliveryZone[]);
+            .select('*');
+          if (!zError && zData && Array.isArray(zData) && isSubscribed) {
+            const mappedZones: DeliveryZone[] = zData.map((row: any) => ({
+              id: String(row.id || `zone-${Date.now()}`),
+              name: String(row.zone || row.name || row.id || ''),
+              zone: String(row.zone || row.name || ''),
+              division: String(row.division || ''),
+              bn_name: row.bn_name || '',
+              description: row.description || '',
+              center_latitude: Number(row.center_latitude) || 22.3590,
+              center_longitude: Number(row.center_longitude) || 91.8380,
+              radius_km: Number(row.radius_km) || 3.0,
+              is_active: row.is_active !== false,
+              color: row.color || '#E11D48',
+              created_at: row.created_at || new Date().toISOString()
+            }));
+            setZones(mappedZones);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}zones`, JSON.stringify(mappedZones));
+            }
+            const distinctDivs = Array.from(new Set(mappedZones.map(z => (z.division || '').trim()).filter(Boolean)));
+            if (distinctDivs.length > 0) {
+              setDivisions(distinctDivs.map(d => ({
+                id: `div-${d.toLowerCase().replace(/\s+/g, '-')}`,
+                name: d,
+                is_active: true
+              })));
+            }
           }
 
           const { data: divData } = await supabase
@@ -1929,7 +1956,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('zones').upsert([newZone]);
+        const record = {
+          id: newZone.id,
+          division: newZone.division || newZone.name || '',
+          zone: newZone.zone || newZone.name || ''
+        };
+        const { error: upsertErr } = await supabase.from('zones').upsert([record]);
+        if (upsertErr) {
+          console.warn('Supabase upsert zone error, retrying insert:', upsertErr);
+          await supabase.from('zones').insert([record]);
+        }
       } catch (err) {
         console.warn('Supabase add zone error:', err);
       }

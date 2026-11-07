@@ -151,34 +151,73 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
   const [label, setLabel] = useState<string>('At door');
   const [addressLine, setAddressLine] = useState('');
   const [cityField, setCityField] = useState('Chittagong');
-  const [selectedDivision, setSelectedDivision] = useState<string>(() => divisions?.[0]?.name || 'chottogram');
-  const [selectedZone, setSelectedZone] = useState<string>(() => zones?.[0]?.name || 'ctg');
+  const [selectedDivision, setSelectedDivision] = useState<string>('');
+  const [selectedZone, setSelectedZone] = useState<string>('');
   const [noteToRider, setNoteToRider] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
 
-  // Filter available zones by chosen division
-  const filteredAvailableZones = React.useMemo(() => {
-    if (!selectedDivision) return zones;
+  // Distinct divisions loaded strictly from the zones table
+  const availableDivisions = React.useMemo(() => {
+    const list: string[] = [];
+    zones.forEach(z => {
+      const d = (z.division || '').trim();
+      if (d && !list.includes(d)) {
+        list.push(d);
+      }
+    });
+    if (divisions && divisions.length > 0) {
+      divisions.forEach(d => {
+        const name = (d.name || '').trim();
+        if (name && !list.includes(name)) {
+          list.push(name);
+        }
+      });
+    }
+    return list;
+  }, [zones, divisions]);
+
+  // Filter available zones by chosen division strictly from the zones table
+  const availableZonesForDivision = React.useMemo(() => {
+    if (!selectedDivision) {
+      const list: string[] = [];
+      zones.forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+      return list;
+    }
     const divClean = selectedDivision.trim().toLowerCase();
-    const matches = zones.filter(z => (z.division || '').trim().toLowerCase() === divClean);
-    return matches.length > 0 ? matches : zones;
+    const list: string[] = [];
+    zones
+      .filter(z => (z.division || '').trim().toLowerCase() === divClean)
+      .forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+    return list;
   }, [zones, selectedDivision]);
 
-  // Sync selectedDivision default if empty
+  // Sync selectedDivision default when available divisions change
   useEffect(() => {
-    if (!selectedDivision && divisions && divisions.length > 0) {
-      setSelectedDivision(divisions[0].name);
+    if (availableDivisions.length > 0) {
+      if (!selectedDivision || !availableDivisions.includes(selectedDivision)) {
+        setSelectedDivision(availableDivisions[0]);
+      }
+    } else {
+      setSelectedDivision('');
     }
-  }, [divisions, selectedDivision]);
+  }, [availableDivisions, selectedDivision]);
 
   // Sync selectedZone when filtered zones change
   useEffect(() => {
-    if (filteredAvailableZones && filteredAvailableZones.length > 0) {
-      if (!selectedZone || !filteredAvailableZones.some(z => z.name.toLowerCase() === selectedZone.toLowerCase())) {
-        setSelectedZone(filteredAvailableZones[0].name);
+    if (availableZonesForDivision.length > 0) {
+      if (!selectedZone || !availableZonesForDivision.includes(selectedZone)) {
+        setSelectedZone(availableZonesForDivision[0]);
       }
+    } else {
+      setSelectedZone('');
     }
-  }, [filteredAvailableZones, selectedZone]);
+  }, [availableZonesForDivision, selectedZone]);
 
   // Leaflet references
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -333,10 +372,10 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     setPinnedTitle('305 Chasma Hill R/A Rd');
     setPinnedCity('Chittagong');
     setSearchQuery('305 Chasma Hill R/A Rd Chittagong');
-    const defaultDiv = divisions?.[0]?.name || 'chottogram';
+    const defaultDiv = availableDivisions[0] || '';
     setSelectedDivision(defaultDiv);
-    const matchingZone = zones.find(z => (z.division || '').toLowerCase() === defaultDiv.toLowerCase()) || zones[0];
-    setSelectedZone(matchingZone?.name || 'ctg');
+    const matchingZone = zones.find(z => (z.division || '').toLowerCase() === defaultDiv.toLowerCase());
+    setSelectedZone(matchingZone?.zone || matchingZone?.name || availableZonesForDivision[0] || '');
     setView('map');
   };
 
@@ -350,9 +389,9 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     setLabel(addr.label || 'At door');
     setNoteToRider(addr.details || '');
     setCustomerPhone(addr.customer_phone || '');
-    const div = addr.division || divisions?.[0]?.name || 'chottogram';
+    const div = addr.division || availableDivisions[0] || '';
     setSelectedDivision(div);
-    setSelectedZone(addr.zone || 'ctg');
+    setSelectedZone(addr.zone || '');
     setView('map');
   };
 
@@ -389,8 +428,8 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
     e.preventDefault();
     if (!addressLine.trim()) return;
 
-    const chosenDivision = selectedDivision.trim() || divisions?.[0]?.name || 'chottogram';
-    const chosenZone = selectedZone.trim() || (filteredAvailableZones[0]?.name || 'ctg');
+    const chosenDivision = selectedDivision.trim() || availableDivisions[0] || '';
+    const chosenZone = selectedZone.trim() || availableZonesForDivision[0] || '';
 
     if (editingAddressId) {
       updateAddress(editingAddressId, {
@@ -861,24 +900,24 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                         setSelectedDivision(newDiv);
                         const matchZ = zones.find(z => (z.division || '').toLowerCase() === newDiv.toLowerCase());
                         if (matchZ) {
-                          setSelectedZone(matchZ.name);
+                          setSelectedZone(matchZ.zone || matchZ.name || '');
+                        } else {
+                          setSelectedZone('');
                         }
                       }}
                       className="w-full px-3.5 py-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-white"
                       required
                     >
-                      {divisions && divisions.length > 0 ? (
-                        divisions.map((d) => (
-                          <option key={d.id} value={d.name}>
-                            {d.name} {d.bn_name ? `(${d.bn_name})` : ''}
+                      {availableDivisions.length > 0 ? (
+                        availableDivisions.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
                           </option>
                         ))
                       ) : (
-                        <>
-                          <option value="chottogram">chottogram (চট্টগ্রাম)</option>
-                          <option value="Dhaka">Dhaka (ঢাকা)</option>
-                          <option value="Sylhet">Sylhet (সিলেট)</option>
-                        </>
+                        <option value="" disabled>
+                          -- কোনো বিভাগ নেই (এডমিন প্যানেলে যোগ করুন) --
+                        </option>
                       )}
                     </select>
                   </div>
@@ -894,19 +933,16 @@ export const AddressBookModal: React.FC<AddressBookModalProps> = ({ isOpen, onCl
                       className="w-full px-3.5 py-2.5 text-xs font-bold border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-white"
                       required
                     >
-                      {filteredAvailableZones.length > 0 ? (
-                        filteredAvailableZones.map((z) => (
-                          <option key={z.id} value={z.name}>
-                            {z.name} {z.bn_name ? `(${z.bn_name})` : ''}
+                      {availableZonesForDivision.length > 0 ? (
+                        availableZonesForDivision.map((z) => (
+                          <option key={z} value={z}>
+                            {z}
                           </option>
                         ))
                       ) : (
-                        <>
-                          <option value="ctg">ctg</option>
-                          <option value="Chawkbazar Zone">Chawkbazar Zone</option>
-                          <option value="Agrabad Zone">Agrabad Zone</option>
-                          <option value="GEC Zone">GEC Zone</option>
-                        </>
+                        <option value="" disabled>
+                          -- কোনো জোন নেই --
+                        </option>
                       )}
                     </select>
                   </div>
