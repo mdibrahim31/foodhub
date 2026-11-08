@@ -573,6 +573,21 @@ export const VendorOrdersTerminal: React.FC<VendorOrdersTerminalProps> = ({ isAc
 
   // Filter orders strictly for active restaurant (including dummy test orders)
   const allOrdersList = [...dummyOrders, ...orders];
+
+  // Map of incoming/pending orders per vendor across the whole database
+  const vendorPendingOrdersMap = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    allOrdersList.forEach((o) => {
+      if (o.status === 'pending' && o.vendor_id) {
+        map[o.vendor_id] = (map[o.vendor_id] || 0) + 1;
+      }
+    });
+    return map;
+  }, [allOrdersList]);
+
+  // Total pending count across all vendors (to show alert on the switcher button)
+  const totalPendingAcrossVendors = Object.values(vendorPendingOrdersMap).reduce((acc, count) => acc + count, 0);
+
   const vendorOrders = activeVendor ? allOrdersList.filter((o) => o.vendor_id === activeVendor.id) : [];
 
   // Pending orders sorted chronologically (FIFO queue)
@@ -1578,23 +1593,39 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
           </div>
 
           {/* Center (Marked Area): Account Switching Bar */}
-          <div className="flex-1 max-w-[230px] sm:max-w-xs mx-1 min-w-0">
+          <div className="flex-1 max-w-[240px] sm:max-w-xs mx-1 min-w-0">
             <button
               type="button"
               onClick={() => setIsVendorSwitcherOpen(true)}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 hover:bg-slate-100 hover:border-rose-400 text-slate-800 text-left shadow-2xs transition cursor-pointer group"
-              title="Click to switch vendor account"
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-full border text-left shadow-2xs transition cursor-pointer group ${
+                totalPendingAcrossVendors > 0
+                  ? 'border-rose-400 bg-rose-50/90 hover:bg-rose-100 text-slate-800 ring-1 ring-rose-300'
+                  : 'border-slate-200 bg-slate-50/90 hover:bg-slate-100 hover:border-rose-400 text-slate-800'
+              }`}
+              title={
+                totalPendingAcrossVendors > 0
+                  ? `${totalPendingAcrossVendors} incoming order(s) - Click to switch accounts`
+                  : 'Click to switch vendor account'
+              }
             >
               <div className="flex items-center space-x-2 truncate min-w-0 pr-1">
-                <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 overflow-hidden font-black text-[10px]">
-                  {activeVendor?.logo_url || activeVendor?.cover_image ? (
-                    <img
-                      src={activeVendor.logo_url || activeVendor.cover_image}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Store className="w-3.5 h-3.5 stroke-[2.2]" />
+                <div className="relative w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 font-black text-[10px]">
+                  <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+                    {activeVendor?.logo_url || activeVendor?.cover_image ? (
+                      <img
+                        src={activeVendor.logo_url || activeVendor.cover_image}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Store className="w-3.5 h-3.5 stroke-[2.2]" />
+                    )}
+                  </div>
+                  {totalPendingAcrossVendors > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 border border-white"></span>
+                    </span>
                   )}
                 </div>
                 <div className="truncate">
@@ -1603,11 +1634,17 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center space-x-0.5 shrink-0 text-slate-400 group-hover:text-rose-600">
-                <span className="text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-full text-slate-600">
+              <div className="flex items-center space-x-1 shrink-0">
+                {totalPendingAcrossVendors > 0 && (
+                  <span className="flex items-center space-x-0.5 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce shadow-2xs">
+                    <Bell className="w-2.5 h-2.5 fill-white stroke-[2]" />
+                    <span>{totalPendingAcrossVendors}</span>
+                  </span>
+                )}
+                <span className="text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-full text-slate-600 group-hover:text-rose-600 group-hover:border-rose-300">
                   Switch
                 </span>
-                <ChevronDown className="w-3.5 h-3.5" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-600" />
               </div>
             </button>
           </div>
@@ -5325,6 +5362,8 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
               ) : (
                 filteredVendorsList.map((v) => {
                   const isActive = activeVendor?.id === v.id;
+                  const pendingCount = vendorPendingOrdersMap[v.id] || 0;
+                  const hasIncomingOrders = pendingCount > 0;
                   return (
                     <button
                       key={v.id}
@@ -5341,30 +5380,46 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
                       className={`w-full py-2.5 px-3 rounded-2xl border text-left transition cursor-pointer flex items-center justify-between gap-3 ${
                         isActive
                           ? 'bg-rose-50/80 border-rose-400 text-slate-900 shadow-2xs ring-1 ring-rose-300'
+                          : hasIncomingOrders
+                          ? 'bg-rose-50/30 border-rose-300 hover:bg-rose-50/60 text-slate-800'
                           : 'bg-white border-slate-200/70 hover:border-rose-300 hover:bg-rose-50/30 text-slate-700'
                       }`}
                     >
                       {/* Left: Logo & Details */}
                       <div className="flex items-center space-x-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                          {v.logo_url || v.cover_image ? (
-                            <img
-                              src={v.logo_url || v.cover_image}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Store className="w-5 h-5 text-slate-400" />
+                        <div className="relative w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                          <div className="w-full h-full rounded-xl overflow-hidden flex items-center justify-center">
+                            {v.logo_url || v.cover_image ? (
+                              <img
+                                src={v.logo_url || v.cover_image}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Store className="w-5 h-5 text-slate-400" />
+                            )}
+                          </div>
+                          {hasIncomingOrders && (
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 border border-white"></span>
+                            </span>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center space-x-1.5">
+                          <div className="flex items-center space-x-1.5 flex-wrap gap-1">
                             <h4 className="font-black text-xs text-slate-900 truncate">
                               {v.name}
                             </h4>
                             {isActive && (
                               <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-rose-600 text-white rounded-md tracking-wider">
                                 Active
+                              </span>
+                            )}
+                            {hasIncomingOrders && (
+                              <span className="inline-flex items-center space-x-1 text-[9px] font-black px-1.5 py-0.5 bg-rose-100 text-rose-700 border border-rose-300 rounded-md animate-pulse">
+                                <Bell className="w-2.5 h-2.5 fill-rose-600 text-rose-600 shrink-0" />
+                                <span>{pendingCount} New Order{pendingCount > 1 ? 's' : ''}</span>
                               </span>
                             )}
                           </div>
@@ -5375,16 +5430,26 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
                         </div>
                       </div>
 
-                      {/* Right: Checkmark if active */}
-                      {isActive ? (
-                        <div className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-rose-600">
-                          Select
-                        </span>
-                      )}
+                      {/* Right: Notification Bell icon & Checkmark / Select */}
+                      <div className="flex items-center space-x-2 shrink-0">
+                        {hasIncomingOrders && (
+                          <div
+                            className="flex items-center justify-center w-7 h-7 rounded-full bg-rose-100 text-rose-600 border border-rose-200 animate-bounce"
+                            title={`${pendingCount} incoming order(s)`}
+                          >
+                            <Bell className="w-3.5 h-3.5 fill-rose-600 text-rose-600" />
+                          </div>
+                        )}
+                        {isActive ? (
+                          <div className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 group-hover:text-rose-600">
+                            Select
+                          </span>
+                        )}
+                      </div>
                     </button>
                   );
                 })
