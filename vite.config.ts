@@ -41,6 +41,7 @@ export default defineConfig(() => {
           vendor: path.resolve(import.meta.dirname, 'vendor.html'),
           orders: path.resolve(import.meta.dirname, 'orders.html'),
           order: path.resolve(import.meta.dirname, 'order.html'),
+          order_access_panel: path.resolve(import.meta.dirname, 'order_access_panel.html'),
           rider: path.resolve(import.meta.dirname, 'rider.html'),
           admin: path.resolve(import.meta.dirname, 'admin.html'),
         },

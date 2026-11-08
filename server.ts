@@ -1320,6 +1320,8 @@ async function startServer() {
   const htmlRoutes: Record<string, string> = {
     '/order': 'order.html',
     '/order.html': 'order.html',
+    '/order_access_panel': 'order_access_panel.html',
+    '/order_access_panel.html': 'order_access_panel.html',
     '/orders': 'orders.html',
     '/orders.html': 'orders.html',
     '/vendor': 'vendor.html',
