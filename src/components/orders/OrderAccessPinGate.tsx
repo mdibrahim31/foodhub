@@ -7,11 +7,11 @@ interface OrderAccessPinGateProps {
 
 export const OrderAccessPinGate: React.FC<OrderAccessPinGateProps> = ({ children }) => {
   // Read PIN from build / runtime environment variable (GitHub Secrets or Variables)
-  const REQUIRED_PIN = (
+  const configuredPin = (
     import.meta.env.VITE_ORDER_ACCESS_PIN || 
     import.meta.env.VITE_ORDER_PIN || 
     import.meta.env.VITE_ORDER_PANEL_PIN ||
-    '123456'
+    ''
   ).toString().trim();
 
   const [inputPin, setInputPin] = useState('');
@@ -34,7 +34,12 @@ export const OrderAccessPinGate: React.FC<OrderAccessPinGateProps> = ({ children
       return;
     }
 
-    if (cleanInput === REQUIRED_PIN) {
+    if (!configuredPin) {
+      setErrorMsg('No Security PIN configured in environment secrets.');
+      return;
+    }
+
+    if (cleanInput === configuredPin) {
       setIsUnlocked(true);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('foodiplace_order_access_pin_verified', 'true');

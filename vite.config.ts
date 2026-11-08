@@ -33,15 +33,18 @@ export default defineConfig(() => {
       },
     },
     define: {
-      'import.meta.env.VITE_ORDER_ACCESS_PIN': JSON.stringify(
-        process.env.VITE_ORDER_ACCESS_PIN ||
-        process.env.ORDER_ACCESS_PIN ||
-        process.env.VITE_ORDER_PIN ||
-        process.env.ORDER_PIN ||
-        process.env.VITE_ORDER_PANEL_PIN ||
-        process.env.ORDER_PANEL_PIN ||
-        ''
-      ),
+      ...( (process.env.VITE_ORDER_ACCESS_PIN || process.env.ORDER_ACCESS_PIN || process.env.VITE_ORDER_PIN || process.env.ORDER_PIN || process.env.VITE_ORDER_PANEL_PIN || process.env.ORDER_PANEL_PIN) ? {
+        'import.meta.env.VITE_ORDER_ACCESS_PIN': JSON.stringify(
+          String(
+            process.env.VITE_ORDER_ACCESS_PIN ||
+            process.env.ORDER_ACCESS_PIN ||
+            process.env.VITE_ORDER_PIN ||
+            process.env.ORDER_PIN ||
+            process.env.VITE_ORDER_PANEL_PIN ||
+            process.env.ORDER_PANEL_PIN
+          ).trim()
+        )
+      } : {} )
     },
     build: {
       rollupOptions: {

@@ -39,6 +39,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_PARTNER_ACCESS_PIN: ${{ secrets.VITE_PARTNER_ACCESS_PIN || secrets.PARTNER_ACCESS_PIN || vars.VITE_PARTNER_ACCESS_PIN || vars.PARTNER_ACCESS_PIN }}
+          VITE_ORDER_ACCESS_PIN: ${{ secrets.VITE_ORDER_ACCESS_PIN || secrets.ORDER_ACCESS_PIN || secrets.VITE_ORDER_PIN || secrets.ORDER_PIN || vars.VITE_ORDER_ACCESS_PIN || vars.ORDER_ACCESS_PIN || vars.VITE_ORDER_PIN || vars.ORDER_PIN }}
+          ORDER_ACCESS_PIN: ${{ secrets.VITE_ORDER_ACCESS_PIN || secrets.ORDER_ACCESS_PIN || secrets.VITE_ORDER_PIN || secrets.ORDER_PIN || vars.VITE_ORDER_ACCESS_PIN || vars.ORDER_ACCESS_PIN || vars.VITE_ORDER_PIN || vars.ORDER_PIN }}
 
       - name: Ensure GitHub Pages fallback files
         run: |
