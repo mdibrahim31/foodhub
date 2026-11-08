@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { supabase, isSupabaseConfigured } from '../../services/supabase';
 import { MenuItem, Order, OrderStatus, Vendor } from '../../types/database';
@@ -114,18 +114,77 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
   const [regRestaurantCategory, setRegRestaurantCategory] = useState<'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery'>('restaurant');
   const [regShopCategory, setRegShopCategory] = useState<string>('Grocery (মুদি)');
   const [regDivision, setRegDivision] = useState<string>(() => divisions?.[0]?.name || '');
+  const [regZone, setRegZone] = useState<string>('');
   const [regAddress, setRegAddress] = useState('');
   const [regGoogleMapsLink, setRegGoogleMapsLink] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
 
-  // Sync default regDivision with database divisions table dynamically
-  useEffect(() => {
+  // Distinct divisions from zones table and divisions list
+  const availableDivisions = useMemo(() => {
+    const list: string[] = [];
+    zones.forEach(z => {
+      const d = (z.division || '').trim();
+      if (d && !list.includes(d)) {
+        list.push(d);
+      }
+    });
     if (divisions && divisions.length > 0) {
-      if (!regDivision || !divisions.some(d => d.name === regDivision)) {
-        setRegDivision(divisions[0].name);
+      divisions.forEach(d => {
+        const name = (d.name || '').trim();
+        if (name && !list.includes(name)) {
+          list.push(name);
+        }
+      });
+    }
+    return list;
+  }, [zones, divisions]);
+
+  // Filter available zones by chosen division strictly from the zones table
+  const availableZonesForDivision = useMemo(() => {
+    if (!regDivision) {
+      const list: string[] = [];
+      zones.forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+      return list;
+    }
+    const divClean = regDivision.trim().toLowerCase();
+    const list: string[] = [];
+    zones
+      .filter(z => (z.division || '').trim().toLowerCase() === divClean)
+      .forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+    if (list.length === 0) {
+      zones.forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+    }
+    return list;
+  }, [zones, regDivision]);
+
+  // Sync default regDivision with available divisions
+  useEffect(() => {
+    if (availableDivisions.length > 0) {
+      if (!regDivision || !availableDivisions.includes(regDivision)) {
+        setRegDivision(availableDivisions[0]);
       }
     }
-  }, [divisions]);
+  }, [availableDivisions, regDivision]);
+
+  // Sync default regZone with available zones for division
+  useEffect(() => {
+    if (availableZonesForDivision.length > 0) {
+      if (!regZone || !availableZonesForDivision.includes(regZone)) {
+        setRegZone(availableZonesForDivision[0]);
+      }
+    } else {
+      setRegZone('');
+    }
+  }, [availableZonesForDivision, regZone]);
 
   // Navigation & View States
   const [activeBottomNav, setActiveBottomNavState] = useState<'overview' | 'menu' | 'ads' | 'more'>(() => {
@@ -455,9 +514,8 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
       return;
     }
 
-    const availableZones = zones && zones.length > 0 ? zones : [];
-    const selectedZoneName = (availableZones.length > 0 ? availableZones[0].name : 'ctg');
-    const matchedZone = availableZones.find(z => z.name === selectedZoneName || z.id === selectedZoneName);
+    const selectedZoneName = regZone.trim() || (availableZonesForDivision.length > 0 ? availableZonesForDivision[0] : (zones?.[0]?.name || 'ctg'));
+    const matchedZone = zones.find(z => (z.zone || z.name || '').trim().toLowerCase() === selectedZoneName.toLowerCase() || z.id === selectedZoneName || (z.name || '').toLowerCase() === selectedZoneName.toLowerCase());
 
     let finalLat = 22.3569;
     let finalLng = 91.7832;
@@ -496,7 +554,7 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
         cuisine: cuisineName,
         zone: selectedZoneName,
         city_area: selectedZoneName,
-        division: regDivision || 'Chittagong',
+        division: regDivision || (matchedZone?.division || 'Chittagong'),
         vendor_type: regVendorType,
         restaurant_type: regRestaurantCategory,
         google_maps_link: regGoogleMapsLink.trim(),
@@ -796,19 +854,53 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
                     <div className="relative">
                       <select
                         value={regDivision}
-                        onChange={(e) => setRegDivision(e.target.value)}
+                        onChange={(e) => {
+                          const newDiv = e.target.value;
+                          setRegDivision(newDiv);
+                          const divClean = newDiv.trim().toLowerCase();
+                          const matchingZones = zones.filter(z => (z.division || '').trim().toLowerCase() === divClean);
+                          if (matchingZones.length > 0) {
+                            setRegZone(matchingZones[0].zone || matchingZones[0].name);
+                          }
+                        }}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm font-bold appearance-none cursor-pointer"
                         required
                       >
-                        {divisions && divisions.length > 0 ? (
-                          divisions.map((d) => (
-                            <option key={d.id} value={d.name}>
-                              {d.name} {d.bn_name ? `(${d.bn_name})` : ''}
+                        {availableDivisions && availableDivisions.length > 0 ? (
+                          availableDivisions.map((dName: string) => (
+                            <option key={dName} value={dName}>
+                              {dName}
                             </option>
                           ))
                         ) : (
                           <option value="" disabled>
                             No divisions configured
+                          </option>
+                        )}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* ZONE SELECTION */}
+                  <div className="space-y-1">
+                    <label className="text-slate-600 uppercase tracking-wider text-[10px] font-bold">Zone / Area Name (জোন) *</label>
+                    <div className="relative">
+                      <select
+                        value={regZone}
+                        onChange={(e) => setRegZone(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-hidden focus:border-orange-500 text-sm font-bold appearance-none cursor-pointer"
+                        required
+                      >
+                        {availableZonesForDivision && availableZonesForDivision.length > 0 ? (
+                          availableZonesForDivision.map((zName: string) => (
+                            <option key={zName} value={zName}>
+                              {zName}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>
+                            No zones found for selected division
                           </option>
                         )}
                       </select>
