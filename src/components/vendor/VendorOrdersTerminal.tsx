@@ -112,7 +112,11 @@ export const isVendorOpenBySchedule = (schedule?: WeeklySchedule): boolean => {
   }
 };
 
-export const VendorOrdersTerminal: React.FC = () => {
+interface VendorOrdersTerminalProps {
+  isAccessPanel?: boolean;
+}
+
+export const VendorOrdersTerminal: React.FC<VendorOrdersTerminalProps> = ({ isAccessPanel = false }) => {
   const {
     vendors,
     currentVendor,
@@ -180,7 +184,18 @@ export const VendorOrdersTerminal: React.FC = () => {
     return null;
   });
 
-  // Active vendor: strictly the authenticated vendor matching phone or ID
+  // Check if we are in access panel mode (order_access_panel.html)
+  const isAccessPanelMode = isAccessPanel || (typeof window !== 'undefined' && (
+    window.location.pathname.includes('order_access_panel') || 
+    window.location.href.includes('order_access_panel')
+  ));
+
+  // Vendor account switcher states
+  const [isVendorSwitcherOpen, setIsVendorSwitcherOpen] = useState(false);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+  const [switchToastMessage, setSwitchToastMessage] = useState<string | null>(null);
+
+  // Active vendor: strictly the authenticated vendor or selected vendor in access panel
   const authenticatedVendor = (currentUser && currentUser.role === 'vendor')
     ? (vendors.find(v => {
         if (!v) return false;
@@ -188,10 +203,22 @@ export const VendorOrdersTerminal: React.FC = () => {
         const vDigits = (v.phone || '').replace(/\D/g, '').slice(-10);
         const uDigits = (currentUser.phone || '').replace(/\D/g, '').slice(-10);
         return Boolean(vDigits && uDigits && vDigits === uDigits);
-      }) || currentVendor)
-    : null;
+      }) || currentVendor || vendors[0] || null)
+    : (isAccessPanelMode ? (currentVendor || vendors[0] || null) : (currentVendor || vendors[0] || null));
 
-  const activeVendor = authenticatedVendor;
+  const activeVendor = authenticatedVendor || currentVendor || (vendors.length > 0 ? vendors[0] : null);
+
+  // Filtered vendors for the switcher modal
+  const filteredVendorsList = React.useMemo(() => {
+    if (!vendorSearchQuery.trim()) return vendors;
+    const q = vendorSearchQuery.trim().toLowerCase();
+    return vendors.filter(v => 
+      (v.name && v.name.toLowerCase().includes(q)) ||
+      (v.phone && v.phone.includes(q)) ||
+      (v.address && v.address.toLowerCase().includes(q)) ||
+      (v.zone && v.zone.toLowerCase().includes(q))
+    );
+  }, [vendors, vendorSearchQuery]);
 
   // Derive storeStatus directly from activeVendor database column: is_active
   // OPEN mode: is_active = true, is_paused = false
@@ -1362,7 +1389,7 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
     setAvailabilityModalItem(null);
   };
 
-  if (!currentUser || currentUser.role !== 'vendor' || !activeVendor) {
+  if (!isAccessPanelMode && (!currentUser || currentUser.role !== 'vendor' || !activeVendor)) {
     return (
       <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 selection:bg-[#d70f64] selection:text-white font-sans">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8 space-y-6 border border-slate-100">
@@ -1531,9 +1558,9 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
           Hamburger Menu ≡ (left) | Storefront with Clock + ● OPEN Pill (right)
           ========================================================================
         */}
-        <header className="px-4 sm:px-6 lg:px-8 pt-5 pb-4 flex items-center justify-between bg-white shrink-0 border-b border-slate-100 w-full">
+        <header className="px-3 sm:px-6 lg:px-8 pt-4 pb-3 flex items-center justify-between bg-white shrink-0 border-b border-slate-100 w-full gap-2">
           {/* Left: Hamburger menu & 3-dot trigger icons */}
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1 shrink-0">
             <button
               onClick={() => setIsDrawerOpen(true)}
               className="p-1 -ml-1 text-slate-800 hover:text-black transition cursor-pointer active:scale-95"
@@ -1550,8 +1577,43 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
             </button>
           </div>
 
+          {/* Center (Marked Area): Account Switching Bar */}
+          <div className="flex-1 max-w-[230px] sm:max-w-xs mx-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => setIsVendorSwitcherOpen(true)}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 hover:bg-slate-100 hover:border-rose-400 text-slate-800 text-left shadow-2xs transition cursor-pointer group"
+              title="Click to switch vendor account"
+            >
+              <div className="flex items-center space-x-2 truncate min-w-0 pr-1">
+                <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 overflow-hidden font-black text-[10px]">
+                  {activeVendor?.logo_url || activeVendor?.cover_image ? (
+                    <img
+                      src={activeVendor.logo_url || activeVendor.cover_image}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Store className="w-3.5 h-3.5 stroke-[2.2]" />
+                  )}
+                </div>
+                <div className="truncate">
+                  <span className="font-extrabold text-xs text-slate-900 truncate block leading-tight">
+                    {activeVendor?.name || 'Select Vendor'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-0.5 shrink-0 text-slate-400 group-hover:text-rose-600">
+                <span className="text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-full text-slate-600">
+                  Switch
+                </span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
+            </button>
+          </div>
+
           {/* Right Group: Store icon with clock + Status Pill */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 shrink-0">
             {/* Storefront with Clock Badge: Opens 1-week schedule & permanent close modal */}
             <button
               onClick={handleOpenScheduleModal}
@@ -5191,6 +5253,152 @@ ${deliveryLine}${discount ? ` | ছাড়: -৳${discount}` : ''}
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[110] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-sm flex items-center space-x-2 animate-in fade-in slide-in-from-top-4 duration-200">
           <CheckCircle className="w-5 h-5" />
           <span>{modifyToast}</span>
+        </div>
+      )}
+
+      {/* 
+        ========================================================================
+        VENDOR ACCOUNT SWITCHER MODAL (Database All Vendors List)
+        ========================================================================
+      */}
+      {isVendorSwitcherOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl overflow-hidden relative max-h-[85vh] flex flex-col border border-slate-100">
+            {/* Modal Header */}
+            <div className="px-5 pt-4 pb-2 flex items-center justify-between shrink-0 border-b border-slate-100">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <Store className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm leading-tight">
+                    All Vendor Accounts
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold">
+                    {vendors.length} vendors in database
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVendorSwitcherOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search Bar at Top */}
+            <div className="px-5 py-2.5 border-b border-slate-100 shrink-0 bg-slate-50/50">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={vendorSearchQuery}
+                  onChange={(e) => setVendorSearchQuery(e.target.value)}
+                  placeholder="Search vendor name or phone..."
+                  className="w-full pl-8 pr-7 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 transition shadow-2xs"
+                  autoFocus
+                />
+                {vendorSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setVendorSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Vendor List */}
+            <div className="p-3 space-y-1.5 overflow-y-auto flex-1 divide-y divide-slate-50">
+              {filteredVendorsList.length === 0 ? (
+                <div className="py-10 text-center text-slate-400 space-y-1.5">
+                  <Store className="w-8 h-8 mx-auto text-slate-300 stroke-[1.5]" />
+                  <p className="text-xs font-bold text-slate-500">
+                    {vendors.length === 0 ? 'No registered vendors found in database' : 'No matching vendor found'}
+                  </p>
+                </div>
+              ) : (
+                filteredVendorsList.map((v) => {
+                  const isActive = activeVendor?.id === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => {
+                        setCurrentVendor(v);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('foodiplace_selected_vendor_id', v.id);
+                        }
+                        setIsVendorSwitcherOpen(false);
+                        setSwitchToastMessage(`Switched to: ${v.name}`);
+                        setTimeout(() => setSwitchToastMessage(null), 3000);
+                      }}
+                      className={`w-full py-2.5 px-3 rounded-2xl border text-left transition cursor-pointer flex items-center justify-between gap-3 ${
+                        isActive
+                          ? 'bg-rose-50/80 border-rose-400 text-slate-900 shadow-2xs ring-1 ring-rose-300'
+                          : 'bg-white border-slate-200/70 hover:border-rose-300 hover:bg-rose-50/30 text-slate-700'
+                      }`}
+                    >
+                      {/* Left: Logo & Details */}
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                          {v.logo_url || v.cover_image ? (
+                            <img
+                              src={v.logo_url || v.cover_image}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Store className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-1.5">
+                            <h4 className="font-black text-xs text-slate-900 truncate">
+                              {v.name}
+                            </h4>
+                            {isActive && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-rose-600 text-white rounded-md tracking-wider">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-semibold truncate mt-0.5">
+                            {v.zone && <span>{v.zone}</span>}
+                            {v.phone && <span>• {v.phone}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Checkmark if active */}
+                      {isActive ? (
+                        <div className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-rose-600">
+                          Select
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Switch Toast Notification */}
+      {switchToastMessage && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[130] bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-bold animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{switchToastMessage}</span>
         </div>
       )}
 
