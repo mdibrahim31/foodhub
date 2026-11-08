@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { InteractiveMap } from '../common/InteractiveMap';
 import { LocationPickerModal } from '../common/LocationPickerModal';
@@ -437,22 +437,82 @@ export const AdminPortal: React.FC = () => {
   const [catIcon, setCatIcon] = useState('🍕');
   const [catImageUrl, setCatImageUrl] = useState('');
 
-  // New Vendor Form
+  // New Vendor Form State
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
   const [vName, setVName] = useState('');
   const [vCuisine, setVCuisine] = useState('Fast Food, Biryani, Burgers');
   const [vPhone, setVPhone] = useState('');
+  const [vPassword, setVPassword] = useState('');
   const [vAddress, setVAddress] = useState('');
-  const [vDivision, setVDivision] = useState<string>('Chittagong');
+  const [vDivision, setVDivision] = useState<string>('');
   const [vCityArea, setVCityArea] = useState<string>('Chawkbazar');
-  const [vZone, setVZone] = useState<string>('Chawkbazar Zone');
+  const [vZone, setVZone] = useState<string>('');
   const [vLat, setVLat] = useState(22.3585);
   const [vLng, setVLng] = useState(91.8385);
   const [isVendorMapPickerOpen, setIsVendorMapPickerOpen] = useState(false);
   const [vGoogleMapsLink, setVGoogleMapsLink] = useState('');
   const [vVendorType, setVVendorType] = useState<'restaurant' | 'shop'>('restaurant');
   const [vRestaurantCategory, setVRestaurantCategory] = useState<'restaurant' | 'cloud kitchen' | 'home kitchen'>('restaurant');
-  const [vShopCategory, setVShopCategory] = useState('');
+  const [vShopCategory, setVShopCategory] = useState('Grocery (মুদি)');
+  const [vRegisterAction, setVRegisterAction] = useState<'activate' | 'pending'>('activate');
+
+  // Dynamic Division & Zone synchronization for Add Vendor modal in AdminPortal
+  const availableDivisionsForAdmin = useMemo(() => {
+    const list: string[] = [];
+    (zones || []).forEach(z => {
+      const d = (z.division || '').trim();
+      if (d && !list.includes(d)) list.push(d);
+    });
+    (divisions || []).forEach(d => {
+      const name = (d.name || '').trim();
+      if (name && !list.includes(name)) list.push(name);
+    });
+    return list;
+  }, [zones, divisions]);
+
+  const availableZonesForAdminDivision = useMemo(() => {
+    if (!vDivision) {
+      const list: string[] = [];
+      (zones || []).forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+      return list;
+    }
+    const divClean = vDivision.trim().toLowerCase();
+    const list: string[] = [];
+    (zones || [])
+      .filter(z => (z.division || '').trim().toLowerCase() === divClean)
+      .forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+    if (list.length === 0) {
+      (zones || []).forEach(z => {
+        const zName = (z.zone || z.name || '').trim();
+        if (zName && !list.includes(zName)) list.push(zName);
+      });
+    }
+    return list;
+  }, [zones, vDivision]);
+
+  useEffect(() => {
+    if (availableDivisionsForAdmin.length > 0) {
+      if (!vDivision || !availableDivisionsForAdmin.includes(vDivision)) {
+        setVDivision(availableDivisionsForAdmin[0]);
+      }
+    }
+  }, [availableDivisionsForAdmin, vDivision]);
+
+  useEffect(() => {
+    if (availableZonesForAdminDivision.length > 0) {
+      if (!vZone || !availableZonesForAdminDivision.includes(vZone)) {
+        setVZone(availableZonesForAdminDivision[0]);
+      }
+    } else {
+      setVZone('');
+    }
+  }, [availableZonesForAdminDivision, vZone]);
 
   // New Rider Form
   const [isAddRiderOpen, setIsAddRiderOpen] = useState(false);
@@ -510,44 +570,74 @@ export const AdminPortal: React.FC = () => {
   const handleRegisterVendorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vName.trim() || !vPhone.trim() || !vAddress.trim()) {
-      alert('Please enter restaurant name, phone number, and address.');
+      alert('Please enter restaurant/store name, login phone number, and physical address.');
       return;
     }
 
     const finalCuisine = vVendorType === 'restaurant' 
-      ? vRestaurantCategory 
-      : (vShopCategory || 'Grocery');
+      ? (vRestaurantCategory === 'cloud kitchen'
+          ? 'Cloud Kitchen (ক্লাউড কিচেন)'
+          : vRestaurantCategory === 'home kitchen'
+          ? 'Home Kitchen (হোম কিচেন)'
+          : 'Restaurant (রেস্টুরেন্ট)')
+      : (vShopCategory || 'Grocery (মুদি)');
+
+    const matchedZone = (zones || []).find(z => (z.zone || z.name || '').trim().toLowerCase() === vZone.trim().toLowerCase() || z.id === vZone);
+
+    let finalLat = vLat;
+    let finalLng = vLng;
+    if (vGoogleMapsLink.trim()) {
+      const parsed = parseGoogleMapsCoordinates(vGoogleMapsLink.trim());
+      if (parsed) {
+        finalLat = parsed.lat;
+        finalLng = parsed.lng;
+      } else if (matchedZone && matchedZone.center_latitude && matchedZone.center_longitude) {
+        finalLat = matchedZone.center_latitude;
+        finalLng = matchedZone.center_longitude;
+      }
+    } else if (matchedZone && matchedZone.center_latitude && matchedZone.center_longitude) {
+      finalLat = matchedZone.center_latitude;
+      finalLng = matchedZone.center_longitude;
+    }
+
+    const isPending = vRegisterAction === 'pending';
 
     const res = await adminRegisterVendor({
       name: vName.trim(),
       phone: vPhone.trim(),
+      password: vPassword.trim() || '123456',
       address: vAddress.trim(),
       cuisine: finalCuisine,
-      division: vDivision,
-      city_area: vCityArea,
+      division: vDivision || matchedZone?.division || 'Chittagong',
+      city_area: vZone || 'Chawkbazar',
       zone: vZone || (zones[0]?.name || 'Chawkbazar Zone'),
-      latitude: vLat,
-      longitude: vLng,
+      latitude: finalLat,
+      longitude: finalLng,
       vendor_type: vVendorType,
       restaurant_type: vVendorType === 'restaurant' 
         ? (vRestaurantCategory === 'cloud kitchen' ? 'cloud_kitchen' : vRestaurantCategory === 'home kitchen' ? 'home_kitchen' : 'restaurant')
         : undefined,
-      google_maps_link: vGoogleMapsLink.trim()
+      google_maps_link: vGoogleMapsLink.trim(),
+      approval_status: isPending ? 'pending' : 'approved',
+      is_active: !isPending
     });
 
     setIsAddVendorOpen(false);
     setVName('');
     setVPhone('');
+    setVPassword('');
     setVAddress('');
     setVGoogleMapsLink('');
     setVVendorType('restaurant');
     setVRestaurantCategory('restaurant');
-    setVShopCategory('');
-    
-    if (res.savedToDatabase) {
-      alert(`✅ Vendor "${res.vendor.name}" registered & saved to Database!\nID: ${res.vendor.unique_id || res.vendor.id}\nPhone: ${res.vendor.phone}\nZone: ${res.vendor.zone}`);
+    setVShopCategory('Grocery (মুদি)');
+    setVRegisterAction('activate');
+
+    if (isPending) {
+      setVendorFilterTab('pending');
+      alert(`⏳ Vendor registration request saved for "${res.vendor.name}"!\nIt now appears under Pending Requests tab with an Accept option.`);
     } else {
-      alert(`✅ Vendor "${res.vendor.name}" registered successfully!\nZone: ${res.vendor.zone}`);
+      alert(`✅ Vendor "${res.vendor.name}" registered & activated successfully!\nID: ${res.vendor.unique_id || res.vendor.id}\nDivision: ${res.vendor.division || 'N/A'}\nZone: ${res.vendor.zone}`);
     }
   };
 
@@ -4239,50 +4329,65 @@ export const AdminPortal: React.FC = () => {
       */}
       {isAddVendorOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2 text-rose-600">
                 <Store className="w-5 h-5" />
-                <h3 className="font-black text-slate-900 text-base">Register New Vendor Partner</h3>
+                <h3 className="font-black text-slate-900 text-base">New Vendor Partner Registration</h3>
               </div>
-              <button onClick={() => setIsAddVendorOpen(false)} className="text-slate-400 hover:text-slate-700 p-1">
+              <button onClick={() => setIsAddVendorOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleRegisterVendorSubmit} className="space-y-3.5 text-xs">
+              {/* Merchant / Store Name */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Restaurant / Merchant Name *</label>
                 <input
                   type="text"
                   value={vName}
                   onChange={(e) => setVName(e.target.value)}
-                  placeholder="e.g. Sultan's Dine / Krunch"
+                  placeholder="e.g. Sultan's Dine / Foodi Shop"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
                   required
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Login Phone Number *</label>
-                <input
-                  type="tel"
-                  value={vPhone}
-                  onChange={(e) => setVPhone(e.target.value)}
-                  placeholder="017XXXXXXXX"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900"
-                  required
-                />
+              {/* Login Phone & Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Login Phone Number *</label>
+                  <input
+                    type="tel"
+                    value={vPhone}
+                    onChange={(e) => setVPhone(e.target.value)}
+                    placeholder="017XXXXXXXX"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Initial Password *</label>
+                  <input
+                    type="text"
+                    value={vPassword}
+                    onChange={(e) => setVPassword(e.target.value)}
+                    placeholder="e.g. 123456"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    required
+                  />
+                </div>
               </div>
 
-
+              {/* Vendor Partner Type */}
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Vendor Partner Type *</label>
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setVVendorType('restaurant')}
-                    className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border ${
+                    className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border cursor-pointer ${
                       vVendorType === 'restaurant'
                         ? 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-600/25'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -4293,7 +4398,7 @@ export const AdminPortal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setVVendorType('shop')}
-                    className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border ${
+                    className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all border cursor-pointer ${
                       vVendorType === 'shop'
                         ? 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-600/25'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -4304,13 +4409,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Category */}
               {vVendorType === 'restaurant' ? (
                 <div className="space-y-1 animate-in slide-in-from-top-1">
                   <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Restaurant Category *</label>
                   <select
                     value={vRestaurantCategory}
                     onChange={(e) => setVRestaurantCategory(e.target.value as any)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 cursor-pointer"
                     required
                   >
                     <option value="restaurant">Restaurant (রেস্টুরেন্ট)</option>
@@ -4324,19 +4430,71 @@ export const AdminPortal: React.FC = () => {
                   <select
                     value={vShopCategory}
                     onChange={(e) => setVShopCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 cursor-pointer"
                     required
                   >
                     <option value="" disabled>Select Shop Category</option>
-                    {(foodCategories || []).map((cat) => (
-                      <option key={cat.id} value={cat.name}>
-                        {cat.name} {cat.category_type === 'grocery' ? '(Grocery)' : ''}
-                      </option>
-                    ))}
+                    <option value="Grocery (মুদি)">Grocery (মুদি)</option>
+                    <option value="Accessories (অ্যাক্সেসরিজ)">Accessories (অ্যাক্সেসরিজ)</option>
+                    <option value="Parts & Equipment (পার্টস ও ইকুইপমেন্টস)">Parts & Equipment (পার্টস ও ইকুইপমেন্টস)</option>
+                    <option value="Cosmetics (কসমেটিকস)">Cosmetics (কসমেটিকস)</option>
+                    <option value="Supershop (সুপারশপ)">Supershop (সুপারশপ)</option>
+                    <option value="Pharmacy (ফার্মেসি)">Pharmacy (ফার্মেসি)</option>
+                    <option value="Fruits (ফলমূল)">Fruits (ফলমূল)</option>
+                    <option value="Meat & Fish (মাংস ও মাছ)">Meat & Fish (মাংস ও মাছ)</option>
+                    <option value="Daily Needs (দৈনন্দিন পণ্য)">Daily Needs (দৈনন্দিন পণ্য)</option>
                   </select>
                 </div>
               )}
 
+              {/* Division & Zone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Division / Region (বিভাগ) *</label>
+                  <select
+                    value={vDivision}
+                    onChange={(e) => {
+                      const newDiv = e.target.value;
+                      setVDivision(newDiv);
+                      const divClean = newDiv.trim().toLowerCase();
+                      const matchingZones = (zones || []).filter(z => (z.division || '').trim().toLowerCase() === divClean);
+                      if (matchingZones.length > 0) {
+                        setVZone(matchingZones[0].zone || matchingZones[0].name);
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 cursor-pointer"
+                    required
+                  >
+                    {availableDivisionsForAdmin && availableDivisionsForAdmin.length > 0 ? (
+                      availableDivisionsForAdmin.map((dName: string) => (
+                        <option key={dName} value={dName}>{dName}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No divisions configured</option>
+                    )}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Zone / Area Name (জোন) *</label>
+                  <select
+                    value={vZone}
+                    onChange={(e) => setVZone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 cursor-pointer"
+                    required
+                  >
+                    {availableZonesForAdminDivision && availableZonesForAdminDivision.length > 0 ? (
+                      availableZonesForAdminDivision.map((zName: string) => (
+                        <option key={zName} value={zName}>{zName}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No zones in division</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Physical Address */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Physical Street Address *</label>
                 <input
@@ -4349,34 +4507,7 @@ export const AdminPortal: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Delivery Zone (ডেলিভারি জোন) *</label>
-                <select
-                  value={vZone}
-                  onChange={(e) => {
-                    const selected = e.target.value;
-                    setVZone(selected);
-                    const matched = zones.find(z => z.name === selected || z.id === selected);
-                    if (matched && matched.center_latitude && matched.center_longitude) {
-                      setVLat(matched.center_latitude);
-                      setVLng(matched.center_longitude);
-                    }
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500 cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>Select Delivery Zone</option>
-                  {(zones || []).map((z) => (
-                    <option key={z.id} value={z.name}>
-                      {z.name} {z.bn_name ? `(${z.bn_name})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-500">
-                  কাস্টমার অ্যাড্রেস বুকের পিন লোকেশন যে জোনের ভেতরে থাকবে, সেই জোনের সব ভেন্ডর কাস্টমার দেখতে পাবে।
-                </p>
-              </div>
-
+              {/* Google Maps Link */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-600 block uppercase tracking-wider text-[10px]">Google Maps Location URL / Coordinates</label>
                 <input
@@ -4394,18 +4525,44 @@ export const AdminPortal: React.FC = () => {
                   placeholder="e.g. https://maps.app.goo.gl/... or 22.3571, 91.8337"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-rose-500"
                 />
-                {vGoogleMapsLink && parseGoogleMapsCoordinates(vGoogleMapsLink) && (
-                  <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded-xl mt-1">
-                    ✓ GPS Coordinates extracted: {vLat.toFixed(4)}, {vLng.toFixed(4)}
-                  </p>
-                )}
+              </div>
+
+              {/* Status Action Selector */}
+              <div className="space-y-1.5 pt-1">
+                <label className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">Registration Approval Action *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVRegisterAction('activate')}
+                    className={`py-2 px-3 rounded-xl font-extrabold text-xs transition border flex items-center justify-center space-x-1 cursor-pointer ${
+                      vRegisterAction === 'activate'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Accept & Activate Immediately</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVRegisterAction('pending')}
+                    className={`py-2 px-3 rounded-xl font-extrabold text-xs transition border flex items-center justify-center space-x-1 cursor-pointer ${
+                      vRegisterAction === 'pending'
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Save as Pending Request</span>
+                  </button>
+                </div>
               </div>
 
               <div className="pt-3 flex space-x-3">
                 <button
                   type="button"
                   onClick={() => setIsAddVendorOpen(false)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -4413,7 +4570,7 @@ export const AdminPortal: React.FC = () => {
                   type="submit"
                   className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-md"
                 >
-                  Register Vendor
+                  Save Vendor
                 </button>
               </div>
             </form>
