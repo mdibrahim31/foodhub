@@ -64,7 +64,7 @@ interface DeliveryContextType {
   currentUser: UserAccount | null;
   currentCustomer: CustomerUser | null;
   customers: CustomerUser[];
-  loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; message?: string };
+  loginUser: (role: PortalRole, phone: string, password?: string) => { success: boolean; requiresPasswordSetup?: boolean; isPendingApproval?: boolean; message?: string };
   setPasswordForUser: (role: PortalRole, phone: string, newPassword: string) => boolean;
   registerCustomer: (data: { name: string; phone: string; password: string; email?: string; division?: string }) => { success: boolean; message?: string };
   requestCustomerSignupOtp: (data: { name: string; phone: string; password: string; email?: string; division?: string }) => Promise<{ success: boolean; customerId?: string; message?: string }>;
@@ -117,6 +117,8 @@ interface DeliveryContextType {
     restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery';
     google_maps_link?: string;
     password?: string;
+    approval_status?: 'pending' | 'approved' | 'rejected';
+    is_active?: boolean;
   }) => Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }>;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
   uploadVendorImage: (
@@ -2185,6 +2187,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { success: false, message: 'This phone number is not registered as a Vendor by Admin.' };
       }
 
+      // Check if vendor application is still pending admin review/approval
+      if (vendor.approval_status === 'pending' || vendor.status === 'pending' || (vendor.is_active === false && vendor.approval_status !== 'approved' && !vendor.is_paused)) {
+        return {
+          success: false,
+          isPendingApproval: true,
+          message: 'আপনার একাউন্টটি এখনও অ্যাডমিন রিভিউ/অনুমোদনাধীন (Pending Approval)। অ্যাডমিন অনুমোদন (Accept) করার পর লগইন করতে পারবেন।'
+        };
+      }
+
+      if (vendor.approval_status === 'rejected' || vendor.status === 'rejected') {
+        return {
+          success: false,
+          message: 'আপনার ভেন্ডর রেজিস্ট্রেশন আবেদনটি বাতিল করা হয়েছে।'
+        };
+      }
+
       // If first time login (no password set yet)
       if (!vendor.is_password_set || !vendor.password) {
         return { 
@@ -3572,9 +3590,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     restaurant_type?: 'restaurant' | 'cloud_kitchen' | 'home_kitchen' | 'sweets_bakery';
     google_maps_link?: string;
     password?: string;
+    approval_status?: 'pending' | 'approved' | 'rejected';
+    is_active?: boolean;
   }): Promise<{ vendor: Vendor; savedToDatabase: boolean; dbMessage?: string }> => {
     const isPassSet = Boolean(data.password && data.password.trim());
     const passValue = isPassSet ? data.password!.trim() : null;
+
+    const isPendingApproval = data.approval_status === 'pending';
+    const isActive = data.is_active !== undefined ? data.is_active : !isPendingApproval;
+    const approvalStatus: 'pending' | 'approved' | 'rejected' = data.approval_status || (isActive ? 'approved' : 'pending');
+    const statusVal = isPendingApproval ? 'pending' : 'active';
 
     const newVendor: Vendor = {
       id: crypto.randomUUID(),
@@ -3590,7 +3615,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       longitude: data.longitude,
       google_maps_link: data.google_maps_link || '',
       description: data.description || 'Quality food prepared with fresh ingredients',
-      is_active: true,
+      is_active: isActive,
+      status: statusVal,
+      approval_status: approvalStatus,
       is_paused: false,
       rating: 5.0,
       estimated_prep_time_minutes: 20,
@@ -3616,11 +3643,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           address: newVendor.address,
           cuisine: newVendor.cuisine,
           zone: newVendor.zone,
+          division: newVendor.division,
           latitude: newVendor.latitude,
           longitude: newVendor.longitude,
           google_maps_link: newVendor.google_maps_link,
           description: newVendor.description,
           is_active: newVendor.is_active,
+          status: newVendor.status,
+          approval_status: newVendor.approval_status,
           is_paused: newVendor.is_paused,
           rating: newVendor.rating,
           estimated_prep_time_minutes: newVendor.estimated_prep_time_minutes,

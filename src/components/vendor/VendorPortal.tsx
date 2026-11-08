@@ -118,6 +118,8 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
   const [regAddress, setRegAddress] = useState('');
   const [regGoogleMapsLink, setRegGoogleMapsLink] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
+  const [isRegSuccessModalOpen, setIsRegSuccessModalOpen] = useState(false);
+  const [submittedVendorName, setSubmittedVendorName] = useState('');
 
   // Distinct divisions from zones table and divisions list
   const availableDivisions = useMemo(() => {
@@ -560,13 +562,21 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
         google_maps_link: regGoogleMapsLink.trim(),
         latitude: finalLat,
         longitude: finalLng,
-        description: `${regName.trim()} - Partner Store`
+        description: `${regName.trim()} - Partner Store`,
+        approval_status: 'pending',
+        is_active: false
       });
 
       if (result && result.vendor) {
-        setCurrentVendor(result.vendor);
-        loginUser('vendor', regPhone.trim(), regPassword.trim());
-        setRole('vendor');
+        setSubmittedVendorName(regName.trim());
+        setIsRegSuccessModalOpen(true);
+        // Reset registration fields
+        setRegName('');
+        setRegPhone('');
+        setRegPassword('');
+        setRegConfirmPassword('');
+        setRegAddress('');
+        setRegGoogleMapsLink('');
       }
     } catch (err: any) {
       console.error('Registration failed:', err);
@@ -978,6 +988,41 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
               </div>
             </div>
           </div>
+
+          {/* Registration Awaiting Approval Confirmation Modal */}
+          {isRegSuccessModalOpen && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4 border border-slate-100 text-slate-900 animate-in zoom-in-95">
+                <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+                  <Clock className="w-8 h-8 stroke-[2.2] animate-pulse" />
+                </div>
+                <div className="space-y-1.5">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black text-[10px] uppercase tracking-wider">
+                    Pending Admin Approval
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">
+                    রেজিস্ট্রেশন রিকোয়েস্ট সফলভাবে জমা হয়েছে!
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    {submittedVendorName ? `"${submittedVendorName}" এর আবেদনটি` : 'আপনার ভেন্ডর একাউন্টটি'} অ্যাডমিন প্যানেলে অনুমোদনের জন্য পাঠানো হয়েছে। অ্যাডমিন সমস্ত তথ্য যাচাই করে গ্রহণ (Accept) করার পর আপনি ফোন নম্বর ও পাসওয়ার্ড দিয়ে লগইন করতে পারবেন।
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRegSuccessModalOpen(false);
+                      setAuthTab('login');
+                      setAuthError('');
+                    }}
+                    className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer"
+                  >
+                    লগইন পেজে যান (Go to Login)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }

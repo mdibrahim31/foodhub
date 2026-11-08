@@ -88,6 +88,8 @@ export interface Vendor {
   longitude: number;
   google_maps_link?: string;
   is_active: boolean;
+  status?: string; // 'pending' | 'approved' | 'rejected' | 'active'
+  approval_status?: 'pending' | 'approved' | 'rejected'; // Application approval workflow
   is_paused?: boolean; // Admin can pause/resume vendor
   is_boosted?: boolean; // Admin boost vendor to top banner carousel
   boost_banner_title?: string;

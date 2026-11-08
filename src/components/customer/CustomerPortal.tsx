@@ -1078,6 +1078,11 @@ export const CustomerPortal: React.FC = () => {
   // Filtered and Sorted Vendors directly from database (Filtered by active address Division & Zone)
   const displayVendors = useMemo(() => {
     return vendors.filter((v) => {
+      // Exclude vendors that are pending admin approval or inactive
+      if (v.approval_status === 'pending' || v.approval_status === 'rejected' || v.status === 'pending' || v.is_active === false) {
+        return false;
+      }
+
       // 1. Division & Zone Filter strictly based on active address in Address Book
       // active address book a j division and zone set kora thakbe only she division and zone er all vendors load hobe database theke
       const activeAddr = selectedAddress || addresses?.find(a => a.status === 'active') || addresses?.find(a => a.is_default) || addresses?.[0] || null;

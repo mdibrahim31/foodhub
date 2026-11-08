@@ -287,6 +287,7 @@ export const AdminPortal: React.FC = () => {
 
   // Search Filters
   const [vendorSearch, setVendorSearch] = useState('');
+  const [vendorFilterTab, setVendorFilterTab] = useState<'all' | 'pending' | 'active'>('all');
   const [riderSearch, setRiderSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
 
@@ -702,14 +703,70 @@ export const AdminPortal: React.FC = () => {
     );
   });
 
+  const pendingVendors = React.useMemo(() => {
+    return (vendors || []).filter(v => 
+      v.approval_status === 'pending' || 
+      v.status === 'pending' || 
+      (!v.is_active && v.approval_status !== 'approved' && !v.is_paused)
+    );
+  }, [vendors]);
+
+  const activeVendorsList = React.useMemo(() => {
+    return (vendors || []).filter(v => 
+      v.approval_status === 'approved' || 
+      (v.is_active && v.approval_status !== 'pending' && v.status !== 'pending')
+    );
+  }, [vendors]);
+
+  const handleAcceptVendor = (vendor: Vendor) => {
+    updateVendor(vendor.id, {
+      is_active: true,
+      approval_status: 'approved',
+      status: 'active',
+      is_paused: false
+    });
+    if (selectedVendorForProfile && selectedVendorForProfile.id === vendor.id) {
+      setSelectedVendorForProfileState(prev => prev ? {
+        ...prev,
+        is_active: true,
+        approval_status: 'approved',
+        status: 'active',
+        is_paused: false
+      } : null);
+    }
+  };
+
+  const handleRejectVendor = (vendor: Vendor) => {
+    if (confirm(`Are you sure you want to reject vendor registration for "${vendor.name}"?`)) {
+      updateVendor(vendor.id, {
+        is_active: false,
+        approval_status: 'rejected',
+        status: 'rejected'
+      });
+      if (selectedVendorForProfile && selectedVendorForProfile.id === vendor.id) {
+        setSelectedVendorForProfileState(prev => prev ? {
+          ...prev,
+          is_active: false,
+          approval_status: 'rejected',
+          status: 'rejected'
+        } : null);
+      }
+    }
+  };
+
   const filteredVendors = (vendors || []).filter(v => {
     if (!v) return false;
+    const isPending = v.approval_status === 'pending' || v.status === 'pending' || (!v.is_active && v.approval_status !== 'approved' && !v.is_paused);
+    if (vendorFilterTab === 'pending' && !isPending) return false;
+    if (vendorFilterTab === 'active' && isPending) return false;
     const q = (vendorSearch || '').toLowerCase().trim();
     if (!q) return true;
     return (
       (v.name && v.name.toLowerCase().includes(q)) ||
       (v.phone && v.phone.includes(q)) ||
-      (v.unique_id && v.unique_id.toLowerCase().includes(q))
+      (v.unique_id && v.unique_id.toLowerCase().includes(q)) ||
+      (v.division && v.division.toLowerCase().includes(q)) ||
+      (v.zone && v.zone.toLowerCase().includes(q))
     );
   });
 
@@ -905,6 +962,11 @@ export const AdminPortal: React.FC = () => {
           >
             <Store className="w-4 h-4" />
             <span>Vendors ({vendors.length})</span>
+            {pendingVendors.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.2 bg-amber-400 text-amber-950 text-[10px] font-black rounded-full animate-pulse shadow-2xs">
+                {pendingVendors.length} New
+              </span>
+            )}
           </button>
 
           <button
@@ -1447,44 +1509,120 @@ export const AdminPortal: React.FC = () => {
         {activeTab === 'vendors' && (
           <div className="space-y-4">
             {/* Header & Controls Bar */}
-            <div className="bg-white border border-slate-200/90 p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-orange-100 text-orange-600 rounded-2xl">
-                  <Store className="w-5 h-5" />
+            <div className="bg-white border border-slate-200/90 p-4 rounded-3xl shadow-xs space-y-3">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-orange-100 text-orange-600 rounded-2xl">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                      <span>Registered Vendors ({filteredVendors.length} / {vendors.length})</span>
+                      {pendingVendors.length > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                          {pendingVendors.length} Pending
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Search by ID, Phone, or Name. Review, accept, pause or remove vendors.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">
-                    Registered Vendors ({filteredVendors.length} / {vendors.length})
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Search by ID, Phone, or Name. Pause or remove vendors at any time.
-                  </p>
+
+                <div className="flex items-center space-x-2">
+                  {/* Search Bar */}
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={vendorSearch}
+                      onChange={(e) => setVendorSearch(e.target.value)}
+                      placeholder="Search ID, phone, name..."
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-hidden focus:border-rose-500"
+                    />
+                  </div>
+
+                  {/* Add Vendor Button */}
+                  <button
+                    onClick={() => setIsAddVendorOpen(true)}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase rounded-2xl shadow-md transition flex items-center space-x-1 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Add Vendor</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                {/* Search Bar */}
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={vendorSearch}
-                    onChange={(e) => setVendorSearch(e.target.value)}
-                    placeholder="Search ID, phone, name..."
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-hidden focus:border-rose-500"
-                  />
-                </div>
-
-                {/* Add Vendor Button */}
+              {/* Sub-Filters: All, Pending Requests, Active */}
+              <div className="flex items-center space-x-2 pt-1 border-t border-slate-100 overflow-x-auto">
                 <button
-                  onClick={() => setIsAddVendorOpen(true)}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase rounded-2xl shadow-md transition flex items-center space-x-1 cursor-pointer shrink-0"
+                  type="button"
+                  onClick={() => setVendorFilterTab('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                    vendorFilterTab === 'all'
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>Add Vendor</span>
+                  All Vendors ({vendors.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVendorFilterTab('pending')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
+                    vendorFilterTab === 'pending'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : pendingVendors.length > 0
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 animate-pulse'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Pending Requests ({pendingVendors.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVendorFilterTab('active')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                    vendorFilterTab === 'active'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  Active ({activeVendorsList.length})
                 </button>
               </div>
             </div>
+
+            {/* Pending Requests Alert Banner (Visible when there are pending applications) */}
+            {pendingVendors.length > 0 && vendorFilterTab !== 'pending' && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Clock className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                      <span>New Vendor Applications Waiting for Approval</span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-black">
+                        {pendingVendors.length} New
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-600 font-medium">
+                      ভেন্ডর রেজিস্ট্রেশন সম্পন্ন হয়েছে। অ্যাডমিন সমস্ত তথ্য চেক করে Accept করলেই ভেন্ডর লগইন করতে পারবে।
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVendorFilterTab('pending')}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition cursor-pointer shrink-0"
+                >
+                  Review Requests ({pendingVendors.length})
+                </button>
+              </div>
+            )}
 
             {/* Compact Vendors List Table */}
             <div className="bg-white border border-slate-200/90 rounded-3xl shadow-xs overflow-hidden">
@@ -1504,151 +1642,191 @@ export const AdminPortal: React.FC = () => {
                     {filteredVendors.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
-                          No vendors found matching "{vendorSearch}".
+                          {vendorFilterTab === 'pending' 
+                            ? 'No pending vendor requests at the moment.' 
+                            : `No vendors found matching "${vendorSearch}".`}
                         </td>
                       </tr>
                     ) : (
-                      filteredVendors.map((v) => (
-                        <tr key={v.id} className="hover:bg-slate-50/80 transition">
-                          {/* Vendor & ID Unified Column */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-9 h-9 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-2xs">
-                                <img 
-                                  src={v.logo_url || v.cover_image || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=120'} 
-                                  alt="" 
-                                  className="w-full h-full object-cover" 
-                                />
-                              </div>
-                              <div>
-                                <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                                  <span>{v.name}</span>
-                                  <span className="px-1.5 py-0.2 bg-rose-50 text-rose-700 font-mono font-black text-[9px] rounded border border-rose-200">
-                                    {v.unique_id || `VND-${v.id.slice(0, 4).toUpperCase()}`}
+                      filteredVendors.map((v) => {
+                        const isPending = v.approval_status === 'pending' || v.status === 'pending' || (!v.is_active && v.approval_status !== 'approved' && !v.is_paused);
+                        return (
+                          <tr key={v.id} className={`hover:bg-slate-50/80 transition ${isPending ? 'bg-amber-50/30' : ''}`}>
+                            {/* Vendor & ID Unified Column */}
+                            <td className="py-3 px-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-9 h-9 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-2xs">
+                                  <img 
+                                    src={v.logo_url || v.cover_image || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=120'} 
+                                    alt="" 
+                                    className="w-full h-full object-cover" 
+                                  />
+                                </div>
+                                <div>
+                                  <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 flex-wrap">
+                                    <span>{v.name}</span>
+                                    <span className="px-1.5 py-0.2 bg-rose-50 text-rose-700 font-mono font-black text-[9px] rounded border border-rose-200">
+                                      {v.unique_id || `VND-${v.id.slice(0, 4).toUpperCase()}`}
+                                    </span>
+                                    {isPending && (
+                                      <span className="px-1.5 py-0.2 bg-amber-500 text-white font-black text-[9px] rounded uppercase animate-pulse">
+                                        New Request
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-medium block">
+                                    {v.cuisine} &bull; {v.division || 'No Division'} &bull; {v.zone || 'No Zone'}
                                   </span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-medium block">{v.cuisine} &bull; {v.zone || 'No Zone'}</span>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Phone */}
-                          <td className="py-3 px-4 font-mono text-slate-900">{v.phone}</td>
+                            {/* Phone */}
+                            <td className="py-3 px-4 font-mono text-slate-900">{v.phone}</td>
 
-                          {/* Discount Column */}
-                          <td className="py-3 px-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const currentPct = v.discount_percentage ? String(v.discount_percentage) : '';
-                                const input = prompt(`Enter discount percentage for ${v.name} (e.g. 15 for 15% OFF, or leave blank to remove):`, currentPct);
-                                if (input !== null) {
-                                  const trimmed = input.trim();
-                                  if (!trimmed) {
-                                    updateVendor(v.id, { discount_percentage: undefined, discount_title: undefined });
-                                  } else {
-                                    const num = parseFloat(trimmed);
-                                    if (!isNaN(num) && num >= 0) {
-                                      updateVendor(v.id, { discount_percentage: num, discount_title: `${num}% OFF` });
+                            {/* Discount Column */}
+                            <td className="py-3 px-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentPct = v.discount_percentage ? String(v.discount_percentage) : '';
+                                  const input = prompt(`Enter discount percentage for ${v.name} (e.g. 15 for 15% OFF, or leave blank to remove):`, currentPct);
+                                  if (input !== null) {
+                                    const trimmed = input.trim();
+                                    if (!trimmed) {
+                                      updateVendor(v.id, { discount_percentage: undefined, discount_title: undefined });
                                     } else {
-                                      alert('Please enter a valid discount percentage');
+                                      const num = parseFloat(trimmed);
+                                      if (!isNaN(num) && num >= 0) {
+                                        updateVendor(v.id, { discount_percentage: num, discount_title: `${num}% OFF` });
+                                      } else {
+                                        alert('Please enter a valid discount percentage');
+                                      }
                                     }
                                   }
-                                }
-                              }}
-                              className="text-left cursor-pointer group hover:opacity-80 transition"
-                              title="Click to change vendor discount percentage"
-                            >
-                              {v.discount_title || v.discount_percentage ? (
-                                <span className="px-2.5 py-1 bg-orange-100 group-hover:bg-orange-200 text-orange-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-orange-200 shadow-2xs">
-                                  <Sparkles className="w-3 h-3 text-orange-600" />
-                                  <span>{v.discount_title || `${v.discount_percentage}% OFF`}</span>
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 font-bold text-xs group-hover:text-slate-600 hover:underline">+ Add Discount</span>
-                              )}
-                            </button>
-                          </td>
-
-                          {/* Delivery Column */}
-                          <td className="py-3 px-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextFree = !v.is_free_delivery;
-                                updateVendor(v.id, { is_free_delivery: nextFree });
-                              }}
-                              className="text-left cursor-pointer group hover:opacity-80 transition"
-                              title="Click to toggle Free Delivery ON/OFF"
-                            >
-                              {v.is_free_delivery ? (
-                                <span className="px-2.5 py-1 bg-emerald-100 group-hover:bg-emerald-200 text-emerald-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-emerald-200 shadow-2xs">
-                                  <Bike className="w-3 h-3 text-emerald-600" />
-                                  <span>Free Delivery</span>
-                                </span>
-                              ) : v.delivery_fee ? (
-                                <span className="font-mono text-slate-800 font-extrabold text-xs group-hover:underline">৳{v.delivery_fee}</span>
-                              ) : (
-                                <span className="text-slate-500 font-semibold text-[11px] group-hover:text-slate-800 group-hover:underline">Standard Rate</span>
-                              )}
-                            </button>
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-3 px-4">
-                            {v.is_paused ? (
-                              <span className="px-2.5 py-0.5 bg-red-100 text-red-800 font-black text-[10px] rounded-full uppercase">
-                                PAUSED
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full uppercase">
-                                ACTIVE
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end space-x-1">
-                              {/* Pause / Resume */}
-                              <button
-                                onClick={() => toggleVendorPause(v.id)}
-                                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center space-x-1 cursor-pointer transition ${
-                                  v.is_paused 
-                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                }`}
-                                title={v.is_paused ? 'Resume Vendor' : 'Pause Vendor'}
-                              >
-                                {v.is_paused ? <Play className="w-3 h-3 fill-current" /> : <Pause className="w-3 h-3 fill-current" />}
-                                <span>{v.is_paused ? 'Resume' : 'Pause'}</span>
-                              </button>
-
-                              {/* Delete */}
-                              <button
-                                onClick={() => {
-                                  if (confirm(`Are you sure you want to delete vendor "${v.name}" (${v.unique_id || v.phone})?`)) {
-                                    deleteVendor(v.id);
-                                  }
                                 }}
-                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition cursor-pointer"
-                                title="Remove Vendor"
+                                className="text-left cursor-pointer group hover:opacity-80 transition"
+                                title="Click to change vendor discount percentage"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                {v.discount_title || v.discount_percentage ? (
+                                  <span className="px-2.5 py-1 bg-orange-100 group-hover:bg-orange-200 text-orange-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-orange-200 shadow-2xs">
+                                    <Sparkles className="w-3 h-3 text-orange-600" />
+                                    <span>{v.discount_title || `${v.discount_percentage}% OFF`}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 font-bold text-xs group-hover:text-slate-600 hover:underline">+ Add Discount</span>
+                                )}
                               </button>
+                            </td>
 
-                              {/* View Full Profile */}
+                            {/* Delivery Column */}
+                            <td className="py-3 px-4">
                               <button
-                                onClick={() => setSelectedVendorForProfile(v)}
-                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl transition cursor-pointer"
-                                title="View Details"
+                                type="button"
+                                onClick={() => {
+                                  const nextFree = !v.is_free_delivery;
+                                  updateVendor(v.id, { is_free_delivery: nextFree });
+                                }}
+                                className="text-left cursor-pointer group hover:opacity-80 transition"
+                                title="Click to toggle Free Delivery ON/OFF"
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                {v.is_free_delivery ? (
+                                  <span className="px-2.5 py-1 bg-emerald-100 group-hover:bg-emerald-200 text-emerald-800 font-black text-[10px] rounded-full inline-flex items-center gap-1 border border-emerald-200 shadow-2xs">
+                                    <Bike className="w-3 h-3 text-emerald-600" />
+                                    <span>Free Delivery</span>
+                                  </span>
+                                ) : v.delivery_fee ? (
+                                  <span className="font-mono text-slate-800 font-extrabold text-xs group-hover:underline">৳{v.delivery_fee}</span>
+                                ) : (
+                                  <span className="text-slate-500 font-semibold text-[11px] group-hover:text-slate-800 group-hover:underline">Standard Rate</span>
+                                )}
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3 px-4">
+                              {isPending ? (
+                                <span className="px-2.5 py-1 bg-amber-100 text-amber-900 border border-amber-300 font-black text-[10px] rounded-full uppercase inline-flex items-center gap-1.5 shadow-2xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                                  <span>PENDING APPROVAL</span>
+                                </span>
+                              ) : v.is_paused ? (
+                                <span className="px-2.5 py-0.5 bg-red-100 text-red-800 font-black text-[10px] rounded-full uppercase">
+                                  PAUSED
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded-full uppercase">
+                                  ACTIVE
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                {isPending ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAcceptVendor(v)}
+                                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-black flex items-center space-x-1 cursor-pointer transition shadow-2xs"
+                                      title="Accept & Activate Vendor"
+                                    >
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                      <span>Accept</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRejectVendor(v)}
+                                      className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold flex items-center space-x-1 cursor-pointer transition"
+                                      title="Reject Application"
+                                    >
+                                      <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                                      <span>Reject</span>
+                                    </button>
+                                  </>
+                                ) : (
+                                  /* Pause / Resume */
+                                  <button
+                                    onClick={() => toggleVendorPause(v.id)}
+                                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center space-x-1 cursor-pointer transition ${
+                                      v.is_paused 
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                    }`}
+                                    title={v.is_paused ? 'Resume Vendor' : 'Pause Vendor'}
+                                  >
+                                    {v.is_paused ? <Play className="w-3 h-3 fill-current" /> : <Pause className="w-3 h-3 fill-current" />}
+                                    <span>{v.is_paused ? 'Resume' : 'Pause'}</span>
+                                  </button>
+                                )}
+
+                                {/* Delete */}
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to delete vendor "${v.name}" (${v.unique_id || v.phone})?`)) {
+                                      deleteVendor(v.id);
+                                    }
+                                  }}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition cursor-pointer"
+                                  title="Remove Vendor"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* View Full Profile */}
+                                <button
+                                  onClick={() => setSelectedVendorForProfile(v)}
+                                  className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl transition cursor-pointer"
+                                  title="View Details & Location"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -2691,6 +2869,87 @@ export const AdminPortal: React.FC = () => {
             {/* Main Content Body */}
             <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
               
+              {/* If Vendor Application is Pending: Prominent Review & Accept Banner */}
+              {(selectedVendorForProfile.approval_status === 'pending' || selectedVendorForProfile.status === 'pending' || (!selectedVendorForProfile.is_active && selectedVendorForProfile.approval_status !== 'approved' && !selectedVendorForProfile.is_paused)) && (
+                <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/15 border-2 border-amber-400 p-5 rounded-3xl shadow-sm space-y-4">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                        <Clock className="w-6 h-6 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white font-black text-[10px] uppercase tracking-wider">
+                            Pending Approval
+                          </span>
+                          <span className="text-xs font-bold text-amber-800">
+                            নতুন ভেন্ডর রেজিস্ট্রেশন আবেদন
+                          </span>
+                        </div>
+                        <h3 className="text-base font-black text-slate-900 mt-0.5">
+                          Review Registration Details for "{selectedVendorForProfile.name}"
+                        </h3>
+                        <p className="text-xs text-slate-600 font-medium">
+                          এডমিন সকল তথ্য চেক করে নিচে Accept বাটনে ক্লিক করলে ভেন্ডর তার দেওয়া ফোন ও পাসওয়ার্ড দিয়ে সরাসরি লগইন করতে পারবে।
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0 w-full md:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptVendor(selectedVendorForProfile)}
+                        className="flex-1 md:flex-initial px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>Accept Application & Activate</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectVendor(selectedVendorForProfile)}
+                        className="px-4 py-3 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs uppercase rounded-2xl transition flex items-center justify-center space-x-1 cursor-pointer"
+                      >
+                        <X className="w-4 h-4 stroke-[2.5]" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Complete Application Summary Box */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/90 p-3.5 rounded-2xl border border-amber-200/80 text-xs font-bold text-slate-800">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase block font-semibold">Division (বিভাগ)</span>
+                      <span className="text-slate-900">{selectedVendorForProfile.division || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase block font-semibold">Zone (জোন)</span>
+                      <span className="text-slate-900">{selectedVendorForProfile.zone || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase block font-semibold">Vendor Type</span>
+                      <span className="text-slate-900 capitalize">{selectedVendorForProfile.vendor_type || 'Restaurant'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase block font-semibold">Physical Address</span>
+                      <span className="text-slate-900 truncate block">{selectedVendorForProfile.address || 'N/A'}</span>
+                    </div>
+                    {selectedVendorForProfile.google_maps_link && (
+                      <div className="col-span-2 sm:col-span-4 pt-1">
+                        <span className="text-[10px] text-slate-400 uppercase block font-semibold">Google Maps / Location Link</span>
+                        <a
+                          href={selectedVendorForProfile.google_maps_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-rose-600 hover:underline font-mono text-[11px] truncate block"
+                        >
+                          {selectedVendorForProfile.google_maps_link}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Vendor Details Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-white border border-slate-200/90 p-4 rounded-2xl shadow-xs space-y-1">

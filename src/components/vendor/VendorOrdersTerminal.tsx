@@ -208,11 +208,12 @@ export const VendorOrdersTerminal: React.FC<VendorOrdersTerminalProps> = ({ isAc
 
   const activeVendor = authenticatedVendor || currentVendor || (vendors.length > 0 ? vendors[0] : null);
 
-  // Filtered vendors for the switcher modal
+  // Filtered vendors for the switcher modal (strictly approved vendors)
   const filteredVendorsList = React.useMemo(() => {
-    if (!vendorSearchQuery.trim()) return vendors;
+    const approvedOnly = (vendors || []).filter(v => v.approval_status !== 'pending' && v.approval_status !== 'rejected' && v.status !== 'pending' && v.is_active !== false);
+    if (!vendorSearchQuery.trim()) return approvedOnly;
     const q = vendorSearchQuery.trim().toLowerCase();
-    return vendors.filter(v => 
+    return approvedOnly.filter(v => 
       (v.name && v.name.toLowerCase().includes(q)) ||
       (v.phone && v.phone.includes(q)) ||
       (v.address && v.address.toLowerCase().includes(q)) ||
