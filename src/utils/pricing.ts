@@ -47,12 +47,37 @@ export function getItemPricing(
     baseCatalogPrice = varPrices.length > 0 ? Math.min(...varPrices) : 0;
   }
 
-  const totalRegular = baseCatalogPrice + extrasPrice;
+  // Check item-level original price (e.g. original_price = 50, price = 40)
+  const itemOriginal = Number(dish.original_price) || 0;
+  const hasItemOriginal = itemOriginal > baseCatalogPrice && baseCatalogPrice > 0;
 
-  // Discount is loaded strictly from the vendors table discount_percentage column
+  // Store-wide vendor discount percentage
   const effectiveDiscountPct = (vendor && vendor.discount_percentage && Number(vendor.discount_percentage) > 0)
     ? Number(vendor.discount_percentage)
     : 0;
+
+  if (hasItemOriginal) {
+    const regularPrice = itemOriginal + extrasPrice;
+    let discountedPrice = baseCatalogPrice + extrasPrice;
+
+    if (effectiveDiscountPct > 0) {
+      const vDiscountAmt = Math.round((discountedPrice * effectiveDiscountPct) / 100);
+      discountedPrice = Math.max(0, discountedPrice - vDiscountAmt);
+    }
+
+    const discountAmount = Math.max(0, regularPrice - discountedPrice);
+    const discountPercent = regularPrice > 0 ? Math.round((discountAmount / regularPrice) * 100) : 0;
+
+    return {
+      regularPrice,
+      discountedPrice,
+      discountPercent,
+      hasDiscount: discountAmount > 0,
+      discountAmount,
+    };
+  }
+
+  const totalRegular = baseCatalogPrice + extrasPrice;
 
   if (effectiveDiscountPct > 0) {
     const discountAmount = Math.round((totalRegular * effectiveDiscountPct) / 100);
