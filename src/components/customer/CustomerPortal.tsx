@@ -3247,7 +3247,7 @@ export const CustomerPortal: React.FC = () => {
                               </div>
 
                               {/* Strikethrough regular price aligned with stepper */}
-                              {itemPricing.hasDiscount && (
+                              {itemPricing.regularPrice > itemPricing.discountedPrice && (
                                 <div className="text-xs font-semibold text-slate-400 line-through font-mono">
                                   Tk {regularItemSubtotal}
                                 </div>
@@ -4275,7 +4275,7 @@ export const CustomerPortal: React.FC = () => {
                               <span className="text-[#e21b70] font-black text-sm sm:text-base">
                                 from {settings.currency_symbol || 'Tk'} {pricing.discountedPrice}
                               </span>
-                              {pricing.hasDiscount && (
+                              {(pricing.regularPrice > pricing.discountedPrice) && (
                                 <span className="text-xs font-bold text-slate-400 line-through">
                                   {settings.currency_symbol || 'Tk'} {pricing.regularPrice}
                                 </span>
@@ -4391,7 +4391,7 @@ export const CustomerPortal: React.FC = () => {
                                 <span className="text-[#e21b70] font-black text-sm sm:text-base">
                                   from {settings.currency_symbol || 'Tk'} {pricing.discountedPrice}
                                 </span>
-                                {pricing.hasDiscount && (
+                                {(pricing.regularPrice > pricing.discountedPrice) && (
                                   <span className="text-xs font-bold text-slate-400 line-through">
                                     {settings.currency_symbol || 'Tk'} {pricing.regularPrice}
                                   </span>
@@ -4921,15 +4921,15 @@ export const CustomerPortal: React.FC = () => {
                   <span className="text-base font-black text-[#d70f64] font-mono">
                     Tk {modalPricing.discountedPrice}
                   </span>
-                  {modalPricing.hasDiscount && (
-                    <>
-                      <span className="text-xs text-slate-400 line-through font-semibold font-mono">
-                        Tk {modalPricing.regularPrice}
-                      </span>
-                      <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tight">
-                        -{modalPricing.discountPercent}%
-                      </span>
-                    </>
+                  {modalPricing.regularPrice > modalPricing.discountedPrice && (
+                    <span className="text-xs text-slate-400 line-through font-semibold font-mono">
+                      Tk {modalPricing.regularPrice}
+                    </span>
+                  )}
+                  {modalPricing.hasDiscount && modalPricing.discountPercent > 0 && (
+                    <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tight">
+                      -{modalPricing.discountPercent}%
+                    </span>
                   )}
                   <span className="text-slate-300">•</span>
                   <span className="text-xs font-bold text-slate-700">👍 95%</span>
@@ -5088,7 +5088,7 @@ export const CustomerPortal: React.FC = () => {
                                   <span className="font-black text-[#d70f64]">
                                     + Tk {recPricing.discountedPrice}
                                   </span>
-                                  {recPricing.hasDiscount && (
+                                  {recPricing.regularPrice > recPricing.discountedPrice && (
                                     <span className="text-[10px] text-slate-400 line-through">Tk {recPricing.regularPrice}</span>
                                   )}
                                 </div>

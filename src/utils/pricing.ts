@@ -1,17 +1,18 @@
 import { MenuItem, Vendor } from '../types/database';
 
 export interface ItemPricing {
-  regularPrice: number;     // Original / pre-discount price (e.g. 200)
-  discountedPrice: number;  // Price after discount applied (e.g. 170)
-  discountPercent: number;  // Discount percentage (e.g. 15)
-  hasDiscount: boolean;     // Whether discount is active
-  discountAmount: number;   // Amount discounted (e.g. 30)
+  regularPrice: number;     // Original / pre-discount regular price (e.g. 60)
+  discountedPrice: number;  // Active price after vendor discount if any (e.g. 45 or 40.5)
+  discountPercent: number;  // Store-wide vendor discount percentage (e.g. 10 for 10% OFF), 0 if none
+  hasDiscount: boolean;     // Whether vendor store-wide discount is active
+  hasOriginalPrice: boolean;// Whether dish has an original_price > selling price (original_price > price)
+  discountAmount: number;   // Amount discounted by vendor discount
 }
 
 /**
  * Calculates effective price, original regular price, and discount percentage for a menu item.
  * Supports store-wide vendor discount (vendor.discount_percentage, e.g. 15%), 
- * as well as item-level discounts (dish.original_price or dish.discount_percent).
+ * as well as item-level original price (dish.original_price vs dish.price).
  */
 export function getItemPricing(
   dish: MenuItem,
@@ -47,55 +48,34 @@ export function getItemPricing(
     baseCatalogPrice = varPrices.length > 0 ? Math.min(...varPrices) : 0;
   }
 
-  // Check item-level original price (e.g. original_price = 50, price = 40)
+  // Check item-level original price (e.g. original_price = 60, price = 45)
   const itemOriginal = Number(dish.original_price) || 0;
-  const hasItemOriginal = itemOriginal > baseCatalogPrice && baseCatalogPrice > 0;
+  const hasOriginalPrice = itemOriginal > baseCatalogPrice && baseCatalogPrice > 0;
 
   // Store-wide vendor discount percentage
   const effectiveDiscountPct = (vendor && vendor.discount_percentage && Number(vendor.discount_percentage) > 0)
     ? Number(vendor.discount_percentage)
     : 0;
 
-  if (hasItemOriginal) {
-    const regularPrice = itemOriginal + extrasPrice;
-    let discountedPrice = baseCatalogPrice + extrasPrice;
+  const hasDiscount = effectiveDiscountPct > 0;
 
-    if (effectiveDiscountPct > 0) {
-      const vDiscountAmt = Math.round((discountedPrice * effectiveDiscountPct) / 100);
-      discountedPrice = Math.max(0, discountedPrice - vDiscountAmt);
-    }
+  const regularPrice = (hasOriginalPrice ? itemOriginal : baseCatalogPrice) + extrasPrice;
+  const sellingBasePrice = baseCatalogPrice + extrasPrice;
 
-    const discountAmount = Math.max(0, regularPrice - discountedPrice);
-    const discountPercent = regularPrice > 0 ? Math.round((discountAmount / regularPrice) * 100) : 0;
+  let discountedPrice = sellingBasePrice;
+  let discountAmount = 0;
 
-    return {
-      regularPrice,
-      discountedPrice,
-      discountPercent,
-      hasDiscount: discountAmount > 0,
-      discountAmount,
-    };
-  }
-
-  const totalRegular = baseCatalogPrice + extrasPrice;
-
-  if (effectiveDiscountPct > 0) {
-    const discountAmount = Math.round((totalRegular * effectiveDiscountPct) / 100);
-    const discountedPrice = Math.max(0, totalRegular - discountAmount);
-    return {
-      regularPrice: totalRegular,
-      discountedPrice,
-      discountPercent: effectiveDiscountPct,
-      hasDiscount: true,
-      discountAmount,
-    };
+  if (hasDiscount) {
+    discountAmount = Math.round((sellingBasePrice * effectiveDiscountPct) / 100);
+    discountedPrice = Math.max(0, sellingBasePrice - discountAmount);
   }
 
   return {
-    regularPrice: totalRegular,
-    discountedPrice: totalRegular,
-    discountPercent: 0,
-    hasDiscount: false,
-    discountAmount: 0,
+    regularPrice,
+    discountedPrice,
+    discountPercent: hasDiscount ? effectiveDiscountPct : 0,
+    hasDiscount,
+    hasOriginalPrice,
+    discountAmount,
   };
 }
