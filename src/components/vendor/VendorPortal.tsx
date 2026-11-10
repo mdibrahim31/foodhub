@@ -56,7 +56,10 @@ import {
   Lock,
   Phone,
   Utensils,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Edit3,
+  Save,
+  FileText
 } from 'lucide-react';
 
 export interface VendorPortalProps {
@@ -370,11 +373,60 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
     setIsEditCampaignModalOpen(true);
   };
 
+  // Vendor Profile Edit Information State
+  const [profileNameInput, setProfileNameInput] = useState('');
+  const [profilePhoneInput, setProfilePhoneInput] = useState('');
+  const [profileAddressInput, setProfileAddressInput] = useState('');
+  const [profileCuisineInput, setProfileCuisineInput] = useState('');
+  const [profileDivisionInput, setProfileDivisionInput] = useState('');
+  const [profileZoneInput, setProfileZoneInput] = useState('');
+  const [profileDescriptionInput, setProfileDescriptionInput] = useState('');
+  const [profileMapsLinkInput, setProfileMapsLinkInput] = useState('');
+  const [isSavingProfileInfo, setIsSavingProfileInfo] = useState(false);
+  const [profileSaveFeedback, setProfileSaveFeedback] = useState<string | null>(null);
+
+  const handleSaveVendorInfo = async () => {
+    if (!currentVendor) return;
+    setIsSavingProfileInfo(true);
+    setProfileSaveFeedback(null);
+    try {
+      await updateVendor(currentVendor.id, {
+        name: profileNameInput.trim() || currentVendor.name,
+        phone: profilePhoneInput.trim() || currentVendor.phone,
+        address: profileAddressInput.trim() || currentVendor.address,
+        cuisine: profileCuisineInput.trim() || currentVendor.cuisine,
+        division: profileDivisionInput.trim() || currentVendor.division,
+        zone: profileZoneInput.trim() || currentVendor.zone,
+        city_area: profileZoneInput.trim() || currentVendor.city_area,
+        description: profileDescriptionInput.trim(),
+        google_maps_link: profileMapsLinkInput.trim(),
+      });
+      setProfileSaveFeedback('রেস্টুরেন্টের তথ্য সফলভাবে আপডেট হয়েছে!');
+      setTimeout(() => setProfileSaveFeedback(null), 3000);
+    } catch (err) {
+      console.error('Error saving vendor profile info:', err);
+      setProfileSaveFeedback('তথ্য আপডেট করা সম্ভব হয়নি। পুনরায় চেষ্টা করুন।');
+    } finally {
+      setIsSavingProfileInfo(false);
+    }
+  };
+
   const openVendorProfileModal = () => {
     if (currentVendor) {
       setProfileLogoUrlInput(currentVendor.logo_url || '');
       setProfileCoverUrlInput(currentVendor.cover_image || '');
       setUploadFeedback(null);
+
+      // Populate Editable Vendor Information
+      setProfileNameInput(currentVendor.name || '');
+      setProfilePhoneInput(currentVendor.phone || '');
+      setProfileAddressInput(currentVendor.address || '');
+      setProfileCuisineInput(currentVendor.cuisine || '');
+      setProfileDivisionInput(currentVendor.division || '');
+      setProfileZoneInput(currentVendor.zone || currentVendor.city_area || '');
+      setProfileDescriptionInput(currentVendor.description || '');
+      setProfileMapsLinkInput(currentVendor.google_maps_link || '');
+      setProfileSaveFeedback(null);
     }
     setIsStoreBrandingOpen(true);
   };
@@ -3370,7 +3422,7 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
                 )}
               </div>
 
-              {/* RESTAURANT INFORMATION (VIEW ONLY - CANNOT BE EDITED BY VENDOR) */}
+              {/* RESTAURANT INFORMATION (EDITABLE BY VENDOR) */}
               <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-4 space-y-3.5">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
                   <div className="flex items-center space-x-2">
@@ -3378,78 +3430,147 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
                       <Store className="w-3.5 h-3.5" />
                     </div>
                     <h4 className="text-slate-900 font-black text-xs uppercase tracking-wider">
-                      Restaurant Information
+                      Restaurant Information (রেস্টুরেন্ট তথ্য)
                     </h4>
                   </div>
-                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-full text-[10px] font-bold">
-                    <Lock className="w-3 h-3 text-amber-600" />
-                    <span>View Only</span>
+                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-full text-[10px] font-bold">
+                    <Edit3 className="w-3 h-3 text-emerald-600" />
+                    <span>Editable</span>
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {profileSaveFeedback && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 animate-in fade-in">
+                    {profileSaveFeedback}
+                  </div>
+                )}
+
+                <div className="space-y-3 text-xs">
                   {/* Restaurant Name */}
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
                       <Store className="w-3 h-3 text-slate-400" />
-                      <span>Restaurant Name</span>
-                    </div>
-                    <div className="font-bold text-slate-900 text-sm truncate">
-                      {currentVendor.name || '—'}
-                    </div>
+                      <span>Restaurant Name *</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={profileNameInput}
+                      onChange={(e) => setProfileNameInput(e.target.value)}
+                      placeholder="e.g. Sultan's Dine / 7days"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-hidden focus:border-orange-500 bg-slate-50/50"
+                    />
                   </div>
 
                   {/* Phone Number */}
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
                       <Phone className="w-3 h-3 text-slate-400" />
-                      <span>Phone Number</span>
-                    </div>
-                    <div className="font-bold text-slate-900 text-sm font-mono truncate">
-                      {currentVendor.phone || '—'}
-                    </div>
+                      <span>Phone Number *</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={profilePhoneInput}
+                      onChange={(e) => setProfilePhoneInput(e.target.value)}
+                      placeholder="e.g. 01800000000"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold font-mono text-slate-900 focus:outline-hidden focus:border-orange-500 bg-slate-50/50"
+                    />
                   </div>
 
-                  {/* Store Address */}
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs sm:col-span-2">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                  {/* Physical Address */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
                       <MapPin className="w-3 h-3 text-slate-400" />
-                      <span>Store Address / Branch</span>
+                      <span>Street / Physical Address</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={profileAddressInput}
+                      onChange={(e) => setProfileAddressInput(e.target.value)}
+                      placeholder="Street / Market / Area"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-orange-500 bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Category / Cuisine */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                        <Utensils className="w-3 h-3 text-slate-400" />
+                        <span>Category / Cuisine</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={profileCuisineInput}
+                        onChange={(e) => setProfileCuisineInput(e.target.value)}
+                        placeholder="e.g. Restaurant / Biryani"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-orange-500 bg-slate-50/50"
+                      />
                     </div>
-                    <div className="font-semibold text-slate-800 text-xs">
-                      {currentVendor.address || 'No specific address provided'}
+
+                    {/* Zone / Area */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                        <Building2 className="w-3 h-3 text-slate-400" />
+                        <span>Zone / Area Name</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={profileZoneInput}
+                        onChange={(e) => setProfileZoneInput(e.target.value)}
+                        placeholder="e.g. Chawkbazar Zone"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-orange-500 bg-slate-50/50"
+                      />
                     </div>
                   </div>
 
-                  {/* Cuisine */}
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
-                      <Utensils className="w-3 h-3 text-slate-400" />
-                      <span>Cuisine / Category</span>
-                    </div>
-                    <div className="font-semibold text-slate-800 text-xs truncate">
-                      {currentVendor.cuisine || 'Fast Food & Restaurant'}
-                    </div>
+                  {/* Google Maps Link / Coordinates */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      <span>Google Maps Location URL</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={profileMapsLinkInput}
+                      onChange={(e) => setProfileMapsLinkInput(e.target.value)}
+                      placeholder="https://maps.app.goo.gl/..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono text-slate-800 focus:outline-hidden focus:border-orange-500 bg-slate-50/50"
+                    />
                   </div>
 
-                  {/* Zone */}
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
-                      <Building2 className="w-3 h-3 text-slate-400" />
-                      <span>Zone / City</span>
-                    </div>
-                    <div className="font-semibold text-slate-800 text-xs truncate">
-                      {currentVendor.zone || 'Chittagong / Dhaka'}
-                    </div>
+                  {/* Description */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                      <FileText className="w-3 h-3 text-slate-400" />
+                      <span>Description (বিবরণ)</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={profileDescriptionInput}
+                      onChange={(e) => setProfileDescriptionInput(e.target.value)}
+                      placeholder="Short description of your store..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-orange-500 bg-slate-50/50 resize-none"
+                    />
                   </div>
                 </div>
 
-                {/* Information Notice */}
-                <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] text-amber-900 flex items-start space-x-2">
-                  <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="leading-snug">
-                    এই তথ্যগুলো ভেন্ডর শুধুমাত্র দেখতে পারবেন কিন্তু পরিবর্তন বা এডিট করতে পারবেন না। ভেন্ডর শুধুমাত্র প্রোফাইল ছবি ও কভার ছবি পরিবর্তন বা ডিলিট করতে পারবেন। রেস্টুরেন্টের তথ্য পরিবর্তনের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।
-                  </p>
+                {/* Save Information Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    disabled={isSavingProfileInfo || !profileNameInput.trim()}
+                    onClick={handleSaveVendorInfo}
+                    className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs shadow-md transition cursor-pointer flex items-center justify-center space-x-2 active:scale-[0.98]"
+                  >
+                    {isSavingProfileInfo ? (
+                      <span>Saving information...</span>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 stroke-[2.5]" />
+                        <span>Save Information (তথ্য সংরক্ষণ করুন)</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 
