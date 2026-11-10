@@ -1736,15 +1736,14 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
         <div className="max-w-md mx-auto min-h-screen bg-slate-50/70 text-slate-900 pb-28 select-none">
           {/* Top Bar / Store Pill & Close Button (Matching Screenshot 1) */}
           <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 px-4 pt-4 pb-3 flex items-center justify-between border-b border-slate-100 shadow-2xs">
-            <button
-              onClick={() => setIsStoreSelectorOpen(true)}
-              className="flex-1 max-w-[84%] flex items-center space-x-2.5 px-4 py-2.5 rounded-full border border-slate-200/90 bg-white shadow-2xs text-slate-900 hover:border-slate-300 transition text-left cursor-pointer"
+            <div
+              className="flex-1 max-w-[84%] flex items-center space-x-2.5 px-4 py-2.5 rounded-full border border-slate-200/90 bg-white shadow-2xs text-slate-900 text-left select-none"
             >
               <Building2 className="w-4 h-4 text-slate-800 shrink-0 stroke-[2]" />
-              <span className="font-bold text-sm truncate">
-                {currentVendor.name} {currentVendor.unique_id ? `(${currentVendor.unique_id})` : '(LWTL)'}
+              <span className="font-bold text-sm truncate font-mono">
+                {currentVendor.unique_id || currentVendor.name}
               </span>
-            </button>
+            </div>
 
             <button
               onClick={() => setActiveBottomNav('overview')}
