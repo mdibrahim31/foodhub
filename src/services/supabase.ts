@@ -159,6 +159,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   tax_min_order: 0,
   vat_amount: 0,
   vat_min_order: 0,
+  free_delivery_distance_km: 2.0,
 };
 
 export const INITIAL_VENDORS: Vendor[] = [];

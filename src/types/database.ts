@@ -17,6 +17,7 @@ export interface SystemSettings {
   tax_min_order?: number;                 // default 0 (min order amount to apply tax)
   vat_amount?: number;                    // default 0
   vat_min_order?: number;                 // default 0 (min order amount to apply vat)
+  free_delivery_distance_km?: number;     // Distance radius (KM) within which delivery is free (e.g. 2.0 km)
 }
 
 export const DEFAULT_DELIVERY_ZONE_NAMES = [
@@ -107,6 +108,7 @@ export interface Vendor {
   discount_title?: string; // e.g. "15% OFF"
   is_free_delivery?: boolean; // Free delivery offer active
   free_delivery_min_order?: number; // Minimum order amount for free delivery (e.g. 500 BDT)
+  free_delivery_distance_km?: number; // Specific vendor distance threshold for free delivery (in KM)
   delivery_fee?: number; // Specific vendor delivery fee if set
   created_at?: string;
 }

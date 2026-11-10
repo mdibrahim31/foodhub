@@ -2412,47 +2412,98 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Upload Food Image</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+              <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/90">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Food Image (ছবি আপলোড অথবা URL লিঙ্ক)
+                  </label>
+                  {dishImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setDishImageUrl('')}
+                      className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Clear Image
+                    </button>
+                  )}
+                </div>
 
-                    // 1. Base64 Preview & Data URL fallback
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      const dataUrl = event.target?.result as string;
-                      if (dataUrl) {
-                        setDishImageUrl(dataUrl);
-                      }
-                    };
-                    reader.readAsDataURL(file);
+                {/* Option 1: Choose File */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Option 1: Device Image Upload
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
 
-                    // 2. Upload to Supabase Storage bucket 'images' in vendor folder
-                    if (isSupabaseConfigured && supabase && currentVendor) {
-                      try {
-                        const folderName = currentVendor.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                        const filePath = `${folderName}/dish_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-                        const { error } = await supabase.storage.from('images').upload(filePath, file, { upsert: true });
-                        if (!error) {
-                          const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
-                          if (publicUrlData?.publicUrl) {
-                            setDishImageUrl(publicUrlData.publicUrl);
-                          }
+                      // 1. Base64 Preview & Data URL fallback
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const dataUrl = event.target?.result as string;
+                        if (dataUrl) {
+                          setDishImageUrl(dataUrl);
                         }
-                      } catch (err) {
-                        console.warn('Storage upload notice:', err);
+                      };
+                      reader.readAsDataURL(file);
+
+                      // 2. Upload to Supabase Storage bucket 'images' in vendor folder
+                      if (isSupabaseConfigured && supabase && currentVendor) {
+                        try {
+                          const folderName = currentVendor.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                          const filePath = `${folderName}/dish_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                          const { error } = await supabase.storage.from('images').upload(filePath, file, { upsert: true });
+                          if (!error) {
+                            const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+                            if (publicUrlData?.publicUrl) {
+                              setDishImageUrl(publicUrlData.publicUrl);
+                            }
+                          }
+                        } catch (err) {
+                          console.warn('Storage upload notice:', err);
+                        }
                       }
-                    }
-                  }}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-slate-50 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
-                />
+                    }}
+                    className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-white file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                  />
+                </div>
+
+                {/* Option 2: Image URL Input */}
+                <div className="space-y-1 pt-1 border-t border-slate-200/60">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Option 2: Direct Image URL
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={dishImageUrl}
+                      onChange={(e) => setDishImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Image Preview */}
                 {dishImageUrl && (
-                  <div className="mt-2.5 relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-xs">
-                    <img src={dishImageUrl} alt="Uploaded Preview" className="w-full h-full object-cover" />
+                  <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center gap-3">
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-2xs shrink-0">
+                      <img 
+                        src={dishImageUrl} 
+                        alt="Uploaded Preview" 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500';
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold text-slate-700 truncate">Preview</p>
+                      <p className="text-[10px] text-slate-400 font-mono truncate">{dishImageUrl}</p>
+                    </div>
                   </div>
                 )}
               </div>

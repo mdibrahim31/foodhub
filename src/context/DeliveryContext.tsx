@@ -5527,12 +5527,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       selectedAddress.latitude,
       selectedAddress.longitude
     );
+    const freeDistThreshold = Number(cartVendor.free_delivery_distance_km ?? settings.free_delivery_distance_km ?? 2.0);
+    const isWithinFreeDistance = freeDistThreshold > 0 && distanceKm <= freeDistThreshold;
+    const isVendorFreeDelivery = Boolean(
+      (cartVendor.is_free_delivery &&
+      (!cartVendor.free_delivery_min_order || cartVendor.free_delivery_min_order <= 0 || foodTotal >= cartVendor.free_delivery_min_order)) ||
+      isWithinFreeDistance
+    );
+
     const calculatedDeliveryFee = calculateDeliveryFee(
       distanceKm,
       settings.base_delivery_charge,
       settings.per_km_delivery_charge
     );
-    const effectiveDeliveryFee = orderType === 'pickup' ? 0 : calculatedDeliveryFee;
+    const effectiveDeliveryFee = (orderType === 'pickup' || isVendorFreeDelivery) ? 0 : calculatedDeliveryFee;
     const platformFee = Number(settings.platform_fee) || 0;
     const minOrderPlatform = Number(settings.platform_fee_min_order) || 0;
     const effectivePlatformFee = (minOrderPlatform > 0 && foodTotal < minOrderPlatform) ? 0 : platformFee;

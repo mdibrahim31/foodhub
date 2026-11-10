@@ -398,6 +398,7 @@ export const AdminPortal: React.FC = () => {
   const [adminTaxMinOrder, setAdminTaxMinOrder] = useState(settings?.tax_min_order ?? 0);
   const [adminVat, setAdminVat] = useState(settings?.vat_amount ?? 0);
   const [adminVatMinOrder, setAdminVatMinOrder] = useState(settings?.vat_min_order ?? 0);
+  const [adminFreeDeliveryDistKm, setAdminFreeDeliveryDistKm] = useState(settings?.free_delivery_distance_km ?? 2.0);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   const handleMoveAdBanner = async (adId: string, direction: 'up' | 'down') => {
@@ -538,6 +539,7 @@ export const AdminPortal: React.FC = () => {
       tax_min_order: adminTaxMinOrder,
       vat_amount: adminVat,
       vat_min_order: adminVatMinOrder,
+      free_delivery_distance_km: adminFreeDeliveryDistKm,
     });
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 3000);
@@ -1162,6 +1164,26 @@ export const AdminPortal: React.FC = () => {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1 bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200/80">
+                <label className="text-emerald-900 block font-black text-xs">FREE DELIVERY DISTANCE THRESHOLD RADIUS (KM)</label>
+                <div className="flex items-center space-x-2">
+                  <span className="p-2.5 bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 font-mono font-bold">🚀</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={adminFreeDeliveryDistKm}
+                    onChange={(e) => setAdminFreeDeliveryDistKm(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white border border-emerald-300 rounded-xl text-slate-900 font-mono font-black text-sm focus:outline-hidden focus:border-emerald-500"
+                    placeholder="2.0"
+                    required
+                  />
+                </div>
+                <p className="text-[11px] text-emerald-800 font-medium leading-tight pt-1">
+                  ভেন্ডরের লোকেশন থেকে কাস্টমারের পিনপয়েন্ট অ্যাড্রেস এই দূরত্বের (যেমন: ২ কিমি) মধ্যে হলে ডেলিভারি চার্জ বিনামূল্যে (Free) দেখাবে। এর বাইরে হলে ডেলিভারি ফি প্রযোজ্য হবে।
+                </p>
               </div>
 
               {/* Platform Fee & Order Threshold */}

@@ -348,7 +348,9 @@ export const CustomerHomeView: React.FC<CustomerHomeViewProps> = ({
             {displayVendors.map((vendor) => {
               const { lat: vLat, lng: vLng } = getVendorCoords(vendor);
               const distanceKm = calculateDistanceKm(vLat, vLng, customerLat, customerLng);
-              const isFreeDelivery = Boolean(vendor.is_free_delivery);
+              const freeDistThreshold = Number(vendor.free_delivery_distance_km ?? settings?.free_delivery_distance_km ?? 2.0);
+              const isWithinFreeDist = freeDistThreshold > 0 && distanceKm <= freeDistThreshold;
+              const isFreeDelivery = Boolean(vendor.is_free_delivery) || isWithinFreeDist;
               const fee = isFreeDelivery ? 0 : calculateDeliveryFee(distanceKm, settings.base_delivery_charge, settings.per_km_delivery_charge);
               const isFav = favorites.includes(vendor.id);
               const isNew = isVendorNew(vendor);
