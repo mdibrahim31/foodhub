@@ -1814,6 +1814,17 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
               </h2>
               <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs divide-y divide-slate-100 overflow-hidden">
                 <button
+                  onClick={() => openVendorProfileModal()}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <Store className="w-5 h-5 text-slate-800 stroke-[2]" />
+                    <span className="text-[15px] font-bold text-slate-900">Profile</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <button
                   onClick={() => setIsTopProgramOpen(true)}
                   className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
                 >
@@ -1935,19 +1946,6 @@ export const VendorPortal: React.FC<VendorPortalProps> = ({ isAccessPanel }) => 
                   <div className="flex items-center space-x-3.5">
                     <Clock className="w-5 h-5 text-slate-800 stroke-[2]" />
                     <span className="text-[15px] font-bold text-slate-900">Opening times</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
-                </button>
-
-
-
-                <button
-                  onClick={() => openVendorProfileModal()}
-                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <Store className="w-5 h-5 text-slate-800 stroke-[2]" />
-                    <span className="text-[15px] font-bold text-slate-900">Profile</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 stroke-[2.5] group-hover:text-slate-600 transition-transform group-hover:translate-x-0.5" />
                 </button>
